@@ -440,11 +440,12 @@ api.delete('/policies/:tool', (c) => {
   return c.json({ ok: true });
 });
 
+// Private transcription works with either subscription provider.
+api.route('/voice', transcriptionApi);
 api.use('/voice/*', async (c, next) => {
   if (env.agentProvider !== 'xai') return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
   await next();
 });
-api.route('/voice', transcriptionApi);
 api.route('/voice', voiceApi);
 
 api.get('/sheets/:id/preview', async c => {

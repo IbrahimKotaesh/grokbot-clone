@@ -10,5 +10,13 @@ try{
  assert.equal((await call(new Uint8Array(50))).status,400);assert.equal((await call(new Uint8Array(500),'text/plain')).status,415);assert.equal((await call(new Uint8Array(8*1024*1024+1))).status,413);
  status=429;response={error:'Busy'};r=await call();assert.equal(r.status,429);assert.equal((await r.json()).error,'Busy');
  status=200;response={text:' '};assert.equal((await call()).status,422);
+ process.env.DB_PATH=':memory:';process.env.SESSION_SECRET='test-only-transcription';process.env.AGENT_PROVIDER='codex';
+ const {db}=await import('../server/dist/db.js');const {api}=await import('../server/dist/routes.js');const {Hono}=await import('hono');const app=new Hono().route('/api',api);
+ db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run('test-owner','test@example.com','Test',Date.now());db.prepare('INSERT INTO auth_sessions VALUES (?,?,?,?)').run('test-session','test-owner',Date.now(),Date.now()+60_000);
+ response={text:'مرحبا',language:'ar'};
+ const authHeaders={Cookie:'grokbot_session=test-session','Content-Type':'audio/mp4'};
+ assert.equal((await app.request('/api/voice/transcribe',{method:'POST',headers:authHeaders,body:new Uint8Array(500)})).status,200,'Parent voice middleware must allow private STT with subscription models');
+ assert.equal((await app.request('/api/voice/transcribe',{method:'POST',headers:{'Content-Type':'audio/mp4'},body:new Uint8Array(500)})).status,401);
+ assert.equal((await app.request('/api/voice/session',{method:'POST',headers:authHeaders,body:'{}'})).status,503,'Unconfigured paid voice calls remain disabled');db.close();
  console.log('PASS: actual audio bytes proxied privately, Arabic unchanged, Safari format, upload/type limits, busy and no-speech errors');
 }finally{server.close();}
