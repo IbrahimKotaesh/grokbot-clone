@@ -166,3 +166,12 @@ button, a { touch-action: manipulation; }
 
 .composer__speech-language { width:34px; min-width:34px; height:32px; padding:0 2px; font-size:10px; font-weight:600; border:0; border-radius:8px; background:transparent; color:var(--color-text-secondary); cursor:pointer; }
 .composer__speech-language:focus-visible { outline:2px solid var(--color-border-focus); }
+
+@supports (field-sizing: content) { .composer__writing .composer__input { field-sizing:content; height:auto; overflow-y:auto; } }
+
+.bubble__files { display:flex; flex-direction:column; gap:8px; margin:4px 0; min-width:0; }
+.bubble__file { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid #789d8e55; border-radius:12px; min-width:0; background:var(--color-bg-pane); color:var(--color-ink); }
+.bubble__file>a:not(.bubble__download) { display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; text-decoration:none; }
+.bubble__file strong { font-size:13px; overflow-wrap:anywhere; }
+.bubble__file small { color:var(--color-text-secondary); font-size:11px; }
+.bubble__download { display:grid; place-items:center; min-width:36px; min-height:36px; border-radius:10px; background:#176d7010; font-size:22px; text-decoration:none; }

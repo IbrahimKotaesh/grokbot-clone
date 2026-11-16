@@ -1,3 +1,4 @@
+import { publishAttachment, MAX_ATTACHMENT_BYTES } from '../attachments.js';
 import { imageInputs } from '../images.js';
 import { createBot } from '../bots.js';
 import { env } from '../env.js';
@@ -199,6 +200,28 @@ export const TOOLS: ToolDef[] = [
         return orgo.bash(c, s, `base64 -d ${dir}/${name}.b64 > ${dir}/${name} && rm ${dir}/${name}.b64 && wc -c ${dir}/${name}`, 30);
       });
       return { output: JSON.stringify({ ok: true, path: `${dir}/${name}` }), summary: `Saved ${name}` };
+    },
+  },
+  {
+    name: 'attach_file',
+    description: 'Send a generated PDF or image directly into this conversation as an attachment. First create the file with shell in your own Library folder /root/grokbot/files/<your bot id>/. Then pass its absolute path. Supports PDF up to 10 MB and PNG/JPEG/WebP up to 3 MB; render SVG to PNG first. PDFs appear as open/download cards and images appear inline. Do not claim you cannot send files in chat: use this tool.',
+    parameters: obj({ path: {type:'string',description:'Absolute path inside your own Library directory'}, caption: {type:'string',description:'Optional short message alongside the attachment'} },['path']),
+    activity:'drafting_file',label:'Attaching a file',
+    impl: async(a,ctx)=>{
+      const root=`/root/grokbot/files/${ctx.botId}`;
+      const payload=Buffer.from(JSON.stringify({root,path:String(a.path),max:MAX_ATTACHMENT_BYTES})).toString('base64');
+      const script=`import sys,json,base64
+from pathlib import Path
+a=json.loads(base64.b64decode(sys.argv[1]));p=Path(a["path"]).resolve(strict=True);root=Path(a["root"]).resolve()
+if not p.is_relative_to(root) or not p.is_file(): raise ValueError("Use a file inside your own Library folder")
+if p.stat().st_size>a["max"]: raise ValueError("File exceeds 10 MB")
+print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()}))`;
+      const quote=(s:string)=>"'"+s.replace(/'/g,"'\"'\"'")+"'";
+      const result=await onScreen(ctx,(c,s)=>orgo.bash(c,s,`python3 -c ${quote(script)} ${quote(payload)}`,60));
+      if(result.exit_code!==0)throw new Error('Could not read the attachment. Save it inside your own Library folder and keep it under 10 MB.');
+      const file=JSON.parse(result.output??'{}');
+      const attached=publishAttachment(ctx.userId,ctx.botId,file.name,Buffer.from(file.data,'base64'),typeof a.caption==='string'?a.caption.slice(0,2000):'');
+      return {output:JSON.stringify({attached:true,...attached}),summary:`Attached ${attached.name}`};
     },
   },
   {

@@ -17,7 +17,6 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
-      - run: node tests/device-dictation.mjs
       - run: node tests/smooth-text.mjs
       - run: node tests/camera-lifecycle.mjs
       - run: node tests/message-rendering.mjs
@@ -26,6 +25,10 @@ jobs:
         env:
           SESSION_SECRET: ci-native-test-value
           DB_PATH: ":memory:"
+      - run: node tests/chat-attachments.mjs
+        env:
+          SESSION_SECRET: ci-attachment-test-value
+          DB_PATH: ':memory:'
       - run: node tests/photo-messages.mjs
         env:
           SESSION_SECRET: ci-photo-test-value

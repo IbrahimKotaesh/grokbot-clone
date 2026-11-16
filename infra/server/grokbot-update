@@ -38,7 +38,15 @@ for attempt in {1..40}; do
     mapfile -t old < <(find "$root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +3 | cut -d' ' -f2-)
     for path in "${old[@]}"; do
       [[ "$(basename "$path")" =~ ^[0-9a-f]{40}$ ]] || continue
-      [ "$path" = "$release" ] || [ "$path" = "$previous" ] || runuser -u grokbot -- git -C "$repo" worktree remove --force "$path"
+      if [ "$path" = "$release" ] || [ "$path" = "$previous" ]; then continue; fi
+      # A diagnostic may have created root-owned build artifacts. A previous
+      # partial removal can also leave a directory without worktree metadata.
+      chown -Rh grokbot:grokbot "$path"
+      if [ -f "$path/.git" ]; then
+        runuser -u grokbot -- git -C "$repo" worktree remove --force "$path" || echo "Warning: could not retire $path" >&2
+      else
+        runuser -u grokbot -- rm -rf -- "$path" || echo "Warning: could not retire orphan $path" >&2
+      fi
     done
     exit 0
   fi

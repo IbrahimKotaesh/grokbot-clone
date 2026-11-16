@@ -7,7 +7,6 @@ import { Menu } from './Menu';
 import { configApi } from '../lib/configApi';
 import { PhotoCamera } from './PhotoCamera';
 import { preparePhoto, type Photo } from '../lib/photos';
-import { useDictation } from '../voice/dictation';
 
 const MAX_H = 200;
 const drafts = new Map<string, string>();
@@ -41,7 +40,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const [changingLanguage,setChangingLanguage]=useState(false);
+  const [dictationHelp,setDictationHelp]=useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -53,9 +52,14 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = '0px';
+    if (typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content')) {
+      el.style.height = ''; el.style.overflowY = ''; return;
+    }
+    const previousScroll = el.scrollTop;
+    el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, MAX_H)}px`;
     el.style.overflowY = el.scrollHeight > MAX_H ? 'auto' : 'hidden';
+    el.scrollTop = previousScroll;
   }, [text]);
 
   // ⌘I focuses the prompt.
@@ -67,12 +71,12 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
 
   const send = async () => {
     const t = text.trim();
-    if ((!t && !photos.length) || preparing || sending || switching || dictation.state !== 'idle') return;
+    if ((!t && !photos.length) || preparing || sending || switching) return;
     setSending(true); setError(null);
     try {
       await api.send(bot.id, t, photos);
       setPhotos([]);photoDrafts.delete(bot.id);
-      setText('');
+      setText(''); setDictationHelp(false);
       drafts.delete(bot.id);
     } catch (e) {
       setError((e as Error).message || 'Message failed to send');
@@ -84,27 +88,6 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const stop = () => api.interrupt(bot.id).catch((e) => setError(e.message));
   const fresh = () => api.fresh(bot.id).catch((e) => setError(e.message));
 
-  // Dictation: insert the transcript at the cursor.
-  const insertText = (t: string) => {
-    const el = ref.current;
-    setText((cur) => {
-      const start = el && document.activeElement === el ? el.selectionStart : cur.length;
-      const end = el && document.activeElement === el ? el.selectionEnd : cur.length;
-      const before = cur.slice(0, start);
-      const after = cur.slice(end);
-      const pre = before && !/\s$/.test(before) ? ' ' : '';
-      const post = after && !/^\s/.test(after) ? ' ' : '';
-      requestAnimationFrame(() => { if (el && document.activeElement === el) { const pos = before.length + pre.length + t.length; el.setSelectionRange(pos, pos); } });
-      return before + pre + t + post + after;
-    });
-  };
-  const dictationLanguage=bot.voiceLanguage?.startsWith('en') ? 'en-US' : 'ar-SA';
-  const dictation = useDictation(insertText, setError, dictationLanguage);
-  const changeLanguage=async(voiceLanguage:string)=>{
-    setChangingLanguage(true);setError(null);
-    try {const {bot:updated}=await configApi.updateBot(bot.id,{voiceLanguage});useStore.setState(s=>({bots:s.bots.map(b=>b.id===updated.id?updated:b)}));}
-    catch(e){setError((e as Error).message);}finally{setChangingLanguage(false);}
-  };
   const changeProvider = async (agentProvider: 'codex' | 'claude') => {
     setSwitching(true); setError(null);
     try {
@@ -133,7 +116,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
             rows={1}
             value={text}
             placeholder={`Message ${bot.name}…`}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setDictationHelp(false); }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
             }}
@@ -162,18 +145,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           <label className="composer__model"><select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
         </div>
         <div className="composer__right">
-          <select className="composer__speech-language" aria-label="Dictation language" title="Dictation language" value={dictationLanguage} disabled={dictation.state !== 'idle' || changingLanguage} onChange={e=>void changeLanguage(e.target.value)}><option value="ar-SA">AR</option><option value="en-US">EN</option></select>
-          <button
-            type="button"
-            className={`composer__btn${dictation.state === 'recording' ? ' is-recording' : ''}`}
-            aria-label={dictation.state === 'idle' ? 'Dictate' : 'Stop dictation'}
-            aria-pressed={dictation.state !== 'idle'}
-            title={`Dictate in ${dictationLanguage === 'ar-SA' ? 'Arabic' : 'English'}`}
-            disabled={changingLanguage || dictation.state === 'stopping'}
-            onClick={dictation.toggle}
-          >
-            <Icon name="mic" opacity={0.56} />
-          </button>
+          <button type="button" className="composer__btn" aria-label="Use keyboard dictation" title="Use keyboard dictation" onClick={()=>{setDictationHelp(true);ref.current?.focus();}}><Icon name="mic" opacity={0.56}/></button>
           {running && !hasText ? (
             <button type="button" className="composer__cta" onClick={stop} aria-label="Stop" title="Stop">
               <Icon name="stop" size={14} />
@@ -183,7 +155,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               type="button"
               className="composer__cta"
               onClick={send}
-              disabled={!hasText || preparing || sending || switching || dictation.state !== 'idle'}
+              disabled={!hasText || preparing || sending || switching}
               aria-label="Send"
               title="Send (Enter)"
             >
@@ -192,7 +164,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           )}
         </div>
       </div>
-      {dictation.state !== 'idle' && <div className="composer__dictation-preview" role="status" dir="auto">{dictation.interim || (dictation.state === 'starting' ? 'Starting microphone…' : dictation.state === 'stopping' ? 'Finishing dictation…' : `Listening in ${dictationLanguage === 'ar-SA' ? 'Arabic' : 'English'}…`)}</div>}
+      {dictationHelp&&<div className="composer__dictation-preview" role="status">Use the microphone on your keyboard to dictate. <button type="button" className="link-btn" onClick={()=>setDictationHelp(false)}>Dismiss</button></div>}
       </div>
     </div>
   );

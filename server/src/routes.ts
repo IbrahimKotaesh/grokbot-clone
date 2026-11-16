@@ -1,4 +1,5 @@
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
+import './attachments.js';
 import { bodyLimit } from 'hono/body-limit';
 import { validateImages, saveImages } from './images.js';
 import { Hono } from 'hono';
@@ -196,6 +197,14 @@ api.get('/bots/:id/rows', (c) => {
   if (!b) return c.json({ error: 'not found' }, 404);
   const beforeSeq = c.req.query('beforeSeq') ? Number(c.req.query('beforeSeq')) : undefined;
   return c.json({ generation: b.generation, rows: listRows(b.id, { beforeSeq, limit: Number(c.req.query('limit') ?? 200) }) });
+});
+
+api.get('/bots/:id/attachments/:fileId', (c) => {
+  if(!ownBot(c.get('user').id,c.req.param('id')))return c.json({error:'not found'},404);
+  const file=db.prepare('SELECT name,mime,data FROM message_files WHERE id=? AND bot_id=? AND user_id=?').get(c.req.param('fileId'),c.req.param('id'),c.get('user').id) as {name:string;mime:string;data:Buffer}|undefined;
+  if(!file)return c.json({error:'not found'},404);
+  const disposition=c.req.query('download')==='1'?'attachment':'inline';
+  return c.body(file.data,200,{'Content-Type':file.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Disposition':`${disposition}; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(file.name)}`});
 });
 
 api.get('/bots/:id/images/:imageId', (c) => {

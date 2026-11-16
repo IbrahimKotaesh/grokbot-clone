@@ -6,7 +6,6 @@ import { botVars } from '../lib/colors';
 import { displayName, useSelectedBot, useStore } from '../store';
 import { Icon } from './Icon';
 import { ToolkitLogo } from './ToolkitLogo';
-import { VoiceSettings } from './VoiceSettings';
 import { MembersCard } from './MembersCard';
 import { useConfigUI } from '../configStore';
 import { Glyph } from './config/glyphs';
@@ -188,10 +187,6 @@ export function DetailsPanel() {
                 <section>
                   <div className="section-label">Computer</div>
                   <ComputerCard bot={bot} />
-                </section>
-                <section>
-                  <div className="section-label">Dictation</div>
-                  <VoiceSettings bot={bot} />
                 </section>
               </>
             )}
