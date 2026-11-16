@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { displayName, useStore } from '../store';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
-import { endCall, isCallActive, startCall, useVoice } from '../voice/call';
+import { configApi } from '../lib/configApi';
 import { useDictation } from '../voice/dictation';
 
 const MAX_H = 200;
@@ -15,6 +15,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -40,7 +41,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
 
   const send = async () => {
     const t = text.trim();
-    if (!t || sending) return;
+    if (!t || sending || switching || dictation.state === 'recording') return;
     setSending(true); setError(null);
     try {
       await api.send(bot.id, t);
@@ -72,7 +73,14 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     });
   };
   const dictation = useDictation(insertText, setError, bot.voiceLanguage);
-  const inCall = useVoice((s) => isCallActive(s) && s.botId === bot.id);
+  const changeProvider = async (agentProvider: 'codex' | 'claude') => {
+    setSwitching(true); setError(null);
+    try {
+      const { bot: updated } = await configApi.updateBot(bot.id, { agentProvider, model: '' });
+      useStore.setState(s => ({ bots: s.bots.map(b => b.id === updated.id ? updated : b) }));
+    } catch (e) { setError((e as Error).message); }
+    finally { setSwitching(false); }
+  };
 
   const hasText = text.trim().length > 0;
   const multiline = text.includes('\n') || (ref.current?.scrollHeight ?? 0) > 30;
@@ -80,6 +88,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   return (
     <div className="composer-area">
       {error && <div className="composer__error">{error} <button type="button" className="link-btn" onClick={() => setError(null)}>Dismiss</button></div>}
+      <div className="composer-shell">
       <div className={`composer${multiline ? ' is-multiline' : ''}`}>
         <div className="composer__left">
           <span className="composer__plus-anchor">
@@ -98,6 +107,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
             )}
           </span>
           <textarea
+            dir="auto"
             ref={ref}
             className="composer__input"
             rows={1}
@@ -113,23 +123,15 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
         <div className="composer__right">
           <button
             type="button"
-            className={`composer__btn${dictation.state === 'recording' ? ' is-recording' : dictation.state === 'transcribing' ? ' is-transcribing' : ''}`}
+            className={`composer__btn${dictation.state === 'recording' ? ' is-recording' : ''}`}
             aria-label={dictation.state === 'recording' ? 'Stop dictation' : 'Dictate'}
             aria-pressed={dictation.state === 'recording'}
-            title={dictation.state === 'recording' ? 'Release or click to stop · Esc cancels' : dictation.state === 'transcribing' ? 'Transcribing…' : 'Hold to dictate, or click to start'}
-            disabled={dictation.state === 'transcribing'}
-            onPointerDown={dictation.onPointerDown}
-            onPointerUp={dictation.onPointerUp}
-            onKeyDown={dictation.onKeyDown}
-            onContextMenu={(e) => e.preventDefault()}
+            title="Device dictation"
+            onClick={() => { ref.current?.focus(); dictation.toggle(); }}
           >
             <Icon name="mic" opacity={0.56} />
           </button>
-          {inCall && !hasText ? (
-            <button type="button" className="composer__cta is-in-call" onClick={endCall} aria-label="End voice call" title="End voice call">
-              <Icon name="voice_a" size={16} />
-            </button>
-          ) : running && !hasText ? (
+          {running && !hasText ? (
             <button type="button" className="composer__cta" onClick={stop} aria-label="Stop" title="Stop">
               <Icon name="stop" size={14} />
             </button>
@@ -137,15 +139,20 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
             <button
               type="button"
               className="composer__cta"
-              onClick={hasText ? send : () => startCall(bot.id)}
-              disabled={hasText && sending}
-              aria-label={hasText ? 'Send' : `Start voice chat with ${bot.name}`}
-              title={hasText ? 'Send (Enter)' : 'Start voice chat'}
+              onClick={send}
+              disabled={!hasText || sending || switching || dictation.state === 'recording'}
+              aria-label="Send"
+              title="Send (Enter)"
             >
-              <Icon name={hasText ? 'arrow_up' : 'voice_a'} size={16} />
+              <Icon name="arrow_up" size={16} />
             </button>
           )}
         </div>
+      </div>
+      <div className="composer__footer">
+        <label className="composer__model">Model <select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
+        <span className="composer__voice-status" role="status" dir="auto">{dictation.state === 'recording' ? (dictation.interim || 'Listening… tap mic to stop') : 'Use your keyboard mic to dictate'}</span>
+      </div>
       </div>
     </div>
   );

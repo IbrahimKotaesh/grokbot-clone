@@ -122,3 +122,14 @@ button, a { touch-action: manipulation; }
 .apps-modal__intro { color: var(--color-text-secondary); margin: 12px 0; font-size: 14px; line-height: 1.5; }
 .apps-modal__quicklinks { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .apps-modal__quicklinks .cat-pill { display: inline-flex; align-items: center; gap: 12px; min-height: 40px; border: 1px solid var(--color-border-secondary); }
+
+/* One mobile-friendly message card, with the model control in its own footer. */
+.composer-shell { max-width:960px; margin:0 auto; border:1px solid var(--border, #dce5e2); border-radius:22px; background:var(--pane, #fff); box-shadow:0 4px 20px #143a3210; }
+.composer-shell .composer { border:0; box-shadow:none; background:transparent; }
+.composer__footer { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:8px 14px 12px; border-top:1px solid #79958b22; }
+.composer__model { display:flex; align-items:center; gap:8px; font-size:12px; color:#61776e; }
+.composer__model select { border:1px solid #789d8e55; border-radius:12px; padding:7px 10px; background:#e9f5ef; color:#184e3c; font:inherit; font-weight:600; cursor:pointer; }
+.composer__voice-status { font-size:11px; color:#6b8078; text-align:end; overflow-wrap:anywhere; }
+.composer__input, .bubble__plain, .md p, .md li, .md blockquote, .md h1, .md h2, .md h3 { text-align:start; unicode-bidi:plaintext; }
+.md pre, .md pre code { direction:ltr; text-align:left; unicode-bidi:isolate; }
+@media(max-width:600px) { .composer__footer { gap:8px; } .composer__voice-status { max-width:48%; } }

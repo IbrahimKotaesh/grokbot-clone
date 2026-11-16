@@ -40,9 +40,10 @@ const screenInfo = (n: number) => ({ id: n ? `screen-${n}` : 'default', display:
 async function startScreen(n: number) {
   const s = screenInfo(n);
   await checked(`mkdir -p /root/grokbot/screens/${n}; if ! xdpyinfo -display :${n} >/dev/null 2>&1; then nohup Xvfb :${n} -screen 0 1280x800x24 -ac >/tmp/grokbot-x-${n}.log 2>&1 </dev/null & sleep 1; fi
-    pgrep -f '^openbox' >/dev/null || true
+    mkdir -p /root/.config/pcmanfm/fino-${n};
+    printf '[*]\nwallpaper_mode=color\ndesktop_bg=#dbece5\ndesktop_fg=#184e3c\nshow_documents=1\nshow_trash=1\nshow_mounts=1\n' > /root/.config/pcmanfm/fino-${n}/desktop-items-0.conf
     if ! test -f /tmp/grokbot-screen-${n}.started; then
-      nohup dbus-run-session -- openbox >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null &
+      nohup dbus-run-session -- bash -c 'openbox & xsetroot -solid "#dbece5"; pcmanfm --desktop --profile=fino-${n} & tint2 & wait' >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null &
       nohup x11vnc -display :${n} -localhost -rfbport ${5900+n} -forever -shared -nopw >/tmp/grokbot-vnc-${n}.log 2>&1 </dev/null &
       nohup websockify ${wsBind}:${6080+n} localhost:${5900+n} >/tmp/grokbot-ws-${n}.log 2>&1 </dev/null &
       touch /tmp/grokbot-screen-${n}.started
@@ -94,3 +95,22 @@ export const localComputer = {
   },
 };
 export const localVncUrl = (screen: string) => `ws://127.0.0.1:${vncBase + display(screen)}`;
+
+/** Restore a usable desktop and the assistant's persistent browser profile. */
+const desktopStarts = new Map<string, Promise<void>>();
+export async function prepareLocalDesktop(screen: string, botId: string) {
+  const pending = desktopStarts.get(screen);
+  if (pending) return pending;
+  const task = openLocalBrowser(screen, botId);
+  desktopStarts.set(screen, task);
+  try { await task; } finally { desktopStarts.delete(screen); }
+}
+async function openLocalBrowser(screen: string, botId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(botId)) throw new Error('Invalid bot id');
+  await checked(`if ! xdotool search --onlyvisible --class chromium >/dev/null 2>&1; then
+    mkdir -p /root/grokbot/profiles/${botId};
+    pgrep -f 'user-data-dir=/root/grokbot/profiles/${botId}' >/dev/null || rm -f /root/grokbot/profiles/${botId}/Singleton*;
+    setsid nohup chromium --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic --user-data-dir=/root/grokbot/profiles/${botId} --start-maximized about:blank >/tmp/chrome-${botId}.log 2>&1 </dev/null &
+    sleep 2;
+  fi`, screen);
+}

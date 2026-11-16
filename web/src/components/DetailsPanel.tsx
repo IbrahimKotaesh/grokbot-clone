@@ -190,7 +190,7 @@ export function DetailsPanel() {
                   <ComputerCard bot={bot} />
                 </section>
                 <section>
-                  <div className="section-label">Voice chat</div>
+                  <div className="section-label">Dictation</div>
                   <VoiceSettings bot={bot} />
                 </section>
               </>

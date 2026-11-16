@@ -12,7 +12,7 @@ const components: Components = {
 /** Assistant message markdown: paragraphs, lists, blockquotes, inline code, code blocks (screen 02), tables. */
 export const Markdown = memo(function Markdown({ text }: { text: string }) {
   return (
-    <div className="md">
+    <div className="md" dir="auto">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{text}</ReactMarkdown>
     </div>
   );

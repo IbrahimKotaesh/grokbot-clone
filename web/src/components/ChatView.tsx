@@ -34,7 +34,7 @@ export function ChatView() {
     <main className="chat" style={botVars(bot.avatarColor)}>
       <Transcript bot={bot} rows={rows} live={live} loaded={!!transcript?.loaded} />
       <VoiceCallBar />
-      <Composer bot={bot} running={!!live?.isRunning} />
+      <Composer key={bot.id} bot={bot} running={!!live?.isRunning} />
       <header className="chat__header">
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>

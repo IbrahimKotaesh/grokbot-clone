@@ -2,6 +2,7 @@ import { db, now } from './db.js';
 import { env } from './env.js';
 import { hub } from './lib/hub.js';
 import { orgo, OrgoError } from './orgo.js';
+import { prepareLocalDesktop } from './local-computer.js';
 import { getLive } from './store.js';
 import type { ComputerState } from './types.js';
 
@@ -139,6 +140,7 @@ export async function screenFor(userId: string, botId: string): Promise<{ comput
   if (mine) {
     try {
       await orgo.getScreen(computerId, mine.screen_id);
+      if (env.computerProvider === 'local') await prepareLocalDesktop(mine.screen_id, botId);
       db.prepare('UPDATE screens SET last_used_at=? WHERE bot_id=?').run(now(), botId);
       return { computerId, screenId: mine.screen_id };
     } catch {
@@ -166,7 +168,8 @@ export async function screenFor(userId: string, botId: string): Promise<{ comput
     }
   }
   db.prepare('INSERT OR REPLACE INTO screens(bot_id,user_id,screen_id,last_used_at) VALUES (?,?,?,?)').run(botId, userId, screenId, now());
-  if (screenId !== 'default') await prepareScreen(computerId, screenId!);
+  if (env.computerProvider === 'local') await prepareLocalDesktop(screenId!, botId);
+  else if (screenId !== 'default') await prepareScreen(computerId, screenId!);
   hub.emit(userId, { type: 'computer', state: computerState(userId) });
   return { computerId, screenId: screenId! };
 }
