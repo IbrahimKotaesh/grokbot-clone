@@ -180,6 +180,10 @@ export function ConnectAppsModal() {
             <Icon name="chev_right" size={12} opacity={0.56} />
           </button>
         </div>
+        <p className="apps-modal__intro">Connect the accounts your assistants can work with.</p>
+        <div className="apps-modal__quicklinks" aria-label="Popular connections">
+          {['GitHub', 'Slack', 'Gmail'].map(name => <button key={name} type="button" className="cat-pill" onClick={() => { setView({ kind: 'all' }); setSearch(name); }}>{name}<Icon name="plus" size={14} /></button>)}
+        </div>
         <div className="apps-modal__controls">
           <div className="apps-modal__searchrow">
             <label className="pill-input">

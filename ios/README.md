@@ -15,8 +15,8 @@ installed icon require rebuilding the iOS app. The server must remain online.
 
 Google sign-in uses Apple's system authentication browser, rather than an
 embedded Google login. A one-use, 60-second code bound to a random PKCE verifier
-returns to the app. WKWebView exchanges it directly for an HttpOnly session
-cookie; model credentials and Composio keys remain on the server. External
+returns to the app. The app exchanges it over HTTPS, installs the HttpOnly cookie in
+WKWebView, and then loads the workspace; model credentials and Composio keys remain on the server. External
 links open in the browser. Voice depends on the server's configured voice
 provider, microphone permission, and iOS web media support.
 

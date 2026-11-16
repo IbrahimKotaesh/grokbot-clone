@@ -94,3 +94,31 @@ button, a { touch-action: manipulation; }
   .tasks-view { min-width: 0; width: 100%; }
   .signin__card { padding: 30px 24px; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fino-float {
+    0%, 38%, 100% { transform: translateY(0) rotate(0); }
+    48%, 58% { transform: translateY(-2px) rotate(-3deg); }
+    68% { transform: translateY(0) rotate(2deg); }
+    78% { transform: translateY(-1px) rotate(0); }
+  }
+  @keyframes fino-working {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-3px) rotate(3deg); }
+  }
+  @keyframes fino-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+  .fino-avatar img { animation: fino-float 9s ease-in-out infinite; transform-origin: 50% 80%; }
+  .bot-row:nth-child(even) .fino-avatar img { animation-delay: -4s; }
+  .bot-row:has(.is-working) .fino-avatar img, .pinned__avatar:has(.is-working) .fino-avatar img { animation: fino-working 1.8s ease-in-out infinite; }
+  .sidebar-brand img, .mobile-brand img { animation: fino-float 12s ease-in-out infinite; }
+  .fino-avatar:hover img { animation: fino-working .7s ease-in-out 1; }
+  .group:last-child .bubble { animation: fino-arrive 220ms ease-out both; }
+  .bot-row, .pinned__tile, .app-row, .icon-btn, .app-row__connect { transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+  .bot-row:active, .pinned__tile:active, .icon-btn:active, .app-row__connect:active { transform: scale(.97); }
+  @media (max-width: 900px) { .app.is-nav-open .sidebar { animation: fino-drawer-in 200ms ease-out; } }
+  @keyframes fino-drawer-in { from { transform: translateX(-100%); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+}
+
+.apps-modal__intro { color: var(--color-text-secondary); margin: 12px 0; font-size: 14px; line-height: 1.5; }
+.apps-modal__quicklinks { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.apps-modal__quicklinks .cat-pill { display: inline-flex; align-items: center; gap: 12px; min-height: 40px; border: 1px solid var(--color-border-secondary); }
