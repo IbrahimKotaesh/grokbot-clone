@@ -357,9 +357,9 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
           {memories.map((m) => (
             <div key={m.id} className="cfg-item">
               <div className="cfg-item__text">
-                <div className="cfg-item__body">{m.text}</div>
+                <div className="cfg-item__body" dir="auto">{m.text}</div>
                 <div className="cfg-item__meta">
-                  {m.source === 'learned' ? <span className="cfg-chip">Picked up</span> : <span className="cfg-chip cfg-chip--muted">Saved in chat</span>}
+                  {m.source === 'learned' ? <span className="cfg-chip">Picked up</span> : <span className="cfg-chip cfg-chip--muted">Saved</span>}
                   <span>{shortDate(m.createdAt)}</span>
                 </div>
               </div>
