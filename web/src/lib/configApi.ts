@@ -1,3 +1,4 @@
+import {disableDevicePush} from './push';
 import type { Bot, ComputerState, LibraryFile, Memory, Routine, Skill, Task, Toolkit } from '@shared/types';
 import { ApiError } from './api';
 
@@ -66,5 +67,5 @@ export const configApi = {
   deletePolicy: (tool: string) => req<{ ok: true }>('DELETE', `/policies/${encodeURIComponent(tool)}`),
 
   connectedApps: () => req<{ connectedApps?: Toolkit[]; connected: string[] }>('GET', '/apps?limit=1'),
-  logout: () => req<{ ok: true }>('POST', '/auth/logout'),
+  logout: async () => {await disableDevicePush().catch(()=>{});return req<{ok:true}>('POST','/auth/logout');},
 };

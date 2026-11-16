@@ -1,3 +1,4 @@
+import { pushApi } from './notifications.js';
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
 import './attachments.js';
 import { validateDocuments,extractDocuments,saveDocuments } from './documents.js';
@@ -456,3 +457,5 @@ api.get('/sheets/:id/preview', async c => {
   try {return c.json(await sheetPreview(c.get('user').id,c.req.param('id'),c.req.query('tab')));}
   catch(e){return c.json({error:e instanceof SheetError?e.message:'Google Sheets preview is unavailable.'},(e instanceof SheetError?e.status:502) as 400);}
 });
+
+api.route('/push',pushApi);

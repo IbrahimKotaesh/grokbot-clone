@@ -1,3 +1,4 @@
+import {NotificationsSection} from './NotificationsSection';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Toolkit } from '@shared/types';
@@ -14,6 +15,7 @@ import { ConfirmButton } from './ui';
 
 const SECTIONS: { id: AppSection; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'notifications', label: 'Notifications' },
   { id: 'computer', label: 'Computer' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'apps', label: 'Connected apps' },
@@ -45,6 +47,7 @@ export function AppSettings() {
       <div className="app-settings__main">
         <button type="button" className="app-settings__close icon-btn" onClick={close} aria-label="Close settings" title="Close (Esc)"><Icon name="close" opacity={0.8} /></button>
         <div className="app-settings__page">
+          {section === 'notifications' && <NotificationsSection />}
           {section === 'general' && <GeneralSection />}
           {section === 'computer' && <ComputerSection />}
           {section === 'permissions' && <PermissionsSection />}

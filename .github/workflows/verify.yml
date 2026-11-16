@@ -60,3 +60,9 @@ jobs:
           SESSION_SECRET: ci-document-test-value
           DB_PATH: ':memory:'
           DOCUMENT_PYTHON: python
+      - run: node tests/avatar-characters.mjs
+      - run: node tests/push-service-worker.mjs
+      - run: node tests/notifications.mjs
+        env:
+          SESSION_SECRET: ci-push-test-value
+          DB_PATH: ':memory:'

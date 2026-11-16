@@ -1,3 +1,4 @@
+import {disableDevicePush} from './push';
 import type { Bot, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
 
 export class ApiError extends Error {
@@ -27,7 +28,7 @@ export interface RoomMember { id: string; name: string; label: string; avatarSha
 export const api = {
   me: () => req<{ user: User | null; devLogin: boolean; googleLogin: boolean; localAccount: {email:string;name:string} | null }>('GET', '/auth/me'),
   devLogin: (email: string, name?: string) => req<{ ok: true }>('POST', '/auth/dev', { email, name }),
-  logout: () => req<{ ok: true }>('POST', '/auth/logout'),
+  logout: async () => {await disableDevicePush().catch(()=>{});return req<{ok:true}>('POST','/auth/logout');},
 
   bots: () => req<{ bots: Bot[]; live: LiveState[] }>('GET', '/bots'),
   createBot: (b: Pick<Bot, 'name' | 'avatarShape' | 'avatarColor' | 'mode'>) => req<{ bot: Bot }>('POST', '/bots', b),

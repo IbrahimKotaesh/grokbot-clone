@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';import vm from 'node:vm';import fs from 'node:fs/promises';
+const listeners={},shown=[],messages=[],opened=[];let focused=0;
+const existing={url:'https://fino.example/',postMessage:m=>messages.push(m),focus:async()=>focused++};
+const self={location:{origin:'https://fino.example'},addEventListener:(name,fn)=>listeners[name]=fn,registration:{showNotification:async(title,options)=>shown.push({title,...options})},clients:{matchAll:async()=>[existing],openWindow:async url=>opened.push(url)}};
+vm.runInNewContext(await fs.readFile(new URL('../web/public/sw.js',import.meta.url),'utf8'),{self,URL,Date,Promise});
+let pending;listeners.push({data:{json:()=>({title:'Kamel',body:'Private update',tag:'test',url:'/?bot=kamel&notification=123'})},waitUntil:p=>pending=p});await pending;assert.equal(shown[0].title,'Kamel');assert.equal(shown[0].data.url,'/?bot=kamel&notification=123');
+listeners.push({data:{json:()=>{throw Error('Bad payload');}},waitUntil:p=>pending=p});await pending;assert.equal(shown[1].title,'Fino','Malformed push still shows a visible notification');
+let closed=false;listeners.notificationclick({notification:{data:{url:'/?bot=kamel&notification=123'},close:()=>closed=true},waitUntil:p=>pending=p});await pending;assert.equal(closed,true);assert.equal(focused,1);assert.equal(messages[0].type,'fino-open-notification');assert.ok(messages[0].url.includes('bot=kamel'));assert.equal(opened.length,0,'Existing drafts are preserved by messaging instead of reloading');
+self.clients.matchAll=async()=>[];listeners.notificationclick({notification:{data:{url:'https://evil.example/steal'},close:()=>{}},waitUntil:p=>pending=p});await pending;assert.equal(opened[0],'https://fino.example/');
+console.log('PASS: visible push notifications, malformed-payload fallback, deep links, draft-preserving focus and external-link rejection');

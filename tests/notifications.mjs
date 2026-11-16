@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import * as webpush from 'web-push';
+import {db} from '../server/dist/db.js';
+import {api} from '../server/dist/routes.js';
+import {createBot} from '../server/dist/bots.js';
+import {appendRow} from '../server/dist/store.js';
+import {publishBotNotification,dispatchPush,validateSubscription,pushKeys,hasNotificationText,pushTransport} from '../server/dist/notifications.js';
+for(const id of ['owner','other']){db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run(id,`${id}@example.com`,id,Date.now());db.prepare('INSERT INTO auth_sessions VALUES (?,?,?,?)').run(id,id,Date.now(),Date.now()+60000);}
+const bot=createBot('owner',{name:'Kamel'});const ecdh=crypto.createECDH('prime256v1');ecdh.generateKeys();
+const endpoint='https://fcm.googleapis.com/fcm/send/test-only',subscription={endpoint,keys:{p256dh:ecdh.getPublicKey().toString('base64url'),auth:crypto.randomBytes(16).toString('base64url')}};
+const call=(path,method='GET',body,user='owner')=>api.request('/push'+path,{method,headers:{...(user?{Cookie:`grokbot_session=${user}`} : {}),'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+assert.equal((await call('/config','GET',undefined,null)).status,401);const config=await(await call('/config')).json();assert.ok(config.publicKey);assert.ok(!JSON.stringify(config).includes('privateKey'));assert.equal(pushKeys().publicKey,config.publicKey);
+for(const bad of ['http://fcm.googleapis.com/a','https://127.0.0.1/a','https://fcm.googleapis.com.evil.test/a','https://user:pass@fcm.googleapis.com/a','https://web.push.apple.com:8443/a'])assert.throws(()=>validateSubscription({...subscription,endpoint:bad}));
+assert.throws(()=>validateSubscription({...subscription,keys:{p256dh:'bad',auth:'bad'}}));
+assert.equal((await call('/device','POST',{subscription})).status,200);assert.equal((await call('/device','POST',{subscription},'other')).status,409);
+assert.equal(hasNotificationText('.'),false);assert.equal(hasNotificationText(' ✅ '),false);assert.equal(hasNotificationText('رسالة مهمة'),true);
+const encrypted=webpush.generateRequestDetails(subscription,'private payload',{vapidDetails:{subject:'https://fino.example',...pushKeys()}});assert.ok(Buffer.isBuffer(encrypted.body));assert.ok(!encrypted.body.toString().includes('private payload'));assert.match(encrypted.headers.Authorization,/vapid/i);
+const deliveries=[];let failure=0;pushTransport.send=async(s,payload,options)=>{if(failure)throw {statusCode:failure};deliveries.push({s,payload:JSON.parse(payload),options});return {statusCode:201};};
+const id=publishBotNotification('owner',bot.id,'Important private email details','routine:1');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.length,1);assert.equal(deliveries[0].payload.body,'Open Fino to read this update.');assert.ok(deliveries[0].payload.url.includes(bot.id));assert.equal(deliveries[0].options.vapidDetails.publicKey,config.publicKey);
+assert.equal(publishBotNotification('owner',bot.id,'Same event','routine:1'),null);assert.equal(publishBotNotification('other',bot.id,'Cross owner','cross'),null);assert.equal(publishBotNotification('owner',bot.id,'.','silent'),null);assert.equal(publishBotNotification('owner',bot.id,'Direct reply','reply:1','update',true),null);
+await call('/device','PATCH',{endpoint,previews:true,replies:true});publishBotNotification('owner',bot.id,'Readable preview','routine:2');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.at(-1).payload.body,'Readable preview');
+appendRow(bot.id,'card',{type:'card',card:'question',question:'Which timezone?',options:[],status:'pending'});await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.at(-1).payload.title,'Kamel needs your attention');
+const owner=await(await call('/notifications')).json(),other=await(await call('/notifications','GET',undefined,'other')).json();assert.ok(owner.unread>=3);assert.equal(other.unread,0);await call('/notifications/read','POST',{id});assert.ok((await(await call('/notifications')).json()).items.find(i=>i.id===id).readAt);
+failure=503;publishBotNotification('owner',bot.id,'Retry after service failure','retry');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(db.prepare("SELECT COUNT(*) n FROM push_deliveries WHERE status='pending' AND attempts=1").get().n,1);
+failure=410;publishBotNotification('owner',bot.id,'Expired subscription','expired');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(db.prepare('SELECT COUNT(*) n FROM push_subscriptions').get().n,0);
+console.log('PASS: encrypted push pipeline, owner isolation, endpoint validation, private previews, deduplication, attention alerts, retries and expired-device cleanup');db.close();

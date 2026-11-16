@@ -190,6 +190,7 @@ export interface Toolkit {
 
 /** Server-sent events on GET /api/events */
 export type ServerEvent =
+  | {type:'notifications'}
   | { type: 'hello'; serverTime: number }
   | { type: 'rows'; botId: string; generation: number; rows: Row[] }
   | { type: 'cleared'; botId: string; generation: number }

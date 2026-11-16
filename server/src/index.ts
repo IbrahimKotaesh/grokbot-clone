@@ -1,3 +1,4 @@
+import { initPushWorker } from './notifications.js';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -51,6 +52,7 @@ const server = serve({ fetch: app.fetch, port: env.port, hostname: '127.0.0.1' }
 attachVncRelay(server as unknown as Server);
 // GROKBOT_NO_SCHEDULER=1 for extra dev/test servers sharing a database copy, so routines and triggers don't fire twice.
 if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
+  initPushWorker();
   initRoutines(enqueue);
   void initTriggers(enqueue);
 initProactive(enqueue);

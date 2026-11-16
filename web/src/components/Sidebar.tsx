@@ -1,3 +1,4 @@
+import {NotificationBell} from './config/NotificationsSection';
 import { memo, useCallback, useState } from 'react';
 import { useConfigUI } from '../configStore';
 import { TasksIsland } from './config/TasksView';
@@ -145,6 +146,7 @@ export function Sidebar() {
             )}
           </div>
         )}
+        <NotificationBell/>
         <button type="button" className="icon-btn icon-btn--bordered" onClick={() => setModal('apps')} aria-label="Connect apps" title="Connect apps">
           <Icon name="apps" />
         </button>

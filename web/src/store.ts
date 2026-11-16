@@ -80,7 +80,10 @@ export const useStore = create<State>((set, get) => ({
     const { bots, live } = await api.bots();
     const liveMap: Record<string, LiveState> = {};
     for (const l of live) liveMap[l.botId] = l;
-    const sel = get().selectedBotId;
+    const params=new URLSearchParams(location.search);
+    const sel = params.get('bot')??get().selectedBotId;
+    if(params.has('notification')){void fetch('/api/push/notifications/read',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:params.get('notification')})});}
+    if(params.has('bot')||params.has('notification')){params.delete('bot');params.delete('notification');history.replaceState(null,'',location.pathname+(params.size?'?'+params.toString():'')+location.hash);}
     const selectedBotId = sel && bots.some((b) => b.id === sel) ? sel : (bots.find((b) => b.isPrimary) ?? bots[0])?.id ?? null;
     set({ bots, live: liveMap });
     if (selectedBotId !== get().selectedBotId || !get().transcripts[selectedBotId ?? '']) {
@@ -168,6 +171,7 @@ export const useStore = create<State>((set, get) => ({
       case 'routines':
         if (s.routines[ev.botId] || ev.botId === s.selectedBotId) s.loadRoutines(ev.botId).catch(console.error);
         return;
+      case 'notifications':
       case 'tasks':
       case 'memories':
         // Picked up by configStore.ts (Tasks view, Library/Tasks tabs, bot settings).

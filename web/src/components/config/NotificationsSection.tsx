@@ -1,0 +1,29 @@
+import {useCallback,useEffect,useState} from 'react';
+import {Bell,BellRing,Check,ExternalLink} from 'lucide-react';
+import {pushRequest,pushSupport,currentPush,enableDevicePush,disableDevicePush,type AlertItem} from '../../lib/push';
+import {useStore} from '../../store';
+import {useConfigUI} from '../../configStore';
+export function NotificationsSection(){
+ const [items,setItems]=useState<AlertItem[]>([]),[device,setDevice]=useState<{enabled:number;previews:number;replies:number}|null>(null),[endpoint,setEndpoint]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const support=pushSupport();
+ const refresh=useCallback(async()=>{const {items}=await pushRequest<{items:AlertItem[]}>('/notifications');setItems(items);const sub=await currentPush();setEndpoint(sub?.endpoint??'');if(sub){const {device}=await pushRequest<{device:{enabled:number;previews:number;replies:number}|null}>('/device/status','POST',{endpoint:sub.endpoint});setDevice(device);}else setDevice(null);},[]);
+ useEffect(()=>{void refresh().catch(e=>setError(e.message));const handler=(e:Event)=>{if((e as CustomEvent).detail?.type==='notifications')void refresh().catch(()=>{});};window.addEventListener('grokbot:event',handler);return()=>window.removeEventListener('grokbot:event',handler);},[refresh]);
+ const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setMessage('');try{await fn();await refresh();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
+ const enabled=!!device?.enabled;
+ const preference=(field:'previews'|'replies',value:boolean)=>void run(async()=>{await pushRequest('/device','PATCH',{endpoint,previews:field==='previews'?value:!!device?.previews,replies:field==='replies'?value:!!device?.replies});});
+ const open=async(item:AlertItem)=>{await pushRequest('/notifications/read','POST',{id:item.id});if(item.botId){useStore.getState().selectBot(item.botId);useConfigUI.getState().closeAppSettings();}else await refresh();};
+ return <><div className="app-settings__head"><h1>Notifications</h1><p>Important bot updates and approval requests, even when Fino is closed.</p></div>
+ <section className="notification-device"><div className="notification-device__head">{enabled?<BellRing size={24}/>:<Bell size={24}/>}<div><strong>{enabled?'Enabled on this device':'Enable on this device'}</strong><p>Each phone and browser needs its own permission.</p></div></div>
+ {support.needsInstall&&<p className="notification-help">On iPhone: open Fino in Safari → Share → Add to Home Screen. Open the Fino icon, then tap Enable notifications.</p>}
+ {!support.supported&&!support.needsInstall&&<p className="notification-help">This browser does not support background push. Open Fino in Safari, Chrome, Edge or Firefox. Your alerts still appear below.</p>}
+ <div className="notification-actions">{enabled?<><button className="btn btn--primary" disabled={busy} onClick={()=>void run(async()=>{await pushRequest('/test','POST',{endpoint});setMessage('Test queued. Watch for a Fino notification on this device.');})}>Send test notification</button><button className="btn btn--secondary" disabled={busy} onClick={()=>void run(async()=>{await disableDevicePush();})}>Disable on this device</button></>:<button className="btn btn--primary" disabled={busy||!support.supported||support.needsInstall} onClick={()=>void run(async()=>{await enableDevicePush();setMessage('Notifications are enabled on this device.');})}>{busy?'Connecting…':'Enable notifications'}</button>}</div>
+ {enabled&&<div className="notification-preferences"><label><input type="checkbox" checked={!!device?.previews} disabled={busy} onChange={e=>preference('previews',e.target.checked)}/><span>Show message previews<small>Include a short message on your lock screen. Off by default.</small></span></label><label><input type="checkbox" checked={!!device?.replies} disabled={busy} onChange={e=>preference('replies',e.target.checked)}/><span>Also notify for replies to my messages<small>Scheduled alerts and approval requests are already included.</small></span></label></div>}
+ {error&&<p role="alert" className="notification-error">{error}</p>}{message&&<p role="status">{message}</p>}</section>
+ <section><div className="notification-history__head"><h2>Recent alerts</h2><button type="button" className="link-btn" disabled={busy||!items.some(i=>!i.readAt)} onClick={()=>void run(async()=>{await pushRequest('/notifications/read','POST',{});})}><Check size={14}/> Mark all read</button></div>
+ {!items.length?<p className="cfg-field__hint">No alerts yet. Important scheduled updates will appear here; silent email checks won’t notify you.</p>:<div className="notification-history">{items.map(item=><button type="button" className={`notification-item${item.readAt?'':' is-unread'}`} key={item.id} onClick={()=>void run(()=>open(item))}><strong>{item.title}</strong><p dir="auto">{item.body}</p><small>{new Date(item.createdAt).toLocaleString()}</small>{item.botId&&<ExternalLink size={14}/>}</button>)}</div>}</section></>;
+}
+export function NotificationBell(){
+ const [unread,setUnread]=useState(0);
+ useEffect(()=>{const refresh=()=>void pushRequest<{unread:number}>('/notifications').then(r=>setUnread(r.unread)).catch(()=>{});refresh();const listener=(e:Event)=>{if((e as CustomEvent).detail?.type==='notifications')refresh();};window.addEventListener('grokbot:event',listener);return()=>window.removeEventListener('grokbot:event',listener);},[]);
+ return <button type="button" className="icon-btn icon-btn--bordered notification-bell" title="Notifications" aria-label={`Notifications${unread?`, ${unread} unread`:''}`} onClick={()=>useConfigUI.getState().openAppSettings('notifications')}><Bell size={18}/>{unread>0&&<span>{unread>99?'99+':unread}</span>}</button>;
+}
