@@ -133,3 +133,6 @@ button, a { touch-action: manipulation; }
 .composer__input, .bubble__plain, .md p, .md li, .md blockquote, .md h1, .md h2, .md h3 { text-align:start; unicode-bidi:plaintext; }
 .md pre, .md pre code { direction:ltr; text-align:left; unicode-bidi:isolate; }
 @media(max-width:600px) { .composer__footer { gap:8px; } .composer__voice-status { max-width:48%; } }
+
+.md .md__source-note { font-size:11px; color:var(--color-text-secondary, #6b8078); margin-top:12px; font-style:italic; }
+.md blockquote { border-inline-start:3px solid #93ada080; border-inline-end:0; padding-inline-start:16px; padding-inline-end:0; margin-inline-start:0; margin-inline-end:0; }
