@@ -202,3 +202,10 @@ button, a { touch-action: manipulation; }
 @media(prefers-reduced-motion:reduce){.dictation__spinner{animation:none;}}
 
 @media(max-width:480px){.composer__permissions .composer__setting>span{max-width:50px;overflow:hidden;text-overflow:ellipsis;}}
+.composer__documents {display:flex;flex-wrap:wrap;gap:8px;padding:12px 12px 0;}
+.composer__document {display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #789d8e55;border-radius:12px;max-width:100%;min-width:0;background:var(--color-bg-pane);font-size:12px;}
+.composer__document>span {min-width:0;}
+.composer__document strong {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-weight:500;}
+.composer__document small {display:block;font-size:11px;color:var(--color-text-secondary);}
+.composer__document button {padding:3px 6px;font-size:18px;}
+.bubble__file-note {max-width:420px;line-height:1.4;}

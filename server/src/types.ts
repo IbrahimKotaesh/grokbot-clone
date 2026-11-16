@@ -68,7 +68,7 @@ export interface MessageBody {
   /** Set when a message came from another bot, a routine or a voice call rather than the user typing. */
   from?: { kind: 'bot' | 'routine' | 'voice'; id: string; name: string };
   images?: { id: string; name: string; url: string }[];
-  files?: { id: string; name: string; url: string; mime: string; size: number }[];
+  files?: { id: string; name: string; url: string; mime: string; size: number; extractionNote?: string }[];
   citations?: { url: string; title?: string }[];
 }
 

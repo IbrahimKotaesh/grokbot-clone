@@ -8,6 +8,7 @@ import { Menu } from './Menu';
 import { configApi } from '../lib/configApi';
 import { DictationButton } from './DictationButton';
 import { PhotoCamera } from './PhotoCamera';
+import { prepareDocument, DOCUMENT_ACCEPT, type DocumentUpload } from '../lib/documents';
 import { preparePhoto, type Photo } from '../lib/photos';
 
 const permissionChoices = [
@@ -18,10 +19,14 @@ const permissionChoices = [
 ] as const;
 const MAX_H = 200;
 const drafts = new Map<string, string>();
+const documentDrafts=new Map<string,DocumentUpload[]>();
 const photoDrafts = new Map<string, Photo[]>();
 
 export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [text, setText] = useState(() => drafts.get(bot.id) ?? '');
+  const [documents,setDocuments]=useState<DocumentUpload[]>(()=>documentDrafts.get(bot.id)??[]);
+  const documentRef=useRef<HTMLInputElement>(null);
+  useEffect(()=>{documentDrafts.set(bot.id,documents);},[bot.id,documents]);
   const [photos,setPhotos]=useState<Photo[]>(()=>photoDrafts.get(bot.id)??[]);
   const [preparing,setPreparing]=useState(false);
   const [camera,setCamera]=useState(false);
@@ -38,6 +43,14 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     try {const prepared=await Promise.all([...files].map(preparePhoto));if(mounted.current)setPhotos(cur=>[...cur,...prepared].slice(0,3));}
     catch(e){if(mounted.current)setError((e as Error).message);}
     finally {if(mounted.current)setPreparing(false);}
+  };
+  const addDocuments=async(files:FileList|null)=>{
+    if(!files?.length)return;
+    if(documents.length+files.length>3){setError('Attach up to 3 files.');return;}
+    if(documents.reduce((n,f)=>n+f.size,0)+[...files].reduce((n,f)=>n+f.size,0)>20*1024*1024){setError('Keep the total file size under 20 MB.');return;}
+    setPreparing(true);setError(null);
+    try {const prepared=await Promise.all([...files].map(prepareDocument));if(mounted.current)setDocuments(cur=>[...cur,...prepared].slice(0,3));}
+    catch(e){if(mounted.current)setError((e as Error).message);}finally{if(mounted.current)setPreparing(false);}
   };
   const openCamera=()=>{
     if(photos.length>=3){setError('Attach up to 3 photos.');return;}
@@ -80,11 +93,11 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
 
   const send = async () => {
     const t = text.trim();
-    if ((!t && !photos.length) || preparing || sending || switching || dictating) return;
+    if ((!t && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
     try {
-      await api.send(bot.id, t, photos);
-      setPhotos([]);photoDrafts.delete(bot.id);
+      await api.send(bot.id, t, photos,documents);
+      setPhotos([]);photoDrafts.delete(bot.id);setDocuments([]);documentDrafts.delete(bot.id);
       setText('');
       drafts.delete(bot.id);
     } catch (e) {
@@ -115,17 +128,20 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   };
   const permission=permissionChoices.find(p=>p.id===(bot.permissionMode??'balanced'))!;
   const ModelIcon=bot.agentProvider==='claude'?Sparkles:Orbit;
-  const hasText = text.trim().length > 0 || photos.length > 0;
+  const hasText = text.trim().length > 0 || photos.length > 0 || documents.length > 0;
 
   return (
     <div className="composer-area">
       {error && <div className="composer__error">{error} <button type="button" className="link-btn" onClick={() => setError(null)}>Dismiss</button></div>}
+      <input hidden ref={documentRef} type="file" accept={DOCUMENT_ACCEPT} multiple aria-label="Choose files" onChange={e=>{void addDocuments(e.target.files);e.target.value='';}}/>
       <input hidden ref={fileRef} type="file" accept="image/*" multiple aria-label="Choose photos" onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       <input hidden ref={captureRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo" onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       {camera&&<PhotoCamera onClose={closeCamera} onPhoto={photo=>setPhotos(cur=>[...cur,photo].slice(0,3))}/>}
       <div className="composer-shell">
+      {documents.length>0&&<div className="composer__documents">{documents.map((file,i)=><div className="composer__document" key={i}><Icon name="file" size={20}/><span><strong>{file.name}</strong><small>{Math.max(1,Math.round(file.size/1024))} KB</small></span><button type="button" aria-label={`Remove file ${i+1}`} disabled={sending} onClick={()=>setDocuments(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
+      {sending&&documents.length>0&&<div className="composer__preparing" role="status">Reading attachments…</div>}
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
-      {preparing&&<div className="composer__preparing" role="status">Preparing photo…</div>}
+      {preparing&&<div className="composer__preparing" role="status">Preparing attachments…</div>}
       <div className="composer__writing">
           <textarea
             dir="auto"
@@ -152,6 +168,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
                 placement="above"
                 onClose={() => setMenu(false)}
                 items={[
+                  { label: 'Choose files', onSelect: () => documentRef.current?.click() },
                   { label: 'Choose photo', onSelect: () => fileRef.current?.click() },
                   { label: 'Take photo', onSelect: openCamera },
                   { label: 'New conversation', onSelect: fresh },

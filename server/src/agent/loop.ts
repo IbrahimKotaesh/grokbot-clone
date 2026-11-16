@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
 import { claudeTurn } from './claude.js';
@@ -17,10 +18,10 @@ import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, po
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
 export type Trigger =
-  | { type: 'user'; text: string; imageIds?: string[] }
+  | { type: 'user'; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'routine'; routineId: string; name: string; prompt: string }
   | { type: 'bot'; fromBotId: string; fromName: string; text: string; depth: number }
-  | { type: 'system'; text: string; imageIds?: string[] }
+  | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'resume' };
 
 interface PendingState {
@@ -89,12 +90,12 @@ function pruneImages(items: any[]): any[] {
   return out;
 }
 
-function triggerItem(t: Trigger): any | null {
+function triggerItem(t: Trigger, attachments=''): any | null {
   switch (t.type) {
-    case 'user': return { role: 'user', content: t.text };
+    case 'user': return { role: 'user', content: t.text + attachments };
     case 'routine': return { role: 'user', content: `[Routine "${t.name}" is running now. Do this:]\n${t.prompt}` };
     case 'bot': return { role: 'user', content: `[Message from ${t.fromName}, another Bot on the team. Reply to them with send_to_bot if they asked you something.]\n${t.text}` };
-    case 'system': return { role: 'user', content: `[System notice] ${t.text}` };
+    case 'system': return { role: 'user', content: `[System notice] ${t.text}${attachments}` };
     case 'resume': return null;
   }
 }
@@ -114,10 +115,11 @@ async function runTurn(botId: string, trigger: Trigger) {
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
+    const attachedContext=fileContext(userId,botId,'fileIds' in trigger?trigger.fileIds:[]);
     if (provider === 'codex' || provider === 'claude') {
       const old = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
       if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
-      const item = triggerItem(trigger);
+      const item = triggerItem(trigger,attachedContext);
       if (!item) return;
       const images=imageInputs(userId, 'imageIds' in trigger ? trigger.imageIds : []);
       await (provider === 'claude' ? claudeTurn : codexTurn)(botId, item.content, ctrl.signal, async (name, args, callId) => {
@@ -150,7 +152,7 @@ async function runTurn(botId: string, trigger: Trigger) {
       const paused = await processCalls(ctx, st);
       if (paused) return;
     } else {
-      const item = triggerItem(trigger);
+      const item = triggerItem(trigger,attachedContext);
       if (item) {
         const images=imageInputs(userId,'imageIds' in trigger ? trigger.imageIds : []);
         if(images.length) item.content=[{type:'input_text',text:item.content},...images.map(image_url=>({type:'input_image',image_url}))];

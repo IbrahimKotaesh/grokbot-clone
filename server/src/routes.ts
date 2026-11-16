@@ -1,5 +1,6 @@
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
 import './attachments.js';
+import { validateDocuments,extractDocuments,saveDocuments } from './documents.js';
 import { sheetPreview, SheetError } from './sheets.js';
 import { bodyLimit } from 'hono/body-limit';
 import { validateImages, saveImages } from './images.js';
@@ -206,8 +207,8 @@ api.get('/bots/:id/attachments/:fileId', (c) => {
   if(!ownBot(c.get('user').id,c.req.param('id')))return c.json({error:'not found'},404);
   const file=db.prepare('SELECT name,mime,data FROM message_files WHERE id=? AND bot_id=? AND user_id=?').get(c.req.param('fileId'),c.req.param('id'),c.get('user').id) as {name:string;mime:string;data:Buffer}|undefined;
   if(!file)return c.json({error:'not found'},404);
-  const disposition=c.req.query('download')==='1'?'attachment':'inline';
-  return c.body(file.data,200,{'Content-Type':file.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Disposition':`${disposition}; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(file.name)}`});
+  const disposition=c.req.query('download')==='1'||file.mime!=='application/pdf'?'attachment':'inline';
+  return c.body(file.data,200,{'Content-Type':file.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Disposition':`${disposition}; filename="document"; filename*=UTF-8''${encodeURIComponent(file.name)}`});
 });
 
 api.get('/bots/:id/images/:imageId', (c) => {
@@ -217,25 +218,27 @@ api.get('/bots/:id/images/:imageId', (c) => {
   return c.body(image.data,200,{'Content-Type':image.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
 });
 
-api.post('/bots/:id/messages', bodyLimit({maxSize:13*1024*1024,onError:c=>c.json({error:'Photos are too large. Attach up to 3 photos under 3 MB each.'},413)}), async (c) => {
+api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json({error:'Attachments are too large. Files: 10 MB each, 20 MB total; photos: 3 MB each.'},413)}), async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
   let body;
   try { body=await c.req.json(); } catch { return c.json({error:'Invalid message.'},400); }
   if(!body || typeof body !== 'object' || Array.isArray(body)) return c.json({error:'Invalid message.'},400);
   const text = typeof body.text === 'string' ? body.text.trim() : '';
-  let photos;
-  try { photos=validateImages(body.images); } catch(e) { return c.json({error:(e as Error).message},400); }
-  if (!text && !photos.length) return c.json({ error: 'empty' }, 400);
-  const {row,images}=db.transaction(()=>{
+  let photos,documents;
+  try { photos=validateImages(body.images); documents=await extractDocuments(validateDocuments(body.files)); } catch(e) { return c.json({error:(e as Error).message},400); }
+  if (!text && !photos.length && !documents.length) return c.json({ error: 'empty' }, 400);
+  const {row,images,files}=db.transaction(()=>{
+    const files=saveDocuments(c.get('user').id,b.id,documents);
     const images=saveImages(c.get('user').id,b.id,photos);
-    const row=appendRow(b.id,'message',{type:'message',role:'user',text,...(images.length?{images}:{})});
-    return {row,images};
+    const row=appendRow(b.id,'message',{type:'message',role:'user',text,...(images.length?{images}:{}),...(files.length?{files}:{})});
+    return {row,images,files};
   })();
   const imageIds=images.map(image=>image.id);
-  const prompt=text || 'Describe the attached photo.';
-  if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds);
-  else enqueue(b.id, { type: 'user', text:prompt,imageIds });
+  const fileIds=files.map(file=>file.id);
+  const prompt=text || (files.length?'Read and summarize the attached documents.':'Describe the attached photo.');
+  if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
+  else enqueue(b.id, { type: 'user', text:prompt,imageIds,fileIds });
   return c.json({ row });
 });
 

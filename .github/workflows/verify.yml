@@ -51,3 +51,12 @@ jobs:
           DB_PATH: ':memory:'
       - run: node tests/audio-recording.mjs
       - run: node tests/transcription.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r infra/documents/requirements.txt
+      - run: node tests/uploaded-documents.mjs
+        env:
+          SESSION_SECRET: ci-document-test-value
+          DB_PATH: ':memory:'
+          DOCUMENT_PYTHON: python
