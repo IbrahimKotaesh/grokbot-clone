@@ -20,5 +20,6 @@ const correction=source('غيرت تفضيلي: من الآن اكتب بالع�
 assert.equal(applyAutomaticFacts(bot.id,1,[correction],[{id:saved.id,text:saved.text}],facts(correction,saved.id)),1);assert.equal(db.prepare('SELECT text FROM memories WHERE id=?').get(saved.id).text,correction.text);assert.ok(db.prepare('SELECT 1 FROM memory_revisions WHERE memory_id=?').get(saved.id));
 const manual=saveDurableMemory('owner',bot.id,'Keep this manually verified note.');
 applyAutomaticFacts(bot.id,1,[first],[{id:manual.id,text:'Keep this manually verified note.'}],facts(first,manual.id));assert.equal(db.prepare('SELECT text FROM memories WHERE id=?').get(manual.id).text,'Keep this manually verified note.','Automatic extraction cannot overwrite manually saved memory');
+saveDurableMemory('owner',bot.id,correction.text);assert.equal(db.prepare('SELECT 1 FROM auto_memory_sources WHERE memory_id=?').get(saved.id),undefined,'Explicitly saving an automatic fact protects it from subsequent automatic replacement');
 db.prepare('DELETE FROM memories WHERE id=?').run(saved.id);assert.equal(db.prepare('SELECT 1 FROM auto_memory_sources WHERE memory_id=?').get(saved.id),undefined);
 console.log('PASS: grounded automatic writes, deduplication, ownership, generation isolation, secret filtering, correction audit and protected manual facts');db.close();

@@ -47,7 +47,7 @@ export function applyAutomaticFacts(botId:string,generation:number,sources:Sourc
    const correction=/(?:بدل|غيّر|غيرت|لم أعد|ما عاد|من الآن|من هلق|صار|changed|instead|no longer|now prefer)/iu.test(evidence);
    let id:string;
    if(prior&&old?.text===prior.text&&correction){updateDurableMemory(bot.user_id,botId,prior.id,evidence,true);id=prior.id;}
-   else{const savedFact=saveDurableMemory(bot.user_id,botId,evidence);if(!savedFact.created)continue;id=savedFact.id;}
+   else{const savedFact=saveDurableMemory(bot.user_id,botId,evidence,true);if(!savedFact.created)continue;id=savedFact.id;}
    db.prepare('INSERT OR REPLACE INTO auto_memory_sources VALUES (?,?,?,?)').run(id,generation,source.seq,evidence);saved++;
   }
  })();
