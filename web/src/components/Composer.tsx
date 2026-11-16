@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
 import { configApi } from '../lib/configApi';
+import { DictationButton } from './DictationButton';
 import { PhotoCamera } from './PhotoCamera';
 import { preparePhoto, type Photo } from '../lib/photos';
 
@@ -48,7 +49,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [menu, setMenu] = useState(false);
   const [settingsMenu,setSettingsMenu]=useState<'model'|'permissions'|null>(null);
   const [switching, setSwitching] = useState(false);
-  const [dictationHelp,setDictationHelp]=useState(false);
+  const [dictating,setDictating]=useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -79,12 +80,12 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
 
   const send = async () => {
     const t = text.trim();
-    if ((!t && !photos.length) || preparing || sending || switching) return;
+    if ((!t && !photos.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
     try {
       await api.send(bot.id, t, photos);
       setPhotos([]);photoDrafts.delete(bot.id);
-      setText(''); setDictationHelp(false);
+      setText('');
       drafts.delete(bot.id);
     } catch (e) {
       setError((e as Error).message || 'Message failed to send');
@@ -133,7 +134,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
             rows={1}
             value={text}
             placeholder={`Message ${bot.name}…`}
-            onChange={(e) => { setText(e.target.value); setDictationHelp(false); }}
+            onChange={(e) => { setText(e.target.value); }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
             }}
@@ -172,7 +173,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           </span>
         </div>
         <div className="composer__right">
-          <button type="button" className="composer__btn" aria-label="Use keyboard dictation" title="Use keyboard dictation" onClick={()=>{setDictationHelp(true);ref.current?.focus();}}><Icon name="mic" opacity={0.56}/></button>
+          <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError} onText={transcript=>setText(current=>`${current.trimEnd()}${current.trim()?"\n":""}${transcript}`)}/>
           {running && !hasText ? (
             <button type="button" className="composer__cta" onClick={stop} aria-label="Stop" title="Stop">
               <Icon name="stop" size={14} />
@@ -182,7 +183,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               type="button"
               className="composer__cta"
               onClick={send}
-              disabled={!hasText || preparing || sending || switching}
+              disabled={!hasText || preparing || sending || switching || dictating}
               aria-label="Send"
               title="Send (Enter)"
             >
@@ -191,7 +192,6 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           )}
         </div>
       </div>
-      {dictationHelp&&<div className="composer__dictation-preview" role="status">Use the microphone on your keyboard to dictate. <button type="button" className="link-btn" onClick={()=>setDictationHelp(false)}>Dismiss</button></div>}
       </div>
     </div>
   );

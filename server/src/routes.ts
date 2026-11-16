@@ -19,6 +19,7 @@ import { runRoutine, scheduleRoutine, unscheduleRoutine } from './routines.js';
 import { deleteEventTrigger } from './triggers.js';
 import { dispatchRoomMessage } from './agent/rooms.js';
 import { voiceApi } from './voice.js';
+import { transcriptionApi } from './transcription.js';
 import { createBot } from './bots.js';
 import type { Toolkit } from './types.js';
 
@@ -443,6 +444,7 @@ api.use('/voice/*', async (c, next) => {
   if (env.agentProvider !== 'xai') return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
   await next();
 });
+api.route('/voice', transcriptionApi);
 api.route('/voice', voiceApi);
 
 api.get('/sheets/:id/preview', async c => {

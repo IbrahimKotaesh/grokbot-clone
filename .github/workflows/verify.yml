@@ -49,3 +49,5 @@ jobs:
         env:
           SESSION_SECRET: ci-sheet-test-value
           DB_PATH: ':memory:'
+      - run: node tests/audio-recording.mjs
+      - run: node tests/transcription.mjs

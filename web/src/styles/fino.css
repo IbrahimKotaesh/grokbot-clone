@@ -193,3 +193,10 @@ button, a { touch-action: manipulation; }
 .composer__setting-anchor {flex-shrink:0;}
 @media(max-width:480px) {.composer__toolbar{gap:4px;}}
 @media(max-width:374px) {.composer__permissions .composer__setting>span{display:none;}}
+.dictation {position:relative;display:flex;}
+.dictation .is-recording {background:#fce9e5;color:#b53927;}
+.dictation__status {position:absolute;bottom:48px;right:0;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--color-bg-pane);color:var(--color-ink);border:1px solid var(--color-border-tertiary);border-radius:12px;box-shadow:var(--shadow-popover);font-size:12px;white-space:nowrap;z-index:20;}
+.dictation__status button {display:flex;align-items:center;padding:4px;color:#b53927;}
+.dictation__spinner {animation:dictation-spin 1s linear infinite;}
+@keyframes dictation-spin {to{transform:rotate(360deg);}}
+@media(prefers-reduced-motion:reduce){.dictation__spinner{animation:none;}}

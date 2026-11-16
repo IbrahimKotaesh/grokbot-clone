@@ -1,0 +1,25 @@
+[Unit]
+Description=Fino private speech transcription
+After=network.target
+
+[Service]
+User=fino-stt
+Group=fino-stt
+WorkingDirectory=/opt/fino-stt
+ExecStart=/opt/fino-stt/venv/bin/python /opt/fino-stt/transcribe.py
+Environment=OMP_NUM_THREADS=2
+Environment=OPENBLAS_NUM_THREADS=2
+Environment=HF_HUB_OFFLINE=1
+Restart=on-failure
+RestartSec=5
+Nice=10
+CPUQuota=125%
+MemoryMax=1800M
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
