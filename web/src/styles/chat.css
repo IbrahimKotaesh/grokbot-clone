@@ -217,3 +217,5 @@
 .md-table th,.md-table td {min-width:110px;max-width:360px;white-space:normal;word-break:normal;overflow-wrap:normal;text-align:start;padding:8px 12px;}
 .md-table td:last-child:not(:first-child),.md-table th:last-child:not(:first-child) {min-width:220px;}
 .md-table:focus-visible {outline:2px solid #4b9986;outline-offset:3px;}
+.bubble-wrap:has(.md-table) {width:100%;}
+.bubble:has(.md-table) {width:100%;max-width:100%;}
