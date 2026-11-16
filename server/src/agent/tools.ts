@@ -1,3 +1,4 @@
+import { createBot } from '../bots.js';
 import { env } from '../env.js';
 import { db, now } from '../db.js';
 import { newId } from '../lib/ids.js';
@@ -19,6 +20,8 @@ export interface ToolCtx {
   botId: string;
   enqueueBotMessage: (fromBotId: string, toBotId: string, text: string, depth: number) => void;
   depth: number;
+  /** Only a live, direct user turn can authorize creation; never scheduled/bot triggers. */
+  directUserRequest?: string;
 }
 
 export interface ToolResult {
@@ -360,6 +363,38 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'create_bot',
+    description: 'Only the primary Chief of Staff may create a permanent visible teammate, and ONLY when the current user explicitly asks to create a new bot/assistant. Never create one proactively, from a schedule, from another bot, or just because a task would benefit from help. Quote the exact creation request in request_quote. Assign the requested task immediately; the new bot will report back. For an existing teammate use send_to_bot instead.',
+    parameters: obj({ name: { type: 'string', description: 'Short, unique teammate name' }, role: { type: 'string', description: 'Short job title' }, task: { type: 'string', description: 'Complete task explicitly requested by the user, including relevant context' }, request_quote: { type: 'string', description: 'Exact quote from the current user message explicitly requesting creation' } }, ['name', 'role', 'task', 'request_quote']),
+    activity: 'messaging_named', label: 'Creating a teammate',
+    impl: async (a, ctx) => {
+      const parent = getBotRow(ctx.botId);
+      if (!parent || parent.user_id !== ctx.userId || !parent.is_primary || parent.kind === 'room') throw new Error('Only your primary Chief of Staff can create a teammate.');
+      if (!ctx.directUserRequest || ctx.depth !== 0) throw new Error('Creation requires an explicit request in a direct user message. Scheduled tasks and other bots cannot create teammates.');
+      const quote = typeof a.request_quote === 'string' ? a.request_quote.trim() : '';
+      if (quote.length < 4 || !ctx.directUserRequest.includes(quote)) throw new Error('Quote the explicit creation request from the current user message.');
+      const name = typeof a.name === 'string' ? a.name.trim() : '';
+      const role = typeof a.role === 'string' ? a.role.trim() : '';
+      const task = typeof a.task === 'string' ? a.task.trim() : '';
+      if (!name || name.length > 60 || !role || role.length > 120 || !task || task.length > 12000) throw new Error('Provide a name (up to 60 characters), role (120), and a complete task (12000).');
+      const existing = botByName(ctx.userId, name);
+      if (existing) return { output: JSON.stringify({ created: false, bot_id: existing.id, name: existing.name, note: 'This teammate already exists. No duplicate or new task was created. Use send_to_bot to assign work.' }) };
+      const result = db.transaction(() => {
+        const child = createBot(ctx.userId, {
+          name, label: role, description: `Teammate created by ${parent.name} at the user’s request.`,
+          instructions: `Your role: ${role}. For work delegated by ${parent.name}, complete the task with your tools and send a concise result back using send_to_bot with bot_name ${JSON.stringify(parent.name)}. For direct user messages, answer the user. You cannot create other bots. Never claim work is complete before verifying it.`,
+        });
+        db.prepare('UPDATE bots SET agent_provider=?, model=?, effort=? WHERE id=?').run(parent.agent_provider, parent.model ?? '', parent.effort, child.id);
+        const taskId = newId('task');
+        db.prepare("INSERT INTO tasks(id,bot_id,title,state,created_at,updated_at) VALUES (?,?,?,'working',?,?)").run(taskId, child.id, task.slice(0, 160), now(), now());
+        return { child, taskId };
+      })();
+      ctx.enqueueBotMessage(ctx.botId, result.child.id, `The user explicitly asked to create you and assigned this task:\n${task}\n\nTask ID: ${result.taskId}. Update this task with update_task when done or blocked, then report back to ${parent.name} using send_to_bot.`, 1);
+      hub.emit(ctx.userId, { type: 'tasks', botId: result.child.id });
+      return { output: JSON.stringify({ created: true, bot_id: result.child.id, name, task_id: result.taskId, note: 'Visible teammate created and task dispatched. It will report back; do not claim its task is finished yet.' }), summary: `Created ${name} and assigned the task` };
+    },
+  },
+  {
     name: 'send_to_bot',
     description: "Send a message to another Bot on the user's team (by name) to delegate work or ask a question. Their reply will arrive later as a new message to you.",
     parameters: obj({ bot_name: { type: 'string' }, message: { type: 'string' } }, ['bot_name', 'message']),
@@ -377,12 +412,13 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'spawn_subagent',
-    description: 'Start a subagent: a helper copy of you with its own context and its own computer screen, to work on one goal in parallel (e.g. research one company each). It reports back to you as a message when done. Max 4 at a time.',
+    description: 'Only when the current user explicitly asks the primary Bot to start a hidden helper (use create_bot for a visible permanent teammate). Never start helpers proactively. Start a subagent: a helper copy of you with its own context and its own computer screen, to work on one goal in parallel (e.g. research one company each). It reports back to you as a message when done. Max 4 at a time.',
     parameters: obj({ goal: { type: 'string', description: 'Self-contained task with everything the subagent needs to know' }, label: { type: 'string', description: 'Short name, e.g. "Acme research"' } }, ['goal']),
     activity: 'messaging_named',
     label: 'Starting a helper',
     impl: async (a, ctx) => {
-      if (ctx.depth >= 2) return { output: 'Subagents cannot start more subagents. Do the work yourself.' };
+      const parent = getBotRow(ctx.botId);
+      if (!ctx.directUserRequest || ctx.depth !== 0 || !parent?.is_primary || parent.user_id !== ctx.userId) return { output: 'Only the primary Bot can start helpers in response to an explicit direct user request. Do the work yourself.' };
       try {
         const sub = createSubagent(ctx.botId, String(a.goal), a.label);
         ctx.enqueueBotMessage(ctx.botId, sub.id, String(a.goal), ctx.depth + 1);

@@ -23,6 +23,10 @@ jobs:
         env:
           SESSION_SECRET: ci-native-test-value
           DB_PATH: ":memory:"
+      - run: node tests/create-bot.mjs
+        env:
+          SESSION_SECRET: ci-bot-test-value
+          DB_PATH: ':memory:'
       - run: node tests/connected-apps.mjs
         env:
           SESSION_SECRET: ci-only-test-value

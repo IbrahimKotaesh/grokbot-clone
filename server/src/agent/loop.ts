@@ -109,7 +109,7 @@ async function runTurn(botId: string, trigger: Trigger) {
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
-  const ctx: ToolCtx = { userId, botId, enqueueBotMessage, depth };
+  const ctx: ToolCtx = { userId, botId, enqueueBotMessage, depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
