@@ -41,3 +41,17 @@ removes a short-lived owner session without displaying its token.
 The web manifest supports browser installation as an app. API responses and
 account pages are never stored by the service worker. Changing GitHub `main`
 updates both the website and the installed web app after deployment/reload.
+
+## Desktop and dictation
+
+Each assistant opens a lightweight Openbox desktop with a file manager, taskbar,
+and Chromium using its persistent profile. Browser windows are restored when
+opening the computer if none are visible. Chromium is the Debian build of Chrome.
+After changing `desktop.Dockerfile`, rebuild the image and recreate the fixed
+container with the same named volume and isolation flags. The application updater
+does not rebuild this image. Never remove the named volume during an update.
+
+The composer switches ChatGPT/Claude for the current assistant. Switching is
+blocked during a running turn. Device dictation uses browser speech recognition
+when available, with keyboard dictation as the fallback; no audio is sent to the
+Fino server. The device/browser controls recognition availability and language.

@@ -109,7 +109,7 @@ async function openLocalBrowser(screen: string, botId: string) {
   if (!/^[A-Za-z0-9_-]+$/.test(botId)) throw new Error('Invalid bot id');
   await checked(`if ! xdotool search --onlyvisible --class chromium >/dev/null 2>&1; then
     mkdir -p /root/grokbot/profiles/${botId};
-    pgrep -f 'user-data-dir=/root/grokbot/profiles/${botId}' >/dev/null || rm -f /root/grokbot/profiles/${botId}/Singleton*;
+    ps -eo comm,args | awk '$1 == "chromium" && index($0, "user-data-dir=/root/grokbot/profiles/${botId}") { found=1 } END { exit !found }' || rm -f /root/grokbot/profiles/${botId}/Singleton*;
     setsid nohup chromium --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic --user-data-dir=/root/grokbot/profiles/${botId} --start-maximized about:blank >/tmp/chrome-${botId}.log 2>&1 </dev/null &
     sleep 2;
   fi`, screen);
