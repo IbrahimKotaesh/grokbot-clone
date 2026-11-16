@@ -86,8 +86,8 @@ export function BotSettingsModal() {
 
 // ---------------------------------------------------------------------------
 
-type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode'>;
-const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: b.avatarShape, avatarColor: b.avatarColor, effort: b.effort, mode: b.mode });
+type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'>;
+const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: b.avatarShape, avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '' });
 
 function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(bot));
@@ -149,6 +149,12 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         </Field>
         <Field label="Instructions" htmlFor="cfg-instructions" hint={`Standing guidance ${draft.name || 'this Bot'} always follows, like tone, priorities or things to avoid. It also learns from chat, skills and memories.`}>
           <textarea id="cfg-instructions" className="text-input cfg-textarea cfg-textarea--tall" rows={7} value={draft.instructions} maxLength={8000} placeholder="e.g. Keep updates to three bullets. Never email anyone outside the team without asking." onChange={(e) => put('instructions', e.target.value)} />
+        </Field>
+        <Field label="AI provider" hint="Uses your signed-in subscription. Each provider keeps its own conversation context; saved memories are shared.">
+          <Segmented label="AI provider" value={draft.agentProvider ?? 'codex'} options={[{value:'codex',label:'ChatGPT / Codex'},{value:'claude',label:'Claude'}]} onChange={(v) => { put('agentProvider',v); put('model',''); }} />
+        </Field>
+        <Field label="Model" htmlFor="cfg-model" hint={draft.agentProvider === 'claude' ? 'Leave blank for your Claude default, or enter sonnet, opus or haiku.' : 'Leave blank to use your Codex default model.'}>
+          <input id="cfg-model" className="text-input" value={draft.model ?? ''} maxLength={100} placeholder="Account default" onChange={(e)=>put('model',e.target.value)} />
         </Field>
         <Field label="Thinking effort" hint={EFFORT_HINT[draft.effort]}>
           <Segmented label="Thinking effort" value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />

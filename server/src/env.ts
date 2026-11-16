@@ -1,3 +1,4 @@
+import os from 'node:os';
 function req(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env ${name}`);
@@ -8,6 +9,8 @@ export const env = {
   agentProvider: process.env.AGENT_PROVIDER ?? 'codex',
   computerProvider: process.env.COMPUTER_PROVIDER ?? 'local',
   codexBin: process.env.CODEX_BIN ?? '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex',
+  claudeBin: process.env.CLAUDE_BIN ?? `${os.homedir()}/.local/bin/claude`,
+  claudeModel: process.env.CLAUDE_MODEL || undefined,
   codexModel: process.env.CODEX_MODEL || undefined,
   port: Number(process.env.PORT ?? 8787),
   appUrl: process.env.APP_URL ?? 'http://localhost:5173',

@@ -66,6 +66,39 @@ Subscription usage is subject to your ChatGPT plan limits.
 Validation: `npm run typecheck`, `npm run build`, and
 `node --env-file=.env tests/local-computer.mjs` (requires the VM).
 
+### Choose Claude or ChatGPT for a Bot
+
+Claude Code must be installed separately from Anthropic. Sign in with
+`claude auth login` using your Claude subscription. The app uses the unmodified
+Claude Code binary through the official Agent SDK; it never reads or copies its tokens.
+Set `CLAUDE_BIN` if the executable is not at `~/.local/bin/claude`.
+
+Open **Bot settings → General → AI provider**, choose **Claude**, and save.
+The model field accepts Claude aliases such as `sonnet`, `opus`, or `haiku`;
+leave it blank for the account default. ChatGPT/Codex stays available per Bot.
+Each provider keeps its own native conversation context. On its first use,
+the app supplies recent chat text (up to 40,000 characters) and saved memories.
+Codex tool-schema changes also refresh its session with that recent text;
+older native context remains in the previous Codex session, not in the new one.
+Full provider-specific hidden context is not transferred between providers.
+
+### Connect Gmail, GitHub, Slack and other accounts
+
+1. Create a Composio project at [the Composio dashboard](https://dashboard.composio.dev).
+2. Copy its **project API key** and run `bash scripts/configure-composio.sh`.
+   Paste the key into the hidden local prompt, never into a chat or a commit.
+3. Open **Connect apps**, search **Gmail**, **GitHub**, or **Slack**, and click **Connect**.
+4. Complete the provider's sign-in/authorization page and return to the app.
+5. Ask the Bot to perform a read task, for example “summarize today's email subjects”.
+
+Composio manages these service connections separately from your model subscription.
+Connecting a service in this development chat does not connect it to Grokbot.
+Write actions through the app tools use the existing approval cards. Review OAuth
+permissions when you authorize; actions through the Linux browser/shell use a
+separate access path. Composio holds and refreshes service credentials; the model
+receives tool results. Refer to [Composio authentication](https://docs.composio.dev/docs/authentication)
+and [Claude subscription usage](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan).
+
 The upstream setup below is retained for reference. To use it, explicitly set
 `AGENT_PROVIDER=xai` and `COMPUTER_PROVIDER=orgo` and configure its keys.
 

@@ -144,6 +144,7 @@ export function ConnectAppsModal() {
   let body: React.ReactNode;
   if (error) body = <div className="apps-empty">Couldn’t load apps. {error}</div>;
   else if (!data && loading) body = <div className="apps-empty">Loading apps…</div>;
+  else if (data?.configured === false) body = <div className="apps-empty">App connections need setup on this Mac. <a href="https://dashboard.composio.dev" target="_blank" rel="noreferrer">Open Composio</a> to enable Gmail, GitHub, Slack and other accounts.</div>;
   else if (view.kind === 'connected') body = connectedApps.length ? <Section title="Connected" apps={connectedApps} onChanged={refresh} /> : <div className="apps-empty">No apps connected yet.</div>;
   else if (searching || view.kind === 'category') {
     body = apps.length ? (

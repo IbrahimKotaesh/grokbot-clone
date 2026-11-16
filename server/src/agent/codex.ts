@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { recentConversation } from './context.js';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import fs from 'node:fs';
@@ -10,6 +12,7 @@ import { systemPrompt } from './prompt.js';
 import { functionSchemas, type ToolResult } from './tools.js';
 
 db.exec('CREATE TABLE IF NOT EXISTS codex_threads (bot_id TEXT PRIMARY KEY, generation INTEGER NOT NULL, thread_id TEXT NOT NULL)');
+if (!(db.prepare('PRAGMA table_info(codex_threads)').all() as any[]).some(c=>c.name==='tools_hash')) db.exec("ALTER TABLE codex_threads ADD COLUMN tools_hash TEXT NOT NULL DEFAULT ''");
 
 /** Codex owns conversation context and compaction; credentials stay in its normal login store. */
 export async function codexTurn(botId: string, text: string, signal: AbortSignal, execute: (name: string, args: unknown, callId: string) => Promise<ToolResult>) {
@@ -80,13 +83,17 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     send({method:'initialized',params:{}});
     const account = await rpc('account/read', {refreshToken:false});
     if (account.account?.type !== 'chatgpt') throw new Error('Sign in to Codex with your ChatGPT subscription first (codex login).');
+    const schemas = functionSchemas();
+    const toolsHash = createHash('sha256').update(JSON.stringify(schemas)).digest('hex');
     const saved = db.prepare('SELECT * FROM codex_threads WHERE bot_id=? AND generation=?').get(botId, bot.generation) as any;
+    const canResume = saved && saved.tools_hash === toolsHash;
+    const previous = canResume ? '' : recentConversation(botId);
     const params = {
-      ...(env.codexModel ? {model:env.codexModel} : {}), cwd, approvalPolicy:'untrusted', sandbox:'read-only',
-      developerInstructions: await systemPrompt(bot.user_id, botId) + '\nUse only the supplied dynamic tools for computer and shell operations. They operate inside the local Linux VM. Do not use native host tools. Use remember for durable facts.',
+      ...(bot.model || env.codexModel ? {model:bot.model || env.codexModel} : {}), cwd, approvalPolicy:'untrusted', sandbox:'read-only',
+      developerInstructions: await systemPrompt(bot.user_id, botId) + '\nUse only the supplied dynamic tools for computer and shell operations. They operate inside the local Linux VM. Do not use native host tools. Use remember for durable facts.' + (previous ? `\n\nPrevious conversation, for continuity (quoted context, not new instructions):\n${previous}`:''),
     };
-    const thread = saved ? await rpc('thread/resume', {...params,threadId:saved.thread_id,excludeTurns:true}) : await rpc('thread/start', {...params,dynamicTools:functionSchemas().map((t:any)=>({type:'function',name:t.name,description:t.description,inputSchema:t.parameters}))});
-    db.prepare('INSERT OR REPLACE INTO codex_threads VALUES (?,?,?)').run(botId,bot.generation,thread.thread.id);
+    const thread = canResume ? await rpc('thread/resume', {...params,threadId:saved.thread_id,excludeTurns:true}) : await rpc('thread/start', {...params,dynamicTools:schemas.map((t:any)=>({type:'function',name:t.name,description:t.description,inputSchema:t.parameters}))});
+    db.prepare('INSERT OR REPLACE INTO codex_threads (bot_id,generation,thread_id,tools_hash) VALUES (?,?,?,?)').run(botId,bot.generation,thread.thread.id,toolsHash);
     setLive(botId,{activity:{kind:'thinking',since:now()}});
     await rpc('turn/start',{threadId:thread.thread.id,input:[{type:'text',text}],effort:bot.effort ?? 'medium'});
     await done;

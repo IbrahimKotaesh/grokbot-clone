@@ -147,4 +147,7 @@ addColumn('bots', 'voice', "TEXT NOT NULL DEFAULT 'luna'");
 addColumn('bots', 'voice_speed', 'REAL NOT NULL DEFAULT 1');
 addColumn('bots', 'voice_language', "TEXT NOT NULL DEFAULT 'auto'");
 
+addColumn('bots', 'agent_provider', 'TEXT');
+addColumn('bots', 'model', "TEXT NOT NULL DEFAULT ''");
+
 export const now = () => Date.now();

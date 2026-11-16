@@ -120,9 +120,9 @@ configApi.post('/bots/:id/memories/consolidate', async (c) => {
 
 /** Compact the stored history now (inside the bot's queue). `force` compacts even under the threshold. */
 configApi.post('/bots/:id/compact', async (c) => {
-  if (env.agentProvider === 'codex') return c.json({ error: 'Codex automatically manages context compaction.' }, 409);
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
+  if ((b.agent_provider ?? env.agentProvider) !== 'xai') return c.json({ error: 'The selected provider automatically manages context compaction.' }, 409);
   const force = c.req.query('force') === '1';
   const before = loadHistory(b.id).length;
   const after = await runInBotQueue(b.id, async () => (await maybeCompact(b.id, loadHistory(b.id), { force })).length);

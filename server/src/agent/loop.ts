@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { codexTurn } from './codex.js';
+import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
 import { env } from '../env.js';
 import { newId, sha256 } from '../lib/ids.js';
@@ -10,7 +11,7 @@ import { composioTools, toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
 import { repairHistory } from './history.js';
 import { maybeCompact, noteUsage } from './memory.js';
-import { activityFor, functionSchemas, humanizeSlug, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
+import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
 
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
@@ -103,6 +104,7 @@ async function runTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
   if (!bot) return;
   const userId: string = bot.user_id;
+  const provider = bot.agent_provider ?? env.agentProvider;
   const ctrl = new AbortController();
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
@@ -111,12 +113,12 @@ async function runTurn(botId: string, trigger: Trigger) {
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
-    if (env.agentProvider === 'codex') {
+    if (provider === 'codex' || provider === 'claude') {
       const old = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
       if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
       const item = triggerItem(trigger);
       if (!item) return;
-      await codexTurn(botId, item.content, ctrl.signal, async (name, args, callId) => {
+      await (provider === 'claude' ? claudeTurn : codexTurn)(botId, item.content, ctrl.signal, async (name, args, callId) => {
         if (!toolMap.has(name)) throw new Error(`Unknown local tool: ${name}`);
         const act = activityFor(name);
         const row = appendRow(botId, 'tool-call', { type: 'tool-call', callId, name, label: act.label, status: 'running', args } as ToolCallBody);
@@ -183,7 +185,7 @@ async function runTurn(botId: string, trigger: Trigger) {
     appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {
-    if (env.agentProvider === 'codex') {
+    if (provider === 'codex' || provider === 'claude') {
       const pending = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
       if (pending) await finishPending(ctx, JSON.parse(pending.state), 'turn-ended');
     }
@@ -212,11 +214,12 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       st.approvalId = '';
     } else if (decision === 'ask') {
       const pol = policyFor(userId, c.name, args);
+      const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       const card = appendRow(botId, 'card', {
         type: 'card', card: 'approval', approvalId, title: `Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
-        detail: describeArgs(args), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args, status: 'pending',
+        detail: describeArgs(approvalArgs), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now());
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
@@ -380,5 +383,5 @@ export function resolveApproval(userId: string, approvalId: string, decision: 'a
   if (decision === 'always') db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId, ap.tool);
   const card = getRow(ap.bot_id, ap.row_seq);
   if (card && card.body.type === 'card' && card.body.card === 'approval') updateRow(ap.bot_id, ap.row_seq, { ...card.body, status });
-  if (env.agentProvider !== 'codex') enqueue(ap.bot_id, { type: 'resume' });
+  if (!['codex','claude'].includes(getBotRow(ap.bot_id)?.agent_provider ?? env.agentProvider)) enqueue(ap.bot_id, { type: 'resume' });
 }

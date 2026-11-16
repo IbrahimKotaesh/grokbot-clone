@@ -38,8 +38,11 @@ p.write_bytes(plistlib.dumps({
 }))
 PYPLIST
 service="gui/$(id -u)/com.ibrahim.grokbot.local"
-launchctl bootout "$service" >/dev/null 2>&1 || true
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ibrahim.grokbot.local.plist"
+if launchctl print "$service" >/dev/null 2>&1; then
+  launchctl kickstart -k "$service"
+else
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ibrahim.grokbot.local.plist"
+fi
 for attempt in {1..50}; do
   if curl -fsS http://127.0.0.1:8787/api/health >/dev/null 2>&1; then echo 'Ready: http://localhost:8787'; exit 0; fi
   sleep 0.2

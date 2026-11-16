@@ -25,7 +25,7 @@ initSubagents();
 initRooms();
 
 const app = new Hono();
-app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
+app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.agentProvider === 'claude' ? env.claudeModel ?? 'claude-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
 app.route('/api/checkins', checkinsApi);
 app.route('/api/rooms', roomsApi);
 app.route('/api', api);
@@ -47,4 +47,4 @@ if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
 initProactive(enqueue);
 } else console.log('[grokbot] scheduler disabled (GROKBOT_NO_SCHEDULER=1)');
 startIdleWatcher();
-if (env.agentProvider !== 'codex') startMemoryConsolidation();
+if (env.agentProvider === 'xai') startMemoryConsolidation();

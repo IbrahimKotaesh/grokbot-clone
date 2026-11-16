@@ -5,7 +5,7 @@ import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
 import { appendRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
-import { executeComposio, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
+import { composioTools, executeComposio, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
 import { scheduleRoutine, unscheduleRoutine } from '../routines.js';
 import { createEventRoutine, deleteEventTrigger, describeEvent, listTriggerTypes } from '../triggers.js';
 import { setCheckins } from '../proactive.js';
@@ -67,6 +67,21 @@ function botByName(userId: string, name: string) {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: 'connected_apps',
+    description: 'Use connected Gmail, GitHub, Slack and other apps. First call list_tools to discover the available Composio meta tools and their exact schemas. Then call execute with a meta tool name and a JSON object encoded as the arguments string. Use COMPOSIO_SEARCH_TOOLS to discover service actions, then COMPOSIO_MULTI_EXECUTE_TOOL to execute them. Write actions may require user approval.',
+    parameters: obj({ operation: {type:'string',enum:['list_tools','execute']}, tool: {type:'string'}, arguments: {type:'string',description:'JSON object matching the chosen tool schema'} }, ['operation']),
+    activity: 'connecting_service', label: 'Using a connected app',
+    impl: async (a,ctx) => {
+      if (env.composioKey === 'disabled') return {output:'App connections have not been configured yet. Ask the owner to set up Composio, then use Connect apps to authorize Gmail, GitHub or Slack.'};
+      const tools = await composioTools(ctx.userId);
+      if(a.operation === 'list_tools') return {output:JSON.stringify(tools)};
+      const call = appToolCall(a);
+      if(!tools.some(t=>t.name===call.name)) throw new Error('Unknown connected-app tool. Use list_tools first.');
+      return runComposioTool(ctx,call.name,call.args);
+    },
+  },
+
   {
     name: 'computer_screenshot',
     description: "Take a screenshot of your own computer screen (a Linux desktop that only you use). Use this before acting on the screen.",
@@ -476,10 +491,24 @@ export function functionSchemas() {
 
 export type Decision = 'allow' | 'ask' | 'block';
 
+export function appToolCall(a: any): {name:string;args:Record<string,unknown>} {
+  if(a?.operation !== 'execute' || typeof a.tool !== 'string' || !/^COMPOSIO_[A-Z0-9_]+$/.test(a.tool)) throw new Error('Invalid connected-app tool');
+  const args = JSON.parse(a.arguments || '{}');
+  if(!args || Array.isArray(args) || typeof args !== 'object') throw new Error('Tool arguments must be a JSON object');
+  return {name:a.tool,args};
+}
+
 export function policyFor(userId: string, toolName: string, args: any): { decision: Decision; key: string; toolkit?: string; title: string } {
+  if(toolName === 'connected_apps' && args?.operation === 'execute') {
+    const call = appToolCall(args);
+    return policyFor(userId,call.name,call.args);
+  }
   if (toolMap.has(toolName)) return { decision: 'allow', key: toolName, title: toolName };
   const slugs = innerToolSlugs(toolName, args);
-  if (!slugs.length) return { decision: 'allow', key: toolName, title: toolName };
+  if (!slugs.length) {
+    const metadata = ['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS'].includes(toolName);
+    return {decision:metadata ? 'allow':'ask',key:toolName,title:humanizeSlug(toolName)};
+  }
   let decision: Decision = 'allow';
   let key = slugs[0];
   for (const slug of slugs) {

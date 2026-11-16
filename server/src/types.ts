@@ -23,6 +23,8 @@ export interface Bot {
   /** 'room' = group chat (members answer instead of the bot itself). */
   kind?: 'agent' | 'room';
   pinned: boolean;
+  agentProvider?: 'codex' | 'claude';
+  model?: string;
   effort: 'low' | 'medium' | 'high' | 'xhigh';
   /** Voice chat settings: xAI voice id, speed multiplier (0.7–1.5), BCP-47 language or 'auto'. */
   voice: string;

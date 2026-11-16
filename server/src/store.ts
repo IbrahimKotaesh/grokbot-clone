@@ -1,3 +1,4 @@
+import { env } from './env.js';
 import { db, now } from './db.js';
 import { hub } from './lib/hub.js';
 import type { Bot, LiveState, Row, RowBody, RowKind, Routine, Task } from './types.js';
@@ -27,6 +28,8 @@ export function toBot(r: any): Bot {
     isPrimary: !!r.is_primary,
     kind: r.kind === 'room' ? 'room' : 'agent',
     pinned: !!r.pinned,
+    agentProvider: r.agent_provider ?? (env.agentProvider === 'claude' ? 'claude' : 'codex'),
+    model: r.model ?? '',
     effort: r.effort,
     voice: r.voice ?? 'luna',
     voiceSpeed: r.voice_speed ?? 1,
