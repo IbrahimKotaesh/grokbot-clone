@@ -392,4 +392,8 @@ api.delete('/policies/:tool', (c) => {
   return c.json({ ok: true });
 });
 
+api.use('/voice/*', async (c, next) => {
+  if (env.agentProvider === 'codex') return c.json({ error: 'Voice is not configured for the ChatGPT subscription runtime.' }, 503);
+  await next();
+});
 api.route('/voice', voiceApi);

@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { codexTurn } from './codex.js';
 import { db, now } from '../db.js';
 import { env } from '../env.js';
 import { newId, sha256 } from '../lib/ids.js';
@@ -110,6 +111,28 @@ async function runTurn(botId: string, trigger: Trigger) {
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
+    if (env.agentProvider === 'codex') {
+      const old = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
+      if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
+      const item = triggerItem(trigger);
+      if (!item) return;
+      await codexTurn(botId, item.content, ctrl.signal, async (name, args, callId) => {
+        if (!toolMap.has(name)) throw new Error(`Unknown local tool: ${name}`);
+        const act = activityFor(name);
+        const row = appendRow(botId, 'tool-call', { type: 'tool-call', callId, name, label: act.label, status: 'running', args } as ToolCallBody);
+        const st: PendingState = { calls: [{call_id:callId,name,arguments:JSON.stringify(args),rowSeq:row.seq}],outputs:[],approvalId:'',depth };
+        while (await processCalls(ctx, st)) {
+          while (!ctrl.signal.aborted) {
+            const ap = db.prepare('SELECT status FROM approvals WHERE id=?').get(st.approvalId) as any;
+            if (ap?.status !== 'pending') break;
+            await new Promise(r => setTimeout(r, 250));
+          }
+          if (ctrl.signal.aborted) throw new Error('Stopped.');
+        }
+        return {output: st.outputs[0]?.output ?? '', endTurn: !!st.outputs[0]?.__endTurn};
+      });
+      return;
+    }
     // A new user message supersedes any pending approval: deny it.
     const pendingRow = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
     if (pendingRow && trigger.type !== 'resume') {
@@ -160,6 +183,10 @@ async function runTurn(botId: string, trigger: Trigger) {
     appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {
+    if (env.agentProvider === 'codex') {
+      const pending = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
+      if (pending) await finishPending(ctx, JSON.parse(pending.state), 'turn-ended');
+    }
     aborts.delete(botId);
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
@@ -353,5 +380,5 @@ export function resolveApproval(userId: string, approvalId: string, decision: 'a
   if (decision === 'always') db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId, ap.tool);
   const card = getRow(ap.bot_id, ap.row_seq);
   if (card && card.body.type === 'card' && card.body.card === 'approval') updateRow(ap.bot_id, ap.row_seq, { ...card.body, status });
-  enqueue(ap.bot_id, { type: 'resume' });
+  if (env.agentProvider !== 'codex') enqueue(ap.bot_id, { type: 'resume' });
 }

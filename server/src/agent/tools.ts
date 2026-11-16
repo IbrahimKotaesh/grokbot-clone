@@ -1,3 +1,4 @@
+import { env } from '../env.js';
 import { db, now } from '../db.js';
 import { newId } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
@@ -140,14 +141,14 @@ export const TOOLS: ToolDef[] = [
     impl: async (a, ctx) => {
       const url = String(a.url).replace(/'/g, '%27');
       await onScreen(ctx, (c, s) => {
-        const display = s === 'default' ? ':99' : `:${s.replace('screen-', '')}`;
+        const display = s === 'default' ? (env.computerProvider === 'local' ? ':0' : ':99') : `:${s.replace('screen-', '')}`;
         const profile = `/root/grokbot/profiles/${ctx.botId}`;
         // Reuse the bot's running Chrome if present (opens a new tab), else start one detached.
         return orgo.bash(
           c,
           s,
           `export DISPLAY=${display}; mkdir -p ${profile}; pgrep -f "user-data-dir=${profile}" >/dev/null || rm -f ${profile}/Singleton*; ` +
-            `setsid nohup google-chrome --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic ` +
+            `setsid nohup ${env.computerProvider === 'local' ? 'chromium' : 'google-chrome'} --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic ` +
             `--user-data-dir=${profile} --start-maximized '${url}' >/tmp/chrome-${ctx.botId}.log 2>&1 < /dev/null & sleep 4; echo ok`,
           40,
         );

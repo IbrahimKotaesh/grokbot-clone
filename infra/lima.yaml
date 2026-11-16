@@ -1,0 +1,25 @@
+# Local Linux desktop; no host folders are exposed to agent shell commands.
+base:
+  - template:_images/debian-13
+vmType: vz
+arch: aarch64
+cpus: 4
+memory: 8GiB
+disk: 30GiB
+mounts: []
+containerd:
+  system: false
+  user: false
+portForwards:
+  - guestPortRange: [6080, 6083]
+    hostPortRange: [6080, 6083]
+    hostIP: 127.0.0.1
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y xvfb x11vnc websockify openbox xdotool xclip scrot chromium dbus-x11 xterm python3-pil curl ca-certificates fonts-noto-core fonts-noto-color-emoji
+      mkdir -p /root/grokbot/profiles /root/grokbot/files

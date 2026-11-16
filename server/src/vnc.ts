@@ -1,5 +1,7 @@
 import type { IncomingMessage, Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
+import { env } from './env.js';
+import { localVncUrl } from './local-computer.js';
 import { db } from './db.js';
 import { userFromCookieHeader } from './lib/auth.js';
 import { vncAuthResponse } from './lib/des.js';
@@ -159,7 +161,7 @@ async function relay(client: WebSocket, userId: string, botId: string, mode: 'wa
   try {
     const { computerId, screenId } = await screenFor(userId, botId);
     const { password } = await orgo.vncPassword(computerId);
-    const upUrl = `wss://www.orgo.ai/desktops/${computerId}/ws/websockify?token=${encodeURIComponent(password)}${screenId !== 'default' ? `&screen=${encodeURIComponent(screenId)}` : ''}`;
+    const upUrl = env.computerProvider === 'local' ? localVncUrl(screenId) : `wss://www.orgo.ai/desktops/${computerId}/ws/websockify?token=${encodeURIComponent(password)}${screenId !== 'default' ? `&screen=${encodeURIComponent(screenId)}` : ''}`;
     upstream = new WebSocket(upUrl, ['binary']);
     upstream.on('message', (data: Buffer) => {
       if (!piping) return fromUp.push(Buffer.from(data));

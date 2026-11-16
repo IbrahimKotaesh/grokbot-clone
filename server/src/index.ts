@@ -25,7 +25,7 @@ initSubagents();
 initRooms();
 
 const app = new Hono();
-app.get('/api/health', (c) => c.json({ ok: true, model: env.xaiModel }));
+app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
 app.route('/api/checkins', checkinsApi);
 app.route('/api/rooms', roomsApi);
 app.route('/api', api);
@@ -38,7 +38,7 @@ if (fs.existsSync(webDist)) {
   app.get('*', (c) => c.html(fs.readFileSync(path.join(webDist, 'index.html'), 'utf8')));
 }
 
-const server = serve({ fetch: app.fetch, port: env.port }, (info) => console.log(`[grokbot] server on http://localhost:${info.port} (model ${env.xaiModel})`));
+const server = serve({ fetch: app.fetch, port: env.port, hostname: '127.0.0.1' }, (info) => console.log(`[grokbot] server on http://localhost:${info.port} (${env.agentProvider}, ${env.computerProvider})`));
 attachVncRelay(server as unknown as Server);
 // GROKBOT_NO_SCHEDULER=1 for extra dev/test servers sharing a database copy, so routines and triggers don't fire twice.
 if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
@@ -47,4 +47,4 @@ if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
 initProactive(enqueue);
 } else console.log('[grokbot] scheduler disabled (GROKBOT_NO_SCHEDULER=1)');
 startIdleWatcher();
-startMemoryConsolidation();
+if (env.agentProvider !== 'codex') startMemoryConsolidation();

@@ -1,3 +1,4 @@
+import { localComputer } from './local-computer.js';
 import { env } from './env.js';
 
 const BASE = 'https://www.orgo.ai/api';
@@ -50,7 +51,7 @@ export interface OrgoScreen { id: string; display: string; width: number; height
 
 const q = (screen?: string) => (screen && screen !== 'default' ? `?screen=${encodeURIComponent(screen)}` : '');
 
-export const orgo = {
+const cloudComputer = {
   workspaces: () => call<any>('GET', '/workspaces'),
 
   createComputer: (name: string, idempotencyKey: string) =>
@@ -88,3 +89,5 @@ export const orgo = {
   exportFile: (id: string, path: string) =>
     call<{ url?: string; file?: { id: string; url?: string; filename?: string }; [k: string]: unknown }>('POST', '/files/export', { desktopId: id, path }, { timeoutMs: 180_000 }),
 };
+
+export const orgo = env.computerProvider === 'local' ? localComputer : cloudComputer;

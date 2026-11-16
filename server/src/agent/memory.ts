@@ -274,6 +274,7 @@ export interface ConsolidateResult { added: string[]; skipped: number; considere
 
 /** Extract durable facts from messages newer than the bot's last consolidation. */
 export async function consolidateBot(botId: string, opts: { upTo?: number } = {}): Promise<ConsolidateResult> {
+  if (env.agentProvider === 'codex') throw new Error('Codex manages conversation context. Use remember for durable memories.');
   const bot = getBotRow(botId);
   if (!bot) return { added: [], skipped: 0, considered: 0 };
   const job = db.prepare('SELECT last_consolidated_at FROM memory_jobs WHERE bot_id=?').get(botId) as any;

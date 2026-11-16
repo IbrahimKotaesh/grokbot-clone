@@ -33,6 +33,42 @@ Grokbot Clone recreates the Grok Bot experience with a runtime you can run and m
 
 Each user's Bots share one Orgo VM, with up to four separate Bot desktops active at once. Idle computers can sleep and wake when needed.
 
+## Local Mac + ChatGPT subscription
+
+This fork defaults to **Codex with ChatGPT login** and a **local Debian Linux VM**.
+No xAI, Orgo, Composio, or OpenAI API key is required for chat and desktop tools.
+
+1. Install Node.js 22.22+ and Lima from their official distributions.
+2. Run `codex login` with your ChatGPT account. On this Mac the bundled CLI is
+   `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`.
+3. Create the Linux VM: `limactl start --name=grokbot --tty=false infra/lima.yaml`.
+4. Run `npm ci`, copy `.env.example` to `.env`, and set a random `SESSION_SECRET`.
+5. Set `APP_URL=http://localhost:8787` and `SERVER_URL=http://localhost:8787`.
+6. Run `npm run build`, then `bash scripts/start-local.sh`.
+7. Open [localhost:8787](http://localhost:8787) and use the local email sign-in.
+
+The server listens on loopback only. The VM uses 4 CPUs, 8 GiB RAM, and a sparse
+30 GiB disk. Agent shell commands run inside Linux; the VM mounts no Mac folders.
+Up to four local displays are available. This setup is intended for one local
+owner: bots share the VM and filesystem. Quit it with `bash scripts/stop-local.sh`.
+The launch script registers a macOS LaunchAgent to keep the server running in the
+background and restart it at login. The deployed app, persistent database and logs
+live in `~/.local/grokbot-runtime/app` (the source checkout remains here). Start the VM
+with the launch script again after restarting the Mac.
+
+Each bot has its own persistent Codex thread, keyed to its conversation generation.
+Codex manages conversation context and automatic compaction; `remember`/`recall`
+keep the app's durable memories. Existing upstream xAI history is not imported.
+The local profile does not enable xAI voice or automatic xAI memory extraction.
+Connected apps remain optional through Composio if configured separately.
+Subscription usage is subject to your ChatGPT plan limits.
+
+Validation: `npm run typecheck`, `npm run build`, and
+`node --env-file=.env tests/local-computer.mjs` (requires the VM).
+
+The upstream setup below is retained for reference. To use it, explicitly set
+`AGENT_PROVIDER=xai` and `COMPUTER_PROVIDER=orgo` and configure its keys.
+
 ## Quick start
 
 ### 1. Get the project

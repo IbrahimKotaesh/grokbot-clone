@@ -19,6 +19,7 @@ type CatalogItem = Omit<Toolkit, 'connected'>;
 let catalogCache: { at: number; items: CatalogItem[] } | null = null;
 
 export async function catalog(): Promise<CatalogItem[]> {
+  if (env.composioKey === 'disabled') return [];
   if (catalogCache && Date.now() - catalogCache.at < 3600_000) return catalogCache.items;
   const items: CatalogItem[] = [];
   let cursor: string | undefined;
@@ -49,12 +50,14 @@ export async function toolkitInfo(slug: string): Promise<CatalogItem | undefined
 // ---------- per-user connections ----------
 
 export async function connectedToolkits(userId: string): Promise<Set<string>> {
+  if (env.composioKey === 'disabled') return new Set<string>();
   const r = await composio.connectedAccounts.list({ userIds: [userId], statuses: ['ACTIVE'] } as any);
   const items: any[] = (r as any).items ?? [];
   return new Set(items.map((i) => i.toolkit?.slug ?? i.toolkitSlug).filter(Boolean));
 }
 
 export async function connectionsDetail(userId: string) {
+  if (env.composioKey === 'disabled') return [];
   const r = await composio.connectedAccounts.list({ userIds: [userId] } as any);
   return ((r as any).items ?? []).map((i: any) => ({ id: i.id, toolkit: i.toolkit?.slug ?? i.toolkitSlug, status: i.status }));
 }
@@ -71,6 +74,7 @@ export async function disconnect(userId: string, toolkit: string) {
 const sessionCache = new Map<string, any>();
 
 export async function sessionFor(userId: string): Promise<any> {
+  if (env.composioKey === 'disabled') throw new Error('App connections are not configured');
   const cached = sessionCache.get(userId);
   if (cached) return cached;
   const row = db.prepare('SELECT session_id FROM composio_sessions WHERE user_id=?').get(userId) as any;
@@ -95,6 +99,7 @@ export async function startConnect(userId: string, toolkit: string, callbackUrl:
 
 /** OpenAI-Responses-format function tools for this user's Composio session (meta tools). */
 export async function composioTools(userId: string): Promise<any[]> {
+  if (env.composioKey === 'disabled') return [];
   try {
     const session = await sessionFor(userId);
     const tools = await session.tools();

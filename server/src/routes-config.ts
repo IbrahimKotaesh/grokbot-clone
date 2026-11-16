@@ -1,3 +1,4 @@
+import { env } from './env.js';
 import { Hono } from 'hono';
 import { db, now } from './db.js';
 import './db-config.js';
@@ -119,6 +120,7 @@ configApi.post('/bots/:id/memories/consolidate', async (c) => {
 
 /** Compact the stored history now (inside the bot's queue). `force` compacts even under the threshold. */
 configApi.post('/bots/:id/compact', async (c) => {
+  if (env.agentProvider === 'codex') return c.json({ error: 'Codex automatically manages context compaction.' }, 409);
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
   const force = c.req.query('force') === '1';
