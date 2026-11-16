@@ -30,7 +30,7 @@ export function createSubagent(parentId: string, goal: string, label?: string) {
     `INSERT INTO bots(id,user_id,name,label,description,instructions,avatar_shape,avatar_color,mode,is_primary,effort,parent_bot_id,hidden,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,?,?,0,?,?,1,?,?)`,
   ).run(id, p.user_id, name, 'Subagent', `Subagent of ${p.name}`, instructions, p.avatar_shape, p.avatar_color, p.mode, p.effort, parentId, now(), now());
-  db.prepare('UPDATE bots SET agent_provider=?, model=? WHERE id=?').run(p.agent_provider,p.model ?? '',id);
+  db.prepare('UPDATE bots SET agent_provider=?, model=?, permission_mode=? WHERE id=?').run(p.agent_provider,p.model ?? '',p.permission_mode ?? 'balanced',id);
   return { id, name, parentName: p.name as string, userId: p.user_id as string };
 }
 

@@ -415,7 +415,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
           name, label: role, description: `Teammate created by ${parent.name} at the user’s request.`,
           instructions: `Your role: ${role}. For work delegated by ${parent.name}, complete the task with your tools and send a concise result back using send_to_bot with bot_name ${JSON.stringify(parent.name)}. For direct user messages, answer the user. You cannot create other bots. Never claim work is complete before verifying it.`,
         });
-        db.prepare('UPDATE bots SET agent_provider=?, model=?, effort=? WHERE id=?').run(parent.agent_provider, parent.model ?? '', parent.effort, child.id);
+        db.prepare('UPDATE bots SET agent_provider=?, model=?, effort=?, permission_mode=? WHERE id=?').run(parent.agent_provider, parent.model ?? '', parent.effort, parent.permission_mode ?? 'balanced', child.id);
         const taskId = newId('task');
         db.prepare("INSERT INTO tasks(id,bot_id,title,state,created_at,updated_at) VALUES (?,?,?,'working',?,?)").run(taskId, child.id, task.slice(0, 160), now(), now());
         return { child, taskId };
@@ -565,26 +565,34 @@ export function appToolCall(a: any): {name:string;args:Record<string,unknown>} {
   return {name:a.tool,args};
 }
 
-export function policyFor(userId: string, toolName: string, args: any): { decision: Decision; key: string; toolkit?: string; title: string } {
+/** Every key covered by an approval, including all actions in a batch. */
+export function policyKeys(toolName: string, args: any): string[] {
+  if (toolName === 'connected_apps' && args?.operation === 'execute') {
+    const call = appToolCall(args); return policyKeys(call.name, call.args);
+  }
+  return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
+}
+
+const SAFE_LOCAL = new Set(['view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
+export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {
-    const call = appToolCall(args);
-    return policyFor(userId,call.name,call.args);
+    const call = appToolCall(args); return policyFor(userId,call.name,call.args,botId);
   }
-  if (toolMap.has(toolName)) return { decision: 'allow', key: toolName, title: toolName };
-  const slugs = innerToolSlugs(toolName, args);
-  if (!slugs.length) {
-    const metadata = ['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS'].includes(toolName);
-    return {decision:metadata ? 'allow':'ask',key:toolName,title:humanizeSlug(toolName)};
+  const bot = botId ? db.prepare('SELECT user_id,permission_mode FROM bots WHERE id=?').get(botId) as any : null;
+  if (botId && (!bot || bot.user_id !== userId)) return {decision:'block',key:toolName,title:toolName};
+  const level = bot?.permission_mode ?? 'balanced';
+  const local = toolMap.has(toolName);
+  const keys = policyKeys(toolName,args);
+  let decision: Decision = 'allow', key = keys[0];
+  for (const slug of keys) {
+    const saved = (db.prepare('SELECT mode FROM policies WHERE user_id=? AND tool=?').get(userId,slug) as any)?.mode;
+    const safe = local ? SAFE_LOCAL.has(slug) || (slug === 'connected_apps' && args?.operation !== 'execute') : METADATA.has(slug) || isReadOnlySlug(slug);
+    if (saved === 'blocked' || (level === 'read_only' && !safe)) return {decision:'block',key:slug,title:humanizeSlug(slug)};
+    const ask = saved !== 'always_allow' && !safe && level !== 'autonomous' && (!local || level === 'ask');
+    if (ask) {decision='ask';key=slug;}
   }
-  let decision: Decision = 'allow';
-  let key = slugs[0];
-  for (const slug of slugs) {
-    const p = db.prepare('SELECT mode FROM policies WHERE user_id=? AND tool=?').get(userId, slug) as any;
-    const mode = p?.mode ?? (isReadOnlySlug(slug) ? 'always_allow' : 'needs_approval');
-    if (mode === 'blocked') return { decision: 'block', key: slug, title: humanizeSlug(slug) };
-    if (mode === 'needs_approval') { decision = 'ask'; key = slug; }
-  }
-  return { decision, key, toolkit: key.split('_')[0].toLowerCase(), title: humanizeSlug(key) };
+  return {decision,key,toolkit:local || key.startsWith('COMPOSIO_') ? undefined : key.split('_')[0].toLowerCase(),title:local ? key.replaceAll('_',' ') : humanizeSlug(key)};
 }
 
 export function humanizeSlug(slug: string) {

@@ -1,5 +1,6 @@
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
 import './attachments.js';
+import { sheetPreview, SheetError } from './sheets.js';
 import { bodyLimit } from 'hono/body-limit';
 import { validateImages, saveImages } from './images.js';
 import { Hono } from 'hono';
@@ -152,10 +153,11 @@ api.patch('/bots/:id', async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
   const p = await c.req.json();
+  if (p.permissionMode !== undefined && !['read_only','balanced','ask','autonomous'].includes(p.permissionMode)) return c.json({error:'Invalid permissions.'},400);
   if (p.agentProvider !== undefined && !['codex', 'claude'].includes(p.agentProvider)) return c.json({error:'Choose Codex or Claude.'},400);
   if (p.model !== undefined && (typeof p.model !== 'string' || p.model.length > 100 || /[\r\n]/.test(p.model))) return c.json({error:'Invalid model.'},400);
   if ((p.agentProvider !== undefined || p.model !== undefined) && getLive(b.id).isRunning) return c.json({error:'Wait for the current turn to finish before changing models.'},409);
-  const cols: Record<string, string> = { agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
+  const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
   for (const [k, col] of Object.entries(cols)) {
     if (p[k] !== undefined) db.prepare(`UPDATE bots SET ${col}=?, updated_at=? WHERE id=?`).run(typeof p[k] === 'boolean' ? (p[k] ? 1 : 0) : p[k], now(), b.id);
   }
@@ -442,3 +444,9 @@ api.use('/voice/*', async (c, next) => {
   await next();
 });
 api.route('/voice', voiceApi);
+
+api.get('/sheets/:id/preview', async c => {
+  c.header('Cache-Control','no-store');
+  try {return c.json(await sheetPreview(c.get('user').id,c.req.param('id'),c.req.query('tab')));}
+  catch(e){return c.json({error:e instanceof SheetError?e.message:'Google Sheets preview is unavailable.'},(e instanceof SheetError?e.status:502) as 400);}
+});

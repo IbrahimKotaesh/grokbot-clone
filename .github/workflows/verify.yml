@@ -41,3 +41,11 @@ jobs:
         env:
           SESSION_SECRET: ci-only-test-value
           DB_PATH: ':memory:'
+      - run: node tests/permissions.mjs
+        env:
+          SESSION_SECRET: ci-permission-test-value
+          DB_PATH: ':memory:'
+      - run: node tests/sheet-preview.mjs
+        env:
+          SESSION_SECRET: ci-sheet-test-value
+          DB_PATH: ':memory:'

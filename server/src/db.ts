@@ -152,3 +152,5 @@ addColumn('bots', 'agent_provider', 'TEXT');
 addColumn('bots', 'model', "TEXT NOT NULL DEFAULT ''");
 
 export const now = () => Date.now();
+
+addColumn('bots', 'permission_mode', "TEXT NOT NULL DEFAULT 'balanced'");

@@ -29,12 +29,12 @@ export function remarkBidiRanges() {
       node.children = node.children.flatMap(child => {
         if (child.type !== 'text' || !child.value) return [child];
         const value = child.value;
-        const matches = [...value.matchAll(/\b\d{1,4}(?::\d{2}|\.\d+)?\s*[–—-]\s*\d{1,4}(?::\d{2}|\.\d+)?\b/g)];
+        const matches = [...value.matchAll(/(?:[€$£]\s*[+-]?[0-9٠-٩]+(?:[.,٬٫][0-9٠-٩]+)*|[0-9٠-٩]+(?:[.,٬٫][0-9٠-٩]+)*\s*(?:€|\$|£|USD\b|EUR\b|GBP\b)|\b\d{1,4}(?::\d{2}|\.\d+)?\s*[–—-]\s*\d{1,4}(?::\d{2}|\.\d+)?\b)/gu)];
         if (!matches.length) return [child];
         const parts: Node[] = []; let start = 0;
         for (const match of matches) {
           if (match.index! > start) parts.push({ type: 'text', value: value.slice(start, match.index) });
-          parts.push({ type: 'finoLtrRange', data: { hName: 'bdi', hProperties: { dir: 'ltr' } }, children: [{ type: 'text', value: match[0] }] });
+          parts.push({ type: 'finoLtrRange', data: { hName: 'bdi', hProperties: { dir: 'ltr', className:['md__number'] } }, children: [{ type: 'text', value: match[0] }] });
           start = match.index! + match[0].length;
         }
         if (start < value.length) parts.push({ type: 'text', value: value.slice(start) });

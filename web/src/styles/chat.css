@@ -61,10 +61,7 @@
 .bubble.is-user.is-first { border-bottom-right-radius: 6px; }
 .bubble.is-user.is-mid { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
 .bubble.is-user.is-last { border-top-right-radius: 6px; }
-.bubble.is-streaming .md > :last-child::after {
-  content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%;
-  background: currentColor; opacity: 0.4; vertical-align: middle; animation: breathe 1s ease-in-out infinite;
-}
+.bubble__streaming {display:block;width:7px;height:7px;margin:7px 0 0;border-radius:50%;background:currentColor;opacity:.4;animation:breathe 1s ease-in-out infinite;}
 .bubble__cites { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .cite-chip {
   font-size: 12px; line-height: 16px; letter-spacing: 0.12px; color: var(--color-text-secondary); text-decoration: none;
@@ -77,7 +74,8 @@
 /* ---------- markdown (agent bubbles) ---------- */
 .md > * { margin: 0; }
 .md > * + * { margin-top: 10px; }
-.md ul, .md ol { padding-left: 22px; }
+.md ul, .md ol { padding-inline:22px 0; list-style-position:outside; }
+.md li { padding-inline-start:3px; }
 .md li + li { margin-top: 2px; }
 .md li > p { margin: 0; }
 .md a { color: var(--color-text-primary); text-decoration: underline; text-decoration-color: var(--color-border-primary); text-underline-offset: 2px; }
@@ -191,3 +189,31 @@
   max-width: 960px; margin: 0 auto 8px; padding: 6px 12px; border-radius: 12px; background: var(--color-danger-bg); color: var(--color-danger-text);
   font-size: 13px; line-height: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
+.sheet-link {display:inline-flex;vertical-align:middle;align-items:center;gap:4px;border:1px solid #80a89b55;border-radius:9px;padding:3px 7px;background:#eef8f1;max-width:100%;direction:ltr;}
+.sheet-link>button {display:inline-flex;align-items:center;gap:6px;color:#21654c;text-align:start;min-width:0;overflow-wrap:anywhere;}
+.sheet-link svg {flex-shrink:0;}
+.sheet-link>a {display:flex;padding:5px;color:#426a5d;}
+.sheet-preview {width:min(950px,calc(100vw - 32px));max-height:85dvh;border:1px solid #b6c8c0;border-radius:18px;padding:18px;background:#fff;color:#173b3b;box-shadow:0 20px 100px #102f3c33;}
+.sheet-preview::backdrop {background:#102f3c66;}
+.sheet-preview header {display:flex;align-items:center;gap:9px;}
+.sheet-preview header strong {flex:1;min-width:0;overflow-wrap:anywhere;}
+.sheet-preview header button {padding:8px;}
+.sheet-preview__tools {display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin:12px 0;font-size:12px;color:#61776e;}
+.sheet-preview__tools a {display:inline-flex;gap:4px;align-items:center;color:#21654c;}
+.sheet-preview__tabs {display:flex;align-items:center;gap:8px;font-size:12px;margin:12px 0;}
+.sheet-preview__tabs select {max-width:70%;padding:7px;border:1px solid #b6c8c0;border-radius:8px;}
+.sheet-preview__grid {overflow:auto;max-height:55dvh;margin:12px 0;border:1px solid #dbe8e2;border-radius:8px;}
+.sheet-preview table {border-collapse:collapse;font-size:12px;min-width:100%;}
+.sheet-preview td,.sheet-preview th {border:1px solid #dbe8e2;padding:8px;min-width:70px;max-width:350px;white-space:pre-wrap;overflow-wrap:anywhere;}
+.sheet-preview th {min-width:30px;background:#eef5f1;font-weight:400;}
+.sheet-preview small {font-size:11px;color:#61776e;}
+.sheet-preview__retry {border:1px solid #b6c8c0;border-radius:8px;padding:8px 12px;}
+
+/* Keep amounts intact; narrow screens scroll the table instead of crushing its columns. */
+.md {min-width:0;max-width:100%;}
+.md__number {display:inline-block;white-space:nowrap;unicode-bidi:isolate;}
+.md-table {max-width:100%;min-width:0;overscroll-behavior-x:contain;scrollbar-width:thin;}
+.md-table table {width:max-content;min-width:100%;}
+.md-table th,.md-table td {min-width:110px;max-width:360px;white-space:normal;word-break:normal;overflow-wrap:normal;text-align:start;padding:8px 12px;}
+.md-table td:last-child:not(:first-child),.md-table th:last-child:not(:first-child) {min-width:220px;}
+.md-table:focus-visible {outline:2px solid #4b9986;outline-offset:3px;}

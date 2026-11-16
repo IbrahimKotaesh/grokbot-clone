@@ -12,7 +12,7 @@ import { composioTools, toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
 import { repairHistory } from './history.js';
 import { maybeCompact, noteUsage } from './memory.js';
-import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
+import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
 
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
@@ -213,19 +213,19 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
 
     // Was this call just approved/denied?
     const ap = st.approvalId ? (db.prepare('SELECT * FROM approvals WHERE id=?').get(st.approvalId) as any) : null;
-    let decision = policyFor(userId, c.name, args).decision;
+    let decision = policyFor(userId, c.name, args, botId).decision;
     if (ap && ap.call_id === c.call_id) {
       if (ap.status === 'pending') return true;
-      decision = ap.status === 'denied' ? 'block' : 'allow';
+      decision = ap.status === 'denied' || decision === 'block' ? 'block' : 'allow';
       st.approvalId = '';
     } else if (decision === 'ask') {
-      const pol = policyFor(userId, c.name, args);
+      const pol = policyFor(userId, c.name, args, botId);
       const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       const card = appendRow(botId, 'card', {
         type: 'card', card: 'approval', approvalId, title: `Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
-        detail: describeArgs(approvalArgs), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, status: 'pending',
+        detail: describeArgs(approvalArgs), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now());
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
@@ -242,7 +242,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       updateRow(botId, c.rowSeq, { ...body, status: 'denied', summary: 'Not allowed' });
     } else {
       const act = activityFor(c.name);
-      const pol = policyFor(userId, c.name, args);
+      const pol = policyFor(userId, c.name, args, botId);
       const detail = c.name === 'send_to_bot' ? String(args.bot_name ?? '') : !toolMap.has(c.name) && pol.toolkit ? (await toolkitInfo(pol.toolkit))?.name ?? pol.toolkit : undefined;
       setLive(botId, { isRunning: true, activity: { kind: c.name === 'send_to_bot' ? 'messaging_named' : act.kind, detail, since: now() }, awaiting: null });
       try {
@@ -386,8 +386,11 @@ export function resolveApproval(userId: string, approvalId: string, decision: 'a
   if (ap.status !== 'pending') return;
   const status = decision === 'deny' ? 'denied' : decision === 'always' ? 'always' : 'allowed';
   db.prepare('UPDATE approvals SET status=?, resolved_at=? WHERE id=?').run(status, now(), approvalId);
-  if (decision === 'always') db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId, ap.tool);
   const card = getRow(ap.bot_id, ap.row_seq);
+  if (decision === 'always') {
+    const keys = card?.body.type === 'card' && card.body.card === 'approval' ? card.body.policyKeys ?? [ap.tool] : [ap.tool];
+    db.transaction(() => { for (const key of keys) db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId,key); })();
+  }
   if (card && card.body.type === 'card' && card.body.card === 'approval') updateRow(ap.bot_id, ap.row_seq, { ...card.body, status });
   if (!['codex','claude'].includes(getBotRow(ap.bot_id)?.agent_provider ?? env.agentProvider)) enqueue(ap.bot_id, { type: 'resume' });
 }

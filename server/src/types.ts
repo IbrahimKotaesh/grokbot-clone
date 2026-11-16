@@ -10,6 +10,8 @@ export type AvatarColor =
 
 export interface User { id: string; email: string; name: string; avatarUrl: string | null }
 
+export type PermissionMode = 'read_only' | 'balanced' | 'ask' | 'autonomous';
+
 export interface Bot {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface Bot {
   /** 'room' = group chat (members answer instead of the bot itself). */
   kind?: 'agent' | 'room';
   pinned: boolean;
+  permissionMode?: PermissionMode;
   agentProvider?: 'codex' | 'claude';
   model?: string;
   effort: 'low' | 'medium' | 'high' | 'xhigh';
@@ -94,6 +97,7 @@ export type CardBody =
       toolkitName?: string;
       logo?: string;
       args: unknown;
+      policyKeys?: string[];
       status: 'pending' | 'allowed' | 'always' | 'denied' | 'expired';
     }
   | {

@@ -175,3 +175,18 @@ button, a { touch-action: manipulation; }
 .bubble__file strong { font-size:13px; overflow-wrap:anywhere; }
 .bubble__file small { color:var(--color-text-secondary); font-size:11px; }
 .bubble__download { display:grid; place-items:center; min-width:36px; min-height:36px; border-radius:10px; background:#176d7010; font-size:22px; text-decoration:none; }
+
+/* Compact, icon-led model and permission menus. */
+.composer__setting-anchor {position:relative;display:flex;min-width:0;}
+.composer__setting {display:flex;align-items:center;gap:6px;min-height:40px;padding:4px 7px;border-radius:12px;color:var(--color-text-secondary);font-size:12px;white-space:nowrap;}
+.composer__setting:hover {background:#176d7010;}
+.composer__setting.is-claude>svg:first-child {color:#bc6b48;}
+.composer__setting.is-chatgpt>svg:first-child {color:#16826c;}
+.composer__setting:disabled {opacity:.5;}
+.composer__permissions .menu {width:300px;max-width:calc(100vw - 32px);}
+.composer__permissions .menu__item {height:auto;min-height:55px;padding:8px;white-space:normal;}
+.menu__label {display:flex;align-items:center;gap:9px;text-align:left;}
+.menu__label>svg {flex-shrink:0;}
+.menu__label small,.permission-menu__heading small {display:block;font-size:11px;line-height:1.45;font-weight:400;color:var(--color-text-secondary);margin-top:3px;}
+.permission-menu__heading {padding:8px;font-size:13px;font-weight:600;border-bottom:1px solid var(--color-border-tertiary);margin-bottom:4px;}
+@media(max-width:480px) {.composer__setting{gap:4px;padding-inline:4px;font-size:11px;}.composer__permissions .menu{left:auto;right:-70px;transform:none;}.composer__tools{gap:2px;}}

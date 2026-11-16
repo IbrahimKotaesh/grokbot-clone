@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
-export interface MenuItem { label: string; onSelect: () => void; danger?: boolean; hint?: string }
+export interface MenuItem { label: string; onSelect: () => void; danger?: boolean; hint?: string; icon?: ReactNode; description?: string }
 
 /** Small popover menu anchored by its parent (position: relative). Closes on outside click / Escape. */
 export function Menu({ items, onClose, align = 'left', placement = 'below', children }: { items: MenuItem[]; onClose: () => void; align?: 'left' | 'right' | 'center'; placement?: 'below' | 'above'; children?: ReactNode }) {
@@ -17,7 +17,7 @@ export function Menu({ items, onClose, align = 'left', placement = 'below', chil
       {children}
       {items.map((it) => (
         <button key={it.label} type="button" role="menuitem" className={`menu__item${it.danger ? ' is-danger' : ''}`} onClick={() => { onClose(); it.onSelect(); }}>
-          <span>{it.label}</span>
+          <span className="menu__label">{it.icon}<span>{it.label}{it.description && <small>{it.description}</small>}</span></span>
           {it.hint && <span className="menu__hint">{it.hint}</span>}
         </button>
       ))}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { Bot } from '@shared/types';
+import { Sparkles, Orbit, ChevronDown, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
+import type { Bot, PermissionMode } from '@shared/types';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { Icon } from './Icon';
@@ -8,6 +9,12 @@ import { configApi } from '../lib/configApi';
 import { PhotoCamera } from './PhotoCamera';
 import { preparePhoto, type Photo } from '../lib/photos';
 
+const permissionChoices = [
+  {id:'read_only',name:'Read only',icon:Eye,description:'Read connected data and screenshots. No commands or changes.'},
+  {id:'balanced',name:'Balanced',icon:ShieldCheck,description:'Use the computer freely; ask before connected app changes.'},
+  {id:'ask',name:'Ask first',icon:Hand,description:'Ask before commands, computer actions or app changes.'},
+  {id:'autonomous',name:'Autonomous',icon:Zap,description:'Run computer actions and connected app changes without asking.'},
+] as const;
 const MAX_H = 200;
 const drafts = new Map<string, string>();
 const photoDrafts = new Map<string, Photo[]>();
@@ -39,6 +46,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [settingsMenu,setSettingsMenu]=useState<'model'|'permissions'|null>(null);
   const [switching, setSwitching] = useState(false);
   const [dictationHelp,setDictationHelp]=useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -97,6 +105,15 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     finally { setSwitching(false); }
   };
 
+  const changePermissions = async (permissionMode: PermissionMode) => {
+    setSwitching(true);setError(null);
+    try {
+      const {bot:updated}=await configApi.updateBot(bot.id,{permissionMode});
+      useStore.setState(s=>({bots:s.bots.map(b=>b.id===updated.id?updated:b)}));
+    } catch(e) {setError((e as Error).message);} finally {setSwitching(false);}
+  };
+  const permission=permissionChoices.find(p=>p.id===(bot.permissionMode??'balanced'))!;
+  const ModelIcon=bot.agentProvider==='claude'?Sparkles:Orbit;
   const hasText = text.trim().length > 0 || photos.length > 0;
 
   return (
@@ -142,7 +159,17 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               />
             )}
           </span>
-          <label className="composer__model"><select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
+          <span className="composer__setting-anchor">
+            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}`} aria-expanded={settingsMenu==='model'} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><ModelIcon size={17}/><span>{bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}</span><ChevronDown size={12}/></button>
+            {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
+              {label:'ChatGPT',icon:<Orbit size={18}/>,hint:bot.agentProvider!=='claude'?'✓':undefined,onSelect:()=>void changeProvider('codex')},
+              {label:'Claude Code',icon:<Sparkles size={18}/>,hint:bot.agentProvider==='claude'?'✓':undefined,onSelect:()=>void changeProvider('claude')},
+            ]}/>}
+          </span>
+          <span className="composer__setting-anchor composer__permissions">
+            <button type="button" className="composer__setting" aria-label={`Permissions: ${permission.name}`} title={permission.description} aria-expanded={settingsMenu==='permissions'} disabled={sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='permissions'?null:'permissions')}><permission.icon size={16}/><span>{permission.name}</span><ChevronDown size={12}/></button>
+            {settingsMenu==='permissions'&&<Menu placement="above" align="center" onClose={()=>setSettingsMenu(null)} items={permissionChoices.map(p=>({label:p.name,description:p.description,icon:<p.icon size={18}/>,hint:p.id===permission.id?'✓':undefined,onSelect:()=>void changePermissions(p.id)}))}><div className="permission-menu__heading">Permissions for {bot.name}<small>Applies to Fino’s Linux computer and your connected accounts. Saved “Always allow” choices are respected, except in Read only.</small></div></Menu>}
+          </span>
         </div>
         <div className="composer__right">
           <button type="button" className="composer__btn" aria-label="Use keyboard dictation" title="Use keyboard dictation" onClick={()=>{setDictationHelp(true);ref.current?.focus();}}><Icon name="mic" opacity={0.56}/></button>

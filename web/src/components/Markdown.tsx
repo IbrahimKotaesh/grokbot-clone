@@ -1,12 +1,16 @@
+import { SheetLink, sheetId } from './SheetLink';
 import { memo } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkCitations, remarkBidiRanges } from '../lib/remark-citations';
 
 const components: Components = {
-  a: ({ node: _n, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener" />,
+  li: ({node:_n,...props}) => <li {...props} dir="auto" />,
+  a: ({ node: _n, ...props }) => sheetId(props.href) ? <SheetLink href={props.href!}>{props.children}</SheetLink> : <a {...props} target="_blank" rel="noreferrer noopener" />,
+  td: ({node:_n,...props}) => <td {...props} dir="auto" />,
+  th: ({node:_n,...props}) => <th {...props} dir="auto" />,
   table: ({ node: _n, ...props }) => (
-    <div className="md-table"><table {...props} /></div>
+    <div className="md-table" role="region" aria-label="Scrollable table" tabIndex={0}><table {...props} /></div>
   ),
 };
 
