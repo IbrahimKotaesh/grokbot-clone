@@ -66,7 +66,6 @@ button, a { touch-action: manipulation; }
   .transcript { padding: 74px 14px 20px; overscroll-behavior: contain; }
   .transcript__col { gap: 16px; }
   .bubble-wrap { max-width: 94%; }
-  .bubble__time { display: none; }
   .bubble { font-size: 15px; max-width: 100%; }
   .composer-area { padding: 0 10px max(10px, env(safe-area-inset-bottom)); }
   .composer__input, input, textarea, select { font-size: 16px; }

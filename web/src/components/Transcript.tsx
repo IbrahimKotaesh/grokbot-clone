@@ -1,7 +1,7 @@
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
 import { BotAvatar, BotAvatarFor } from '../avatar/BotAvatar';
-import { clock, dividerLabel } from '../lib/time';
+import { dividerLabel, messageTimestamp } from '../lib/time';
 import { useStore } from '../store';
 import { ActivityLine } from './ActivityLine';
 import { CardRow } from './cards/Cards';
@@ -71,7 +71,7 @@ const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left'
           </div>
         )}
       </div>
-      <span className="bubble__time">{clock(row.createdAt)}</span>
+      <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
     </div>
   );
 });

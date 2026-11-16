@@ -2,6 +2,15 @@ const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.g
 
 export const clock = (ts: number) => new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
+/** Keep each message's timestamp visible; older messages include their date. */
+export function messageTimestamp(ts: number): string {
+  const date = new Date(ts), today = new Date();
+  if (sameDay(date, today)) return clock(ts);
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  if (date.getFullYear() !== today.getFullYear()) options.year = 'numeric';
+  return `${date.toLocaleDateString('en-GB', options)} · ${clock(ts)}`;
+}
+
 /** "Fri, Nov 6 3:56 PM" / "Yesterday 11:24 PM" / "Today 9:02 AM" dividers, like screen 01. */
 export function dividerLabel(ts: number, now = Date.now()): string {
   const d = new Date(ts);

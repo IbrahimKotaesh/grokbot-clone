@@ -45,7 +45,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const setModal = useStore((s) => s.setModal);
 
   // Per-bot drafts.
-  useEffect(() => { setText(drafts.get(bot.id) ?? ''); setError(null); ref.current?.focus(); }, [bot.id]);
+  useEffect(() => { setText(drafts.get(bot.id) ?? ''); setError(null); }, [bot.id]);
   useEffect(() => { drafts.set(bot.id, text); }, [bot.id, text]);
 
   // Auto-grow.
@@ -77,7 +77,6 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
       setError((e as Error).message || 'Message failed to send');
     } finally {
       setSending(false);
-      ref.current?.focus();
     }
   };
 
@@ -94,7 +93,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
       const after = cur.slice(end);
       const pre = before && !/\s$/.test(before) ? ' ' : '';
       const post = after && !/^\s/.test(after) ? ' ' : '';
-      requestAnimationFrame(() => { if (el) { const pos = before.length + pre.length + t.length; el.focus(); el.setSelectionRange(pos, pos); } });
+      requestAnimationFrame(() => { if (el && document.activeElement === el) { const pos = before.length + pre.length + t.length; el.setSelectionRange(pos, pos); } });
       return before + pre + t + post + after;
     });
   };
@@ -160,7 +159,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
             aria-label={dictation.state === 'recording' ? 'Stop dictation' : 'Dictate'}
             aria-pressed={dictation.state === 'recording'}
             title="Device dictation"
-            onClick={() => { ref.current?.focus(); dictation.toggle(); }}
+            onClick={dictation.toggle}
           >
             <Icon name="mic" opacity={0.56} />
           </button>
