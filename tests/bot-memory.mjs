@@ -4,7 +4,7 @@ import {api} from '../server/dist/routes.js';
 import {configApi} from '../server/dist/routes-config.js';
 import {createBot} from '../server/dist/bots.js';
 import {appendRow} from '../server/dist/store.js';
-import {saveDurableMemory,searchMemories,searchConversation} from '../server/dist/agent/recall.js';
+import {saveDurableMemory,updateDurableMemory,memoryMatches,searchMemories,searchConversation} from '../server/dist/agent/recall.js';
 import {recentConversation} from '../server/dist/agent/context.js';
 import {toolMap,policyFor} from '../server/dist/agent/tools.js';
 import {memoriesForPrompt} from '../server/dist/agent/memory.js';
@@ -30,4 +30,5 @@ assert.equal((await patch('claude')).status,200);assert.equal(db.prepare('SELECT
 db.prepare('INSERT INTO claude_sessions VALUES (?,?,?)').run(bot.id,1,'fresh-session');await patch('claude');assert.ok(db.prepare('SELECT 1 FROM claude_sessions WHERE bot_id=?').get(bot.id),'Same-provider saves do not reset context');await patch('codex');assert.equal(db.prepare('SELECT 1 FROM codex_threads WHERE bot_id=?').get(bot.id),undefined);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM rows WHERE bot_id=?').get(bot.id).n,count);assert.ok(searchMemories(bot.id,'Manual saved preference').length);assert.equal(db.prepare('SELECT generation FROM bots WHERE id=?').get(bot.id).generation,1);
 assert.equal(policyFor('owner','search_conversation',{},bot.id).decision,'allow');assert.ok(toolMap.has('search_conversation'));appendRow(bot.id,'message',{type:'message',role:'user',text:'CURRENT_INPUT_ONLY_772'});assert.ok(!recentConversation(bot.id).includes('CURRENT_INPUT_ONLY_772'),'The current user input is passed separately');
+const correction=saveDurableMemory('owner',bot.id,'Old project state: paused.');updateDurableMemory('owner',bot.id,correction.id,'Current project state: running.');assert.equal(memoryMatches(bot.id,'Current project state')[0].id,correction.id);assert.match(db.prepare('SELECT previous_text FROM memory_revisions WHERE memory_id=?').get(correction.id).previous_text,/paused/);assert.throws(()=>updateDurableMemory('other',bot.id,correction.id,'No'));assert.throws(()=>updateDurableMemory('owner',second.id,correction.id,'No'));
 console.log('PASS: durable per-bot memory, Arabic retrieval, old chat search, generation privacy, manual saves, honest metrics and model switching without deleting history');db.close();

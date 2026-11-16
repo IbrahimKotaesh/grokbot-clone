@@ -327,8 +327,9 @@ function SkillEditor({ botId, skill, onDone }: { botId: string; skill?: Skill; o
 // ---------------------------------------------------------------------------
 
 function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundle | null; onChange: () => void }) {
+  const [editingMemory,setEditingMemory]=useState<string|null>(null);
   const [newMemory,setNewMemory]=useState(''),[savingMemory,setSavingMemory]=useState(false),[memoryError,setMemoryError]=useState('');
-  const save=async()=>{setSavingMemory(true);setMemoryError('');try{await configApi.saveMemory(bot.id,newMemory);setNewMemory('');onChange();}catch(e){setMemoryError((e as Error).message);}finally{setSavingMemory(false);}};
+  const save=async()=>{setSavingMemory(true);setMemoryError('');try{if(editingMemory)await configApi.updateMemory(editingMemory,newMemory);else await configApi.saveMemory(bot.id,newMemory);setNewMemory('');setEditingMemory(null);onChange();}catch(e){setMemoryError((e as Error).message);}finally{setSavingMemory(false);}};
   const [q, setQ] = useState('');
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const memories = useMemo(() => (data?.memories ?? []).filter((m) => !hidden.has(m.id) && (!q || m.text.toLowerCase().includes(q.toLowerCase()))), [data, hidden, q]);
@@ -345,7 +346,7 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
           <div className="cfg-page__sub">What {bot.name} remembers about you. Saved facts stay with this bot across restarts and model changes. Conversation history is stored separately.</div>
         </div>
       </div>
-      <div className="memory-add"><textarea className="text-input" rows={2} maxLength={2000} placeholder="A preference this bot should remember…" aria-label="New saved memory" value={newMemory} onChange={e=>setNewMemory(e.target.value)} dir="auto"/><button type="button" className="btn btn--primary" disabled={!newMemory.trim()||savingMemory} onClick={()=>void save()}>{savingMemory?'Saving…':'Save memory'}</button>{memoryError&&<p role="alert">{memoryError}</p>}</div>
+      <div className="memory-add"><textarea className="text-input" rows={2} maxLength={2000} placeholder="A preference this bot should remember…" aria-label="New saved memory" value={newMemory} onChange={e=>setNewMemory(e.target.value)} dir="auto"/><button type="button" className="btn btn--primary" disabled={!newMemory.trim()||savingMemory} onClick={()=>void save()}>{savingMemory?'Saving…':editingMemory?'Update memory':'Save memory'}</button>{editingMemory&&<button type="button" className="btn btn--secondary" onClick={()=>{setEditingMemory(null);setNewMemory('');}}>Cancel editing</button>}{memoryError&&<p role="alert">{memoryError}</p>}</div>
       {(data?.memories.length ?? 0) > 6 && (
         <input className="text-input" placeholder="Search memories" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search memories" />
       )}
@@ -363,6 +364,7 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
                 </div>
               </div>
               <div className="cfg-item__actions">
+                <button type="button" className="link-btn link-btn--small" aria-label="Edit memory" onClick={()=>{setEditingMemory(m.id);setNewMemory(m.text);}}>Edit</button>
                 <button type="button" className="cfg-icon-btn" onClick={() => remove(m)} aria-label="Forget this" title="Forget"><Glyph name="trash" size={14} /></button>
               </div>
             </div>

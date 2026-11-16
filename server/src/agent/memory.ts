@@ -365,7 +365,7 @@ export function startMemoryConsolidation() {
 
 /** Most relevant (keyword overlap with recent user messages) and most recent memories, within a character budget. */
 export function memoriesForPrompt(botId: string, budget = memoryConfig.promptMemoryChars): { lines: string[]; omitted: number } {
-  const all = db.prepare('SELECT text, created_at FROM memories WHERE bot_id=? ORDER BY created_at DESC LIMIT 500').all(botId) as any[];
+  const all = db.prepare('SELECT id, text, created_at FROM memories WHERE bot_id=? ORDER BY created_at DESC LIMIT 500').all(botId) as any[];
   if (!all.length) return { lines: [], omitted: 0 };
   const bot = getBotRow(botId);
   const recent = (db.prepare("SELECT body FROM rows WHERE bot_id=? AND generation=? AND kind='message' ORDER BY seq DESC LIMIT 12").all(botId, bot.generation) as any[])
@@ -384,11 +384,11 @@ export function memoriesForPrompt(botId: string, budget = memoryConfig.promptMem
   const picked: typeof all = [];
   let used = 0;
   for (const { m } of scored) {
-    const len = m.text.length + 3;
+    const len = m.text.length + String(m.id).length + 50;
     if (used + len > budget) continue;
     picked.push(m);
     used += len;
   }
   picked.sort((a, b) => a.created_at - b.created_at);
-  return { lines: picked.map((m) => `- ${m.text}`), omitted: all.length - picked.length };
+  return { lines: picked.map((m) => `- [memory_id: ${m.id}; saved: ${new Date(m.created_at).toISOString()}] ${m.text}`), omitted: all.length - picked.length };
 }

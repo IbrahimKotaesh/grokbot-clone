@@ -42,6 +42,7 @@ export const configApi = {
   makePrimary: (botId: string) => req<{ ok: true }>('POST', `/bots/${botId}/primary`),
   fresh: (botId: string) => req<{ ok: true }>('POST', `/bots/${botId}/fresh`),
 
+  updateMemory:(id:string,text:string)=>req<{memory:Memory}>('PATCH',`/memories/${id}`,{text}),
   saveMemory:(id:string,text:string)=>req<{memory:Memory;created:boolean}>('POST',`/bots/${id}/memories`,{text}),
   deleteMemory: (id: string) => req<{ ok: true }>('DELETE', `/memories/${id}`),
 

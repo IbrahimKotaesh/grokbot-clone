@@ -1,4 +1,4 @@
-import {saveDurableMemory} from './agent/recall.js';
+import {saveDurableMemory,updateDurableMemory} from './agent/recall.js';
 import { env } from './env.js';
 import { Hono } from 'hono';
 import { db, now } from './db.js';
@@ -249,4 +249,9 @@ configApi.post('/bots/:id/memories',async c=>{
  const bot=ownBot(c.get('user').id,c.req.param('id'));if(!bot)return c.json({error:'not found'},404);
  try{const body=await c.req.json();const saved=saveDurableMemory(c.get('user').id,bot.id,body.text);return c.json({memory:toMemory(db.prepare('SELECT * FROM memories WHERE id=?').get(saved.id)),created:saved.created});}
  catch(e){return c.json({error:(e as Error).message},400);}
+});
+
+configApi.patch('/memories/:id',async c=>{
+ const memory=db.prepare('SELECT m.bot_id FROM memories m JOIN bots b ON b.id=m.bot_id WHERE m.id=? AND b.user_id=?').get(c.req.param('id'),c.get('user').id) as any;if(!memory)return c.json({error:'not found'},404);
+ try{const body=await c.req.json();updateDurableMemory(c.get('user').id,memory.bot_id,c.req.param('id'),body.text);return c.json({memory:toMemory(db.prepare('SELECT * FROM memories WHERE id=?').get(c.req.param('id')))});}catch(e){return c.json({error:(e as Error).message},400);}
 });

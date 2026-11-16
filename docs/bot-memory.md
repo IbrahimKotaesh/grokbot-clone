@@ -13,3 +13,5 @@ The subscription providers do not run the xAI-only idle memory-consolidation job
 On a provider change, the destination provider's stale cached session pointer is invalidated. The next turn starts with current saved conversation context, durable facts and archive lookup tools rather than resuming a session that missed the other provider's messages. Canonical chat rows, attachments, durable memories and the conversation generation are preserved. Saving the same provider does not reset its session.
 
 No paid API or separate vector database is required for this implementation. Native compaction is separate from durable memory. An important fact should be explicitly saved and verified in the Memories tab; a long chat alone is not proof that it has become a durable preference.
+
+`recall` returns memory IDs. Models and the Memories editor can update a stale fact instead of appending a contradiction. Previous text is retained in `memory_revisions` for audit/recovery. Existing facts are not automatically merged or erased based on guessed equivalence; newer supported corrections take precedence.
