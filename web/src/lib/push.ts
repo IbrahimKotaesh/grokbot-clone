@@ -16,7 +16,7 @@ export async function enableDevicePush(){
  const support=pushSupport();if(support.needsInstall)throw Error('Add Fino to your iPhone Home Screen, open its icon, then enable notifications.');
  if(!support.supported)throw Error('This browser cannot receive push. Open Fino in Safari, Chrome, Edge or Firefox.');
  // Request permission directly from the click gesture, before fetching configuration.
- const permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
+ const permission=Notification.permission==='default'?await Promise.race([Notification.requestPermission(),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('Notification permission was not completed. If no prompt appears, open Fino in Safari or Chrome and try again.')),45000))]):Notification.permission;
  if(permission!=='granted')throw Error('Notifications are blocked. Allow Fino in your browser notification settings.');
  const {publicKey}=await pushRequest<{publicKey:string}>('/config');
  const registration=await Promise.race([navigator.serviceWorker.ready,new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('Refresh Fino, then try enabling notifications again.')),10000))]);
