@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { BotAvatar } from '../avatar/BotAvatar';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { TrafficLights } from './Sidebar';
@@ -32,10 +31,10 @@ export function SignIn() {
       <div className="signin__chrome"><TrafficLights /></div>
       <div className="signin__card">
         <div className="signin__hero">
-          <BotAvatar shape="blob" color="black" size={84} />
+          <img className="signin__mascot" src="/icons/fino-mascot.png" alt="Fino, your AI companion" />
         </div>
-        <h1 className="signin__title">Grokbot</h1>
-        <p className="signin__sub">AI teammates with their own computers. Hand them a task and they get it done.</p>
+        <h1 className="signin__title">Fino</h1>
+        <p className="signin__sub">A little company. A lot done. Your AI team, tools and ideas in one place.</p>
         {googleLogin && <a className="btn btn--primary signin__google" href="/api/auth/google/start">
           <GoogleG /> Sign in with Google
         </a>}
@@ -50,7 +49,7 @@ export function SignIn() {
         {!googleLogin && devLogin && <p className="signin__foot">Use your local account to open your Bots. Connect Gmail later from Connect apps.</p>}
         {!googleLogin && !devLogin && <p role="alert" className="card__error">Sign-in has not been configured. Contact the owner to finish setup.</p>}
         {error && <div className="card__error signin__error">{error}</div>}
-        <p className="signin__foot">Open source. Not affiliated with xAI.</p>
+        <p className="signin__foot">Your own space to think, create and get things done.</p>
       </div>
     </div>
   );

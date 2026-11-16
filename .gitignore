@@ -15,3 +15,7 @@ docs/INTERNAL-*.md
 docs/SPEC.md
 web/screenshots/
 tests/out/
+
+# Xcode local user state
+ios/**/xcuserdata/
+ios/**/DerivedData/

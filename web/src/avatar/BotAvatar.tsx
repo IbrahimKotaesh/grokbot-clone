@@ -1,5 +1,4 @@
 import type { AvatarColor, AvatarShape, Bot } from '@shared/types';
-import { palette } from '../lib/colors';
 import { Icon } from '../components/Icon';
 import { SHAPES, type ShapeDef } from './shapes.gen';
 
@@ -28,31 +27,12 @@ interface Props {
   title?: string;
 }
 
-const OVERDRAW = 55.2 / 36;
-
 export function BotAvatar({ shape, color, size, star, ring, className, title }: Props) {
-  const def = shapeDef(shape);
-  const draw = size * OVERDRAW;
-  const off = (draw - size) / 2;
-  const fill = palette(color).fill;
-  // Stroke widths in viewBox units: viewBox width maps to `draw` px.
-  const vbw = Number(def.viewBox.split(/\s+/)[2]);
-  const px = vbw / draw;
-  return (
-    <span className={`bot-avatar ${className ?? ''}`} style={{ width: size, height: size }} title={title} role="img" aria-label={title}>
-      <svg width={draw} height={draw} viewBox={def.viewBox} style={{ position: 'absolute', left: -off, top: -off, overflow: 'visible' }} aria-hidden>
-        {ring && <path d={def.outline} fill="#1C1C1C3D" stroke="#1C1C1C3D" strokeWidth={px * 2 * 3.4} strokeLinejoin="round" />}
-        {ring && <path d={def.outline} fill="#FFFFFF" stroke="#FFFFFF" strokeWidth={px * 2 * 2.4} strokeLinejoin="round" />}
-        <path d={def.outline} fill="#FFFFFF" />
-        <path d={def.d} fill={fill} fillRule="evenodd" />
-      </svg>
-      {star && (
-        <span className="bot-avatar__star" style={{ width: size * 0.2667, height: size * 0.2667 }}>
-          <Icon name="star" size={size * 0.1333} color="#FFFFFF" />
-        </span>
-      )}
-    </span>
-  );
+  const hues: Record<string, number> = { black: 0, blue: 45, cyan: 15, green: -35, violet: 100, magenta: 140, red: 180, orange: 200, yellow: 235, brown: 195, gray: 0 };
+  return <span className={`fino-avatar ${ring ? 'is-ring' : ''} ${className ?? ''}`} style={{ width: size, height: size }} title={title} role="img" aria-label={title ?? `${color} ${shape} companion`}>
+    <img src="/icons/fino-mascot.png" alt="" style={{ filter: `hue-rotate(${hues[color] ?? 0}deg)${color === 'gray' ? ' saturate(0)' : ''}`, borderRadius: shape === 'square' ? '22%' : shape === 'star' ? '50%' : '32%' }} />
+    {star && <span className="bot-avatar__star" style={{ width: size * .28, height: size * .28 }}><Icon name="star" size={size * .15} color="#fff" /></span>}
+  </span>;
 }
 
 export function BotAvatarFor({ bot, size, star, className }: { bot: Pick<Bot, 'avatarShape' | 'avatarColor' | 'name'> & { isPrimary?: boolean }; size: number; star?: boolean; className?: string }) {

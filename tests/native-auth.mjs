@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { db } from '../server/dist/db.js';
+import { issueNativeTicket, redeemNativeTicket } from '../server/dist/lib/native-auth.js';
+db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run('native-test','native@example.com','Native test',Date.now());
+const verifier='a'.repeat(43), challenge=createHash('sha256').update(verifier).digest('base64url');
+const code=issueNativeTicket('native-test',challenge);
+assert.equal(redeemNativeTicket(code,'b'.repeat(43)),null,'An intercepted code needs the original verifier');
+assert.equal(redeemNativeTicket(code,verifier),'native-test');
+assert.equal(redeemNativeTicket(code,verifier),null,'Codes cannot be replayed');
+const expired=issueNativeTicket('native-test',challenge);
+db.prepare('UPDATE native_login_tickets SET expires_at=0').run();
+assert.equal(redeemNativeTicket(expired,verifier),null,'Expired codes cannot sign in');
+assert.throws(()=>issueNativeTicket('native-test','invalid'));
+assert.equal(redeemNativeTicket('invalid',verifier),null);
+console.log('PASS: native login requires PKCE, expires, and rejects replay');
+db.close();

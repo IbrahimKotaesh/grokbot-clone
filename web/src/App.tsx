@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { startEvents } from './lib/events';
 import { useStore } from './store';
 import { ChatView } from './components/ChatView';
@@ -13,6 +13,7 @@ import { SearchModal } from './components/modals/SearchModal';
 import { ConfigLayer } from './components/config/ConfigLayer';
 import { TasksView } from './components/config/TasksView';
 import { useConfigUI } from './configStore';
+import { Icon } from './components/Icon';
 
 function Shell() {
   const detailsOpen = useStore((s) => s.detailsOpen);
@@ -20,6 +21,8 @@ function Shell() {
   const viewerOpen = useStore((s) => s.viewerOpen);
   const collapsed = useStore((s) => s.sidebarCollapsed);
   const hasBot = useStore((s) => !!s.selectedBotId);
+  const navOpen = useStore((s) => s.mobileNavOpen);
+  const navButton = useRef<HTMLButtonElement>(null);
   const view = useConfigUI((s) => s.view);
 
   useEffect(() => {
@@ -38,6 +41,27 @@ function Shell() {
     return () => { stop(); window.removeEventListener('message', onMsg); };
   }, []);
 
+  useEffect(() => {
+    useStore.getState().set({ mobileNavOpen: false });
+  }, [view, modal]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const sidebar = document.querySelector<HTMLElement>('.sidebar');
+    const items = () => Array.from(sidebar?.querySelectorAll<HTMLElement>('button, a, input, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
+    items()[0]?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') useStore.getState().set({ mobileNavOpen: false });
+      if (e.key === 'Tab') {
+        const all = items(), first = all[0], last = all.at(-1);
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    window.addEventListener('keydown', key);
+    return () => { window.removeEventListener('keydown', key); navButton.current?.focus(); };
+  }, [navOpen]);
+
   // Global shortcuts: ⌘K search, ⌘B sidebar, ⇧⌘, details, ⌘N new bot.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -55,10 +79,16 @@ function Shell() {
   }, []);
 
   return (
-    <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
+    <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
+      <div className="mobile-topbar">
+        <button ref={navButton} type="button" className="icon-btn" aria-label="Open conversations" aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
+        <span className="mobile-brand"><img src="/icons/fino-mascot.png" alt="" />Fino</span>
+        <button type="button" className="icon-btn" aria-label="Search conversations" onClick={() => useStore.getState().setModal('search')}><Icon name="search" size={21} /></button>
+      </div>
+      {navOpen && <button className="nav-backdrop" aria-label="Close conversations" onClick={() => useStore.getState().set({ mobileNavOpen: false })} />}
       <Sidebar />
       {view === 'tasks' ? <TasksView /> : <ChatView />}
-      {detailsOpen && hasBot && view === 'chat' && <DetailsPanel />}
+      {detailsOpen && hasBot && view === 'chat' && <><button className="details-backdrop" aria-label="Close conversation details" onClick={() => useStore.getState().set({ detailsOpen: false })} /><DetailsPanel /></>}
       {modal === 'create' && <CreateBotModal />}
       {modal === 'group' && <CreateGroupModal />}
       {modal === 'search' && <SearchModal />}

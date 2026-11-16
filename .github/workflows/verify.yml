@@ -18,6 +18,10 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
+      - run: node tests/native-auth.mjs
+        env:
+          SESSION_SECRET: ci-native-test-value
+          DB_PATH: ":memory:"
       - run: node tests/connected-apps.mjs
         env:
           SESSION_SECRET: ci-only-test-value

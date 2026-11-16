@@ -1,3 +1,4 @@
+import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db, now } from './db.js';
@@ -59,11 +60,14 @@ api.get('/auth/me', (c) => {
 api.get('/auth/google/start', async (c) => {
   if (env.composioKey === 'disabled') return c.redirect(`${env.appUrl}/?login=google-unavailable`);
   try {
+    const nativeChallenge = c.req.query('native_challenge') ?? '';
+    if (nativeChallenge && !validChallenge(nativeChallenge)) return c.json({ error: 'invalid challenge' }, 400);
     const attemptId = newId('login');
     const provisional = newId('usr');
     const cb = `${env.serverUrl}/api/auth/google/callback?attempt=${attemptId}`;
     const { redirectUrl, connectedAccountId } = await startGoogleLogin(provisional, cb);
     db.prepare('INSERT INTO login_attempts(id,provisional_user_id,connected_account_id,created_at) VALUES (?,?,?,?)').run(attemptId, provisional, connectedAccountId ?? null, now());
+    if (nativeChallenge) db.prepare('UPDATE login_attempts SET native_challenge=? WHERE id=?').run(nativeChallenge, attemptId);
     return c.redirect(redirectUrl);
   } catch (error: any) {
     console.warn('[auth] Google sign-in could not start; provider status:', error?.status ?? 'unavailable');
@@ -74,7 +78,7 @@ api.get('/auth/google/start', async (c) => {
 api.get('/auth/google/callback', async (c) => {
   const attempt = db.prepare('SELECT * FROM login_attempts WHERE id=?').get(c.req.query('attempt') ?? '') as any;
   const caId = c.req.query('connected_account_id') ?? attempt?.connected_account_id;
-  if (!attempt || c.req.query('status') === 'failed' || !caId) return c.redirect(`${env.appUrl}/?login=failed`);
+  if (!attempt || now() - attempt.created_at > 15 * 60_000 || c.req.query('status') === 'failed' || !caId) return c.redirect(`${env.appUrl}/?login=failed`);
   if (attempt.connected_account_id && caId !== attempt.connected_account_id) return c.redirect(`${env.appUrl}/?login=failed`);
   db.prepare('DELETE FROM login_attempts WHERE id=?').run(attempt.id);
   try {
@@ -86,12 +90,25 @@ api.get('/auth/google/callback', async (c) => {
     const { id, isNew } = findOrCreateUser(profile.email, profile.name, attempt.provisional_user_id);
     // Existing user: the Gmail connection made for sign-in belongs to a throwaway id; remove it.
     if (!isNew && id !== attempt.provisional_user_id) await deleteConnection(caId);
+    if (attempt.native_challenge) {
+      const code = issueNativeTicket(id, attempt.native_challenge);
+      return c.redirect(`fino://auth?code=${encodeURIComponent(code)}`);
+    }
     createSession(c, id);
     return c.redirect(`${env.appUrl}/`);
   } catch (e: any) {
     console.error('[auth] google callback', e);
     return c.redirect(`${env.appUrl}/?login=failed`);
   }
+});
+
+api.post('/auth/native/exchange', async (c) => {
+  const body = await c.req.parseBody();
+  const id = redeemNativeTicket(String(body.code ?? ''), String(body.verifier ?? ''));
+  const owner = id ? db.prepare('SELECT email FROM users WHERE id=?').get(id) as any : null;
+  if (!owner || (env.allowedEmails.length && !env.allowedEmails.includes(owner.email.toLowerCase()))) return c.json({ error: 'invalid or expired login' }, 401);
+  createSession(c, id!);
+  return c.redirect(`${env.appUrl}/`, 303);
 });
 
 api.post('/auth/dev', async (c) => {

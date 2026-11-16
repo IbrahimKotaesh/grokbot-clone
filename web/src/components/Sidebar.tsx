@@ -66,10 +66,11 @@ export function Sidebar() {
   const others = bots.filter((b) => !b.isPrimary).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
   return (
-    <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
+    <aside id="workspace-sidebar" aria-label="Conversations" className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar__titlebar">
-        <TrafficLights />
+        <div className="sidebar-brand"><img src="/icons/fino-mascot.png" alt="" /><span>Fino</span></div>
         <div className="sidebar__controls">
+          <button type="button" className="icon-btn mobile-drawer-close" aria-label="Close conversations" onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={22} /></button>
           <button type="button" className="icon-btn icon-btn--plain" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title="Toggle sidebar (⌘B)">
             <Icon name="sidebar" opacity={0.66} />
           </button>

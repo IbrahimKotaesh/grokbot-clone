@@ -25,6 +25,7 @@ interface State {
 
   detailsOpen: boolean;
   sidebarCollapsed: boolean;
+  mobileNavOpen: boolean;
   modal: ModalKind;
   viewerOpen: boolean;
 
@@ -60,8 +61,9 @@ export const useStore = create<State>((set, get) => ({
   computer: null,
   connectionsVersion: 0,
   sseConnected: false,
-  detailsOpen: lsGet(LS_DETAILS) !== '0',
+  detailsOpen: !window.matchMedia('(max-width: 900px)').matches && lsGet(LS_DETAILS) !== '0',
   sidebarCollapsed: lsGet(LS_SIDEBAR) === '1',
+  mobileNavOpen: false,
   modal: null,
   viewerOpen: false,
 
@@ -87,7 +89,7 @@ export const useStore = create<State>((set, get) => ({
   },
 
   selectBot(id) {
-    set({ selectedBotId: id });
+    set({ selectedBotId: id, mobileNavOpen: false });
     lsSet(LS_SELECTED, id);
     const t = get().transcripts[id];
     if (!t?.loaded) get().loadRows(id).catch(console.error);
