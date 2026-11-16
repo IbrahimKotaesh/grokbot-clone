@@ -25,7 +25,7 @@ export interface AppsResponse { configured?: boolean; apps: Toolkit[]; connected
 export interface RoomMember { id: string; name: string; label: string; avatarShape: string; avatarColor: string }
 
 export const api = {
-  me: () => req<{ user: User | null; devLogin: boolean }>('GET', '/auth/me'),
+  me: () => req<{ user: User | null; devLogin: boolean; googleLogin: boolean; localAccount: {email:string;name:string} | null }>('GET', '/auth/me'),
   devLogin: (email: string, name?: string) => req<{ ok: true }>('POST', '/auth/dev', { email, name }),
   logout: () => req<{ ok: true }>('POST', '/auth/logout'),
 

@@ -51,16 +51,24 @@ function findOrCreateUser(email: string, name?: string, preferId?: string) {
 
 api.get('/auth/me', (c) => {
   const user = userFromCookieHeader(c.req.header('cookie'));
-  return c.json({ user, devLogin: env.devLogin });
+  const localAccount = env.devLogin && env.computerProvider === 'local'
+    ? db.prepare('SELECT email, name FROM users ORDER BY created_at ASC LIMIT 1').get() ?? null : null;
+  return c.json({ user, devLogin: env.devLogin, googleLogin: env.composioKey !== 'disabled', localAccount });
 });
 
 api.get('/auth/google/start', async (c) => {
-  const attemptId = newId('login');
-  const provisional = newId('usr');
-  const cb = `${env.serverUrl}/api/auth/google/callback?attempt=${attemptId}`;
-  const { redirectUrl, connectedAccountId } = await startGoogleLogin(provisional, cb);
-  db.prepare('INSERT INTO login_attempts(id,provisional_user_id,connected_account_id,created_at) VALUES (?,?,?,?)').run(attemptId, provisional, connectedAccountId ?? null, now());
-  return c.redirect(redirectUrl);
+  if (env.composioKey === 'disabled') return c.redirect(`${env.appUrl}/?login=google-unavailable`);
+  try {
+    const attemptId = newId('login');
+    const provisional = newId('usr');
+    const cb = `${env.serverUrl}/api/auth/google/callback?attempt=${attemptId}`;
+    const { redirectUrl, connectedAccountId } = await startGoogleLogin(provisional, cb);
+    db.prepare('INSERT INTO login_attempts(id,provisional_user_id,connected_account_id,created_at) VALUES (?,?,?,?)').run(attemptId, provisional, connectedAccountId ?? null, now());
+    return c.redirect(redirectUrl);
+  } catch (error: any) {
+    console.warn('[auth] Google sign-in could not start; provider status:', error?.status ?? 'unavailable');
+    return c.redirect(`${env.appUrl}/?login=google-failed`);
+  }
 });
 
 api.get('/auth/google/callback', async (c) => {

@@ -6,11 +6,18 @@ import { TrafficLights } from './Sidebar';
 
 export function SignIn() {
   const devLogin = useStore((s) => s.devLogin);
+  const googleLogin = useStore((s) => s.googleLogin);
+  const localAccount = useStore((s) => s.localAccount);
   const checkAuth = useStore((s) => s.checkAuth);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [email, setEmail] = useState(localAccount?.email ?? '');
+  const [name, setName] = useState(localAccount?.name ?? '');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(() => (new URLSearchParams(location.search).get('login') === 'failed' ? 'Sign-in didn’t finish. Try again.' : null));
+  const [error, setError] = useState<string | null>(() => {
+    const status = new URLSearchParams(location.search).get('login');
+    if(status === 'google-unavailable') return 'Google sign-in has not been set up. Continue with your local account below.';
+    if(status === 'google-failed') return 'Google sign-in is temporarily unavailable. Check the connection setup, or continue locally.';
+    return status === 'failed' ? 'Sign-in didn’t finish. Try again.' : null;
+  });
 
   const dev = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,17 +35,19 @@ export function SignIn() {
         </div>
         <h1 className="signin__title">Grokbot</h1>
         <p className="signin__sub">AI teammates with their own computers. Hand them a task and they get it done.</p>
-        <a className="btn btn--primary signin__google" href="/api/auth/google/start">
+        {googleLogin && <a className="btn btn--primary signin__google" href="/api/auth/google/start">
           <GoogleG /> Sign in with Google
-        </a>
+        </a>}
         {devLogin && (
           <form className="signin__dev" onSubmit={dev}>
-            <div className="signin__divider"><span>Dev sign-in</span></div>
+            <div className="signin__divider"><span>Continue on this Mac</span></div>
             <input className="text-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email" />
             <input className="text-input" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
-            <button type="submit" className="btn btn--secondary" disabled={busy}>{busy ? 'Signing in…' : 'Continue with email'}</button>
+            <button type="submit" className="btn btn--secondary" disabled={busy}>{busy ? 'Signing in…' : localAccount && email === localAccount.email ? `Continue as ${localAccount.name || localAccount.email}` : 'Continue locally'}</button>
           </form>
         )}
+        {!googleLogin && devLogin && <p className="signin__foot">Use your local account to open your Bots. Connect Gmail later from Connect apps.</p>}
+        {!googleLogin && !devLogin && <p role="alert" className="card__error">Sign-in has not been configured. Contact the owner to finish setup.</p>}
         {error && <div className="card__error signin__error">{error}</div>}
         <p className="signin__foot">Open source. Not affiliated with xAI.</p>
       </div>
