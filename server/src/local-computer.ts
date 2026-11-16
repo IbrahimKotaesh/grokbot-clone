@@ -39,17 +39,23 @@ async function checked(command: string, screen?: string) {
 const screenInfo = (n: number) => ({ id: n ? `screen-${n}` : 'default', display: `:${n}`, width: 1280, height: 800, default: n === 0 });
 async function startScreen(n: number) {
   const s = screenInfo(n);
-  await checked(`mkdir -p /root/grokbot/screens/${n}; if ! xdpyinfo -display :${n} >/dev/null 2>&1; then nohup Xvfb :${n} -screen 0 1280x800x24 -ac >/tmp/grokbot-x-${n}.log 2>&1 </dev/null & sleep 1; fi
+  await checked(`exec 9>/tmp/grokbot-screen-${n}.lock; flock -w 15 9 || exit 1;
+    mkdir -p /root/grokbot/screens/${n}; if ! xdpyinfo -display :${n} >/dev/null 2>&1; then nohup Xvfb :${n} -screen 0 1280x800x24 -ac >/tmp/grokbot-x-${n}.log 2>&1 </dev/null 9>&- & sleep 1; fi
     mkdir -p /root/.config/pcmanfm/fino-${n};
     printf '[*]\nwallpaper_mode=color\ndesktop_bg=#dbece5\ndesktop_fg=#184e3c\nshow_documents=1\nshow_trash=1\nshow_mounts=1\n' > /root/.config/pcmanfm/fino-${n}/desktop-items-0.conf
     if ! test -f /tmp/grokbot-screen-${n}.started; then
-      nohup dbus-run-session -- bash -c 'openbox & xsetroot -solid "#dbece5"; pcmanfm --desktop --profile=fino-${n} & tint2 & wait' >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null &
-      nohup x11vnc -display :${n} -localhost -rfbport ${5900+n} -forever -shared -nopw >/tmp/grokbot-vnc-${n}.log 2>&1 </dev/null &
-      nohup websockify ${wsBind}:${6080+n} localhost:${5900+n} >/tmp/grokbot-ws-${n}.log 2>&1 </dev/null &
+      nohup dbus-run-session -- bash -c 'openbox & xsetroot -solid "#dbece5"; pcmanfm --desktop --profile=fino-${n} & tint2 & wait' >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null 9>&- &
       touch /tmp/grokbot-screen-${n}.started
     fi
+    if ! test -f /tmp/grokbot-relay-${n}.v3; then
+      pkill -f '^x11vnc -display :${n} ' || true
+      pkill -f '^/usr/bin/python3 /usr/bin/websockify ${wsBind}:${6080+n} ' || true
+      nohup x11vnc -display :${n} -localhost -rfbport ${5900+n} -forever -shared -nopw -threads -rfbwait 5000 -readtimeout 10 >/tmp/grokbot-vnc-${n}.log 2>&1 </dev/null 9>&- &
+      nohup websockify ${wsBind}:${6080+n} localhost:${5900+n} >/tmp/grokbot-ws-${n}.log 2>&1 </dev/null 9>&- &
+      touch /tmp/grokbot-relay-${n}.v3
+    fi
     for attempt in $(seq 1 50); do
-      if (echo >/dev/tcp/127.0.0.1/${6080+n}) 2>/dev/null && (echo >/dev/tcp/127.0.0.1/${5900+n}) 2>/dev/null; then exit 0; fi
+      if python3 -c 'from pathlib import Path; ports={int(line.split()[1].split(":")[1],16) for line in Path("/proc/net/tcp").read_text().splitlines()[1:] if line.split()[3]=="0A"}; raise SystemExit(0 if {${6080+n},${5900+n}} <= ports else 1)'; then exit 0; fi
       sleep 0.1
     done
     echo 'Desktop relay did not become ready' >&2; exit 1`, s.id);

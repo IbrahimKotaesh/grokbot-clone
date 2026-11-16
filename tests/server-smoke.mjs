@@ -26,6 +26,8 @@ try {
   const bot=bots.bots.find(b=>b.isPrimary);assert.ok(bot);
   const appList=await fetch(`${base}/api/apps?search=gmail`,{headers}).then(r=>r.json());
   assert.equal(appList.configured,true);assert.ok(appList.apps.some(a=>a.slug==='gmail'));
+  // Reopening the viewer must not poison the desktop relay with invalid health probes.
+  for (let connection=0; connection<3; connection++) {
   const socket=new WebSocket(`${base.replace('https:','wss:')}/api/bots/${bot.id}/screen`,['binary'],{headers});
   await new Promise((resolve,reject)=>{
     let state=0,buffer=Buffer.alloc(0);
@@ -39,6 +41,7 @@ try {
       if(state===3 && buffer.length>=24){assert.equal(buffer.readUInt16BE(0),1280);assert.equal(buffer.readUInt16BE(2),800);clearTimeout(timer);socket.close();resolve();state=4;}
     });
   });
+  }
   const image=Buffer.from(await fetch(`${base}/api/bots/${bot.id}/screenshot`,{headers}).then(r=>{assert.equal(r.status,200);return r.arrayBuffer();}));
   assert.equal(image.subarray(1,4).toString(),'PNG');
   console.log('PASS: HTTPS, owner-only access, disabled dev login, CSRF, PWA assets, Gmail catalog, WSS/VNC relay and desktop screenshot');
