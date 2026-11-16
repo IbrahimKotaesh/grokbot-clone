@@ -333,10 +333,15 @@ api.delete('/memories/:id', (c) => {
 
 api.get('/computer', async (c) => c.json({ computer: await refreshComputer(c.get('user').id) }));
 
-api.post('/computer/ensure', (c) => {
+api.post('/computer/ensure', async (c) => {
   const userId = c.get('user').id;
-  ensureComputer(userId).catch((e) => console.warn('[computer] ensure failed', e.message));
-  return c.json({ computer: computerState(userId) });
+  try {
+    await ensureComputer(userId);
+    return c.json({ computer: computerState(userId) });
+  } catch (e) {
+    console.warn('[computer] ensure failed', (e as Error).message);
+    return c.json({ error: 'The computer could not start. Please try again.' },503);
+  }
 });
 
 api.post('/computer/suspend', async (c) => {

@@ -40,7 +40,11 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     pending.clear();
     if (!completed) fail(e);
   });
+  let flushTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastFlush = 0;
   const flush = (streaming: boolean) => {
+    if (flushTimer) clearTimeout(flushTimer); flushTimer = null;
+    lastFlush = Date.now();
     const body = { type: 'message' as const, role: 'assistant' as const, text: answer, streaming };
     if (seq === null) seq = appendRow(botId, 'message', body).seq;
     else updateRow(botId, seq, body);
@@ -65,7 +69,11 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
       return;
     }
     const p = m.params;
-    if (m.method === 'item/agentMessage/delta') { answer += p.delta; flush(true); }
+    if (m.method === 'item/agentMessage/delta') {
+      answer += p.delta;
+      if (seq === null || Date.now() - lastFlush >= 60) flush(true);
+      else if (!flushTimer) flushTimer = setTimeout(() => flush(true), 60 - (Date.now() - lastFlush));
+    }
     if (m.method === 'item/completed' && p.item?.type === 'agentMessage') {
       if (seq === null && p.item.text) { answer=p.item.text; flush(false); }
       else if (seq !== null) flush(false);
@@ -98,6 +106,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     await rpc('turn/start',{threadId:thread.thread.id,input:[{type:'text',text},...images.map(url=>({type:'image',url}))],effort:bot.effort ?? 'medium'});
     await done;
   } finally {
+    if (flushTimer) clearTimeout(flushTimer);
     clearTimeout(timer); signal.removeEventListener('abort',abort);
     if(seq !== null) flush(false);
     rl.close(); proc.kill();

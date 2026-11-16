@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { ActivityLine } from './ActivityLine';
 import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
+import { useSmoothText } from '../lib/smooth-text';
 import { Markdown } from './Markdown';
 
 type Item =
@@ -56,11 +57,12 @@ function cornerClass(i: number, n: number) {
 
 const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left' | 'right'; pos: string }) {
   const b = row.body as MessageBody;
+  const shown = useSmoothText(b.text, !!b.streaming);
   return (
     <div className={`bubble-wrap is-${side}`}>
       <div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
         {b.images?.length ? <div className="bubble__photos">{b.images.map(image=><a key={image.id} href={image.url} target="_blank" rel="noreferrer noopener"><img src={image.url} alt={image.name} loading="lazy"/></a>)}</div> : null}
-        {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={b.text || ' '} />}
+        {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
         {b.citations && b.citations.length > 0 && (
           <div className="bubble__cites">
             {b.citations.slice(0, 6).map((c, i) => {
@@ -150,11 +152,22 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [bot.id]);
 
+  // Images, smooth text and viewport changes can resize the conversation without
+  // rerendering Transcript. Keep the bottom pinned only while the user is there.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const col = el?.querySelector('.transcript__col');
+    if (!el || !col) return;
+    const observer = new ResizeObserver(() => { if (stick.current) el.scrollTop = el.scrollHeight; });
+    observer.observe(col); observer.observe(el);
+    return () => observer.disconnect();
+  }, [bot.id]);
+
   const onScroll = () => {
     const el = scrollRef.current!;
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
     stick.current = dist < 40;
-    setShowJump(dist > 200);
+    setShowJump(dist > 40);
   };
 
   const jump = () => {

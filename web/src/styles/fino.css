@@ -111,7 +111,6 @@ button, a { touch-action: manipulation; }
   .bot-row:has(.is-working) .fino-avatar img, .pinned__avatar:has(.is-working) .fino-avatar img { animation: fino-working 1.8s ease-in-out infinite; }
   .sidebar-brand img, .mobile-brand img { animation: fino-float 12s ease-in-out infinite; }
   .fino-avatar:hover img { animation: fino-working .7s ease-in-out 1; }
-  .group:last-child .bubble { animation: fino-arrive 220ms ease-out both; }
   .bot-row, .pinned__tile, .app-row, .icon-btn, .app-row__connect { transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
   .bot-row:active, .pinned__tile:active, .icon-btn:active, .app-row__connect:active { transform: scale(.97); }
   @media (max-width: 900px) { .app.is-nav-open .sidebar { animation: fino-drawer-in 200ms ease-out; } }
@@ -152,3 +151,15 @@ button, a { touch-action: manipulation; }
 .photo-camera video { display:block; width:100%; max-height:65dvh; border-radius:14px; background:#172f2c; }
 .photo-camera__capture { display:block; margin:16px auto 0; padding:12px 24px; border:0; border-radius:14px; color:white; background:#176d70; cursor:pointer; }
 .photo-camera__capture:disabled { opacity:.4; cursor:default; }
+
+/* The writing area owns its full row; controls never sit alongside the text. */
+.composer__writing { padding:0; }
+.composer__writing .composer__input { display:block; width:100%; min-height:56px; padding:14px 16px 6px; line-height:24px; font-size:16px; letter-spacing:normal; box-sizing:border-box; }
+.composer__toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 12px 12px; }
+.composer__tools { display:flex; align-items:center; gap:8px; min-width:0; }
+.composer__toolbar .composer__plus-anchor, .composer__toolbar .composer__right { padding:0; }
+.composer__toolbar .composer__right { display:flex; align-items:center; gap:8px; }
+.composer__toolbar .composer__btn, .composer__toolbar .composer__cta { width:40px; height:40px; min-width:40px; min-height:40px; }
+.composer__toolbar .composer__model select { min-height:40px; }
+.composer__dictation-preview { padding:0 16px 12px; color:var(--color-text-secondary); font-size:12px; }
+.bubble__plain, .md { letter-spacing:normal; }

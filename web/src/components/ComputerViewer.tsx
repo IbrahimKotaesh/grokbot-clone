@@ -20,8 +20,23 @@ export function ComputerViewer() {
   const [mode, setMode] = useState<Mode>('watch');
   const [conn, setConn] = useState<Conn>('connecting');
   const [attempt, setAttempt] = useState(0);
+  const [waking, setWaking] = useState(false);
+  const [wakeError, setWakeError] = useState('');
   const running = computer?.status === 'running';
   const close = () => set({ viewerOpen: false });
+
+  const wake = async () => {
+    setWaking(true); setWakeError('');
+    try { const result = await api.ensureComputer(); set({computer:result.computer}); }
+    catch (e) { setWakeError((e as Error).message || 'The computer could not start. Please try again.'); }
+    finally { setWaking(false); }
+  };
+  useEffect(() => {
+    // Opening a sleeping computer is itself a request to wake it.
+    if (bot && !running) void wake();
+    // Only once on opening/switching; a failed attempt waits for an explicit retry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bot?.id]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -63,7 +78,7 @@ export function ComputerViewer() {
   }, [bot?.id, running, mode, attempt]);
 
   if (!bot) return null;
-  const busy = computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
+  const busy = waking || computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
 
   return (
     <div className="viewer" role="dialog" aria-modal="true" aria-label={`${bot.name}'s computer`} style={botVars(bot.avatarColor)}>
@@ -95,9 +110,8 @@ export function ComputerViewer() {
         ) : (
           <div className="viewer__overlay viewer__overlay--asleep">
             <span className="viewer__sleep-face"><i /><i /></span>
-            <span>{busy ? computerStatusText(computer) : 'The computer is asleep.'}</span>
-            {!busy && <button type="button" className="btn btn--light" onClick={() => api.ensureComputer().catch(() => {})}>Wake computer</button>}
-            {computer?.error && <span className="viewer__err">{computer.error}</span>}
+            <span>{busy ? 'Starting your computer…' : wakeError || (computer?.status === 'error' ? 'The computer is unavailable.' : 'The computer is asleep.')}</span>
+            {!busy && <button type="button" className="btn btn--light" onClick={() => void wake()}>{wakeError || computer?.status === 'error' ? 'Try again' : 'Wake computer'}</button>}
           </div>
         )}
       </div>

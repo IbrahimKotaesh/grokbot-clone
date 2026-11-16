@@ -84,7 +84,7 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
       if (message.type==='system' && message.subtype==='init') db.prepare('INSERT OR REPLACE INTO claude_sessions VALUES (?,?,?)').run(botId,bot.generation,message.session_id);
       if(message.type==='stream_event' && message.event.type==='content_block_delta' && message.event.delta.type==='text_delta') {
         answer+=message.event.delta.text;
-        if(seq===null || Date.now()-lastFlush>120) flush(true);
+        if(seq===null || Date.now()-lastFlush>60) flush(true);
       }
       if(message.type==='assistant') {
         const full=message.message.content.filter((c:any)=>c.type==='text').map((c:any)=>c.text).join('\n');

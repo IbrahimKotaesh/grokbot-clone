@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Bot } from '@shared/types';
 import { api } from '../lib/api';
-import { displayName, useStore } from '../store';
+import { useStore } from '../store';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
 import { configApi } from '../lib/configApi';
@@ -108,7 +108,6 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   };
 
   const hasText = text.trim().length > 0 || photos.length > 0;
-  const multiline = text.includes('\n') || (ref.current?.scrollHeight ?? 0) > 30;
 
   return (
     <div className="composer-area">
@@ -119,8 +118,23 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
       <div className="composer-shell">
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {preparing&&<div className="composer__preparing" role="status">Preparing photo…</div>}
-      <div className={`composer${multiline ? ' is-multiline' : ''}`}>
-        <div className="composer__left">
+      <div className="composer__writing">
+          <textarea
+            dir="auto"
+            ref={ref}
+            className="composer__input"
+            rows={1}
+            value={text}
+            placeholder={`Message ${bot.name}…`}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
+            }}
+            aria-label={`Message ${bot.name}`}
+          />
+      </div>
+      <div className="composer__toolbar">
+        <div className="composer__tools">
           <span className="composer__plus-anchor">
             <button type="button" className="composer__btn" disabled={sending || preparing} onClick={() => setMenu(!menu)} aria-label="More actions" aria-expanded={menu}>
               <Icon name="composer_plus" opacity={0.56} />
@@ -138,19 +152,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               />
             )}
           </span>
-          <textarea
-            dir="auto"
-            ref={ref}
-            className="composer__input"
-            rows={1}
-            value={text}
-            placeholder={`Message ${displayName(bot)}`}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
-            }}
-            aria-label={`Message ${bot.name}`}
-          />
+          <label className="composer__model"><select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
         </div>
         <div className="composer__right">
           <button
@@ -181,10 +183,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           )}
         </div>
       </div>
-      <div className="composer__footer">
-        <label className="composer__model"><select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
-        {dictation.state === 'recording' && <span className="composer__voice-status" role="status" dir="auto">{dictation.interim || 'Listening…'}</span>}
-      </div>
+      {dictation.state === 'recording' && <div className="composer__dictation-preview" role="status" dir="auto">{dictation.interim || 'Listening…'}</div>}
       </div>
     </div>
   );

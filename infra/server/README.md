@@ -8,7 +8,9 @@ volume outside code releases. Set `DEV_LOGIN=0`, `ALLOWED_EMAILS` to the owner,
 Build `desktop.Dockerfile` as `grokbot-desktop:local`. The fixed desktop container
 must publish only 127.0.0.1:16080–16083 to 6080–6083, use the persistent
 `grokbot-desktop` volume at `/root/grokbot`, and have no host directory or
-Docker socket mounted. Set `DESKTOP_TRANSPORT=container`,
+Docker socket mounted. Set the container PID limit to 1024: four Chromium desktops
+can exceed 512 threads. For an existing container use `docker update --pids-limit
+1024 grokbot-desktop`. Use Docker `--init` when provisioning a new container. Set `DESKTOP_TRANSPORT=container`,
 `DESKTOP_WS_BIND=0.0.0.0`, and `DESKTOP_VNC_BASE_PORT=16080` for the app.
 The desktop wrapper must be root-owned and writable only by root. Grant the
 service user sudo access only to that wrapper with no arguments; do not grant

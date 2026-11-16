@@ -39,15 +39,19 @@ async function checked(command: string, screen?: string) {
 const screenInfo = (n: number) => ({ id: n ? `screen-${n}` : 'default', display: `:${n}`, width: 1280, height: 800, default: n === 0 });
 async function startScreen(n: number) {
   const s = screenInfo(n);
+  const portsReady = `python3 -c 'from pathlib import Path; ports={int(line.split()[1].split(":")[1],16) for line in Path("/proc/net/tcp").read_text().splitlines()[1:] if line.split()[3]=="0A"}; raise SystemExit(0 if {${6080+n},${5900+n}} <= ports else 1)'`;
   await checked(`exec 9>/tmp/grokbot-screen-${n}.lock; flock -w 15 9 || exit 1;
     mkdir -p /root/grokbot/screens/${n}; if ! xdpyinfo -display :${n} >/dev/null 2>&1; then nohup Xvfb :${n} -screen 0 1280x800x24 -ac >/tmp/grokbot-x-${n}.log 2>&1 </dev/null 9>&- & sleep 1; fi
     mkdir -p /root/.config/pcmanfm/fino-${n};
     printf '[*]\nwallpaper_mode=color\ndesktop_bg=#dbece5\ndesktop_fg=#184e3c\nshow_documents=1\nshow_trash=1\nshow_mounts=1\n' > /root/.config/pcmanfm/fino-${n}/desktop-items-0.conf
-    if ! test -f /tmp/grokbot-screen-${n}.started; then
+    wm_ready() { id=$(xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | awk '/window id/{print $NF}'); test -n "$id" && xwininfo -id "$id" >/dev/null 2>&1; }
+    if ! test -f /tmp/grokbot-screen-${n}.started || ! wm_ready; then
       nohup dbus-run-session -- bash -c 'openbox & xsetroot -solid "#dbece5"; pcmanfm --desktop --profile=fino-${n} & tint2 & wait' >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null 9>&- &
+      for attempt in $(seq 1 50); do wm_ready && break; sleep 0.1; done
+      wm_ready || { echo 'Desktop window manager did not become ready' >&2; exit 1; }
       touch /tmp/grokbot-screen-${n}.started
     fi
-    if ! test -f /tmp/grokbot-relay-${n}.v3; then
+    if ! test -f /tmp/grokbot-relay-${n}.v3 || ! ${portsReady}; then
       pkill -f '^x11vnc -display :${n} ' || true
       pkill -f '^/usr/bin/python3 /usr/bin/websockify ${wsBind}:${6080+n} ' || true
       nohup x11vnc -display :${n} -localhost -rfbport ${5900+n} -forever -shared -nopw -threads -rfbwait 5000 -readtimeout 10 >/tmp/grokbot-vnc-${n}.log 2>&1 </dev/null 9>&- &
@@ -55,7 +59,7 @@ async function startScreen(n: number) {
       touch /tmp/grokbot-relay-${n}.v3
     fi
     for attempt in $(seq 1 50); do
-      if python3 -c 'from pathlib import Path; ports={int(line.split()[1].split(":")[1],16) for line in Path("/proc/net/tcp").read_text().splitlines()[1:] if line.split()[3]=="0A"}; raise SystemExit(0 if {${6080+n},${5900+n}} <= ports else 1)'; then exit 0; fi
+      if ${portsReady}; then exit 0; fi
       sleep 0.1
     done
     echo 'Desktop relay did not become ready' >&2; exit 1`, s.id);
