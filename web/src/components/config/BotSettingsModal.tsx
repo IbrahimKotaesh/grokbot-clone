@@ -327,6 +327,8 @@ function SkillEditor({ botId, skill, onDone }: { botId: string; skill?: Skill; o
 // ---------------------------------------------------------------------------
 
 function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundle | null; onChange: () => void }) {
+  const [newMemory,setNewMemory]=useState(''),[savingMemory,setSavingMemory]=useState(false),[memoryError,setMemoryError]=useState('');
+  const save=async()=>{setSavingMemory(true);setMemoryError('');try{await configApi.saveMemory(bot.id,newMemory);setNewMemory('');onChange();}catch(e){setMemoryError((e as Error).message);}finally{setSavingMemory(false);}};
   const [q, setQ] = useState('');
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const memories = useMemo(() => (data?.memories ?? []).filter((m) => !hidden.has(m.id) && (!q || m.text.toLowerCase().includes(q.toLowerCase()))), [data, hidden, q]);
@@ -334,20 +336,21 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
     setHidden((h) => new Set(h).add(m.id));
     try { await configApi.deleteMemory(m.id); onChange(); } catch { setHidden((h) => { const n = new Set(h); n.delete(m.id); return n; }); }
   };
-  const fill = data ? Math.min(100, Math.round((data.memory.historyChars / data.memory.compactAtChars) * 100)) : 0;
+  const fill = data?.memory.compactAtChars ? Math.min(100, Math.round(((data.memory.historyChars??0) / data.memory.compactAtChars) * 100)) : 0;
   return (
     <div className="cfg-page">
       <div className="cfg-page__head">
         <div>
           <div className="cfg-page__title">Memories</div>
-          <div className="cfg-page__sub">What {bot.name} remembers about you. It saves things when you share them, and picks up more on its own once a chat goes quiet.</div>
+          <div className="cfg-page__sub">What {bot.name} remembers about you. Saved facts stay with this bot across restarts and model changes. Conversation history is stored separately.</div>
         </div>
       </div>
+      <div className="memory-add"><textarea className="text-input" rows={2} maxLength={2000} placeholder="A preference this bot should remember…" aria-label="New saved memory" value={newMemory} onChange={e=>setNewMemory(e.target.value)} dir="auto"/><button type="button" className="btn btn--primary" disabled={!newMemory.trim()||savingMemory} onClick={()=>void save()}>{savingMemory?'Saving…':'Save memory'}</button>{memoryError&&<p role="alert">{memoryError}</p>}</div>
       {(data?.memories.length ?? 0) > 6 && (
         <input className="text-input" placeholder="Search memories" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search memories" />
       )}
       {!data ? <div className="cfg-empty">Loading…</div> : memories.length === 0 ? (
-        <div className="cfg-empty">{q ? 'No memories match.' : `Nothing yet. Tell ${bot.name} about yourself, or just chat. It’ll pick things up.`}</div>
+        <div className="cfg-empty">{q ? 'No memories match.' : `No saved memories yet. Ask ${bot.name} to remember an important preference.`}</div>
       ) : (
         <div className="cfg-list">
           {memories.map((m) => (
@@ -366,7 +369,8 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
           ))}
         </div>
       )}
-      {data && (
+      {data?.memory.mode==='provider'&&<div className="cfg-meter"><div className="cfg-meter__label"><span>Saved memory</span><span>{data.memory.savedMemories} facts · {data.memory.conversationMessages} messages</span></div><div className="cfg-field__hint">{data.memory.provider==='claude'?'Claude Code':'ChatGPT'} manages its working context. Fino does not receive a reliable context usage percentage. Saved memories and searchable conversation history remain on your server.</div></div>}
+      {data?.memory.mode==='app' && (
         <div className="cfg-meter" title="Older messages are summarized automatically when this fills up.">
           <div className="cfg-meter__label"><span>Conversation memory</span><span>{fill}% full</span></div>
           <div className="cfg-meter__track"><span style={{ width: `${Math.max(2, fill)}%` }} /></div>

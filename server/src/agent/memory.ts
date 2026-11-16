@@ -1,3 +1,4 @@
+import {recallTokens} from './recall.js';
 import OpenAI from 'openai';
 import { db, now } from '../db.js';
 import '../db-config.js';
@@ -244,7 +245,7 @@ export async function maybeCompact(botId: string, items: any[], opts: { force?: 
 const STOP = new Set('a an the and or but of to in on at for with from by is are was were be been it its this that these those i me my you your user users they them their we our he she his her as about into than then so if not no do does did have has had will would can could should just also very really more most some any all prefers likes wants'.split(' '));
 
 export function words(s: string): Set<string> {
-  return new Set(s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w.length > 1 && !STOP.has(w)));
+  return new Set([...recallTokens(s)].filter(w=>!STOP.has(w)));
 }
 
 export function similar(a: string, b: string): boolean {

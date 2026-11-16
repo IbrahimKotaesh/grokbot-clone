@@ -1,3 +1,4 @@
+import {saveDurableMemory} from './agent/recall.js';
 import { env } from './env.js';
 import { Hono } from 'hono';
 import { db, now } from './db.js';
@@ -45,9 +46,13 @@ configApi.get('/bots/:id/settings', (c) => {
     routines: listRoutines(b.id),
     tasks: listTasks(b.id),
     memory: {
+      mode:(b.agent_provider??env.agentProvider)==='xai'?'app':'provider',
+      provider:b.agent_provider??env.agentProvider,
+      savedMemories:memories.length,
+      conversationMessages:(db.prepare("SELECT COUNT(*) n FROM rows WHERE bot_id=? AND generation=? AND kind='message'").get(b.id,b.generation) as any).n,
       lastConsolidatedAt: job?.last_consolidated_at ?? null,
-      historyChars: historySize(b.id, loadHistory(b.id)),
-      compactAtChars: memoryConfig.compactChars,
+      historyChars:(b.agent_provider??env.agentProvider)==='xai'?historySize(b.id, loadHistory(b.id)):null,
+      compactAtChars:(b.agent_provider??env.agentProvider)==='xai'?memoryConfig.compactChars:null,
       lastCompaction: lastCompaction ?? null,
     },
   });
@@ -238,4 +243,10 @@ configApi.post('/bots/:id/screen/reset', async (c) => {
   } catch (e: any) {
     return c.json({ error: String(e?.message ?? e).slice(0, 300) }, 502);
   }
+});
+
+configApi.post('/bots/:id/memories',async c=>{
+ const bot=ownBot(c.get('user').id,c.req.param('id'));if(!bot)return c.json({error:'not found'},404);
+ try{const body=await c.req.json();const saved=saveDurableMemory(c.get('user').id,bot.id,body.text);return c.json({memory:toMemory(db.prepare('SELECT * FROM memories WHERE id=?').get(saved.id)),created:saved.created});}
+ catch(e){return c.json({error:(e as Error).message},400);}
 });

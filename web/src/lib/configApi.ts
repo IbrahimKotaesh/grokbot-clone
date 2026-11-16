@@ -22,7 +22,7 @@ export interface BotSettingsBundle {
   skills: Skill[];
   routines: Routine[];
   tasks: Task[];
-  memory: { lastConsolidatedAt: number | null; historyChars: number; compactAtChars: number; lastCompaction: { method: string; created_at: number } | null };
+  memory: { mode:'app'|'provider'; provider:string; savedMemories:number; conversationMessages:number; lastConsolidatedAt: number | null; historyChars: number|null; compactAtChars: number|null; lastCompaction: { method: string; created_at: number } | null };
 }
 
 export interface LibraryListing { status: 'ok' | 'asleep' | 'error'; path: string; files: LibraryFile[]; error?: string }
@@ -42,6 +42,7 @@ export const configApi = {
   makePrimary: (botId: string) => req<{ ok: true }>('POST', `/bots/${botId}/primary`),
   fresh: (botId: string) => req<{ ok: true }>('POST', `/bots/${botId}/fresh`),
 
+  saveMemory:(id:string,text:string)=>req<{memory:Memory;created:boolean}>('POST',`/bots/${id}/memories`,{text}),
   deleteMemory: (id: string) => req<{ ok: true }>('DELETE', `/memories/${id}`),
 
   createSkill: (botId: string, s: Pick<Skill, 'name' | 'description' | 'body'>) => req<{ skill: Skill }>('POST', `/bots/${botId}/skills`, s),
