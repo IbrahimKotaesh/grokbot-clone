@@ -13,8 +13,8 @@ export function VoiceSettings({ bot }: { bot: Bot }) {
     } catch { setError('Could not save dictation language.'); }
   };
   return <div className="panel-card">
-    <div className="panel-row panel-row--setting"><span>Dictation language</span><select aria-label="Dictation language" value={bot.voiceLanguage === 'auto' ? '' : bot.voiceLanguage} onChange={e => void save(e.target.value)}>
-      <option value="">Device language</option><option value="en-US">English</option><option value="ar-SA">Arabic</option>
+    <div className="panel-row panel-row--setting"><span>Dictation language</span><select aria-label="Dictation language" value={bot.voiceLanguage?.startsWith('en') ? 'en-US' : 'ar-SA'} onChange={e => void save(e.target.value)}>
+      <option value="en-US">English</option><option value="ar-SA">Arabic</option>
     </select></div>
     <p className="panel-row">Tap the message microphone, or use your phone keyboard’s microphone. Review the text before sending. Fino does not upload audio to its server.</p>
     {error && <div className="voice-error">{error}</div>}

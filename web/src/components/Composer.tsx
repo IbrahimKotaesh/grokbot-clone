@@ -41,6 +41,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [changingLanguage,setChangingLanguage]=useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -66,7 +67,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
 
   const send = async () => {
     const t = text.trim();
-    if ((!t && !photos.length) || preparing || sending || switching || dictation.state === 'recording') return;
+    if ((!t && !photos.length) || preparing || sending || switching || dictation.state !== 'idle') return;
     setSending(true); setError(null);
     try {
       await api.send(bot.id, t, photos);
@@ -97,7 +98,13 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
       return before + pre + t + post + after;
     });
   };
-  const dictation = useDictation(insertText, setError, bot.voiceLanguage);
+  const dictationLanguage=bot.voiceLanguage?.startsWith('en') ? 'en-US' : 'ar-SA';
+  const dictation = useDictation(insertText, setError, dictationLanguage);
+  const changeLanguage=async(voiceLanguage:string)=>{
+    setChangingLanguage(true);setError(null);
+    try {const {bot:updated}=await configApi.updateBot(bot.id,{voiceLanguage});useStore.setState(s=>({bots:s.bots.map(b=>b.id===updated.id?updated:b)}));}
+    catch(e){setError((e as Error).message);}finally{setChangingLanguage(false);}
+  };
   const changeProvider = async (agentProvider: 'codex' | 'claude') => {
     setSwitching(true); setError(null);
     try {
@@ -155,12 +162,14 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           <label className="composer__model"><select aria-label="AI model" value={bot.agentProvider === 'claude' ? 'claude' : 'codex'} disabled={running || sending || switching} onChange={e => void changeProvider(e.target.value as 'codex' | 'claude')}><option value="codex">ChatGPT</option><option value="claude">Claude</option></select></label>
         </div>
         <div className="composer__right">
+          <select className="composer__speech-language" aria-label="Dictation language" title="Dictation language" value={dictationLanguage} disabled={dictation.state !== 'idle' || changingLanguage} onChange={e=>void changeLanguage(e.target.value)}><option value="ar-SA">AR</option><option value="en-US">EN</option></select>
           <button
             type="button"
             className={`composer__btn${dictation.state === 'recording' ? ' is-recording' : ''}`}
-            aria-label={dictation.state === 'recording' ? 'Stop dictation' : 'Dictate'}
-            aria-pressed={dictation.state === 'recording'}
-            title="Device dictation"
+            aria-label={dictation.state === 'idle' ? 'Dictate' : 'Stop dictation'}
+            aria-pressed={dictation.state !== 'idle'}
+            title={`Dictate in ${dictationLanguage === 'ar-SA' ? 'Arabic' : 'English'}`}
+            disabled={changingLanguage || dictation.state === 'stopping'}
             onClick={dictation.toggle}
           >
             <Icon name="mic" opacity={0.56} />
@@ -174,7 +183,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               type="button"
               className="composer__cta"
               onClick={send}
-              disabled={!hasText || preparing || sending || switching || dictation.state === 'recording'}
+              disabled={!hasText || preparing || sending || switching || dictation.state !== 'idle'}
               aria-label="Send"
               title="Send (Enter)"
             >
@@ -183,7 +192,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
           )}
         </div>
       </div>
-      {dictation.state === 'recording' && <div className="composer__dictation-preview" role="status" dir="auto">{dictation.interim || 'Listening…'}</div>}
+      {dictation.state !== 'idle' && <div className="composer__dictation-preview" role="status" dir="auto">{dictation.interim || (dictation.state === 'starting' ? 'Starting microphone…' : dictation.state === 'stopping' ? 'Finishing dictation…' : `Listening in ${dictationLanguage === 'ar-SA' ? 'Arabic' : 'English'}…`)}</div>}
       </div>
     </div>
   );
