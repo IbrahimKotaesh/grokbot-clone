@@ -1,0 +1,5 @@
+mem0ai==2.2.1
+onnxruntime==1.32.0
+tokenizers==0.23.3
+fastapi==0.163.1
+uvicorn==0.54.0

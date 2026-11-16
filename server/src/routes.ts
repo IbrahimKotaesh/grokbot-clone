@@ -1,4 +1,5 @@
 import {invalidateProviderSession} from './agent/context.js';
+import {queueAutomaticMemory} from './agent/automatic-memory.js';
 import { pushApi } from './notifications.js';
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
 import './attachments.js';
@@ -238,6 +239,7 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
     return {row,images,files};
   })();
   const imageIds=images.map(image=>image.id);
+  queueAutomaticMemory(b.id,b.generation,row.seq);
   const fileIds=files.map(file=>file.id);
   const prompt=text || (files.length?'Read and summarize the attached documents.':'Describe the attached photo.');
   if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
@@ -274,7 +276,8 @@ api.post('/bots/:id/cards/:seq/answer', async (c) => {
   const { answer } = await c.req.json<{ answer: string }>();
   if (!row || row.body.type !== 'card' || row.body.card !== 'question') return c.json({ error: 'not a question' }, 400);
   updateRow(b.id, row.seq, { ...row.body, status: 'answered', answer });
-  appendRow(b.id, 'message', { type: 'message', role: 'user', text: answer });
+  const answerRow=appendRow(b.id, 'message', { type: 'message', role: 'user', text: answer });
+  queueAutomaticMemory(b.id,b.generation,answerRow.seq);
   enqueue(b.id, { type: 'user', text: `[Answer to "${row.body.question}"] ${answer}` });
   return c.json({ ok: true });
 });

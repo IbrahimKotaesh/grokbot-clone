@@ -70,3 +70,11 @@ jobs:
         env:
           SESSION_SECRET: ci-memory-test-value
           DB_PATH: ':memory:'
+      - run: node tests/automatic-memory.mjs
+        env:
+          SESSION_SECRET: ci-memory-test-value
+          DB_PATH: ':memory:'
+      - run: node tests/automatic-memory-worker.mjs
+        env:
+          SESSION_SECRET: ci-memory-test-value
+          DB_PATH: ':memory:'

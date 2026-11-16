@@ -1,0 +1,29 @@
+[Unit]
+Description=Fino private Mem0 memory index and extraction service
+After=network.target
+
+[Service]
+User=grokbot
+Group=grokbot
+WorkingDirectory=/opt/fino-memory
+EnvironmentFile=/etc/fino-memory.env
+Environment=HOME=/var/lib/fino-memory
+Environment=MEM0_TELEMETRY=false
+Environment=TOKENIZERS_PARALLELISM=false
+Environment=OMP_NUM_THREADS=1
+ExecStart=/opt/fino-memory/venv/bin/uvicorn service:app --host 127.0.0.1 --port 8842 --no-access-log
+Restart=on-failure
+RestartSec=10
+Nice=10
+CPUQuota=70%
+MemoryHigh=450M
+MemoryMax=650M
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/fino-memory
+
+[Install]
+WantedBy=multi-user.target

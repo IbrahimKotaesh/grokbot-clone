@@ -27,11 +27,11 @@ export function saveDurableMemory(userId:string,botId:string,value:unknown){
 }
 
 db.exec(`CREATE TABLE IF NOT EXISTS memory_revisions(id TEXT PRIMARY KEY,memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,previous_text TEXT NOT NULL,changed_at INTEGER NOT NULL)`);
-export function updateDurableMemory(userId:string,botId:string,id:string,value:unknown){
+export function updateDurableMemory(userId:string,botId:string,id:string,value:unknown,automatic=false){
  const bot=db.prepare('SELECT user_id FROM bots WHERE id=?').get(botId) as any;
  const memory=db.prepare('SELECT text FROM memories WHERE id=? AND bot_id=?').get(id,botId) as any;
  if(bot?.user_id!==userId||!memory)throw Error('Memory unavailable.');
  const text=typeof value==='string'?value.trim():'';if(!text||text.length>2000)throw Error('Save one concise memory, under 2000 characters.');
  if(memory.text===text)return {id,updated:false};
- db.transaction(()=>{db.prepare('INSERT INTO memory_revisions VALUES (?,?,?,?)').run(newId('rev'),id,memory.text,now());db.prepare('UPDATE memories SET text=?,created_at=? WHERE id=? AND bot_id=?').run(text,now(),id,botId);})();hub.emit(userId,{type:'memories',botId});return {id,updated:true};
+ db.transaction(()=>{db.prepare('INSERT INTO memory_revisions VALUES (?,?,?,?)').run(newId('rev'),id,memory.text,now());db.prepare('UPDATE memories SET text=?,created_at=? WHERE id=? AND bot_id=?').run(text,now(),id,botId);if(!automatic&&db.prepare("SELECT 1 FROM sqlite_master WHERE name='auto_memory_sources'").get())db.prepare('DELETE FROM auto_memory_sources WHERE memory_id=?').run(id);})();hub.emit(userId,{type:'memories',botId});return {id,updated:true};
 }

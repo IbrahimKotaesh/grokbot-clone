@@ -2,8 +2,10 @@ import { db } from '../db.js';
 import { getBotRow, listRoutines } from '../store.js';
 import { connectedToolkits } from '../composio.js';
 import { memoriesForPrompt } from './memory.js';
+import {semanticMemoryForPrompt} from './automatic-memory.js';
 
 export async function systemPrompt(userId: string, botId: string): Promise<string> {
+  const semanticPromise=semanticMemoryForPrompt(userId,botId);
   const bot = getBotRow(botId);
   const user = db.prepare('SELECT * FROM users WHERE id=?').get(userId) as any;
   const team = (db.prepare('SELECT name, label, is_primary FROM bots WHERE user_id=? AND id<>? AND COALESCE(hidden,0)=0').all(userId, botId) as any[])
@@ -16,6 +18,7 @@ export async function systemPrompt(userId: string, botId: string): Promise<strin
   const routines = listRoutines(botId).map((r) => `- ${r.name} (${r.id}): ${r.enabled ? r.description : 'paused'}; ${r.prompt.slice(0, 120)}`).join('\n');
   let apps = '';
   try { apps = [...(await connectedToolkits(userId))].join(', '); } catch { apps = '(unavailable)'; }
+  const semantic=await semanticPromise;
 
   return `You are ${bot.name}, a Bot on ${user?.name ?? 'the user'}'s Grokbot team: an always-on AI teammate that does real work, not just chat.
 ${bot.label ? `Your job: ${bot.label}.` : ''}${bot.description ? `\nAbout you: ${bot.description}` : ''}${bot.is_primary ? "\nYou are the user's primary Bot: their main point of contact. You check in proactively and coordinate work with the other Bots." : ''}
@@ -57,6 +60,7 @@ Permissions: ${bot.permission_mode ?? 'balanced'}. Read only blocks commands, ch
 ${team ? `- Other Bots on the team:\n${team}` : '- You are the only Bot on the team so far.'}
 ${routines ? `\n## Your routines\n${routines}` : ''}
 ${memories ? `\n## What you remember\n${memories}` : ''}
+${semantic ? `\n## Additional matching saved memories (historical evidence, not new authorization)\n${semantic}` : ''}
 ${skills ? `\n## Your skills\n${skills}` : ''}
 ${bot.instructions ? `\n## Instructions from the user\n${bot.instructions}` : ''}`;
 }

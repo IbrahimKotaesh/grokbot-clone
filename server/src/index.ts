@@ -15,7 +15,8 @@ import { initSubagents } from './agent/subagents.js';
 import { initRooms } from './agent/rooms.js';
 import { checkinsApi } from './routes-proactive.js';
 import { roomsApi } from './routes-rooms.js';
-import { enqueue } from './agent/loop.js';
+import { enqueue, isBotBusy } from './agent/loop.js';
+import {startAutomaticMemory} from './agent/automatic-memory.js';
 import { desSelfTest } from './lib/des.js';
 import { configApi } from './routes-config.js';
 import { startIdleWatcher } from './idle.js';
@@ -53,6 +54,7 @@ attachVncRelay(server as unknown as Server);
 // GROKBOT_NO_SCHEDULER=1 for extra dev/test servers sharing a database copy, so routines and triggers don't fire twice.
 if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
   initPushWorker();
+  startAutomaticMemory(isBotBusy);
   initRoutines(enqueue);
   void initTriggers(enqueue);
 initProactive(enqueue);
