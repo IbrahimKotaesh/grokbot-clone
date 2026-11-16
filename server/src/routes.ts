@@ -78,7 +78,7 @@ api.get('/auth/google/callback', async (c) => {
   if (attempt.connected_account_id && caId !== attempt.connected_account_id) return c.redirect(`${env.appUrl}/?login=failed`);
   db.prepare('DELETE FROM login_attempts WHERE id=?').run(attempt.id);
   try {
-    const profile = await googleProfile(caId);
+    const profile = await googleProfile(caId, attempt.provisional_user_id);
     if (env.allowedEmails.length && !env.allowedEmails.includes(profile.email.toLowerCase())) {
       await deleteConnection(caId);
       return c.redirect(`${env.appUrl}/?login=not-allowed`);
