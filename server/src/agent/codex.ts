@@ -15,7 +15,7 @@ db.exec('CREATE TABLE IF NOT EXISTS codex_threads (bot_id TEXT PRIMARY KEY, gene
 if (!(db.prepare('PRAGMA table_info(codex_threads)').all() as any[]).some(c=>c.name==='tools_hash')) db.exec("ALTER TABLE codex_threads ADD COLUMN tools_hash TEXT NOT NULL DEFAULT ''");
 
 /** Codex owns conversation context and compaction; credentials stay in its normal login store. */
-export async function codexTurn(botId: string, text: string, signal: AbortSignal, execute: (name: string, args: unknown, callId: string) => Promise<ToolResult>) {
+export async function codexTurn(botId: string, text: string, signal: AbortSignal, execute: (name: string, args: unknown, callId: string) => Promise<ToolResult>, images: string[] = []) {
   const bot = getBotRow(botId);
   const cwd = path.join(os.homedir(), '.local', 'grokbot-runtime', 'codex-workspaces', botId);
   fs.mkdirSync(cwd, { recursive: true });
@@ -95,7 +95,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     const thread = canResume ? await rpc('thread/resume', {...params,threadId:saved.thread_id,excludeTurns:true}) : await rpc('thread/start', {...params,dynamicTools:schemas.map((t:any)=>({type:'function',name:t.name,description:t.description,inputSchema:t.parameters}))});
     db.prepare('INSERT OR REPLACE INTO codex_threads (bot_id,generation,thread_id,tools_hash) VALUES (?,?,?,?)').run(botId,bot.generation,thread.thread.id,toolsHash);
     setLive(botId,{activity:{kind:'thinking',since:now()}});
-    await rpc('turn/start',{threadId:thread.thread.id,input:[{type:'text',text}],effort:bot.effort ?? 'medium'});
+    await rpc('turn/start',{threadId:thread.thread.id,input:[{type:'text',text},...images.map(url=>({type:'image',url}))],effort:bot.effort ?? 'medium'});
     await done;
   } finally {
     clearTimeout(timer); signal.removeEventListener('abort',abort);

@@ -18,12 +18,17 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: node tests/device-dictation.mjs
+      - run: node tests/camera-lifecycle.mjs
       - run: node tests/message-rendering.mjs
       - run: npm run build
       - run: node tests/native-auth.mjs
         env:
           SESSION_SECRET: ci-native-test-value
           DB_PATH: ":memory:"
+      - run: node tests/photo-messages.mjs
+        env:
+          SESSION_SECRET: ci-photo-test-value
+          DB_PATH: ':memory:'
       - run: node tests/create-bot.mjs
         env:
           SESSION_SECRET: ci-bot-test-value

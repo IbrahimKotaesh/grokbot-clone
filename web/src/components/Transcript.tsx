@@ -32,7 +32,7 @@ function buildItems(rows: Row[]): Item[] {
       continue;
     }
     if (b.type === 'message') {
-      if (!b.text && !b.streaming) continue;
+      if (!b.text && !b.streaming && !b.images?.length) continue;
       const side = b.role === 'user' && (!b.from || b.from.kind === 'voice') ? 'right' : 'left';
       const sender = b.from ? `${b.from.kind}:${b.from.id}` : b.role;
       const lastRow = last?.kind === 'group' ? last.rows[last.rows.length - 1] : null;
@@ -59,6 +59,7 @@ const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left'
   return (
     <div className={`bubble-wrap is-${side}`}>
       <div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
+        {b.images?.length ? <div className="bubble__photos">{b.images.map(image=><a key={image.id} href={image.url} target="_blank" rel="noreferrer noopener"><img src={image.url} alt={image.name} loading="lazy"/></a>)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={b.text || ' '} />}
         {b.citations && b.citations.length > 0 && (
           <div className="bubble__cites">

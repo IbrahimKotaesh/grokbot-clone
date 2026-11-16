@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
@@ -16,10 +17,10 @@ import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyFor, run
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
 export type Trigger =
-  | { type: 'user'; text: string }
+  | { type: 'user'; text: string; imageIds?: string[] }
   | { type: 'routine'; routineId: string; name: string; prompt: string }
   | { type: 'bot'; fromBotId: string; fromName: string; text: string; depth: number }
-  | { type: 'system'; text: string }
+  | { type: 'system'; text: string; imageIds?: string[] }
   | { type: 'resume' };
 
 interface PendingState {
@@ -118,6 +119,7 @@ async function runTurn(botId: string, trigger: Trigger) {
       if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
       const item = triggerItem(trigger);
       if (!item) return;
+      const images=imageInputs(userId, 'imageIds' in trigger ? trigger.imageIds : []);
       await (provider === 'claude' ? claudeTurn : codexTurn)(botId, item.content, ctrl.signal, async (name, args, callId) => {
         if (!toolMap.has(name)) throw new Error(`Unknown local tool: ${name}`);
         const act = activityFor(name);
@@ -132,7 +134,7 @@ async function runTurn(botId: string, trigger: Trigger) {
           if (ctrl.signal.aborted) throw new Error('Stopped.');
         }
         return {output: st.outputs[0]?.output ?? '', endTurn: !!st.outputs[0]?.__endTurn};
-      });
+      }, images);
       return;
     }
     // A new user message supersedes any pending approval: deny it.
@@ -149,7 +151,11 @@ async function runTurn(botId: string, trigger: Trigger) {
       if (paused) return;
     } else {
       const item = triggerItem(trigger);
-      if (item) appendHistory(botId, [item]);
+      if (item) {
+        const images=imageInputs(userId,'imageIds' in trigger ? trigger.imageIds : []);
+        if(images.length) item.content=[{type:'input_text',text:item.content},...images.map(image_url=>({type:'input_image',image_url}))];
+        appendHistory(botId, [item]);
+      }
     }
 
     const tools = [

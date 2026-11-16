@@ -1,3 +1,4 @@
+import { imageInputs } from '../images.js';
 import { createBot } from '../bots.js';
 import { env } from '../env.js';
 import { db, now } from '../db.js';
@@ -85,6 +86,13 @@ export const TOOLS: ToolDef[] = [
     },
   },
 
+  {
+    name: 'view_photo',
+    description: 'View a photo the user attached to this workspace. Use the image ID shown in earlier message context when you need to look at an older attachment again.',
+    parameters: obj({ image_id: { type: 'string' } }, ['image_id']),
+    activity: 'working', label: 'Looking at an attached photo',
+    impl: async (a,ctx) => ({output:[{type:'input_image',image_url:imageInputs(ctx.userId,[String(a.image_id)])[0]}]}),
+  },
   {
     name: 'computer_screenshot',
     description: "Take a screenshot of your own computer screen (a Linux desktop that only you use). Use this before acting on the screen.",

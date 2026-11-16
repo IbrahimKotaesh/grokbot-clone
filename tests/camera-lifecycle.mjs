@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {transform} from 'esbuild';
+const {code}=await transform(fs.readFileSync('web/src/lib/camera.ts','utf8'),{loader:'ts',format:'cjs'});
+let resolve,options,stopped=0,errors=[];const target={srcObject:null};
+const context={module:{exports:{}},navigator:{mediaDevices:{getUserMedia:o=>{options=o;return new Promise(r=>resolve=r);}}}};
+vm.runInNewContext(code,context);const {startCamera}=context.module.exports;
+const stream={getTracks:()=>[{stop:()=>stopped++}]};
+const close=startCamera(()=>target,e=>errors.push(e));assert.equal(options.audio,false);
+close();resolve(stream);await new Promise(r=>setImmediate(r));assert.equal(stopped,1);assert.equal(target.srcObject,null,'Closing during a permission prompt must never attach a late camera stream');
+const closeActive=startCamera(()=>target,e=>errors.push(e));resolve(stream);await new Promise(r=>setImmediate(r));assert.equal(target.srcObject,stream);closeActive();assert.equal(stopped,2);
+context.navigator.mediaDevices=undefined;startCamera(()=>target,e=>errors.push(e));assert.match(errors.at(-1),/choose a photo/);
+console.log('PASS: no audio, active camera cleanup, late permission cleanup and unavailable-camera fallback');

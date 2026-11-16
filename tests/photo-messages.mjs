@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { db } from '../server/dist/db.js';
+import { api } from '../server/dist/routes.js';
+import { initRooms, createRoom } from '../server/dist/agent/rooms.js';
+import { initSubagents } from '../server/dist/agent/subagents.js';
+import { validateImages, imageInputs } from '../server/dist/images.js';
+initSubagents();initRooms();
+for(const user of ['owner','other']) {
+ db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run(user,`${user}@example.com`,user,Date.now());
+ db.prepare('INSERT INTO auth_sessions VALUES (?,?,?,?)').run(user,user,Date.now(),Date.now()+60000);
+}
+const bot=createRoom('owner','Photo test',[]),otherBot=createRoom('owner','Other room',[]);
+const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR5kAAAAASUVORK5CYII=';
+const image={name:'Photo.png',dataUrl:`data:image/png;base64,${png}`};
+const post=(images,text='')=>api.request(`/bots/${bot}/messages`,{method:'POST',headers:{Cookie:'grokbot_session=owner','Content-Type':'application/json'},body:JSON.stringify({text,images})});
+for(const bad of [[...Array(4)].map(()=>image),[{dataUrl:'data:image/svg+xml;base64,PHN2Zz4='}],[{dataUrl:'data:image/png;base64,bm90IHBuZw=='}],[{dataUrl:'data:image/png;base64,'+'A'.repeat(4*1024*1024+100)}]]) assert.equal((await post(bad)).status,400);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM message_images').get().n,0);
+assert.equal((await post([], '')).status,400);
+const res=await post([image]);assert.equal(res.status,200);
+const {row}=await res.json();assert.equal(row.body.images.length,1);assert.equal(row.body.text,'');
+const attached=row.body.images[0];assert.ok(!JSON.stringify(row).includes(png),'Message and SSE contain metadata, not base64 blobs');
+const get=(url,user)=>api.request(url.replace('/api',''),{headers:user?{Cookie:`grokbot_session=${user}`}:{}});
+assert.equal((await get(attached.url)).status,401);
+assert.equal((await get(attached.url,'other')).status,404);
+assert.equal((await get(attached.url.replace(bot,otherBot),'owner')).status,404);
+const photo=await get(attached.url,'owner');assert.equal(photo.status,200);assert.equal(photo.headers.get('Content-Type'),'image/png');assert.match(photo.headers.get('Cache-Control'),/no-store/);
+assert.deepEqual(Buffer.from(await photo.arrayBuffer()),Buffer.from(png,'base64'));
+assert.equal(imageInputs('owner',[attached.id])[0],image.dataUrl);
+assert.throws(()=>imageInputs('other',[attached.id]),/unavailable/);
+assert.deepEqual(validateImages(undefined),[]);
+console.log('PASS: photo-only messages, MIME/size/count validation, private authenticated images, cross-owner/cross-bot isolation and provider image input');
+db.close();process.exit(0);

@@ -1,4 +1,4 @@
-import { query, createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
+import { type SDKUserMessage, query, createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -24,7 +24,7 @@ export async function claudeLoginStatus(): Promise<boolean> {
   } catch { return false; }
 }
 
-export async function claudeTurn(botId: string, text: string, signal: AbortSignal, execute: (name:string,args:unknown,callId:string)=>Promise<ToolResult>) {
+export async function claudeTurn(botId: string, text: string, signal: AbortSignal, execute: (name:string,args:unknown,callId:string)=>Promise<ToolResult>, images: string[] = []) {
   if (!await claudeLoginStatus()) throw new Error('Sign in with your Claude subscription first: claude auth login');
   if (signal.aborted) throw new Error('Stopped.');
   const bot = getBotRow(botId);
@@ -62,7 +62,13 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
     if(seq===null) seq=appendRow(botId,'message',body).seq; else updateRow(botId,seq,body);
     wrote=true; lastFlush=Date.now();
   };
-  const run = query({prompt:text,options:{
+  async function* photoPrompt(): AsyncGenerator<SDKUserMessage> {
+    yield {type:'user',session_id:'',parent_tool_use_id:null,message:{role:'user',content:[{type:'text',text},...images.map(url=>{
+      const [,media_type,data]=/^data:(image\/(?:jpeg|png|webp));base64,(.*)$/s.exec(url)!;
+      return {type:'image' as const,source:{type:'base64' as const,media_type:media_type as 'image/jpeg'|'image/png'|'image/webp',data}};
+    })]}};
+  }
+  const run = query({prompt:images.length?photoPrompt():text,options:{
     cwd,pathToClaudeCodeExecutable:env.claudeBin,abortController:controller,
     env:childEnv,settingSources:[],strictMcpConfig:true,tools:[],
     mcpServers:{grokbot:server},allowedTools:schemas.map(t=>`mcp__grokbot__${t.name}`),

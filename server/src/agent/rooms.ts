@@ -38,7 +38,7 @@ export function createRoom(userId: string, name: string, memberIds: string[]) {
 }
 
 /** Called instead of the agent loop when the user posts in a room. */
-export function dispatchRoomMessage(roomId: string, text: string, enqueue: (botId: string, t: any) => void) {
+export function dispatchRoomMessage(roomId: string, text: string, enqueue: (botId: string, t: any) => void, imageIds: string[] = []) {
   const room = db.prepare('SELECT * FROM bots WHERE id=?').get(roomId) as any;
   const members = roomMembers(roomId);
   if (!members.length) {
@@ -58,6 +58,7 @@ export function dispatchRoomMessage(roomId: string, text: string, enqueue: (botI
   for (const m of responders) {
     enqueue(m.id, {
       type: 'system',
+      imageIds,
       text:
         `[Group chat "${room.name}"] Members: ${members.map((x) => x.name).join(', ')}. ` +
         `${mentioned.length ? 'You were @mentioned.' : 'The user addressed the whole group.'}\n` +

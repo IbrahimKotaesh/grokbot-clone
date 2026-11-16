@@ -1,4 +1,6 @@
 import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
+import { bodyLimit } from 'hono/body-limit';
+import { validateImages, saveImages } from './images.js';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db, now } from './db.js';
@@ -196,16 +198,32 @@ api.get('/bots/:id/rows', (c) => {
   return c.json({ generation: b.generation, rows: listRows(b.id, { beforeSeq, limit: Number(c.req.query('limit') ?? 200) }) });
 });
 
-api.post('/bots/:id/messages', async (c) => {
+api.get('/bots/:id/images/:imageId', (c) => {
+  if (!ownBot(c.get('user').id,c.req.param('id'))) return c.json({error:'not found'},404);
+  const image=db.prepare('SELECT mime,data FROM message_images WHERE id=? AND bot_id=? AND user_id=?').get(c.req.param('imageId'),c.req.param('id'),c.get('user').id) as {mime:string;data:Buffer}|undefined;
+  if(!image) return c.json({error:'not found'},404);
+  return c.body(image.data,200,{'Content-Type':image.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
+});
+
+api.post('/bots/:id/messages', bodyLimit({maxSize:13*1024*1024,onError:c=>c.json({error:'Photos are too large. Attach up to 3 photos under 3 MB each.'},413)}), async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
-  const { text } = await c.req.json<{ text: string }>();
-  if (!text?.trim()) return c.json({ error: 'empty' }, 400);
-  const row = appendRow(b.id, 'message', { type: 'message', role: 'user', text: text.trim() });
-  // Group chats dispatch to their member Bots instead of running their own loop.
-  if (b.kind === 'room') dispatchRoomMessage(b.id, text.trim(), enqueue);
-  // Any pending question card is answered by a free-text message.
-  else enqueue(b.id, { type: 'user', text: text.trim() });
+  let body;
+  try { body=await c.req.json(); } catch { return c.json({error:'Invalid message.'},400); }
+  if(!body || typeof body !== 'object' || Array.isArray(body)) return c.json({error:'Invalid message.'},400);
+  const text = typeof body.text === 'string' ? body.text.trim() : '';
+  let photos;
+  try { photos=validateImages(body.images); } catch(e) { return c.json({error:(e as Error).message},400); }
+  if (!text && !photos.length) return c.json({ error: 'empty' }, 400);
+  const {row,images}=db.transaction(()=>{
+    const images=saveImages(c.get('user').id,b.id,photos);
+    const row=appendRow(b.id,'message',{type:'message',role:'user',text,...(images.length?{images}:{})});
+    return {row,images};
+  })();
+  const imageIds=images.map(image=>image.id);
+  const prompt=text || 'Describe the attached photo.';
+  if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds);
+  else enqueue(b.id, { type: 'user', text:prompt,imageIds });
   return c.json({ row });
 });
 
