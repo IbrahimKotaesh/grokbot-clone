@@ -200,3 +200,5 @@ button, a { touch-action: manipulation; }
 .dictation__spinner {animation:dictation-spin 1s linear infinite;}
 @keyframes dictation-spin {to{transform:rotate(360deg);}}
 @media(prefers-reduced-motion:reduce){.dictation__spinner{animation:none;}}
+
+@media(max-width:480px){.composer__permissions .composer__setting>span{max-width:50px;overflow:hidden;text-overflow:ellipsis;}}
