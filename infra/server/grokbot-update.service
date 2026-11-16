@@ -1,0 +1,9 @@
+[Unit]
+Description=Check GitHub main and deploy verified Grokbot releases
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/grokbot-update
+TimeoutStartSec=900
+Nice=10

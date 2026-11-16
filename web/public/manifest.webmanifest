@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Grokbot",
+  "short_name": "Grokbot",
+  "description": "Your private AI teammates and Linux desktops",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -79,6 +79,10 @@ api.get('/auth/google/callback', async (c) => {
   db.prepare('DELETE FROM login_attempts WHERE id=?').run(attempt.id);
   try {
     const profile = await googleProfile(caId);
+    if (env.allowedEmails.length && !env.allowedEmails.includes(profile.email.toLowerCase())) {
+      await deleteConnection(caId);
+      return c.redirect(`${env.appUrl}/?login=not-allowed`);
+    }
     const { id, isNew } = findOrCreateUser(profile.email, profile.name, attempt.provisional_user_id);
     // Existing user: the Gmail connection made for sign-in belongs to a throwaway id; remove it.
     if (!isNew && id !== attempt.provisional_user_id) await deleteConnection(caId);

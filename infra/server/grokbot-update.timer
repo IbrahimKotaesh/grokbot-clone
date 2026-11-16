@@ -1,0 +1,11 @@
+[Unit]
+Description=Keep Grokbot in sync with GitHub main
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+RandomizedDelaySec=15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

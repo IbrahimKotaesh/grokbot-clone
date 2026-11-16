@@ -1,5 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { env } from '../env.js';
 import { db, now } from '../db.js';
 import { token } from './ids.js';
 import type { User } from '../types.js';
@@ -12,7 +13,7 @@ export type AuthVars = { Variables: { user: User } };
 export function createSession(c: Context, userId: string) {
   const t = token();
   db.prepare('INSERT INTO auth_sessions(token,user_id,created_at,expires_at) VALUES (?,?,?,?)').run(t, userId, now(), now() + TTL_MS);
-  setCookie(c, COOKIE, t, { httpOnly: true, sameSite: 'Lax', path: '/', maxAge: TTL_MS / 1000 });
+  setCookie(c, COOKIE, t, { httpOnly: true, secure: env.appUrl.startsWith('https://'), sameSite: 'Lax', path: '/', maxAge: TTL_MS / 1000 });
 }
 
 export function destroySession(c: Context) {
@@ -26,6 +27,7 @@ export function userFromToken(t: string | undefined): User | null {
   const r = db
     .prepare('SELECT u.* FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>?')
     .get(t, now()) as any;
+  if (r && env.allowedEmails.length && !env.allowedEmails.includes(String(r.email).toLowerCase())) return null;
   return r ? { id: r.id, email: r.email, name: r.name, avatarUrl: r.avatar_url } : null;
 }
 

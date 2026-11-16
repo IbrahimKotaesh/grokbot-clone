@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+exec 9>/run/lock/grokbot-update.lock
+flock -n 9 || exit 0
+root=/opt/grokbot
+repo="$root/repository"
+runuser -u grokbot -- git -C "$repo" fetch --quiet origin main
+revision="$(runuser -u grokbot -- git -C "$repo" rev-parse origin/main)"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || exit 1
+previous="$(readlink -f "$root/current" 2>/dev/null || true)"
+release="$root/releases/$revision"
+if [ "$previous" = "$release" ]; then exit 0; fi
+if [ ! -f "$release/.grokbot-built" ]; then
+  if [ ! -d "$release" ]; then runuser -u grokbot -- git -C "$repo" worktree add --detach "$release" "$revision"; fi
+  if ! runuser -u grokbot -- bash -c 'cd "$1" && npm ci --no-audit --no-fund && npm run typecheck && npm run build' bash "$release"; then
+    runuser -u grokbot -- git -C "$repo" worktree remove --force "$release"
+    exit 1
+  fi
+  touch "$release/.grokbot-built"
+fi
+install -d -m 0700 /var/backups/grokbot
+if [ -f /var/lib/grokbot/grokbot.db ]; then
+  GROKBOT_BACKUP="/var/backups/grokbot/database-$(date -u +%Y%m%dT%H%M%SZ).db" python3 - <<'PY'
+import sqlite3,os
+source=sqlite3.connect('file:/var/lib/grokbot/grokbot.db?mode=ro',uri=True)
+dest=sqlite3.connect(os.environ['GROKBOT_BACKUP'])
+source.backup(dest)
+dest.close();source.close()
+os.chmod(os.environ['GROKBOT_BACKUP'],0o600)
+PY
+fi
+ln -sfn "$release" "$root/current"
+systemctl restart grokbot
+for attempt in {1..40}; do
+  if curl --silent --fail http://127.0.0.1:8787/api/health >/dev/null; then
+    echo "Grokbot deployed $revision"
+    # Keep the two most recent code releases. Persistent state lives elsewhere.
+    mapfile -t old < <(find "$root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +3 | cut -d' ' -f2-)
+    for path in "${old[@]}"; do
+      [[ "$(basename "$path")" =~ ^[0-9a-f]{40}$ ]] || continue
+      [ "$path" = "$release" ] || [ "$path" = "$previous" ] || runuser -u grokbot -- git -C "$repo" worktree remove --force "$path"
+    done
+    exit 0
+  fi
+  sleep 1
+done
+if [ -n "$previous" ] && [ -d "$previous" ]; then
+  ln -sfn "$previous" "$root/current"
+  systemctl restart grokbot
+fi
+echo 'Deployment health check failed; previous code release restored.' >&2
+exit 1

@@ -127,6 +127,9 @@ export function attachVncRelay(server: Server) {
     const url = new URL(req.url ?? '/', 'http://x');
     const m = url.pathname.match(/^\/api\/bots\/([^/]+)\/screen$/);
     if (!m) return; // not ours
+    if (req.headers.origin && req.headers.origin !== new URL(env.appUrl).origin) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return;
+    }
     const user = userFromCookieHeader(req.headers.cookie);
     const bot = user ? (db.prepare('SELECT * FROM bots WHERE id=? AND user_id=?').get(m[1], user.id) as any) : null;
     if (!user || !bot) {

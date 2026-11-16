@@ -3,6 +3,10 @@ import os from 'node:os';
 import { posix } from 'node:path';
 
 export const limaBin = process.env.LIMA_BIN ?? `${os.homedir()}/.local/grokbot-runtime/bin/limactl`;
+const transport = process.env.DESKTOP_TRANSPORT ?? 'lima';
+const wsBind = process.env.DESKTOP_WS_BIND === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+const vncBase = Number(process.env.DESKTOP_VNC_BASE_PORT ?? 6080);
+if (!Number.isInteger(vncBase) || vncBase < 1 || vncBase > 65532) throw new Error('Invalid desktop VNC port');
 const vm = process.env.LIMA_INSTANCE ?? 'grokbot';
 const quote = (s: string) => `'${s.replace(/'/g, `'"'"'`)}'`;
 const display = (screen?: string) => {
@@ -13,7 +17,10 @@ const display = (screen?: string) => {
 export function localShell(command: string, screen?: string, timeout = 120): Promise<{ success: boolean; output: string; exit_code: number }> {
   const n = display(screen);
   return new Promise((resolve, reject) => {
-    const p = spawn(limaBin, ['shell', '--workdir=/', vm, 'sudo', '-H', 'bash', '-s'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // On Linux the root-owned wrapper executes only inside the fixed desktop container.
+    const binary = transport === 'container' ? '/usr/bin/sudo' : limaBin;
+    const args = transport === 'container' ? ['-n', '/usr/local/sbin/grokbot-desktop-exec'] : ['shell', '--workdir=/', vm, 'sudo', '-H', 'bash', '-s'];
+    const p = spawn(binary, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     let output = ''; let size = 0;
     const timer = setTimeout(() => { p.kill('SIGTERM'); reject(new Error('Linux command timed out')); }, (timeout + 5) * 1000);
     const collect = (b: Buffer) => { size += b.length; if (size < 20_000_000) output += b.toString(); else p.kill(); };
@@ -37,9 +44,14 @@ async function startScreen(n: number) {
     if ! test -f /tmp/grokbot-screen-${n}.started; then
       nohup dbus-run-session -- openbox >/tmp/grokbot-wm-${n}.log 2>&1 </dev/null &
       nohup x11vnc -display :${n} -localhost -rfbport ${5900+n} -forever -shared -nopw >/tmp/grokbot-vnc-${n}.log 2>&1 </dev/null &
-      nohup websockify 127.0.0.1:${6080+n} localhost:${5900+n} >/tmp/grokbot-ws-${n}.log 2>&1 </dev/null &
+      nohup websockify ${wsBind}:${6080+n} localhost:${5900+n} >/tmp/grokbot-ws-${n}.log 2>&1 </dev/null &
       touch /tmp/grokbot-screen-${n}.started
-    fi`, s.id);
+    fi
+    for attempt in $(seq 1 50); do
+      if (echo >/dev/tcp/127.0.0.1/${6080+n}) 2>/dev/null && (echo >/dev/tcp/127.0.0.1/${5900+n}) 2>/dev/null; then exit 0; fi
+      sleep 0.1
+    done
+    echo 'Desktop relay did not become ready' >&2; exit 1`, s.id);
   return s;
 }
 export const localComputer = {
@@ -81,4 +93,4 @@ export const localComputer = {
     return { url: `data:application/octet-stream;base64,${data}` };
   },
 };
-export const localVncUrl = (screen: string) => `ws://127.0.0.1:${6080 + display(screen)}`;
+export const localVncUrl = (screen: string) => `ws://127.0.0.1:${vncBase + display(screen)}`;

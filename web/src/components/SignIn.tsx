@@ -14,6 +14,7 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     const status = new URLSearchParams(location.search).get('login');
+    if(status === 'not-allowed') return 'This account is not authorized to use this private app.';
     if(status === 'google-unavailable') return 'Google sign-in has not been set up. Continue with your local account below.';
     if(status === 'google-failed') return 'Google sign-in is temporarily unavailable. Check the connection setup, or continue locally.';
     return status === 'failed' ? 'Sign-in didn’t finish. Try again.' : null;

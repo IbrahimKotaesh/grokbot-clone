@@ -1,0 +1,5 @@
+#!/bin/bash
+# root-owned. This is the only sudo operation granted to the app user.
+set -euo pipefail
+if [ "$#" -ne 0 ]; then exit 64; fi
+exec /usr/bin/docker exec -i -u 0 grokbot-desktop /bin/bash -s

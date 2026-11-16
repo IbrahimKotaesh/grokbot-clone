@@ -27,6 +27,7 @@ export const env = {
   orgoCpu: Number(process.env.ORGO_CPU ?? 2),
   orgoResolution: process.env.ORGO_RESOLUTION ?? '1280x800x24',
   sessionSecret: req('SESSION_SECRET'),
+  allowedEmails: (process.env.ALLOWED_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
   devLogin: process.env.DEV_LOGIN === '1',
   dbPath: process.env.DB_PATH ?? new URL('../../data/grokbot.db', import.meta.url).pathname,
 };

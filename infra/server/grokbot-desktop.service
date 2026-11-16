@@ -1,0 +1,15 @@
+[Unit]
+Description=Grokbot isolated Linux desktop container
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker start grokbot-desktop
+ExecStop=/usr/bin/docker stop -t 15 grokbot-desktop
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

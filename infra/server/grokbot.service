@@ -1,0 +1,27 @@
+[Unit]
+Description=Grokbot private AI workspace
+After=network-online.target docker.service grokbot-desktop.service
+Wants=network-online.target
+Requires=grokbot-desktop.service
+
+[Service]
+User=grokbot
+Group=grokbot
+WorkingDirectory=/opt/grokbot/current
+EnvironmentFile=/etc/grokbot.env
+Environment=HOME=/var/lib/grokbot
+Environment=PATH=/opt/grokbot-tools/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/node server/dist/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/grokbot
+MemoryMax=1200M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

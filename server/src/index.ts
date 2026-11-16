@@ -25,6 +25,15 @@ initSubagents();
 initRooms();
 
 const app = new Hono();
+app.use('/api/*', async (c, next) => {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
+    const origin = c.req.header('origin');
+    if (origin && origin !== new URL(env.appUrl).origin) return c.json({ error: 'Invalid request origin' }, 403);
+  }
+  c.header('Cache-Control', 'no-store');
+  await next();
+});
+app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });
 app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.agentProvider === 'claude' ? env.claudeModel ?? 'claude-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
 app.route('/api/checkins', checkinsApi);
 app.route('/api/rooms', roomsApi);
