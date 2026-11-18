@@ -7,6 +7,19 @@ dist/
 *.db-*
 data/
 .DS_Store
+*.log
+
+# Provider login state, credentials and signing material stay local.
+.claude/
+.codex/
+auth.json
+credentials*.json
+*service-account*.json
+*.pem
+*.key
+*.p8
+*.p12
+*.mobileprovision
 
 # Local-only material (not part of the open-source repo)
 design/

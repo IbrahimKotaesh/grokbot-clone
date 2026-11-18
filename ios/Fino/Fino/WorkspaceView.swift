@@ -19,6 +19,37 @@ struct WorkspaceView: UIViewRepresentable {
         web.backgroundColor = UIColor(red: 0.97, green: 0.98, blue: 0.97, alpha: 1)
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.allowsBackForwardNavigationGestures = true
+        let loading = UIStackView()
+        loading.axis = .vertical
+        loading.alignment = .center
+        loading.spacing = 12
+        loading.translatesAutoresizingMaskIntoConstraints = false
+        loading.isAccessibilityElement = false
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = UIColor(red: 0.09, green: 0.43, blue: 0.44, alpha: 1)
+        spinner.startAnimating()
+        let label = UILabel()
+        label.text = "Opening Fino…"
+        label.font = .preferredFont(forTextStyle: .body)
+        label.textColor = .secondaryLabel
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        let retry = UIButton(configuration: .filled())
+        retry.setTitle("Try again", for: .normal)
+        retry.configuration?.baseBackgroundColor = spinner.color
+        retry.isHidden = true
+        retry.addAction(UIAction { [weak coordinator = context.coordinator] _ in
+            coordinator?.retryLoading()
+        }, for: .touchUpInside)
+        loading.addArrangedSubview(spinner)
+        loading.addArrangedSubview(label)
+        loading.addArrangedSubview(retry)
+        web.addSubview(loading)
+        NSLayoutConstraint.activate([loading.centerXAnchor.constraint(equalTo: web.centerXAnchor), loading.centerYAnchor.constraint(equalTo: web.centerYAnchor), loading.widthAnchor.constraint(lessThanOrEqualToConstant: 280)])
+        context.coordinator.spinner = spinner
+        context.coordinator.loadingLabel = label
+        context.coordinator.retryButton = retry
+        context.coordinator.loading = loading
         context.coordinator.web = web
         web.load(URLRequest(url: workspace))
         return web
@@ -28,10 +59,58 @@ struct WorkspaceView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, ASWebAuthenticationPresentationContextProviding, URLSessionTaskDelegate {
         weak var web: WKWebView?
         var authentication: ASWebAuthenticationSession?
+        weak var loading: UIStackView?
+        weak var spinner: UIActivityIndicatorView?
+        weak var loadingLabel: UILabel?
+        weak var retryButton: UIButton?
+        func retryLoading() {
+            recoveredWebProcess = false
+            web?.load(URLRequest(url: workspace))
+        }
+        var navigationTimeout: DispatchWorkItem?
+        var recoveredWebProcess = false
+        private func finishLoading() {
+            navigationTimeout?.cancel()
+            loading?.isHidden = true
+        }
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            loading?.isHidden = false
+            spinner?.startAnimating()
+            loadingLabel?.text = "Opening Fino…"
+            retryButton?.isHidden = true
+            if let loading { webView.bringSubviewToFront(loading) }
+            navigationTimeout?.cancel()
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.web?.stopLoading()
+                self.showConnectionError()
+            }
+            navigationTimeout = timeout
+            #if targetEnvironment(simulator)
+            let timeoutSeconds: Double = 120 // The first simulator WebKit launch compiles its graphics pipeline.
+            #else
+            let timeoutSeconds: Double = 30
+            #endif
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeoutSeconds, execute: timeout)
+        }
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finishLoading() }
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            if !recoveredWebProcess { recoveredWebProcess = true; webView.reload() }
+            else { showConnectionError() }
+        }
+        private func showConnectionError() {
+            finishLoading()
+            loading?.isHidden = false
+            spinner?.stopAnimating()
+            loadingLabel?.text = "Let's reconnect\nCheck your internet connection and try again."
+            retryButton?.isHidden = false
+            if let web, let loading { web.bringSubviewToFront(loading) }
+        }
         func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
             web?.window ?? ASPresentationAnchor()
         }
         private func showLoginError(_ message: String) {
+            finishLoading()
             let alert = UIAlertController(title: "Sign-in couldn't finish", message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "Try again", style: .default) { [weak self] _ in self?.login() })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -113,9 +192,7 @@ struct WorkspaceView: UIViewRepresentable {
         }
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             guard (error as NSError).code != NSURLErrorCancelled else { return }
-            let alert = UIAlertController(title: "Fino couldn't connect", message: "Check your internet connection and try again.", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "Retry", style: .default) { _ in webView.load(URLRequest(url: workspace)) })
-            webView.window?.rootViewController?.present(alert, animated: true)
+            showConnectionError()
         }
     }
 }
