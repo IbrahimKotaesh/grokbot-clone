@@ -90,18 +90,19 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar__scroll">
-        <TasksIsland />
         {primary && (
           <div className="pinned">
             <button type="button" className={`pinned__tile${selectedBotId === primary.id ? ' is-selected' : ''}`} onClick={() => selectBot(primary.id)} title={displayName(primary)}>
               <span className="pinned__avatar">
-                <BotAvatarFor bot={primary} size={collapsed ? 44 : 60} star />
+                <BotAvatarFor bot={primary} size={collapsed ? 44 : 88} star />
                 {live[primary.id]?.isRunning && <span className="status-dot is-working pinned__dot" />}
               </span>
               {!collapsed && <span className="pinned__label">{displayName(primary)}</span>}
             </button>
           </div>
         )}
+        <TasksIsland />
+        {!collapsed && others.length > 0 && <div className="sidebar__team-label">Your team</div>}
         <div className="bot-list">
           <BotRoster bots={others} collapsed={collapsed} render={(b) =>
             collapsed ? (

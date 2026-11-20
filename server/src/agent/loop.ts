@@ -1,4 +1,5 @@
 import {inChat} from '../lib/chat-scope.js';
+import {finishDesktopWork} from './desktop-proof.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
@@ -122,7 +123,8 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
-  const ctx: ToolCtx = { userId, botId, enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
+  const ctx: ToolCtx = { userId, botId, desktopProof:{used:false}, enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
+  let completed=false;
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
@@ -149,6 +151,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         }
         return {output: st.outputs[0]?.output ?? '', endTurn: !!st.outputs[0]?.__endTurn};
       }, images);
+      completed=true;
       return;
     }
     // A new user message supersedes any pending approval: deny it.
@@ -200,6 +203,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (paused) return;
       if (st.outputs.some((o: any) => o.__endTurn)) break;
     }
+    completed=true;
   } catch (e: any) {
     const msg = ctrl.signal.aborted ? 'Stopped.' : `Something went wrong: ${e?.message ?? e}`;
     appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
@@ -211,6 +215,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     }
     aborts.delete(botId);
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
+    await finishDesktopWork(ctx,completed&&!ctrl.signal.aborted,!!stillPending);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
     emitBot(botId);
 
@@ -267,6 +272,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       try {
         const impl = toolMap.get(c.name);
         res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
+        if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
         if(!toolMap.has(c.name)||['connected_apps','read_file','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {

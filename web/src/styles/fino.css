@@ -400,3 +400,15 @@ body{letter-spacing:0;}
 @media(max-width:900px){.chat-threads{margin-top:0;padding:6px 12px 8px}.chat-threads__current>span{max-width:32ch}.chat--threaded .transcript{padding-top:16px}}
 @media(max-width:430px){.chat-threads__new>span{display:none}.chat-threads__new{padding:7px 10px}.chat-threads__current>span{max-width:23ch}}
 @media(prefers-reduced-motion:no-preference){.chat-threads__current>svg,.chat-threads__new{transition:transform 160ms ease-in-out,background-color 160ms ease-in-out}.chat-threads__menu{animation:fino-menu-in 160ms ease-in-out}}
+
+/* The chief anchors the roster; teammates stay in an ordered, quieter list. */
+.sidebar:not(.is-collapsed) .pinned{justify-content:center;padding:14px 0 24px;}
+.sidebar:not(.is-collapsed) .pinned__tile{flex-direction:column;justify-content:center;gap:12px;padding:18px 12px;width:100%;border-radius:20px;}
+.sidebar:not(.is-collapsed) .pinned__label{flex:initial;text-align:center;font-size:16px;font-weight:600;line-height:24px;}
+.sidebar__team-label{padding:18px 10px 8px;color:var(--color-text-secondary);font-size:12px;font-weight:500;}
+.sidebar .bot-sort-item .bot-row{height:76px;padding:10px 8px;gap:12px;border-radius:12px;}
+.sidebar .bot-row__name{font-weight:600;}
+.sidebar .bot-row__preview{font-size:12px;line-height:19px;opacity:.8;}
+.sidebar .bot-sort-handle{opacity:0;transition:opacity 160ms ease;}
+.sidebar .bot-sort-item:hover .bot-sort-handle,.sidebar .bot-sort-item:focus-within .bot-sort-handle{opacity:1;}
+@media (pointer:coarse){.sidebar .bot-sort-handle{opacity:.6;}}

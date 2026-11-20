@@ -21,6 +21,7 @@ import { createSubagent, deleteSubagent, listSubagents } from './subagents.js';
 import { createRoom, postToRoom } from './rooms.js';
 import type { ActivityKind } from '../types.js';
 import { Cron } from 'croner';
+import type {DesktopProof} from './desktop-proof.js';
 
 export interface ToolCtx {
   userId: string;
@@ -29,6 +30,7 @@ export interface ToolCtx {
   depth: number;
   /** Only a live, direct user turn can authorize creation; never scheduled/bot triggers. */
   directUserRequest?: string;
+  desktopProof?:DesktopProof;
 }
 
 export interface ToolResult {
@@ -56,6 +58,7 @@ async function shot(ctx: ToolCtx, caption: string): Promise<ToolResult> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   await new Promise((r) => setTimeout(r, 700));
   const s = await orgo.screenshot(computerId, screenId);
+  if(ctx.desktopProof)ctx.desktopProof.used=true;
   const mime = s.mime_type ?? 'image/png';
   const url = s.image.startsWith('data:') ? s.image : `data:${mime};base64,${s.image}`;
   return {
@@ -69,7 +72,9 @@ async function shot(ctx: ToolCtx, caption: string): Promise<ToolResult> {
 
 async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: string) => Promise<T>) {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
-  return fn(computerId, screenId);
+  const result=await fn(computerId, screenId);
+  if(ctx.desktopProof)ctx.desktopProof.used=true;
+  return result;
 }
 
 function botByName(userId: string, name: string) {
