@@ -8,11 +8,11 @@ db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run('
 const bot=createBot('owner',{name:'Test'});
 const check=(tool,args={})=>policyFor('owner',tool,args,bot.id).decision;
 const mode=value=>db.prepare('UPDATE bots SET permission_mode=? WHERE id=?').run(value,bot.id);
-assert.equal(check('shell'),'allow');
+assert.equal(check('shell',{command:'pwd'}),'allow');
 assert.equal(check('COMPOSIO_REMOTE_WORKBENCH'),'ask');
 db.prepare("INSERT INTO policies VALUES ('owner','COMPOSIO_REMOTE_WORKBENCH','always_allow')").run();
-assert.equal(check('COMPOSIO_REMOTE_WORKBENCH'),'allow','Persisted Always allow must be consulted for meta-tools');
-assert.equal(check('connected_apps',{operation:'execute',tool:'COMPOSIO_REMOTE_WORKBENCH',arguments:'{}'}),'allow');
+assert.equal(check('COMPOSIO_REMOTE_WORKBENCH'),'ask','Remote execution always requires exact-action approval');
+assert.equal(check('connected_apps',{operation:'execute',tool:'COMPOSIO_REMOTE_WORKBENCH',arguments:'{}'}),'ask');
 const batch={tools:[{tool_slug:'GMAIL_SEND_EMAIL'},{tool_slug:'GOOGLESHEETS_BATCH_UPDATE'}]};
 const keys=policyKeys('COMPOSIO_MULTI_EXECUTE_TOOL',batch);
 const row=appendRow(bot.id,'card',{type:'card',card:'approval',approvalId:'test',title:'Test',detail:'',tool:keys[0],args:batch,policyKeys:keys,status:'pending'});
@@ -27,7 +27,7 @@ mode('ask');assert.equal(check('shell'),'ask');assert.equal(check('computer_clic
 mode('read_only');for(const name of ['shell','computer_click','open_browser','create_bot','send_to_bot','COMPOSIO_REMOTE_WORKBENCH'])assert.equal(check(name),'block',name);
 assert.equal(check('GMAIL_FETCH_EMAILS'),'allow');assert.equal(check('connected_apps',{operation:'list_tools'}),'allow');
 assert.equal(check('COMPOSIO_MULTI_EXECUTE_TOOL',batch),'block','Read only overrides saved write grants');
-mode('autonomous');assert.equal(check('GMAIL_SEND_EMAIL'),'allow');assert.equal(check('shell'),'allow');
+mode('autonomous');assert.equal(check('GMAIL_SEND_EMAIL'),'allow');assert.equal(check('shell',{command:'pwd'}),'allow');
 db.prepare("INSERT OR REPLACE INTO policies VALUES ('owner','shell','blocked')").run();assert.equal(check('shell'),'block');
 assert.equal(policyFor('other','shell',{},bot.id).decision,'block');
 console.log('PASS: persistent meta-tool and batch Always allow; all four permission modes; blocked overrides; owner isolation');

@@ -1,3 +1,4 @@
+import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
@@ -66,6 +67,7 @@ export const isBotBusy = (botId: string) => queues.has(botId);
 
 function enqueueBotMessage(fromBotId: string, toBotId: string, text: string, depth: number) {
   const from = getBotRow(fromBotId);
+  if(hasSuspiciousContext(fromBotId))flagSuspiciousContent(from.user_id,toBotId,'delegated external context',text);
   appendRow(toBotId, 'message', { type: 'message', role: 'user', text, from: { kind: 'bot', id: fromBotId, name: from.name } });
   enqueue(toBotId, { type: 'bot', fromBotId, fromName: from.name, text, depth });
 }
@@ -230,8 +232,8 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       // A saved grant may have arrived while toolkit metadata was loading.
       if(policyFor(userId,c.name,args,botId).decision!=='ask')continue;
       const card = appendRow(botId, 'card', {
-        type: 'card', card: 'approval', approvalId, title: `Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
-        detail: describeArgs(approvalArgs), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
+        type: 'card', card: 'approval', approvalId, title: pol.requiresFreshApproval?`Review sensitive action for ${getBotRow(botId).name}`:`Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
+        detail: [pol.safetyReason,describeArgs(approvalArgs)].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now());
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
@@ -254,6 +256,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       try {
         const impl = toolMap.get(c.name);
         res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
+        if(!toolMap.has(c.name)||['connected_apps','read_file','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };
@@ -400,12 +403,16 @@ export function resolveApproval(userId: string, approvalId: string, decision: 'a
     if(card?.body.type==='card'&&card.body.card==='approval')updateRow(record.bot_id,record.row_seq,{...card.body,status});
     if(!['codex','claude'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume'});
   };
+  const ownCard=getRow(ap.bot_id,ap.row_seq);
+  if(decision==='always'&&ownCard?.body.type==='card'&&ownCard.body.card==='approval'&&ownCard.body.requiresFreshApproval)decision='allow';
   if(decision==='always') {
     const keys=keysFor(ap);
     db.transaction(()=>{for(const key of keys)db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId,key);})();
     finish(ap,'always');
     const pending=db.prepare("SELECT a.* FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE b.user_id=? AND a.status='pending'").all(userId) as any[];
     for(const other of pending){
+      const otherCard=getRow(other.bot_id,other.row_seq);
+      if(otherCard?.body.type==='card'&&otherCard.body.card==='approval'&&otherCard.body.requiresFreshApproval)continue;
       const covered=keysFor(other);
       if(covered.length&&covered.every((key:string)=>keys.includes(key)&&policyFor(userId,key,{},other.bot_id).decision==='allow'))finish(other,'always');
     }

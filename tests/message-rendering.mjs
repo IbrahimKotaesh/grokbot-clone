@@ -22,5 +22,7 @@ try {
  assert.match(render('موسم 2025–26'), /<bdi dir="ltr" class="md__number">2025–26<\/bdi>/);
  assert.match(render('المجموع **€365,62** و ٣٠٠٫٩٠ €'),/<bdi dir="ltr" class="md__number">€365,62<\/bdi>/);
  const plain=render('English and عربي with [source](https://example.com)');assert.ok(!plain.includes('Some source links are unavailable'));
+ const remoteImage=render('![Report](https://example.com/collect?secret=test-only)');assert.ok(!remoteImage.includes('<img'),'External images must not generate automatic requests');assert.match(remoteImage,/Open external image/);
+ assert.match(render('![Generated](/api/bots/bot_test/images/img_test)'),/<img/,'Local chat images stay inline');
  console.log('PASS: actual Markdown rendering cleans broken citations, preserves links/code, handles streaming and keeps Arabic/list/quote structure');
 } finally { await fs.unlink(output); }

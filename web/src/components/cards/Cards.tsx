@@ -45,10 +45,10 @@ export function ApprovalCard({ body }: { body: Card<'approval'> }) {
         <>
           <div className="card__actions">
             <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('deny')}>Don't allow</button>
-            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('always')} title="Remember these actions for this account, including future requests">Always allow</button>
-            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={() => decide('allow')}>Allow</button>
+            {!body.requiresFreshApproval&&<button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('always')} title="Remember these actions for this account, including future requests">Always allow</button>}
+            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={() => decide('allow')}>{body.requiresFreshApproval?'Allow once':'Allow'}</button>
           </div>
-          <div className="card__sub">Always allow remembers these specific actions. Other actions keep their own permissions.</div>
+          <div className="card__sub">{body.requiresFreshApproval?'This action requires approval each time, including in Autonomous mode.':'Always allow remembers these specific actions. Other actions keep their own permissions.'}</div>
           {error && <div className="card__error">{error}</div>}
         </>
       ) : (

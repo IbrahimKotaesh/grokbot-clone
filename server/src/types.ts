@@ -99,6 +99,7 @@ export type CardBody =
       logo?: string;
       args: unknown;
       policyKeys?: string[];
+      requiresFreshApproval?: boolean;
       status: 'pending' | 'allowed' | 'always' | 'denied' | 'expired';
     }
   | {
