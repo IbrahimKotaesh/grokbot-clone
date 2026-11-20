@@ -10,6 +10,7 @@ import { Icon } from './Icon';
 import { useSmoothText } from '../lib/smooth-text';
 import { Markdown } from './Markdown';
 import {stepDestination,stepTitle} from '../lib/work-step';
+import {MessagePhotos} from './MessagePhotos';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -63,9 +64,9 @@ const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left'
   const shown = useSmoothText(b.text, !!b.streaming, side === 'left' && Date.now()-row.createdAt < 5000);
   return (
     <div className={`bubble-wrap is-${side}`}>
-      <div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
+      {b.images?.length ? <MessagePhotos images={b.images}/> : null}
+      {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
         {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??'File'} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title="Download">↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>Preview PDF</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
-        {b.images?.length ? <div className="bubble__photos">{b.images.map(image=><a key={image.id} href={image.url} target="_blank" rel="noreferrer noopener"><img src={image.url} alt={image.name} loading="lazy"/></a>)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
         {b.streaming&&<span className="bubble__streaming" aria-label="Writing"/>}
         {b.citations && b.citations.length > 0 && (
@@ -77,7 +78,7 @@ const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left'
             })}
           </div>
         )}
-      </div>
+      </div>:null}
       <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
     </div>
   );
