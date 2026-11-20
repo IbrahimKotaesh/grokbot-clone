@@ -1,12 +1,14 @@
+import {requestDesktop,desktopImage,type DesktopTarget} from '../desktop-device.js';
 import {publishAttachment} from '../attachments.js';
 import {appendRow} from '../store.js';
 import {screenFor} from '../computer.js';
 import {orgo} from '../orgo.js';
 
 export interface DesktopProof {used:boolean;deferred?:boolean}
-type Owner={userId:string;botId:string;desktopProof?:DesktopProof};
+type Owner={userId:string;botId:string;desktopProof?:DesktopProof;desktopTarget?:DesktopTarget};
 /** Capture only desktops touched by this turn, never provision a computer for plain chat. */
 export async function finishDesktopWork(ctx:Owner,completed:boolean,blocked:boolean, capture=async()=>{
+ if(ctx.desktopTarget)return desktopImage(await requestDesktop(ctx.userId,ctx.desktopTarget,'computer_screenshot',{}));
  const {computerId,screenId}=await screenFor(ctx.userId,ctx.botId);
  const shot=await orgo.screenshot(computerId,screenId);
  const raw=shot.image.replace(/^data:image\/(?:png|jpeg|webp);base64,/,'');

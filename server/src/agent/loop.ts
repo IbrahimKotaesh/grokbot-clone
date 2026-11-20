@@ -1,3 +1,4 @@
+import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,runDesktopTool} from '../desktop-device.js';
 import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
@@ -112,7 +113,7 @@ function triggerItem(t: Trigger, attachments=''): any | null {
 
 async function runTurn(botId:string,trigger:Trigger){
  const generation=trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation;
- if(!generation)return;return inChat(botId,generation,()=>runScopedTurn(botId,trigger));
+ if(!generation)return;const owner=getBotRow(botId)?.user_id;const target=desktopForTrigger(owner,trigger.type);return withDesktopTarget(target,()=>inChat(botId,generation,()=>runScopedTurn(botId,trigger)));
 }
 async function runScopedTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
@@ -123,7 +124,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
-  const ctx: ToolCtx = { userId, botId, desktopProof:{used:false}, enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
+  const ctx: ToolCtx = { userId, botId, desktopProof:{used:false},desktopTarget:localDesktopTarget(), enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
   let completed=false;
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
@@ -271,7 +272,8 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       setLive(botId, { isRunning: true, activity: { kind: c.name === 'send_to_bot' ? 'messaging_named' : act.kind, detail, since: now() }, awaiting: null });
       try {
         const impl = toolMap.get(c.name);
-        res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
+        if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
+        else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
         if(!toolMap.has(c.name)||['connected_apps','read_file','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });

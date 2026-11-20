@@ -1,3 +1,4 @@
+import {attachDesktopDevices} from './desktop-device.js';
 import {accessGate} from './lib/access-code.js';
 import {accessApi} from './routes-access.js';
 import { initPushWorker } from './notifications.js';
@@ -55,6 +56,7 @@ if (fs.existsSync(webDist)) {
 
 const server = serve({ fetch: app.fetch, port: env.port, hostname: '127.0.0.1' }, (info) => console.log(`[grokbot] server on http://localhost:${info.port} (${env.agentProvider}, ${env.computerProvider})`));
 attachVncRelay(server as unknown as Server);
+attachDesktopDevices(server as unknown as Server);
 // GROKBOT_NO_SCHEDULER=1 for extra dev/test servers sharing a database copy, so routines and triggers don't fire twice.
 if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
   initPushWorker();

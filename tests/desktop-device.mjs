@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';import {createServer} from 'node:http';import {WebSocket} from 'ws';
+import {db} from '../server/dist/db.js';import {env} from '../server/dist/env.js';
+import {attachDesktopDevices,activeDesktop,desktopForTrigger,requestDesktop,desktopImage,validateDesktopAction,withDesktopTarget,localDesktopTarget,runDesktopTool} from '../server/dist/desktop-device.js';
+const server=createServer((_,res)=>res.end('test'));attachDesktopDevices(server);await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;
+for(const id of ['owner','other']){db.prepare('INSERT INTO users(id,email,name,created_at) VALUES(?,?,?,?)').run(id,id+'@example.com',id,Date.now());db.prepare('INSERT INTO auth_sessions VALUES(?,?,?,?)').run(id,id,Date.now(),Date.now()+60000);}
+const connect=(cookie='owner',origin=new URL(env.appUrl).origin)=>new WebSocket(`ws://127.0.0.1:${port}/api/desktop/connect?mode=browser`,{headers:{Cookie:'grokbot_session='+cookie,Origin:origin}});
+const rejected=(cookie,origin)=>new Promise(resolve=>{const ws=connect(cookie,origin);ws.on('error',()=>resolve());ws.on('open',()=>{ws.close();assert.fail('Unauthorized device connected');});});
+await rejected('missing');await rejected('owner','https://evil.example');
+const ws=connect();await new Promise((resolve,reject)=>{ws.once('message',resolve);ws.once('error',reject);});const target=activeDesktop('owner');assert.ok(target);assert.equal(desktopForTrigger('owner','user').id,target.id);for(const trigger of ['routine','bot','system','resume'])assert.equal(desktopForTrigger('owner',trigger),null,'Only direct messages can target the Mac');assert.equal(activeDesktop('other'),null);await rejected('owner');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR5kAAAAASUVORK5CYII=','base64');
+ws.on('message',data=>{const call=JSON.parse(data.toString());if(call.action)ws.send(JSON.stringify({id:call.id,result:{image:png.toString('base64'),width:1,height:1}}));});
+assert.deepEqual(desktopImage(await requestDesktop('owner',target,'computer_screenshot',{})),png);
+await assert.rejects(requestDesktop('other',target,'computer_screenshot',{}));
+assert.throws(()=>validateDesktopAction('shell',{command:'pwd'}));assert.throws(()=>validateDesktopAction('open_browser',{url:'file:///etc/passwd'}));assert.throws(()=>validateDesktopAction('computer_click',{x:-1,y:5}));assert.throws(()=>validateDesktopAction('computer_type',{text:'a'.repeat(10001)}));assert.doesNotThrow(()=>validateDesktopAction('computer_key',{keys:'Return'}));
+assert.throws(()=>desktopImage({image:Buffer.from('not an image').toString('base64'),width:1,height:1}));
+const result=await runDesktopTool('owner',target,'computer_click',{x:0,y:0});assert.equal(result.output[1].type,'input_image');
+await Promise.all([withDesktopTarget(target,async()=>{await new Promise(r=>setTimeout(r,5));assert.equal(localDesktopTarget().id,target.id);}),withDesktopTarget(null,async()=>{await new Promise(r=>setTimeout(r,2));assert.equal(localDesktopTarget(),undefined);})]);assert.equal(localDesktopTarget(),undefined);
+await new Promise(resolve=>{ws.once('close',resolve);ws.close();});assert.equal(activeDesktop('owner'),null);await assert.rejects(requestDesktop('owner',target,'computer_screenshot',{}));
+await new Promise(r=>server.close(r));db.close();console.log('PASS: authenticated opt-in device bridge, cross-owner/origin isolation, typed action validation, data-only PNG replies, per-turn scope and disconnect without cloud fallback');process.exit(0);

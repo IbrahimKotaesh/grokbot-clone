@@ -1,3 +1,4 @@
+import type {DesktopTarget} from '../desktop-device.js';
 import {freshApprovalReason} from './action-safety.js';
 import {hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import {saveDurableMemory,updateDurableMemory,memoryMatches,searchConversation} from './recall.js';
@@ -31,6 +32,7 @@ export interface ToolCtx {
   /** Only a live, direct user turn can authorize creation; never scheduled/bot triggers. */
   directUserRequest?: string;
   desktopProof?:DesktopProof;
+  desktopTarget?:DesktopTarget;
 }
 
 export interface ToolResult {
