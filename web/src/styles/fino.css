@@ -428,3 +428,29 @@ body{letter-spacing:0;}
 @media(pointer:coarse){.bot-conversations__edit{opacity:.65;}.bot-conversations__add{width:36px;height:36px;top:20px;}}
 .bot-conversations button:focus-visible,.bot-chat-menu>button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;}
 @media(prefers-reduced-motion:no-preference){.bot-chat-menu{animation:fino-menu-in 150ms ease-in-out;}}
+
+/* Full bot pigments with contrast-aware text, rather than translucent tints. */
+.chat .bubble.is-agent,.chat .bubble.is-user{color:var(--bot-on-bubble,#fff);}
+.chat .bubble .md a{color:inherit;text-decoration:underline;text-underline-offset:3px;}
+.chat .bubble .md blockquote{color:inherit;opacity:.9;border-color:currentColor;}
+.chat-chart{margin:8px 0;max-width:100%;min-width:0;padding:16px;border-radius:14px;background:var(--color-bg-pane);color:var(--color-ink);border:1px solid var(--color-border-tertiary);}
+.chat-chart>figcaption{font-size:15px;font-weight:600;margin-bottom:12px;}
+.chat-chart>svg{display:block;width:100%;height:auto;min-width:0;overflow:visible;}
+.chat-chart>svg.chat-chart__pie{max-width:330px;margin:auto;}
+.chat-chart svg text{font:12px var(--font-stack);fill:var(--color-text-secondary);}
+.chat-chart svg .chat-chart__total{font-size:24px;font-weight:600;fill:var(--color-ink);}
+.chat-chart__grid{stroke:var(--color-border-tertiary);stroke-dasharray:3 4;}
+.chat-chart svg [role=button]{cursor:pointer;outline:none;}
+.chat-chart svg [role=button]:focus-visible{stroke:var(--color-ink);stroke-width:3;}
+.chat-chart__legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;}
+.chat-chart__legend>span{display:flex;align-items:center;gap:6px;}
+.chat-chart__legend i{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+.chat-chart__legend strong{font-weight:500;color:var(--color-text-secondary);}
+.chat-chart__value{min-height:34px;font-size:12px;padding-top:12px;color:var(--color-text-secondary);}
+.chat-chart__data{font-size:12px;}
+.chat-chart__data>summary{cursor:pointer;padding:6px 0;color:var(--color-ink);}
+.chat-chart__data .md-table{margin-top:8px;}
+.chat-chart-error{font-size:13px;padding:12px;border:1px dashed currentColor;border-radius:10px;}
+@media(max-width:600px){.chat-chart{padding:11px;}.chat-chart svg text{font-size:13px;}.chat-chart__legend{gap:7px 12px;}}
+.chat .bubble:has(.chat-chart){width:100%;max-width:760px;}
+@media(max-width:600px){.chat-chart>svg:not(.chat-chart__pie) text{font-size:24px;}}

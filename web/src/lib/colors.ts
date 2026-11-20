@@ -29,10 +29,13 @@ export const palette = (c: AvatarColor | string | undefined): BotPalette => BOT_
 /** CSS custom properties that theme a subtree with a bot's color. */
 export function botVars(c: AvatarColor | string | undefined): React.CSSProperties {
   const p = palette(c);
+  const rgb=p.fill.slice(1).match(/../g)!.map(h=>parseInt(h,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+  const luminance=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+  const onBubble=luminance>.179?'#000000':'#ffffff';
   return {
-    ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: c==='black'?'#303641':`color-mix(in srgb, ${p.fill} 60%, #000000)`,
-    ['--bot-reply-bg' as string]:`color-mix(in srgb, ${p.fill} 26%, var(--color-bg-assistant))`,
-    ['--bot-reply-border' as string]:`color-mix(in srgb, ${p.fill} 42%, var(--color-border-assistant))`, ['--bot-action' as string]: 'var(--color-primary)', ['--bot-action-hover' as string]: 'var(--color-bg-primary-hover)',
+    ['--bot-on-bubble' as string]:onBubble, ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: p.fill,
+    ['--bot-reply-bg' as string]:p.fill,
+    ['--bot-reply-border' as string]:p.fill, ['--bot-action' as string]: 'var(--color-primary)', ['--bot-action-hover' as string]: 'var(--color-bg-primary-hover)',
     ['--bot-on-action' as string]: 'var(--color-on-primary)',
     ['--bot-action-soft' as string]: 'color-mix(in srgb, var(--color-primary) 13%, transparent)',
     ['--bot-action-text' as string]: 'var(--color-primary)',

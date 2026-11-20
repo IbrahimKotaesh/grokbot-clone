@@ -1,10 +1,13 @@
 import { SheetLink, sheetId } from './SheetLink';
-import { memo } from 'react';
+import { memo, isValidElement } from 'react';
+import {ChatChart} from './ChatChart';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkCitations, remarkBidiRanges } from '../lib/remark-citations';
 
 const components: Components = {
+  pre: ({children,node:_node,...props}) => isValidElement<{className?:string}>(children)&&children.props.className==='language-fino-chart' ? <>{children}</> : <pre {...props}>{children}</pre>,
+  code: ({className,children,node:_node,...props}) => className==='language-fino-chart' ? <ChatChart raw={String(children)}/> : <code className={className} {...props}>{children}</code>,
   // External image URLs can carry private data in their path/query. Do not issue
   // automatic requests chosen by model output; generated/uploaded local images remain inline.
   img: ({src,alt}) => src && /^\/api\/bots\/[A-Za-z0-9_-]+\/images\/[A-Za-z0-9_-]+$/.test(src)

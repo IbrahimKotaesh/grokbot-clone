@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 const output=new URL('../data/verification/render-test.mjs',import.meta.url);
 await fs.mkdir(new URL('../data/verification/',import.meta.url),{recursive:true});
-await build({stdin:{contents:"export { Markdown } from './web/src/components/Markdown.tsx';",resolveDir:process.cwd(),loader:'tsx'},bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-dom','lucide-react'],outfile:output.pathname});
+await build({stdin:{contents:"export { Markdown } from './web/src/components/Markdown.tsx'; export {botVars,BOT_COLORS} from './web/src/lib/colors.ts';",resolveDir:process.cwd(),loader:'tsx'},bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-dom','lucide-react'],outfile:output.pathname});
 try {
  const {createElement}=await import('react');const {renderToStaticMarkup}=await import('react-dom/server');
- const {Markdown}=await import(pathToFileURL(output.pathname));
+ const {Markdown,botVars,BOT_COLORS}=await import(pathToFileURL(output.pathname));
  const render=text=>renderToStaticMarkup(createElement(Markdown,{text}));
  const marker='\uE200cite\uE202turn550136view2\uE201';
  const actual=render(`مرحبا **بالعربي**. ${marker}\n\n> اقتباس عربي\n\n1. One\n2. اثنان\n\n[Official source](https://example.com/report)`);
@@ -24,5 +24,23 @@ try {
  const plain=render('English and عربي with [source](https://example.com)');assert.ok(!plain.includes('Some source links are unavailable'));
  const remoteImage=render('![Report](https://example.com/collect?secret=test-only)');assert.ok(!remoteImage.includes('<img'),'External images must not generate automatic requests');assert.match(remoteImage,/Open external image/);
  assert.match(render('![Generated](/api/bots/bot_test/images/img_test)'),/<img/,'Local chat images stay inline');
- console.log('PASS: actual Markdown rendering cleans broken citations, preserves links/code, handles streaming and keeps Arabic/list/quote structure');
+ for(const [color,palette] of Object.entries(BOT_COLORS)){
+  const vars=botVars(color);assert.equal(vars['--bot-reply-bg'],palette.fill,'Bot bubbles use a solid pigment');assert.equal(vars['--bot-bubble'],palette.fill);
+  const rgb=palette.fill.slice(1).match(/../g).map(h=>parseInt(h,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4),l=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+  const ratio=vars['--bot-on-bubble']==='#ffffff'?1.05/(l+.05):(l+.05)/.05;assert.ok(ratio>=4.5,`Readable contrast for ${color}`);
+ }
+ const chart={type:'bar',title:'مبيعات الشهر',labels:['يناير','فبراير'],series:[{name:'Revenue',values:[10,-20]}],unit:'USD'};
+ const chartText=c=>'```fino-chart\n'+JSON.stringify(c)+'\n```';
+ for(const type of ['bar','line','pie']){
+  const output=render(chartText({...chart,type,series:[{name:'Revenue',values:[10,20]}]}));
+  assert.match(output,/<figure class="chat-chart"/);assert.match(output,/<svg/);assert.match(output,/View data/);assert.ok(!output.includes('<pre'),'Chart renders as a visual, not a code block');assert.ok(!output.includes('language-fino-chart'));
+ }
+ assert.match(render(chartText(chart)),/<rect/,'Negative values render in a bar chart');
+ assert.ok(!render(chartText({...chart,type:'pie'})).includes('<svg'),'Negative pie values rejected');
+ assert.ok(!render(chartText({...chart,labels:['x']})).includes('<svg'),'Mismatched arrays rejected');
+ assert.ok(!render(chartText({...chart,series:[{name:'x',values:[1e20,2]}]})).includes('<svg'),'Oversized values rejected');
+ assert.ok(!render(chartText({...chart,title:'<script>alert(1)</script>'})).includes('<script>'),'Labels are escaped, never executable');
+ assert.match(render('```fino-chart\n{"type":'),/Preparing chart/,'Partial streaming JSON waits quietly');
+ assert.match(render('```json\n{"a":1}\n```'),/<pre/,'Normal code blocks preserved');
+ console.log('PASS: safe bar/line/pie chart rendering, streaming and vivid bubble contrast; actual Markdown rendering cleans broken citations, preserves links/code, handles streaming and keeps Arabic/list/quote structure');
 } finally { await fs.unlink(output); }
