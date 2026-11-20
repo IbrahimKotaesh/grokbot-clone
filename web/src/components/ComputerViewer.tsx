@@ -11,7 +11,7 @@ type Mode = 'watch' | 'control';
 type Conn = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 /** Fullscreen computer stage: noVNC over our relay. Watch mode is view-only; Take control reconnects with mode=control. */
-export function ComputerViewer() {
+export function ComputerViewer({docked=false}:{docked?:boolean}) {
   const bot = useSelectedBot();
   const computer = useStore((s) => s.computer);
   const set = useStore((s) => s.set);
@@ -23,7 +23,7 @@ export function ComputerViewer() {
   const [waking, setWaking] = useState(false);
   const [wakeError, setWakeError] = useState('');
   const running = computer?.status === 'running';
-  const close = () => set({ viewerOpen: false });
+  const close = () => {if(docked)window.dispatchEvent(new CustomEvent('fino-close-computer'));else set({viewerOpen:false});};
 
   const wake = async () => {
     setWaking(true); setWakeError('');
@@ -81,7 +81,7 @@ export function ComputerViewer() {
   const busy = waking || computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
 
   return (
-    <div className="viewer" role="dialog" aria-modal="true" aria-label={`${bot.name}'s computer`} style={botVars(bot.avatarColor)}>
+    <div className={`viewer${docked?' viewer--docked':''}`} role={docked?'region':'dialog'} aria-modal={docked?undefined:true} aria-label={`${bot.name}'s computer`} style={botVars(bot.avatarColor)}>
       <div className="viewer__scrim" onClick={mode === 'watch' ? close : undefined} />
       <div className="viewer__top">
         <div className="viewer__title">

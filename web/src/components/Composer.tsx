@@ -1,3 +1,4 @@
+import {useDesktopState} from '../lib/desktop';
 import {ProviderLogo} from './ProviderLogo';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
@@ -93,7 +94,9 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
     return () => window.removeEventListener('keydown', k);
   }, []);
 
+  const desktop=useDesktopState(),needsLocalConnection=!!desktop&&desktop.environment!=='server'&&!desktop.connected;
   const send = async () => {
+    if(needsLocalConnection){setError('Connect the selected local environment using the top toolbar first.');return;}
     const t = text.trim();
     if ((!t && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
@@ -139,6 +142,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
       <input hidden ref={captureRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo" onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       {camera&&<PhotoCamera onClose={closeCamera} onPhoto={photo=>setPhotos(cur=>[...cur,photo].slice(0,3))}/>}
       <div className="composer-shell">
+      {needsLocalConnection&&<div className="composer__environment-note">{desktop?.environment==='mac'?'This Mac':'Local Browser'} selected · Connect above to send a task</div>}
       {documents.length>0&&<div className="composer__documents">{documents.map((file,i)=><div className="composer__document" key={i}><Icon name="file" size={20}/><span><strong>{file.name}</strong><small>{Math.max(1,Math.round(file.size/1024))} KB</small></span><button type="button" aria-label={`Remove file ${i+1}`} disabled={sending} onClick={()=>setDocuments(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {sending&&documents.length>0&&<div className="composer__preparing" role="status">Reading attachments…</div>}
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
@@ -201,7 +205,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
               type="button"
               className="composer__cta"
               onClick={send}
-              disabled={!hasText || preparing || sending || switching || dictating}
+              disabled={needsLocalConnection || !hasText || preparing || sending || switching || dictating}
               aria-label="Send"
               title="Send (Enter)"
             >

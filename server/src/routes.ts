@@ -1,3 +1,4 @@
+import {resolveDesktopTarget,type DesktopTarget} from './desktop-device.js';
 import {inChat} from './lib/chat-scope.js';
 import {createChat,listChats,renameChat,validChat,ensureChats} from './chats.js';
 import {invalidateProviderSession} from './agent/context.js';
@@ -239,6 +240,7 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
   try { body=await c.req.json(); } catch { return c.json({error:'Invalid message.'},400); }
   if(!body || typeof body !== 'object' || Array.isArray(body)) return c.json({error:'Invalid message.'},400);
   const generation=body.generation??b.generation;if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
+  let desktopTarget:DesktopTarget|null;try{desktopTarget=resolveDesktopTarget(c.get('user').id,body.desktopEnvironment);}catch(e){return c.json({error:(e as Error).message},409);}
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   let photos,documents;
   try { photos=validateImages(body.images); documents=await extractDocuments(validateDocuments(body.files)); } catch(e) { return c.json({error:(e as Error).message},400); }
@@ -254,7 +256,7 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
   const fileIds=files.map(file=>file.id);
   const prompt=text || (files.length?'Read and summarize the attached documents.':'Describe the attached photo.');
   if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
-  else enqueue(b.id, { type: 'user',generation, text:prompt,imageIds,fileIds });
+  else enqueue(b.id, { type: 'user',generation,desktopTarget, text:prompt,imageIds,fileIds });
   return c.json({ row });
 });
 
@@ -285,12 +287,13 @@ api.post('/approvals/:id', async (c) => {
 api.post('/bots/:id/cards/:seq/answer',async c=>{
  const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);
  const input=await c.req.json().catch(()=>({})),generation=input.generation??b.generation;
+ let desktopTarget:DesktopTarget|null;try{desktopTarget=resolveDesktopTarget(c.get('user').id,input.desktopEnvironment);}catch(e){return c.json({error:(e as Error).message},409);}
  if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
  return inChat(b.id,generation,()=>{
   const row=getRow(b.id,Number(c.req.param('seq'))),answer=String(input.answer??'').trim();
   if(!row||row.body.type!=='card'||row.body.card!=='question'||!answer)return c.json({error:'not a question or empty answer'},400);
   updateRow(b.id,row.seq,{...row.body,status:'answered',answer});const answerRow=appendRow(b.id,'message',{type:'message',role:'user',text:answer});queueAutomaticMemory(b.id,generation,answerRow.seq);
-  enqueue(b.id,{type:'user',generation,text:`[Answer to "${row.body.question}"] ${answer}`});return c.json({ok:true});
+  enqueue(b.id,{type:'user',generation,desktopTarget,text:`[Answer to "${row.body.question}"] ${answer}`});return c.json({ok:true});
  });
 });
 api.post('/bots/:id/cards/:seq/dismiss',async c=>{

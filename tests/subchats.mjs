@@ -19,7 +19,7 @@ inChat(bot.id,b.generation,()=>{assert.equal(getRow(bot.id,bRow.seq).body.text,'
 assert.equal(getRow(bot.id,aRow.seq),null,'Subchat rows must not be read as main-chat rows');
 const call=(path,method='GET',body,user='owner')=>api.request(path,{method,headers:{Cookie:'grokbot_session='+user,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
 let response=await call(`/bots/${bot.id}/rows?generation=${a.generation}`);assert.equal(response.status,200);assert.equal((await response.json()).rows[0].body.text,'Alpha revised');
-assert.equal((await call(`/bots/${bot.id}/rows?generation=99999`)).status,404);assert.equal((await call(`/bots/${bot.id}/rows?generation=${a.generation}`,'GET',undefined,'other')).status,404);
+assert.equal((await call(`/bots/${bot.id}/rows?generation=99999`)).status,404);assert.equal((await call(`/bots/${bot.id}/messages`,'POST',{text:'Do not run this',generation:a.generation,desktopEnvironment:'browser'})).status,409,'Disconnected local selection is rejected before writing or queuing');assert.equal((await call(`/bots/${bot.id}/rows?generation=${a.generation}`,'GET',undefined,'other')).status,404);
 assert.equal((await call(`/bots/${bot.id}/chats`,'POST',{},'other')).status,404);
 response=await call(`/bots/${bot.id}/chats/${a.generation}`,'PATCH',{title:'Writing draft'});assert.equal(response.status,200);assert.equal((await response.json()).chat.title,'Writing draft');
 assert.ok(listChats(bot.id).some(c=>c.generation===b.generation));

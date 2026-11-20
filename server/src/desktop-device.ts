@@ -13,6 +13,13 @@ export const withDesktopTarget=<T>(target:DesktopTarget|null,run:()=>T)=>scope.r
 export const DESKTOP_TOOLS=new Set(['computer_screenshot','computer_click','computer_type','computer_key','computer_scroll','computer_drag','open_browser']);
 export function activeDesktop(userId:string){const d=devices.get(userId);return d&&d.expires>Date.now()&&d.socket.readyState===WebSocket.OPEN?{id:d.id,mode:d.mode,name:d.name,expires:d.expires}:null;}
 export const desktopForTrigger=(userId:string,type:string)=>type==='user'?activeDesktop(userId):null;
+export function resolveDesktopTarget(userId:string,environment?:unknown):DesktopTarget|null{
+ if(environment==='server')return null;
+ if(environment!==undefined&&!['browser','mac'].includes(String(environment)))throw Error('Invalid execution environment.');
+ const target=activeDesktop(userId);
+ if(environment!==undefined&&(!target||target.mode!==environment))throw Error('Connect the selected local environment in Fino before sending this task.');
+ return target;
+}
 export function validateDesktopAction(name:string,a:any){
  if(!DESKTOP_TOOLS.has(name)||!a||typeof a!=='object'||Array.isArray(a))throw Error('Unsupported local computer action.');
  const coordinate=(v:any)=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=8192;

@@ -1,3 +1,4 @@
+import {isMacDesktop,openDesktopComputer,notifyDesktopContext} from './lib/desktop';
 import {AccessCodeGate} from './components/AccessCode';
 import {BotAvatarFor} from './avatar/BotAvatar';
 import { useEffect, useRef } from 'react';
@@ -27,6 +28,9 @@ function Shell() {
   const navOpen = useStore((s) => s.mobileNavOpen);
   const navButton = useRef<HTMLButtonElement>(null);
   const view = useConfigUI((s) => s.view);
+  const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
+  useEffect(()=>notifyDesktopContext(selectedBot?.id),[selectedBot?.id]);
+  useEffect(()=>{if(viewerOpen&&isMacDesktop()&&openDesktopComputer(selectedBot?.id))useStore.getState().set({viewerOpen:false});},[viewerOpen,selectedBot?.id]);
 
   useEffect(() => {
     const st = useStore.getState();
@@ -89,6 +93,7 @@ function Shell() {
     return () => window.removeEventListener('keydown', k);
   }, []);
 
+  if(screenOnly)return <div className="desktop-computer-shell"><ComputerViewer docked/></div>;
   return (
     <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
       <div className="mobile-topbar">
@@ -104,7 +109,7 @@ function Shell() {
       {modal === 'group' && <CreateGroupModal />}
       {modal === 'search' && <SearchModal />}
       {modal === 'apps' && <ConnectAppsModal />}
-      {viewerOpen && <ComputerViewer />}
+      {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
     </div>
   );

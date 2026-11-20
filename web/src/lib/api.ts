@@ -1,3 +1,4 @@
+import {executionEnvironment} from './desktop';
 import {disableDevicePush} from './push';
 import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
 
@@ -34,7 +35,7 @@ export const api = {
   createBot: (b: Pick<Bot, 'name' | 'avatarShape' | 'avatarColor' | 'mode'>) => req<{ bot: Bot }>('POST', '/bots', b),
   markRead: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/read`),
   rows: (id: string,generation?:number) => req<{ generation: number; rows: Row[] }>('GET', `/bots/${id}/rows${generation===undefined?'':'?generation='+generation}`),
-  send: (id: string, text: string, images?: {name:string;dataUrl:string}[], files?: {name:string;dataUrl:string}[],generation?:number) => req<{ row: Row }>('POST', `/bots/${id}/messages`, { text,generation, ...(images?.length ? {images} : {}), ...(files?.length ? {files} : {}) }),
+  send: (id: string, text: string, images?: {name:string;dataUrl:string}[], files?: {name:string;dataUrl:string}[],generation?:number) => req<{ row: Row }>('POST', `/bots/${id}/messages`, { text,generation,...executionEnvironment(), ...(images?.length ? {images} : {}), ...(files?.length ? {files} : {}) }),
   chats:(id:string)=>req<{chats:BotChat[]}>('GET',`/bots/${id}/chats`),
   createChat:(id:string,title?:string)=>req<{chat:BotChat}>('POST',`/bots/${id}/chats`,{title}),
   renameChat:(id:string,generation:number,title:string)=>req<{chat:BotChat}>('PATCH',`/bots/${id}/chats/${generation}`,{title}),
@@ -42,7 +43,7 @@ export const api = {
   fresh: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/fresh`),
 
   approve: (approvalId: string, decision: 'allow' | 'always' | 'deny') => req<{ ok: true }>('POST', `/approvals/${approvalId}`, { decision }),
-  answer: (id: string, seq: number, answer: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/answer`, { answer,generation }),
+  answer: (id: string, seq: number, answer: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/answer`, { answer,generation,...executionEnvironment() }),
   dismiss: (id: string, seq: number,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/dismiss`,{generation}),
 
   routines: (id: string) => req<{ routines: Routine[] }>('GET', `/bots/${id}/routines`),

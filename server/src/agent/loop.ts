@@ -1,4 +1,4 @@
-import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,runDesktopTool} from '../desktop-device.js';
+import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,runDesktopTool,type DesktopTarget} from '../desktop-device.js';
 import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
@@ -22,7 +22,7 @@ import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, po
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
 export type Trigger = (
-  | { type: 'user'; text: string; imageIds?: string[]; fileIds?: string[] }
+  | { type: 'user'; desktopTarget?:DesktopTarget|null; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'routine'; routineId: string; name: string; prompt: string }
   | { type: 'bot'; fromBotId: string; fromName: string; fromGeneration?:number; text: string; depth: number }
   | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
@@ -48,6 +48,7 @@ const aborts = new Map<string, AbortController>();
 
 export function enqueue(botId: string, trigger: Trigger) {
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
+  if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
   const prev = queues.get(botId) ?? Promise.resolve();
   const next = prev.then(() => runTurn(botId, trigger)).catch((e) => console.error('[agent] turn failed', botId, e));
   queues.set(botId, next);
@@ -113,7 +114,7 @@ function triggerItem(t: Trigger, attachments=''): any | null {
 
 async function runTurn(botId:string,trigger:Trigger){
  const generation=trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation;
- if(!generation)return;const owner=getBotRow(botId)?.user_id;const target=desktopForTrigger(owner,trigger.type);return withDesktopTarget(target,()=>inChat(botId,generation,()=>runScopedTurn(botId,trigger)));
+ if(!generation)return;const target=trigger.type==='user'?(trigger.desktopTarget??null):null;return withDesktopTarget(target,()=>inChat(botId,generation,()=>runScopedTurn(botId,trigger)));
 }
 async function runScopedTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
