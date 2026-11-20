@@ -1,3 +1,4 @@
+import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
 import { memo, useCallback, useState } from 'react';
@@ -91,7 +92,7 @@ export function Sidebar() {
 
       <div className="sidebar__scroll">
         {primary && (
-          <div className="pinned">
+          <div className="pinned"><BotConversations bot={primary} collapsed={collapsed}>
             <button type="button" className={`pinned__tile${selectedBotId === primary.id ? ' is-selected' : ''}`} onClick={() => selectBot(primary.id)} title={displayName(primary)}>
               <span className="pinned__avatar">
                 <BotAvatarFor bot={primary} size={collapsed ? 44 : 88} star />
@@ -99,7 +100,7 @@ export function Sidebar() {
               </span>
               {!collapsed && <span className="pinned__label">{displayName(primary)}</span>}
             </button>
-          </div>
+          </BotConversations></div>
         )}
         <TasksIsland />
         {!collapsed && others.length > 0 && <div className="sidebar__team-label">Your team</div>}
@@ -110,7 +111,7 @@ export function Sidebar() {
                 <BotAvatarFor bot={b} size={40} />
               </button>
             ) : (
-              <BotRow key={b.id} bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} />
+              <BotConversations key={b.id} bot={b} collapsed={false}><BotRow bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} /></BotConversations>
             )
           }/>
           {!collapsed && others.length === 0 && (

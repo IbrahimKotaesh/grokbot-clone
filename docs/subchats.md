@@ -1,6 +1,6 @@
 # Chats within a bot
 
-Use **New chat** below the bot header to start a separate conversation. The chat selector reopens saved conversations; the pencil renames one. Existing conversations remain available.
+Use the **+** beside a bot in the sidebar, then **New chat**, to start a separate conversation. Saved conversations appear beneath that bot; select one to reopen it, or use its pencil to rename it. Existing conversations remain available.
 
 Each chat has its own message history, attachments, provider session and pending approvals. Switching chats does not move a running reply: it returns to the conversation where the request started. Drafts and the selected chat are remembered per bot on the current browser. A bot processes queued tasks one at a time.
 

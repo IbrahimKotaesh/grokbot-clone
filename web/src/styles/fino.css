@@ -368,38 +368,8 @@ body{letter-spacing:0;}
 .steps[open] .steps__chev{transform:rotate(180deg)}
 @media(prefers-reduced-motion:no-preference){.steps[open] .steps__list{animation:fino-menu-in 170ms ease-in-out}}
 
-/* Separate chats, kept visually attached to their bot rather than creating more bots. */
-.chat-threads{position:relative;z-index:6;flex:none;margin:60px 0 0;padding:6px 18px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--color-border-tertiary);background:var(--color-bg-chrome)}
-.chat--threaded .transcript{padding-top:16px}
-.chat-threads__picker{position:relative;min-width:0;flex:1}
-.chat-threads__current{display:flex;align-items:center;gap:9px;max-width:100%;min-height:34px;padding:6px 9px;border-radius:10px;color:var(--color-ink);background:transparent;border:1px solid transparent;font-size:13px;cursor:pointer;text-align:start}
-.chat-threads__current:hover{background:var(--color-bg-pane);border-color:var(--color-border-tertiary)}
-.chat-threads__current>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:42ch}
-.chat-threads__current>svg{flex:none;color:var(--color-text-secondary)}
-.chat-threads__current .is-open{transform:rotate(180deg)}
-.chat-threads__actions{display:flex;align-items:center;gap:5px;flex:none}
-.chat-threads__rename-btn{display:grid;place-items:center;width:30px;height:32px;border:0;background:transparent;color:var(--color-text-secondary);border-radius:9px;cursor:pointer}
-.chat-threads__new{display:flex;align-items:center;gap:7px;padding:7px 11px;min-height:34px;border-radius:11px;border:1px solid var(--color-border-tertiary);background:var(--color-bg-pane);color:var(--color-ink);font-size:12px;font-weight:500;cursor:pointer}
-.chat-threads__new:hover,.chat-threads__rename-btn:hover{background:var(--color-bg-elevated-hover)}
-.chat-threads__new:disabled{opacity:.5;cursor:wait}
-.chat-threads__menu{position:absolute;top:calc(100% + 7px);left:0;min-width:270px;width:min(340px,calc(100vw - 36px));max-height:min(440px,60dvh);overflow-y:auto;padding:6px;background:var(--color-bg-pane);border:1px solid var(--color-border-tertiary);border-radius:16px;box-shadow:0 12px 36px #0003;z-index:30}
-.chat-threads__menu-head{padding:9px 10px;color:var(--color-text-secondary);font-size:12px}
-.chat-threads__menu>button{width:100%;display:flex;align-items:center;gap:10px;min-height:52px;text-align:start;padding:9px 10px;border-radius:10px;border:0;color:var(--color-ink);background:transparent;cursor:pointer}
-.chat-threads__menu>button:hover{background:var(--color-bg-elevated-hover)}
-.chat-threads__menu>button.is-selected{background:color-mix(in srgb,var(--bot-fill) 13%,transparent)}
-.chat-threads__menu>button>span{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
-.chat-threads__menu strong{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-threads__menu small{font-size:11px;color:var(--color-text-secondary)}
-.chat-threads__rename{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
-.chat-threads__rename input{flex:1;min-width:0;border:1px solid var(--color-border-tertiary);border-radius:9px;padding:7px 10px;background:var(--color-bg-pane);color:var(--color-ink);font:inherit;font-size:13px}
-.chat-threads__elsewhere,.chat-threads__error{flex-basis:100%;font-size:11px;padding-inline:10px;color:var(--color-text-secondary)}
-.chat-threads__error{color:var(--color-danger,#d65757)}
-.chat-threads button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 .chat .bubble.is-agent{background:var(--bot-reply-bg,var(--color-bg-assistant));border-color:var(--bot-reply-border,var(--color-border-assistant));color:var(--color-ink)}
 .chat .bubble.is-user{background:var(--bot-bubble,var(--color-bubble-user));color:#fff}
-@media(max-width:900px){.chat-threads{margin-top:0;padding:6px 12px 8px}.chat-threads__current>span{max-width:32ch}.chat--threaded .transcript{padding-top:16px}}
-@media(max-width:430px){.chat-threads__new>span{display:none}.chat-threads__new{padding:7px 10px}.chat-threads__current>span{max-width:23ch}}
-@media(prefers-reduced-motion:no-preference){.chat-threads__current>svg,.chat-threads__new{transition:transform 160ms ease-in-out,background-color 160ms ease-in-out}.chat-threads__menu{animation:fino-menu-in 160ms ease-in-out}}
 
 /* The chief anchors the roster; teammates stay in an ordered, quieter list. */
 .sidebar:not(.is-collapsed) .pinned{justify-content:center;padding:14px 0 24px;}
@@ -428,3 +398,33 @@ body{letter-spacing:0;}
 .photo-viewer__close{position:fixed;z-index:1;top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));width:48px;height:48px;display:grid;place-items:center;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#252a34;color:#fff;cursor:pointer;}
 .photo-viewer__close:focus-visible{outline:3px solid #69aaff;outline-offset:3px;}
 @media(max-width:600px){.message-photos__open img{max-width:100%;max-height:320px;}.photo-viewer{padding:80px 12px 24px;}}
+
+/* Conversations branch directly beneath each teammate. */
+.bot-conversations{width:100%;min-width:0;}
+.bot-conversations__head{position:relative;display:flex;align-items:center;min-width:0;}
+.bot-conversations__head>.bot-row{flex:1;min-width:0;padding-right:35px!important;}
+.bot-conversations__add{position:absolute;right:5px;top:23px;width:30px;height:30px;padding:0;display:grid;place-items:center;border:0;border-radius:9px;color:var(--color-text-secondary);background:transparent;cursor:pointer;}
+.bot-conversations__add:hover,.bot-conversations__add[aria-expanded=true]{background:var(--color-bg-hover);color:var(--color-ink);}
+.bot-conversations.is-chief .bot-conversations__add{top:12px;right:8px;}
+.bot-chat-menu{position:fixed;z-index:200;width:208px;padding:6px;border-radius:12px;border:1px solid var(--color-border-tertiary);background:var(--color-bg-pane);box-shadow:0 8px 30px #0004;}
+.bot-chat-menu>button{display:flex;align-items:center;gap:9px;width:100%;padding:12px;border:0;border-radius:8px;background:transparent;color:var(--color-ink);font:inherit;font-size:13px;text-align:left;cursor:pointer;}
+.bot-chat-menu>button:hover{background:var(--color-bg-hover);}
+.bot-conversations__list{margin:0 4px 10px 34px;padding:2px 0 2px 12px;border-left:1px solid var(--color-border-tertiary);}
+.bot-conversations__item{display:flex;align-items:center;border-radius:8px;min-width:0;}
+.bot-conversations__item.is-selected{background:var(--color-bg-active);}
+.bot-conversations__select{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;color:var(--color-text-secondary);padding:9px 5px;font:inherit;font-size:12px;text-align:left;cursor:pointer;}
+.bot-conversations__select>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bot-conversations__select .status-dot{position:static;flex-shrink:0;}
+.bot-conversations__item.is-selected .bot-conversations__select{color:var(--color-ink);}
+.bot-conversations__edit{padding:6px;border:0;background:transparent;color:var(--color-text-secondary);opacity:0;cursor:pointer;}
+.bot-conversations__item:hover .bot-conversations__edit,.bot-conversations__item:focus-within .bot-conversations__edit{opacity:1;}
+.bot-conversations__rename{display:flex;align-items:center;gap:3px;padding:4px 0;}
+.bot-conversations__rename input{width:0;min-width:0;flex:1;padding:7px;border:1px solid var(--color-border-tertiary);border-radius:6px;background:var(--color-bg-pane);color:var(--color-ink);font:inherit;font-size:12px;}
+.bot-conversations__rename button{padding:5px;border:0;background:transparent;color:var(--color-ink);cursor:pointer;}
+.bot-conversations__error{display:block;padding:5px 10px;color:var(--color-ink);}
+.sidebar .bot-sort-item{position:relative;display:block;}
+.sidebar .bot-sort-item>.bot-sort-handle{position:absolute;left:-10px;top:26px;width:18px;height:24px;}
+.sidebar.is-collapsed .bot-sort-item{display:flex;}
+@media(pointer:coarse){.bot-conversations__edit{opacity:.65;}.bot-conversations__add{width:36px;height:36px;top:20px;}}
+.bot-conversations button:focus-visible,.bot-chat-menu>button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;}
+@media(prefers-reduced-motion:no-preference){.bot-chat-menu{animation:fino-menu-in 150ms ease-in-out;}}

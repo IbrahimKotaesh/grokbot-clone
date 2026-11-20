@@ -1,4 +1,3 @@
-import {ChatThreads} from './ChatThreads';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
@@ -32,8 +31,7 @@ export function ChatView() {
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(null), 2000); };
 
   return (
-    <main className={`chat${bot.kind==='room'?'':' chat--threaded'}`} style={botVars(bot.avatarColor)}>
-      {bot.kind!=='room'&&<ChatThreads bot={bot} generation={generation}/>}
+    <main className="chat" style={botVars(bot.avatarColor)}>
       <Transcript key={`transcript:${bot.id}:${generation}`} bot={bot} rows={rows} live={live&&(!live.generation||live.generation===generation)?live:undefined} loaded={!!transcript?.loaded} />
       <VoiceCallBar />
       <Composer key={`composer:${bot.id}:${generation}`} bot={bot} generation={generation} running={!!live?.isRunning&&(!live.generation||live.generation===generation)} />
