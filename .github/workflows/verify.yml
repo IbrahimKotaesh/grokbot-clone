@@ -26,6 +26,10 @@ jobs:
         env:
           SESSION_SECRET: ci-native-test-value
           DB_PATH: ":memory:"
+      - run: node tests/native-images.mjs
+        env:
+          SESSION_SECRET: ci-native-image-test-value
+          DB_PATH: ':memory:'
       - run: node tests/chat-attachments.mjs
         env:
           SESSION_SECRET: ci-attachment-test-value
