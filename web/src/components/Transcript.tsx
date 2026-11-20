@@ -1,3 +1,4 @@
+import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
 import { BotAvatar, BotAvatarFor } from '../avatar/BotAvatar';
@@ -8,6 +9,7 @@ import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
 import { useSmoothText } from '../lib/smooth-text';
 import { Markdown } from './Markdown';
+import {stepDestination,stepTitle} from '../lib/work-step';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -22,7 +24,8 @@ const GROUP_GAP = 5 * 60 * 1000;
 function buildItems(rows: Row[]): Item[] {
   const items: Item[] = [];
   let prevTs = 0;
-  for (const row of rows) {
+  for (const row of visibleTranscriptRows(rows)) {
+    if(row.body.type==='message'&&row.body.role==='assistant'&&!row.body.images?.length&&!row.body.files?.length&&(!row.body.text||isSilentPlaceholder(row.body.text)))continue;
     if (!prevTs || row.createdAt - prevTs > DIVIDER_GAP) items.push({ kind: 'divider', key: `d${row.seq}`, ts: row.createdAt });
     prevTs = row.createdAt;
     const last = items[items.length - 1];
@@ -57,11 +60,11 @@ function cornerClass(i: number, n: number) {
 
 const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left' | 'right'; pos: string }) {
   const b = row.body as MessageBody;
-  const shown = useSmoothText(b.text, !!b.streaming);
+  const shown = useSmoothText(b.text, !!b.streaming, side === 'left' && Date.now()-row.createdAt < 5000);
   return (
     <div className={`bubble-wrap is-${side}`}>
       <div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
-        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__file" key={file.id}><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??'File'} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title="Download">↓</a></div>)}</div> : null}
+        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??'File'} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title="Download">↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>Preview PDF</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
         {b.images?.length ? <div className="bubble__photos">{b.images.map(image=><a key={image.id} href={image.url} target="_blank" rel="noreferrer noopener"><img src={image.url} alt={image.name} loading="lazy"/></a>)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
         {b.streaming&&<span className="bubble__streaming" aria-label="Writing"/>}
@@ -90,24 +93,24 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
   );
 }
 
-function Steps({ rows, hideRunning }: { rows: Row[]; hideRunning: boolean }) {
-  const [open, setOpen] = useState(false);
+function Steps({ rows }: { rows: Row[] }) {
   const calls = rows.map((r) => r.body as ToolCallBody);
-  const visible = hideRunning ? calls.filter((c) => c.status !== 'running') : calls;
+  const visible = calls;
+  const active=visible.find(c=>c.status==='running');
   if (!visible.length) return null;
   const n = visible.length;
   return (
-    <div className={`steps${open ? ' is-open' : ''}`}>
-      <button type="button" className="steps__toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {n} {n === 1 ? 'step' : 'steps'}
+    <details className="steps">
+      <summary className="steps__toggle">
+        {active ? stepTitle(active) : `${n} ${n===1?'step':'steps'}`}
+        {active&&<span className="steps__working" aria-label="Working"/>}
         <Icon name="chev_down" size={10} opacity={0.66} className="steps__chev" />
-      </button>
-      {open && (
+      </summary>
         <ul className="steps__list">
           {visible.map((c) => (
             <li key={c.callId} className={`step is-${c.status}`}>
-              <span className="step__dot" />
-              <span className="step__label">{c.label}</span>
+              {stepDestination(c)?<img className="step__site-icon" src={stepDestination(c)!.icon} alt="" referrerPolicy="no-referrer" onError={e=>{e.currentTarget.style.visibility='hidden';}}/>:<span className="step__dot" />}
+              <span className="step__label">{stepTitle(c)}</span>
               {c.summary && <span className="step__summary">{c.summary}</span>}
               {c.status === 'error' && <span className="step__summary">Failed</span>}
               {c.status === 'denied' && <span className="step__summary">Not allowed</span>}
@@ -115,8 +118,7 @@ function Steps({ rows, hideRunning }: { rows: Row[]; hideRunning: boolean }) {
             </li>
           ))}
         </ul>
-      )}
-    </div>
+    </details>
   );
 }
 
@@ -187,7 +189,7 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
             case 'divider':
               return <div key={it.key} className="divider">{dividerLabel(it.ts)}</div>;
             case 'steps':
-              return <Steps key={it.key} rows={it.rows} hideRunning={running} />;
+              return <Steps key={it.key} rows={it.rows} />;
             case 'row':
               return <SystemRow key={it.key} row={it.row} />;
             case 'group':

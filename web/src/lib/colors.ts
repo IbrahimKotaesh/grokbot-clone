@@ -30,9 +30,9 @@ export const palette = (c: AvatarColor | string | undefined): BotPalette => BOT_
 export function botVars(c: AvatarColor | string | undefined): React.CSSProperties {
   const p = palette(c);
   return {
-    ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: p.bubble, ['--bot-action' as string]: p.action, ['--bot-action-hover' as string]: p.hover,
-    ['--bot-on-action' as string]: p === BOT_COLORS.black ? 'var(--color-on-primary)' : '#FFFFFF',
-    ['--bot-action-soft' as string]: `color-mix(in srgb, ${p.action} 13%, transparent)`,
-    ['--bot-action-text' as string]: p === BOT_COLORS.black ? 'var(--color-text-secondary)' : p.action,
+    ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: p.bubble, ['--bot-action' as string]: 'var(--color-primary)', ['--bot-action-hover' as string]: 'var(--color-bg-primary-hover)',
+    ['--bot-on-action' as string]: 'var(--color-on-primary)',
+    ['--bot-action-soft' as string]: 'color-mix(in srgb, var(--color-primary) 13%, transparent)',
+    ['--bot-action-text' as string]: 'var(--color-primary)',
   };
 }

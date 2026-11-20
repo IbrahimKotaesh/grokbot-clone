@@ -1,3 +1,4 @@
+import {characterKind} from '../../avatar/FinoCharacter';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot, Memory, Routine, Skill } from '@shared/types';
 import { BotAvatar, BotAvatarFor, PICKER_SHAPES } from '../../avatar/BotAvatar';
@@ -87,7 +88,7 @@ export function BotSettingsModal() {
 // ---------------------------------------------------------------------------
 
 type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'>;
-const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: b.avatarShape, avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '' });
+const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '' });
 
 function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(bot));
@@ -103,15 +104,16 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   const put = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const flash = (text: string, tone: 'ok' | 'error' = 'ok') => { setNote({ text, tone }); setTimeout(() => setNote(null), 2400); };
 
-  const save = async () => {
-    if (!dirty || !nameOk) return;
+  const save = async (closeAfter = false) => {
+    if (!nameOk) return;
+    if (!dirty) { if(closeAfter)onClose();return; }
     setSaving(true);
     try {
       const patch: Partial<Draft> = {};
       for (const k of changed) (patch as Record<string, unknown>)[k] = k === 'name' ? draft.name.trim() : draft[k];
       const { bot: next } = await configApi.updateBot(bot.id, patch);
       useStore.setState((s) => ({ bots: s.bots.map((b) => (b.id === next.id ? next : b)) }));
-      flash('Saved');
+      if(closeAfter)onClose();else flash('Saved');
     } catch (e) {
       flash((e as Error).message, 'error');
     } finally {
@@ -126,8 +128,8 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
           <BotAvatar shape={draft.avatarShape} color={draft.avatarColor} size={72} />
           <div className="cfg-look__text">
             <div className="cfg-look__name">{draft.name || 'New Bot'}</div>
-            <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => setPicker(!picker)} aria-expanded={picker}>
-              {picker ? 'Done' : 'Change look'}
+            <button type="button" className="cfg-btn cfg-btn--secondary" disabled={saving||!nameOk} onClick={()=>picker?void save(true):setPicker(true)} aria-expanded={picker}>
+              {picker ? <><Icon name="check" size={14}/> {saving?'Saving…':'Done'}</> : 'Change look'}
             </button>
           </div>
         </div>
@@ -167,7 +169,7 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
       <div className={`cfg-savebar${dirty ? ' is-dirty' : ''}`}>
         <span className={`cfg-savebar__note${note?.tone === 'error' ? ' is-error' : ''}`} role="status">{note?.text ?? (dirty ? 'Unsaved changes' : '')}</span>
         <button type="button" className="cfg-btn cfg-btn--secondary" disabled={!dirty || saving} onClick={() => setDraft(draftOf(bot))}>Discard</button>
-        <button type="button" className="cfg-btn cfg-btn--primary" disabled={!dirty || saving || !nameOk} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</button>
+        <button type="button" className="cfg-btn cfg-btn--primary" disabled={!dirty || saving || !nameOk} onClick={()=>void save(true)}>{saving ? 'Saving…' : 'Save changes'}</button>
       </div>
 
       <section className="cfg-section">
@@ -224,7 +226,7 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   );
 }
 
-const SHAPE_ROWS = [PICKER_SHAPES.slice(0, 7), PICKER_SHAPES.slice(7)];
+const SHAPE_ROWS = [PICKER_SHAPES];
 
 function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; color: AvatarColor; onShape: (s: AvatarShape) => void; onColor: (c: AvatarColor) => void }) {
   return (
@@ -234,7 +236,7 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
           <div key={i} className="shape-grid__row">
             {row.map((s) => (
               <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => onShape(s)}>
-                <BotAvatar shape={s} color={color} size={34} ring={shape === s} />
+                <BotAvatar shape={s} color={color} size={34} ring={shape === s} />{shape===s&&<span className="look-check"><Icon name="check" size={11}/></span>}
               </button>
             ))}
           </div>
@@ -244,7 +246,7 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
         <div className="swatches__row">
           {COLOR_ORDER.map((c) => (
             <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className="swatch-cell" onClick={() => onColor(c)}>
-              <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: palette(c).fill }} />
+              <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: palette(c).fill }} />{color===c&&<span className="look-check"><Icon name="check" size={11}/></span>}
             </button>
           ))}
         </div>

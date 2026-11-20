@@ -131,6 +131,7 @@ async function runTurn(botId: string, trigger: Trigger) {
           while (!ctrl.signal.aborted) {
             const ap = db.prepare('SELECT status FROM approvals WHERE id=?').get(st.approvalId) as any;
             if (ap?.status !== 'pending') break;
+            if(policyFor(userId,name,args,botId).decision==='allow'){resolveApproval(userId,st.approvalId,'allow');break;}
             await new Promise(r => setTimeout(r, 250));
           }
           if (ctrl.signal.aborted) throw new Error('Stopped.');
@@ -226,6 +227,8 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
+      // A saved grant may have arrived while toolkit metadata was loading.
+      if(policyFor(userId,c.name,args,botId).decision!=='ask')continue;
       const card = appendRow(botId, 'card', {
         type: 'card', card: 'approval', approvalId, title: `Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
         detail: describeArgs(approvalArgs), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
@@ -382,18 +385,29 @@ function describeArgs(args: any): string {
   return flat.join('\n\n').slice(0, 1200);
 }
 
-/** Resolve an approval card from the UI. */
+/** Resolve an approval and any duplicate requests already covered by its saved grant. */
 export function resolveApproval(userId: string, approvalId: string, decision: 'allow' | 'always' | 'deny') {
   const ap = db.prepare('SELECT a.*, b.user_id FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE a.id=?').get(approvalId) as any;
   if (!ap || ap.user_id !== userId) throw new Error('not found');
   if (ap.status !== 'pending') return;
-  const status = decision === 'deny' ? 'denied' : decision === 'always' ? 'always' : 'allowed';
-  db.prepare('UPDATE approvals SET status=?, resolved_at=? WHERE id=?').run(status, now(), approvalId);
-  const card = getRow(ap.bot_id, ap.row_seq);
-  if (decision === 'always') {
-    const keys = card?.body.type === 'card' && card.body.card === 'approval' ? card.body.policyKeys ?? [ap.tool] : [ap.tool];
-    db.transaction(() => { for (const key of keys) db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId,key); })();
-  }
-  if (card && card.body.type === 'card' && card.body.card === 'approval') updateRow(ap.bot_id, ap.row_seq, { ...card.body, status });
-  if (!['codex','claude'].includes(getBotRow(ap.bot_id)?.agent_provider ?? env.agentProvider)) enqueue(ap.bot_id, { type: 'resume' });
+  const keysFor = (record:any) => {
+    const card=getRow(record.bot_id,record.row_seq);
+    return card?.body.type==='card'&&card.body.card==='approval' ? card.body.policyKeys??[record.tool] : [record.tool];
+  };
+  const finish = (record:any,status:'allowed'|'always'|'denied') => {
+    db.prepare('UPDATE approvals SET status=?, resolved_at=? WHERE id=? AND status=\'pending\'').run(status,now(),record.id);
+    const card=getRow(record.bot_id,record.row_seq);
+    if(card?.body.type==='card'&&card.body.card==='approval')updateRow(record.bot_id,record.row_seq,{...card.body,status});
+    if(!['codex','claude'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume'});
+  };
+  if(decision==='always') {
+    const keys=keysFor(ap);
+    db.transaction(()=>{for(const key of keys)db.prepare("INSERT OR REPLACE INTO policies(user_id,tool,mode) VALUES (?,?,'always_allow')").run(userId,key);})();
+    finish(ap,'always');
+    const pending=db.prepare("SELECT a.* FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE b.user_id=? AND a.status='pending'").all(userId) as any[];
+    for(const other of pending){
+      const covered=keysFor(other);
+      if(covered.length&&covered.every((key:string)=>keys.includes(key)&&policyFor(userId,key,{},other.bot_id).decision==='allow'))finish(other,'always');
+    }
+  }else finish(ap,decision==='deny'?'denied':'allowed');
 }

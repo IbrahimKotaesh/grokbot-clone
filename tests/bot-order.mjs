@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {initSubagents} from '../server/dist/agent/subagents.js';
+initSubagents();
+import {db} from '../server/dist/db.js';
+import {createBot} from '../server/dist/bots.js';
+import {reorderBots,listBots} from '../server/dist/store.js';
+for(const id of ['owner','other'])db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run(id,id+'@example.com',id,Date.now());
+const a=createBot('owner',{name:'One'}),b=createBot('owner',{name:'Two'}),foreign=createBot('other',{name:'Other'});
+const initial=listBots('owner').filter(b=>!b.isPrimary).map(b=>b.id);
+reorderBots('owner',[...initial].reverse());
+assert.deepEqual(listBots('owner').filter(b=>!b.isPrimary).sort((a,b)=>a.sortOrder-b.sortOrder).map(b=>b.id),[...initial].reverse());
+assert.throws(()=>reorderBots('owner',[foreign.id]));assert.throws(()=>reorderBots('owner',[a.id,a.id]));assert.throws(()=>reorderBots('owner',[]));
+assert.equal(listBots('other').find(b=>b.id===foreign.id).sortOrder,null);
+assert.equal(listBots('owner').find(item=>item.id===a.id).name,'One');assert.equal(listBots('owner').find(item=>item.id===b.id).name,'Two');
+console.log('PASS: persistent bot order, exact roster validation, no cross-owner changes');db.close();process.exit(0);

@@ -138,7 +138,10 @@ export function attachVncRelay(server: Server) {
       return;
     }
     const mode = url.searchParams.get('mode') === 'control' ? 'control' : 'watch';
-    wss.handleUpgrade(req, socket, head, (client) => relay(client, user.id, bot.id, mode));
+    wss.handleUpgrade(req, socket, head, (client) => {
+      const check=setInterval(()=>{if(userFromCookieHeader(req.headers.cookie)?.id!==user.id)client.close(1008,'Session expired');},15000);check.unref();client.once('close',()=>clearInterval(check));
+      void relay(client,user.id,bot.id,mode);
+    });
   });
 }
 

@@ -17,7 +17,11 @@ const batch={tools:[{tool_slug:'GMAIL_SEND_EMAIL'},{tool_slug:'GOOGLESHEETS_BATC
 const keys=policyKeys('COMPOSIO_MULTI_EXECUTE_TOOL',batch);
 const row=appendRow(bot.id,'card',{type:'card',card:'approval',approvalId:'test',title:'Test',detail:'',tool:keys[0],args:batch,policyKeys:keys,status:'pending'});
 db.prepare("INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,'pending',?)").run('test',bot.id,row.seq,'call',keys[0],Date.now());
+const pending=(id,tool)=>{const r=appendRow(bot.id,'card',{type:'card',card:'approval',approvalId:id,title:'Test',detail:'',tool,args:{},policyKeys:[tool],status:'pending'});db.prepare("INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,'pending',?)").run(id,bot.id,r.seq,id,tool,Date.now());};
+pending('duplicate','GMAIL_SEND_EMAIL');pending('unrelated','NOTION_CREATE_NOTION_PAGE');
 resolveApproval('owner','test','always');
+assert.equal(db.prepare('SELECT status FROM approvals WHERE id=?').get('duplicate').status,'always','An existing duplicate is covered by the newly saved grant');
+assert.equal(db.prepare('SELECT status FROM approvals WHERE id=?').get('unrelated').status,'pending','Different actions still need their own permission');
 assert.equal(check('COMPOSIO_MULTI_EXECUTE_TOOL',batch),'allow','One batch approval saves all displayed actions');
 mode('ask');assert.equal(check('shell'),'ask');assert.equal(check('computer_click'),'ask');assert.equal(check('computer_screenshot'),'allow');
 mode('read_only');for(const name of ['shell','computer_click','open_browser','create_bot','send_to_bot','COMPOSIO_REMOTE_WORKBENCH'])assert.equal(check(name),'block',name);

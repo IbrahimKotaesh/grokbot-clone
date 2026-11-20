@@ -1,39 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
 
-/** Reveal a small part of a provider chunk without cutting Arabic marks or emoji. */
+/** A fixed small step: a large provider chunk must never accelerate the reveal. */
 export function revealNext(current: string, target: string): string {
   if (!target.startsWith(current)) return target;
-  const rest = target.slice(current.length);
-  if (!rest) return current;
-  const count = Math.max(1, Math.ceil(Array.from(rest).length / 6));
-  let chunk = '', n = 0;
-  const segments = graphemes ? [...graphemes.segment(rest)].map(s => s.segment) : Array.from(rest);
-  for (const segment of segments) { chunk += segment; if (++n >= count) break; }
-  return current + chunk;
+  const rest=target.slice(current.length);
+  if(!rest)return current;
+  let chunk='',n=0;
+  const segments=graphemes?graphemes.segment(rest):Array.from(rest).map(segment=>({segment}));
+  for(const {segment} of segments){chunk+=segment;if(++n===2)break;}
+  return current+chunk;
 }
 
-export function useSmoothText(text: string, streaming: boolean) {
-  const [shown, setShown] = useState(streaming ? '' : text);
-  const current = useRef(shown);
-  const animated = useRef(streaming);
-  useEffect(() => {
-    if (streaming) animated.current = true;
-    if (!animated.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      current.current = text; setShown(text); animated.current = false; return;
-    }
-    let frame = 0, last = 0;
-    const tick = (time: number) => {
-      if (time - last >= 24) {
-        last = time;
-        current.current = revealNext(current.current, text);
-        setShown(current.current);
-      }
-      if (current.current !== text) frame = requestAnimationFrame(tick);
-      else if (!streaming) animated.current = false;
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [text, streaming]);
-  return shown;
+export function useSmoothText(text:string,streaming:boolean,animateInitial=false){
+ const [shown,setShown]=useState(streaming||animateInitial?'':text);
+ const current=useRef(shown),target=useRef(text),active=useRef(streaming||animateInitial),frame=useRef(0),last=useRef<number|null>(null);
+ // Keep one clock across incoming chunks. Restarting an effect used to reset the
+ // clock and let fast providers reveal on every network update instead of at a steady pace.
+ useEffect(()=>{
+  target.current=text;if(streaming)active.current=true;
+  if(!active.current||window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+   cancelAnimationFrame(frame.current);frame.current=0;last.current=null;active.current=false;current.current=text;setShown(text);return;
+  }
+  if(frame.current)return;
+  const tick=(time:number)=>{
+   if(last.current===null)last.current=time;
+   if(time-last.current>=32){
+    last.current=time;current.current=revealNext(current.current,target.current);setShown(current.current);
+   }
+   if(current.current!==target.current)frame.current=requestAnimationFrame(tick);
+   else{frame.current=0;last.current=null;}
+  };
+  frame.current=requestAnimationFrame(tick);
+ },[text,streaming]);
+ useEffect(()=>()=>{cancelAnimationFrame(frame.current);frame.current=0;last.current=null;},[]);
+ return shown;
 }

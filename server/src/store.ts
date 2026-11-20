@@ -1,3 +1,4 @@
+import {isSilentPlaceholder} from './lib/message-text.js';
 import { env } from './env.js';
 import { db, now } from './db.js';
 import { hub } from './lib/hub.js';
@@ -14,7 +15,7 @@ export function toBot(r: any): Bot {
   if (last) {
     const b = JSON.parse(last.body) as RowBody;
     lastPreview =
-      b.type === 'message' ? b.text : b.type === 'card' ? (b.card === 'approval' ? `Waiting for you: ${b.title}` : b.card === 'question' ? b.question : b.card === 'connect' ? `Connect ${b.toolkitName}` : 'Draft') : b.type === 'event' ? b.text : null;
+      b.type === 'message' ? (b.role==='assistant'&&isSilentPlaceholder(b.text)?null:b.text) : b.type === 'card' ? (b.card === 'approval' ? `Waiting for you: ${b.title}` : b.card === 'question' ? b.question : b.card === 'connect' ? `Connect ${b.toolkitName}` : 'Draft') : b.type === 'event' ? b.text : null;
   }
   return {
     id: r.id,
@@ -22,6 +23,7 @@ export function toBot(r: any): Bot {
     label: r.label,
     description: r.description,
     instructions: r.instructions,
+    sortOrder: r.sort_order??null,
     avatarShape: r.avatar_shape,
     avatarColor: r.avatar_color,
     mode: r.mode,
@@ -69,6 +71,7 @@ function bumpRev(botId: string): number {
 
 /** Append a new row. Returns its seq. */
 export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
+  if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation, next_seq FROM bots WHERE id=?').get(botId) as any;
     const seq = b.next_seq;
@@ -85,6 +88,7 @@ export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
 
 /** Rewrite an existing row's body (e.g. streaming text, card status). */
 export function updateRow(botId: string, seq: number, body: RowBody): Row | null {
+  if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation FROM bots WHERE id=?').get(botId) as any;
     const existing = db.prepare('SELECT * FROM rows WHERE bot_id=? AND generation=? AND seq=?').get(botId, b.generation, seq) as any;
@@ -194,3 +198,14 @@ export const listRoutines = (botId: string) => (db.prepare('SELECT * FROM routin
 
 export const toTask = (r: any): Task => ({ id: r.id, botId: r.bot_id, title: r.title, state: r.state, note: r.note, updatedAt: r.updated_at });
 export const listTasks = (botId: string) => (db.prepare('SELECT * FROM tasks WHERE bot_id=? ORDER BY updated_at DESC').all(botId) as any[]).map(toTask);
+
+/** Save the complete visible roster order; never accept another owner's bot. */
+export function reorderBots(userId:string,ids:string[]){
+ db.transaction(()=>{
+  const owned=(db.prepare('SELECT id FROM bots WHERE user_id=? AND is_primary=0 AND COALESCE(hidden,0)=0').all(userId) as {id:string}[]).map(b=>b.id);
+  if(ids.length!==owned.length||new Set(ids).size!==ids.length||ids.some(id=>!owned.includes(id)))throw Error('The bot list changed. Refresh and try again.');
+  ids.forEach((id,index)=>db.prepare('UPDATE bots SET sort_order=? WHERE id=? AND user_id=?').run(index,id,userId));
+ })();
+ for(const id of ids)emitBot(id);
+ return listBots(userId);
+}

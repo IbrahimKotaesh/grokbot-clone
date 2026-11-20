@@ -1,3 +1,4 @@
+import {AccessCodeSettings} from '../AccessCode';
 import {NotificationsSection} from './NotificationsSection';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -265,6 +266,7 @@ function AccountSection() {
   return (
     <>
       <PageHead title="Account" />
+      <AccessCodeSettings/>
       <section className="cfg-section">
         <div className="cfg-card">
           <div className="cfg-row">

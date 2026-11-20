@@ -1,3 +1,5 @@
+import {accessGate} from './lib/access-code.js';
+import {accessApi} from './routes-access.js';
 import { initPushWorker } from './notifications.js';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -35,6 +37,8 @@ app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', 'no-store');
   await next();
 });
+app.use('/api/*',accessGate);
+app.route('/api/access',accessApi);
 app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });
 app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.agentProvider === 'claude' ? env.claudeModel ?? 'claude-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
 app.route('/api/checkins', checkinsApi);

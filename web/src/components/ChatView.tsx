@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { api } from '../lib/api';
 import { botVars } from '../lib/colors';
-import { displayName, sortedRows, useSelectedBot, useStore } from '../store';
+import { sortedRows, useSelectedBot, useStore } from '../store';
 import { useConfigUI } from '../configStore';
 import { Composer } from './Composer';
 import { Icon } from './Icon';
@@ -39,7 +39,7 @@ export function ChatView() {
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
             <BotAvatarFor bot={bot} size={24} />
-            <span className="chat__pill-name">{displayName(bot)}</span>
+            <span className="chat__pill-name">{bot.label || bot.name}</span>
           </button>
           {menu && (
             <Menu

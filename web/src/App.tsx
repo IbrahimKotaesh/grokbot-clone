@@ -1,3 +1,5 @@
+import {AccessCodeGate} from './components/AccessCode';
+import {BotAvatarFor} from './avatar/BotAvatar';
 import { useEffect, useRef } from 'react';
 import { startEvents } from './lib/events';
 import { useStore } from './store';
@@ -20,6 +22,7 @@ function Shell() {
   const modal = useStore((s) => s.modal);
   const viewerOpen = useStore((s) => s.viewerOpen);
   const collapsed = useStore((s) => s.sidebarCollapsed);
+  const selectedBot = useStore(s=>s.bots.find(b=>b.id===s.selectedBotId));
   const hasBot = useStore((s) => !!s.selectedBotId);
   const navOpen = useStore((s) => s.mobileNavOpen);
   const navButton = useRef<HTMLButtonElement>(null);
@@ -90,8 +93,8 @@ function Shell() {
     <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
       <div className="mobile-topbar">
         <button ref={navButton} type="button" className="icon-btn" aria-label="Open conversations" aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
-        <span className="mobile-brand"><img src="/icons/fino-mascot.png" alt="" />Fino</span>
-        <button type="button" className="icon-btn" aria-label="Search conversations" onClick={() => useStore.getState().setModal('search')}><Icon name="search" size={21} /></button>
+        <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:'Conversations'}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?(selectedBot.label||selectedBot.name):'Conversations'}</span></button>
+        <button type="button" className="icon-btn" aria-label="Show conversation details" onClick={() => useStore.getState().set({detailsOpen:true})}><Icon name="sidebar" size={21}/></button>
       </div>
       {navOpen && <button className="nav-backdrop" aria-label="Close conversations" onClick={() => useStore.getState().set({ mobileNavOpen: false })} />}
       <Sidebar />
@@ -109,8 +112,10 @@ function Shell() {
 
 export function App() {
   const authChecked = useStore((s) => s.authChecked);
+  const accessLocked=useStore(s=>s.accessLocked);
   const user = useStore((s) => s.user);
   useEffect(() => { useStore.getState().checkAuth(); }, []);
   if (!authChecked) return <div className="boot" />;
+  if(accessLocked)return <AccessCodeGate/>;
   return user ? <Shell /> : <SignIn />;
 }

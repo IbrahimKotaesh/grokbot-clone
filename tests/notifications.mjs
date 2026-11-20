@@ -5,7 +5,7 @@ import {db} from '../server/dist/db.js';
 import {api} from '../server/dist/routes.js';
 import {createBot} from '../server/dist/bots.js';
 import {appendRow} from '../server/dist/store.js';
-import {publishBotNotification,dispatchPush,validateSubscription,pushKeys,hasNotificationText,pushTransport} from '../server/dist/notifications.js';
+import {publishBotNotification,dispatchPush,validateSubscription,pushKeys,hasNotificationText,pushTransport,pushMessageBody} from '../server/dist/notifications.js';
 for(const id of ['owner','other']){db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run(id,`${id}@example.com`,id,Date.now());db.prepare('INSERT INTO auth_sessions VALUES (?,?,?,?)').run(id,id,Date.now(),Date.now()+60000);}
 const bot=createBot('owner',{name:'Kamel'});const ecdh=crypto.createECDH('prime256v1');ecdh.generateKeys();
 const endpoint='https://fcm.googleapis.com/fcm/send/test-only',subscription={endpoint,keys:{p256dh:ecdh.getPublicKey().toString('base64url'),auth:crypto.randomBytes(16).toString('base64url')}};
@@ -17,9 +17,12 @@ assert.equal((await call('/device','POST',{subscription})).status,200);assert.eq
 assert.equal(hasNotificationText('.'),false);assert.equal(hasNotificationText(' ✅ '),false);assert.equal(hasNotificationText('رسالة مهمة'),true);
 const encrypted=webpush.generateRequestDetails(subscription,'private payload',{vapidDetails:{subject:'https://fino.example',...pushKeys()}});assert.ok(Buffer.isBuffer(encrypted.body));assert.ok(!encrypted.body.toString().includes('private payload'));assert.match(encrypted.headers.Authorization,/vapid/i);
 const deliveries=[];let failure=0;pushTransport.send=async(s,payload,options)=>{if(failure)throw {statusCode:failure};deliveries.push({s,payload:JSON.parse(payload),options});return {statusCode:201};};
-const id=publishBotNotification('owner',bot.id,'Important private email details','routine:1');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.length,1);assert.equal(deliveries[0].payload.body,'Open Fino to read this update.');assert.ok(deliveries[0].payload.url.includes(bot.id));assert.equal(deliveries[0].options.vapidDetails.publicKey,config.publicKey);
+const id=publishBotNotification('owner',bot.id,'Important private email details','routine:1');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.length,1);assert.equal(deliveries[0].payload.body,'Important private email details');assert.equal(deliveries[0].payload.title,'Kamel');assert.ok(deliveries[0].payload.url.includes(bot.id));assert.equal(deliveries[0].options.vapidDetails.publicKey,config.publicKey);
 assert.equal(publishBotNotification('owner',bot.id,'Same event','routine:1'),null);assert.equal(publishBotNotification('other',bot.id,'Cross owner','cross'),null);assert.equal(publishBotNotification('owner',bot.id,'.','silent'),null);assert.equal(publishBotNotification('owner',bot.id,'Direct reply','reply:1','update',true),null);
 await call('/device','PATCH',{endpoint,previews:true,replies:true});publishBotNotification('owner',bot.id,'Readable preview','routine:2');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.at(-1).payload.body,'Readable preview');
+await call('/device','PATCH',{endpoint,previews:false,replies:true});publishBotNotification('owner',bot.id,'Hidden when explicitly disabled','hidden');await new Promise(r=>setTimeout(r,10));await dispatchPush();assert.equal(deliveries.at(-1).payload.body,'Open Fino to read this update.');
+assert.equal(pushMessageBody('موعدك غدًا الساعة التاسعة'),'موعدك غدًا الساعة التاسعة');
+assert.ok(Buffer.byteLength(pushMessageBody('رسالة 👨‍👩‍👧‍👦 '.repeat(500)))<=2800);assert.ok(pushMessageBody('مرحبا '.repeat(1000)).endsWith('…'));
 const beforeAttention=deliveries.length;
 appendRow(bot.id,'card',{type:'card',card:'question',question:'Which timezone?',options:[],status:'pending'});
 appendRow(bot.id,'card',{type:'card',card:'approval',approvalId:'test-approval',title:'Allow action?',tool:'example',args:{},status:'pending'});

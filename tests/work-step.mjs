@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {transform} from 'esbuild';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const {code}=await transform(fs.readFileSync('web/src/lib/work-step.ts','utf8'),{loader:'ts',format:'cjs'});
+const context={module:{exports:{}},URL};vm.runInNewContext(code,context);
+const {stepDestination,stepTitle}=context.module.exports;
+const call={name:'browse',label:'Run command',status:'running',args:{url:'https://example.com/private?token=secret'}};
+assert.equal(stepDestination(call).host,'example.com');assert.equal(stepDestination(call).icon,'https://example.com/favicon.ico');assert.equal(stepTitle(call),'Opening example.com');
+assert.equal(stepDestination({...call,args:{url:'javascript:alert(1)'}}),null);
+assert.equal(stepDestination({...call,args:{url:'https://user:secret@example.com/'}}),null);
+assert.equal(stepDestination({...call,args:{command:'curl https://example.com/?secret=x'}}),null);
+assert.equal(stepTitle({...call,args:{},name:'read_file'}),'Reading a document');
+assert.equal(stepTitle({...call,status:'done'}),'Visited example.com');
+console.log('PASS: readable actions, destination icons without private paths/query/credentials, no command guessing');

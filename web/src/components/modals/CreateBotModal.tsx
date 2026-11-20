@@ -7,13 +7,13 @@ import { useStore } from '../../store';
 import { Icon } from '../Icon';
 import { Modal } from './Modal';
 
-const ROWS = [PICKER_SHAPES.slice(0, 5), PICKER_SHAPES.slice(5, 10), PICKER_SHAPES.slice(10)];
+const ROWS = [PICKER_SHAPES];
 const COLOR_ROWS = [COLOR_ORDER.slice(0, 6), COLOR_ORDER.slice(6)];
 
 export function CreateBotModal() {
   const setModal = useStore((s) => s.setModal);
   const [name, setName] = useState('');
-  const [shape, setShape] = useState<AvatarShape>('heart');
+  const [shape, setShape] = useState<AvatarShape>('pebble');
   const [color, setColor] = useState<AvatarColor>('orange');
   const [mode, setMode] = useState<Bot['mode']>('personal');
   const [busy, setBusy] = useState(false);

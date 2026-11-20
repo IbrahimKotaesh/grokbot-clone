@@ -1,3 +1,4 @@
+import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
 import { memo, useCallback, useState } from 'react';
 import { useConfigUI } from '../configStore';
@@ -34,7 +35,7 @@ const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect
   return (
     <button type="button" className={`bot-row${selected ? ' is-selected' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
       <span className="bot-row__avatar">
-        <BotAvatarFor bot={bot} size={36} />
+        <BotAvatarFor bot={bot} size={52} />
         {(running || awaiting || bot.unread > 0) && (
           <span className={`status-dot ${awaiting ? 'is-attention' : running ? 'is-working' : 'is-unread'}`} aria-label={awaiting ? 'Needs attention' : running ? 'Working' : 'Unread activity'} />
         )}
@@ -64,12 +65,12 @@ export function Sidebar() {
   const logout = async () => { await api.logout().catch(() => {}); location.reload(); };
 
   const primary = bots.find((b) => b.isPrimary);
-  const others = bots.filter((b) => !b.isPrimary).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const others = bots.filter((b) => !b.isPrimary).sort((a,b)=>(a.sortOrder??Infinity)-(b.sortOrder??Infinity)||b.lastActivityAt-a.lastActivityAt);
 
   return (
     <aside id="workspace-sidebar" aria-label="Conversations" className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar__titlebar">
-        <div className="sidebar-brand"><img src="/icons/fino-mascot.png" alt="" /><span>Fino</span></div>
+        <div className="sidebar-brand"><img src="/characters/fino-brand-blue.png" alt="" /><span>Fino</span></div>
         <div className="sidebar__controls">
           <button type="button" className="icon-btn mobile-drawer-close" aria-label="Close conversations" onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={22} /></button>
           <button type="button" className="icon-btn icon-btn--plain" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title="Toggle sidebar (⌘B)">
@@ -102,15 +103,15 @@ export function Sidebar() {
           </div>
         )}
         <div className="bot-list">
-          {others.map((b) =>
+          <BotRoster bots={others} collapsed={collapsed} render={(b) =>
             collapsed ? (
               <button key={b.id} type="button" className={`bot-rail-item${selectedBotId === b.id ? ' is-selected' : ''}`} onClick={() => selectBot(b.id)} title={displayName(b)}>
-                <BotAvatarFor bot={b} size={36} />
+                <BotAvatarFor bot={b} size={40} />
               </button>
             ) : (
               <BotRow key={b.id} bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} />
-            ),
-          )}
+            )
+          }/>
           {!collapsed && others.length === 0 && (
             <button type="button" className="bot-list__empty" onClick={() => setModal('create')}>
               <span className="bot-list__empty-plus"><Icon name="plus" size={14} opacity={0.66} /></span>

@@ -1,5 +1,6 @@
+import {ProviderLogo} from './ProviderLogo';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Sparkles, Orbit, ChevronDown, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
+import { ChevronDown, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
 import type { Bot, PermissionMode } from '@shared/types';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -127,7 +128,6 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     } catch(e) {setError((e as Error).message);} finally {setSwitching(false);}
   };
   const permission=permissionChoices.find(p=>p.id===(bot.permissionMode??'balanced'))!;
-  const ModelIcon=bot.agentProvider==='claude'?Sparkles:Orbit;
   const hasText = text.trim().length > 0 || photos.length > 0 || documents.length > 0;
 
   return (
@@ -177,11 +177,11 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
               />
             )}
           </span>
-          <span className="composer__setting-anchor">
-            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}`} aria-expanded={settingsMenu==='model'} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><ModelIcon size={17}/><span>{bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}</span><ChevronDown size={12}/></button>
+          <span className="composer__setting-anchor composer__model-picker">
+            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}`} aria-expanded={settingsMenu==='model'} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><ProviderLogo provider={bot.agentProvider==='claude'?'claude':'codex'}/><span>{bot.agentProvider==='claude'?'Claude Code':'ChatGPT'}</span><ChevronDown size={12}/></button>
             {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
-              {label:'ChatGPT',icon:<Orbit size={18}/>,hint:bot.agentProvider!=='claude'?'✓':undefined,onSelect:()=>void changeProvider('codex')},
-              {label:'Claude Code',icon:<Sparkles size={18}/>,hint:bot.agentProvider==='claude'?'✓':undefined,onSelect:()=>void changeProvider('claude')},
+              {label:'ChatGPT',icon:<ProviderLogo provider="codex"/>,selected:bot.agentProvider!=='claude',hint:bot.agentProvider!=='claude'?'✓':undefined,onSelect:()=>void changeProvider('codex')},
+              {label:'Claude Code',icon:<ProviderLogo provider="claude"/>,selected:bot.agentProvider==='claude',hint:bot.agentProvider==='claude'?'✓':undefined,onSelect:()=>void changeProvider('claude')},
             ]}/>}
           </span>
           <span className="composer__setting-anchor composer__permissions">

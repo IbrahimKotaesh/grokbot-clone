@@ -12,6 +12,7 @@ interface State {
   googleLogin: boolean;
   localAccount: {email:string;name:string} | null;
   authChecked: boolean;
+  accessLocked: boolean;
 
   bots: Bot[];
   live: Record<string, LiveState>;
@@ -53,6 +54,7 @@ export const useStore = create<State>((set, get) => ({
   googleLogin: false,
   localAccount: null,
   authChecked: false,
+  accessLocked:false,
   bots: [],
   live: {},
   selectedBotId: lsGet(LS_SELECTED),
@@ -69,8 +71,10 @@ export const useStore = create<State>((set, get) => ({
 
   async checkAuth() {
     try {
+      const access=await fetch('/api/access/status',{credentials:'include'}).then(r=>r.json());
+      if(access.required&&!access.unlocked){set({user:null,accessLocked:true,authChecked:true});return;}
       const { user, devLogin, googleLogin, localAccount } = await api.me();
-      set({ user, devLogin, googleLogin, localAccount, authChecked: true });
+      set({ user, devLogin, googleLogin, localAccount, authChecked: true,accessLocked:false });
     } catch {
       set({ user: null, authChecked: true });
     }

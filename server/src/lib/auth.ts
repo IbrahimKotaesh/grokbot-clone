@@ -1,3 +1,4 @@
+import {accessAllowed} from './access-code.js';
 import type { Context, MiddlewareHandler } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { env } from '../env.js';
@@ -32,12 +33,13 @@ export function userFromToken(t: string | undefined): User | null {
 }
 
 export function userFromCookieHeader(cookieHeader: string | undefined): User | null {
+  if(!accessAllowed(cookieHeader))return null;
   const m = cookieHeader?.split(/;\s*/).find((p) => p.startsWith(`${COOKIE}=`));
   return userFromToken(m ? decodeURIComponent(m.slice(COOKIE.length + 1)) : undefined);
 }
 
 export const requireUser: MiddlewareHandler<AuthVars> = async (c, next) => {
-  const u = userFromToken(getCookie(c, COOKIE));
+  const u = accessAllowed(c.req.header('cookie'))?userFromToken(getCookie(c, COOKIE)):null;
   if (!u) return c.json({ error: 'unauthenticated' }, 401);
   c.set('user', u);
   await next();

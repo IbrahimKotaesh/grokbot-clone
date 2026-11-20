@@ -31,7 +31,7 @@ export function SignIn() {
       <div className="signin__chrome"><TrafficLights /></div>
       <div className="signin__card">
         <div className="signin__hero">
-          <img className="signin__mascot" src="/icons/fino-mascot.png" alt="Fino, your AI companion" />
+          <img className="signin__mascot" src="/characters/fino-brand-blue.png" alt="Fino, your AI companion" />
         </div>
         <h1 className="signin__title">Fino</h1>
         <p className="signin__sub">A little company. A lot done. Your AI team, tools and ideas in one place.</p>

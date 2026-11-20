@@ -14,7 +14,7 @@ export function shapeDef(shape: AvatarShape | string): ShapeDef {
 }
 
 /** Shapes offered in the Create New Bot picker, in the design's order (rows of 5/5/3). */
-export const PICKER_SHAPES: AvatarShape[] = ['blob', 'cloud', 'square', 'sparkle', 'clover', 'heart', 'flower', 'teardrop', 'tablet', 'wedge', 'house', 'star', 'hex'];
+export const PICKER_SHAPES: AvatarShape[] = ['pebble','arch','ghost','dino'];
 
 interface Props {
   shape: AvatarShape | string;
@@ -31,10 +31,10 @@ interface Props {
 export function BotAvatar({ shape, color, size, star, ring, className, title }: Props) {
   return <span className={`fino-avatar ${ring ? 'is-ring' : ''} ${className ?? ''}`} style={{ width: size, height: size }} title={title} role="img" aria-label={title ?? `${color} ${shape} companion`}>
     <FinoCharacter shape={shape} color={color}/>
-    {star && <span className="bot-avatar__star" style={{ width: size * .28, height: size * .28 }}><Icon name="star" size={size * .15} color="#fff" /></span>}
+    {star && <span className="bot-avatar__star" style={{ width: size * .34, height: size * .34 }}><Icon name="star" size={size * .26} color="#f8c74f" /></span>}
   </span>;
 }
 
 export function BotAvatarFor({ bot, size, star, className }: { bot: Pick<Bot, 'avatarShape' | 'avatarColor' | 'name'> & { isPrimary?: boolean }; size: number; star?: boolean; className?: string }) {
-  return <BotAvatar shape={bot.avatarShape} color={bot.avatarColor} size={size} star={star} className={className} title={bot.name} />;
+  return <BotAvatar shape={bot.avatarShape} color={bot.avatarColor} size={size} star={star ?? bot.isPrimary} className={className} title={bot.name} />;
 }

@@ -14,7 +14,7 @@ import { env } from './env.js';
 import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
 import { createSession, destroySession, requireUser, userFromCookieHeader, type AuthVars } from './lib/auth.js';
-import { allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
+import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
 import { enqueue, interrupt, resolveApproval } from './agent/loop.js';
 import { computerState, ensureComputer, refreshComputer, suspendComputer } from './computer.js';
 import { orgo } from './orgo.js';
@@ -128,12 +128,13 @@ api.get('/events', (c) => {
     const unsub = hub.subscribe(user.id, (ev) => { queue.push(JSON.stringify(ev)); wake?.(); });
     stream.onAbort(() => { unsub(); wake?.(); });
     await stream.writeSSE({ data: JSON.stringify({ type: 'hello', serverTime: now() }) });
-    while (!stream.aborted) {
+    while (!stream.aborted&&userFromCookieHeader(c.req.header('cookie'))?.id===user.id) {
       if (!queue.length) {
         await Promise.race([new Promise<void>((r) => (wake = r)), new Promise((r) => setTimeout(r, 20_000))]);
         wake = null;
         if (!queue.length) { await stream.writeSSE({ data: JSON.stringify({ type: 'ping' }) }); continue; }
       }
+      if(userFromCookieHeader(c.req.header('cookie'))?.id!==user.id)break;
       while (queue.length) await stream.writeSSE({ data: queue.shift()! });
     }
     unsub();
@@ -148,6 +149,8 @@ const ownBot = (userId: string, id: string) => {
 };
 
 api.get('/bots', (c) => c.json({ bots: listBots(c.get('user').id), live: allLive(c.get('user').id) }));
+
+api.post('/bots/reorder',async c=>{const body=await c.req.json().catch(()=>({}));if(!Array.isArray(body.ids)||body.ids.length>1000||body.ids.some((id:unknown)=>typeof id!=='string'))return c.json({error:'Invalid bot order.'},400);try{return c.json({bots:reorderBots(c.get('user').id,body.ids)});}catch{return c.json({error:'The bot list changed. Refresh and try again.'},409);}});
 
 api.post('/bots', async (c) => {
   const body = await c.req.json();

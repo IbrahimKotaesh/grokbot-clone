@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';import {build} from 'esbuild';import fs from 'node:fs/promises';
 const out=new URL('../data/verification/avatar-component.mjs',import.meta.url);await fs.mkdir(new URL('.',out),{recursive:true});
-await build({stdin:{contents:"export {FinoCharacter} from './web/src/avatar/FinoCharacter.tsx'",resolveDir:process.cwd(),loader:'tsx'},bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime'],outfile:out.pathname});
-try{const {FinoCharacter}=await import(out.href),{createElement:h}=await import('react'),{renderToStaticMarkup}=await import('react-dom/server');const shapes=['blob','square','tablet','cloud','heart','flower','clover','teardrop','star','sparkle','wedge','house','hex'];
- const render=s=>renderToStaticMarkup(h(FinoCharacter,{shape:s,color:'green'}));assert.equal(new Set(shapes.map(s=>render(s).match(/data-character="([^"]+)/)[1])).size,13);for(const s of shapes){assert.match(render(s),/<svg/);assert.ok(!render(s).includes('<img'));}assert.notEqual(render('square'),render('blob'));
- const html=renderToStaticMarkup(h('div',{className:'grid'},shapes.map((shape,i)=>h('div',{className:'card',key:shape},h(FinoCharacter,{shape,color:['black','blue','violet','orange','green'][i%5]}),h('span',null,shape)))));
- const ids=[...html.matchAll(/<linearGradient id="([^"]+)/g)].map(m=>m[1]);assert.ok(ids.length>=shapes.length,'Each character has its own paint');assert.equal(new Set(ids).size,ids.length,'SVG paint IDs are unique across avatars');
- await fs.writeFile(new URL('../data/verification/fino-character-board.html',import.meta.url),'<!doctype html><meta charset="utf-8"><title>Fino character shapes</title><style>body{margin:32px;font:14px system-ui;background:#f1f6f2;color:#173d3d}h1{font-size:22px}.grid{display:grid;grid-template-columns:repeat(5,140px);gap:16px}.card{display:flex;align-items:center;flex-direction:column;background:white;border-radius:20px;padding:14px;box-shadow:0 2px 10px #244c3b09}.card svg{width:95px;height:105px}.card span{margin-top:8px}</style><h1>Fino — different characters, one family</h1>'+html);
- console.log('PASS: 13 distinct character silhouettes, vector faces and unique paint IDs');}finally{await fs.unlink(out);}
+await build({stdin:{contents:"export {FinoCharacter,characterKind} from './web/src/avatar/FinoCharacter.tsx'",resolveDir:process.cwd(),loader:'tsx'},bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime'],outfile:out.pathname});
+try{
+ const {FinoCharacter,characterKind}=await import(out.href),{createElement:h}=await import('react'),{renderToStaticMarkup}=await import('react-dom/server');
+ const shapes=['pebble','arch','ghost','dino'];
+ const render=(shape,color)=>renderToStaticMarkup(h(FinoCharacter,{shape,color}));
+ for(const shape of shapes){
+  const html=render(shape,'blue');assert.match(html,new RegExp(`/characters/${shape}.png`));assert.ok(!html.includes('https://'));
+  const png=await fs.readFile(new URL(`../web/public/characters/${shape}.png`,import.meta.url));assert.equal(png.subarray(1,4).toString(),'PNG');assert.equal(png[25],6,'RGBA assets preserve alpha');
+  assert.notEqual(render(shape,'blue'),render(shape,'green'),'Colors change independently from the shape');
+ }
+ for(const shape of ['blob','square','tablet','cloud','heart','flower','clover','teardrop','star','sparkle','wedge','house','hex'])assert.ok(shapes.includes(characterKind(shape)),'Legacy saved shapes remain supported');
+ assert.equal(characterKind('tablet'),'arch');assert.equal(characterKind('cloud'),'ghost');assert.equal(characterKind('clover'),'dino');
+ console.log('PASS: four local RGBA character assets, independent colors and legacy saved-avatar compatibility');
+}finally{await fs.unlink(out);}
