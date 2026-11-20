@@ -454,3 +454,6 @@ body{letter-spacing:0;}
 @media(max-width:600px){.chat-chart{padding:11px;}.chat-chart svg text{font-size:13px;}.chat-chart__legend{gap:7px 12px;}}
 .chat .bubble:has(.chat-chart){width:100%;max-width:760px;}
 @media(max-width:600px){.chat-chart>svg:not(.chat-chart__pie) text{font-size:24px;}}
+.chat .bubble .md code{color:var(--color-ink);}
+.chat .bubble .md pre code{color:inherit;}
+.chat .bubble .md .md__source-note{color:inherit;}
