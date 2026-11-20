@@ -35,6 +35,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         appMenu.addItem(.separator());appMenu.addItem(withTitle:"Quit Fino",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
         let edit=NSMenuItem();let editMenu=NSMenu(title:"Edit");edit.submenu=editMenu;menu.addItem(edit)
         for (title,selector,key) in [("Undo","undo:","z"),("Cut","cut:","x"),("Copy","copy:","c"),("Paste","paste:","v"),("Select All","selectAll:","a")] {editMenu.addItem(withTitle:title,action:Selector(selector),keyEquivalent:key)}
+        for entry in appMenu.items where entry.action != #selector(NSApplication.terminate(_:)){entry.target=self}
         NSApp.mainMenu=menu
         let visible=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:1440,height:900)
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:min(1380,visible.width*0.94),height:min(900,visible.height*0.94)),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
@@ -129,7 +130,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         [paneTitle!,spacer,close].forEach{header.addArrangedSubview($0)}
         browserControls=NSStackView();browserControls.orientation = .horizontal;browserControls.spacing=5;browserControls.translatesAutoresizingMaskIntoConstraints=false
         for (icon,selector,label) in [("chevron.left",#selector(browserBack),"Back"),("chevron.right",#selector(browserForward),"Forward"),("arrow.clockwise",#selector(browserReload),"Reload page")]{let button=NSButton(image:NSImage(systemSymbolName:icon,accessibilityDescription:label)!,target:self,action:selector);button.bezelStyle = .inline;button.setAccessibilityLabel(label);browserControls.addArrangedSubview(button)}
-        address=NSTextField();address.placeholderString="Search or enter a URL";address.font = .systemFont(ofSize:11);address.bezelStyle = .roundedBezel;address.target=self;address.action=#selector(browserNavigate);address.setAccessibilityLabel("Browser address");browserControls.addArrangedSubview(address)
+        address=NSTextField();address.placeholderString="Enter a URL";address.font = .systemFont(ofSize:11);address.bezelStyle = .roundedBezel;address.target=self;address.action=#selector(browserNavigate);address.setAccessibilityLabel("Browser address");browserControls.addArrangedSubview(address)
         panelContent=NSView();panelContent.translatesAutoresizingMaskIntoConstraints=false
         macPreview=NSImageView();macPreview.imageScaling = .scaleProportionallyUpOrDown;macPreview.frame=panelContent.bounds;macPreview.autoresizingMask=[.width,.height];panelContent.addSubview(macPreview)
         placeholder=NSTextField(wrappingLabelWithString:"Connect This Mac above to preview the main display.");placeholder.textColor = .secondaryLabelColor;placeholder.alignment = .center;placeholder.translatesAutoresizingMaskIntoConstraints=false;panelContent.addSubview(placeholder)
@@ -141,7 +142,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         if window.frame.width<1120{var frame=window.frame;frame.size.width=1120;if let visible=window.screen?.visibleFrame{frame.origin.x=min(frame.origin.x,visible.maxX-1120)};window.setFrame(frame,display:true,animate:true)}
         window.contentView?.layoutSubtreeIfNeeded();split.adjustSubviews();split.setPosition(max(650,split.bounds.width-500),ofDividerAt:0);emitDesktopState()
     }
-    @objc func hideWorkspace(){panel.isHidden=true;window.minSize=NSSize(width:850,height:600);split.adjustSubviews();emitDesktopState()}
+    @objc func hideWorkspace(){suspendServerPreview();panel.isHidden=true;window.minSize=NSSize(width:850,height:600);split.adjustSubviews();emitDesktopState()}
     @objc func toggleWorkspace(){if panel.isHidden{showWorkspace()}else{hideWorkspace()}}
     @objc func environmentChanged(){stopControl();showWorkspace();emitDesktopState()}
     func showWorkspace(){
@@ -151,11 +152,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
             paneTitle.stringValue="Server computer · Linux";macPreview.isHidden=true;placeholder.isHidden=true
             if serverView==nil{let config=WKWebViewConfiguration();config.websiteDataStore = .default();config.userContentController.add(self,name:"finoPane");config.userContentController.addUserScript(WKUserScript(source:"window.addEventListener('fino-close-computer',()=>window.webkit.messageHandlers.finoPane.postMessage({action:'close'}));",injectionTime:.atDocumentStart,forMainFrameOnly:true));serverView=WKWebView(frame:panelContent.bounds,configuration:config);serverView.autoresizingMask=[.width,.height];serverView.navigationDelegate=self;serverView.uiDelegate=self;serverView.setValue(false,forKey:"drawsBackground");panelContent.addSubview(serverView)}
             serverView.isHidden=false;var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.queryItems=[URLQueryItem(name:"desktop_view",value:"1")];if let bot=selectedBotID{parts.queryItems?.append(URLQueryItem(name:"bot",value:bot))};if serverView.url != parts.url{serverView.load(URLRequest(url:parts.url!))}
-        }else{paneTitle.stringValue="This Mac · Main display";serverView?.isHidden=true;macPreview.isHidden=false;placeholder.isHidden=macPreview.image != nil}
+        }else{suspendServerPreview();paneTitle.stringValue="This Mac · Main display";serverView?.isHidden=true;macPreview.isHidden=false;placeholder.isHidden=macPreview.image != nil}
         emitDesktopState()
     }
+    func suspendServerPreview(){if serverView?.url?.scheme=="https"{serverView?.loadHTMLString("<html><body style='background:#0c0f15'></body></html>",baseURL:nil)}}
     func ensureBrowser(){
-        showPanel();paneTitle.stringValue="Local Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
+        suspendServerPreview();showPanel();paneTitle.stringValue="Local Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
         if browser==nil{let config=WKWebViewConfiguration();config.websiteDataStore=WKWebsiteDataStore(forIdentifier:UUID(uuidString:"0FB17465-9FA6-46CF-A98F-60EA1BFEB651")!);browser=WKWebView(frame:panelContent.bounds,configuration:config);browser.autoresizingMask=[.width,.height];browser.navigationDelegate=self;browser.uiDelegate=self;panelContent.addSubview(browser);browser.loadHTMLString("<html><body style='font:15px -apple-system;padding:36px;background:#10151e;color:#e7edf8'><h2>Local Browser</h2><p>Browse here, or connect above to let your agent work in this panel.</p></body></html>",baseURL:nil)}
         browser.isHidden=false;emitDesktopState()
     }
