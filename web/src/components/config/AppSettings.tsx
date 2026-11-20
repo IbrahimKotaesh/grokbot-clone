@@ -94,9 +94,9 @@ function GeneralSection() {
         <div className="theme-tiles" role="radiogroup" aria-label="Theme">
           <ThemeTile value="system" label="System" current={theme} onPick={setTheme} />
           <ThemeTile value="light" label="Light" current={theme} onPick={setTheme} />
-          <ThemeTile value="dark" label="Dark" current={theme} onPick={setTheme} />
+          <ThemeTile value="dark" label="Dark blue" current={theme} onPick={setTheme} />
         </div>
-        <div className="cfg-field__hint">System follows your device’s light or dark setting.</div>
+        <div className="cfg-field__hint">Your choice is saved on this device and used each time you open Fino. System follows your device’s appearance.</div>
       </section>
     </>
   );

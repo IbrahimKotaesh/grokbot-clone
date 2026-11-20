@@ -13,7 +13,7 @@
   --color-icon-secondary: #1C1C1CA8;
   --color-border-secondary: #1C1C1C1F;
   --color-border-tertiary: #1C1C1C14;
-  --color-primary: #1C1C1C;
+  --color-primary: #235bd6;
   --color-bot-pink: #F93498;
   --color-bot-pink-bubble: #C82779;
   --color-bot-pink-action: #E52F8B;
@@ -47,7 +47,7 @@
   --color-bg-hover: #1C1C1C0F;
   --color-bg-secondary-hover: #1C1C1C1A;
   --color-bg-secondary-active: #1C1C1C2E;
-  --color-bg-primary-hover: #363636;
+  --color-bg-primary-hover: #1949b3;
   --color-bg-elevated-hover: #F1F1F1;
   --color-border-focus: #1E86FC;
   --color-bg-scrim-heavy: #000000E5;
@@ -70,7 +70,7 @@
   --color-border-primary: #1C1C1C3D;
   --color-on-primary: #FCFCFC;
   --color-bubble-agent: #1C1C1C0F;
-  --color-bubble-user: #1C1C1C;
+  --color-bubble-user: #235bd6;
   --color-danger-hover: #C82532;
   --color-danger-bg: #FB2B3E14;
   --color-danger-text: #CD2834;
@@ -84,9 +84,9 @@
 
 /* ---------- dark theme. Flat: no shadows. ---------- */
 :root[data-theme='dark'] {
-  --color-bg-chrome: #121212;
-  --color-bg-sidebar: #0E0E0E;
-  --color-bg-pane: #161616;
+  --color-bg-chrome: #090b10;
+  --color-bg-sidebar: #0c1018;
+  --color-bg-pane: #10151f;
   --color-bg-active: #F5F5F514;
   --color-bg-tertiary: #F5F5F50A;
   --color-bg-scrim: #000000B2;
@@ -97,12 +97,12 @@
   --color-icon-secondary: #F5F5F5A3;
   --color-border-secondary: #F5F5F51A;
   --color-border-tertiary: #F5F5F50F;
-  --color-primary: #F5F5F5;
+  --color-primary: #438aff;
   --color-bg-hover: #F5F5F50F;
   --color-bg-secondary-hover: #F5F5F514;
   --color-bg-secondary-active: #F5F5F533;
-  --color-bg-primary-hover: #DBDBDB;
-  --color-bg-elevated-hover: #2C2C2C;
+  --color-bg-primary-hover: #6aa2ff;
+  --color-bg-elevated-hover: #222e42;
   --color-border-focus: #1884FC;
   --color-bg-scrim-heavy: #000000F2;
   --color-ink: #F5F5F5;
@@ -116,14 +116,14 @@
   --shadow-popover: #F5F5F51A 0 0 0 0.5px;
   --bubble-ring: #F5F5F50F 0 0 0 0.5px inset;
 
-  --color-bg-elevated: #1F1F1F;
+  --color-bg-elevated: #182131;
   --color-bg-subtle: #F5F5F505;
   --color-bg-primary-disabled: #F5F5F521;
-  --color-bg-active-solid: #262626;
+  --color-bg-active-solid: #1c2c46;
   --color-border-primary: #F5F5F538;
-  --color-on-primary: #121212;
+  --color-on-primary: #071426;
   --color-bubble-agent: #F5F5F50F;
-  --color-bubble-user: #F5F5F52E;
+  --color-bubble-user: #235bd6;
   --color-danger-hover: #F73643;
   --color-danger-bg: #FC2C3E1F;
   --color-danger-text: #FF6463;

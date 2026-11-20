@@ -1,14 +1,5 @@
 /* Fino: a calm, personal workspace on every screen. */
-:root:not([data-theme='dark']) {
-  --color-bg-chrome: #f8faf8;
-  --color-bg-sidebar: #edf3f0;
-  --color-primary: #176d70;
-  --color-bg-primary-hover: #10585a;
-  --color-border-focus: #25898a;
-  --color-bubble-user: #176d70;
-  --color-bg-active: #176d7014;
-  --color-ink: #173c3d;
-}
+
 html, body, #root { width: 100%; height: 100%; height: 100dvh; }
 .chat { min-width: 0; }
 .sidebar { width: 290px; }
@@ -28,10 +19,10 @@ html, body, #root { width: 100%; height: 100%; height: 100dvh; }
 .chat__header { background: var(--color-bg-chrome); border-bottom: 1px solid var(--color-border-tertiary); }
 .chat__pill { border: 0; box-shadow: none; background: transparent; }
 .bubble { padding: 11px 15px; line-height: 1.6; }
-.bubble.is-user { background: #176d70; }
+.bubble.is-user { background: var(--color-bubble-user); }
 .bubble.is-agent { background: var(--color-bg-pane); border: 1px solid var(--color-border-tertiary); box-shadow: none; }
 .composer { border-radius: 20px; }
-.signin { background: radial-gradient(ellipse at 50% 20%, #d8e9df, transparent 70%), var(--color-bg-chrome); }
+.signin { background: var(--color-bg-chrome); }
 .signin__card { width: 410px; padding: 36px; border-radius: 32px; }
 .signin__title { font-size: 36px; line-height: 1.2; letter-spacing: -1.2px; }
 .signin__mascot { width: 132px; height: 132px; object-fit: cover; border-radius: 36px; box-shadow: 0 12px 35px #176d701a; }
@@ -122,7 +113,7 @@ button, a { touch-action: manipulation; }
 .apps-modal__quicklinks .cat-pill { display: inline-flex; align-items: center; gap: 12px; min-height: 40px; border: 1px solid var(--color-border-secondary); }
 
 /* One mobile-friendly message card, with the model control in its own footer. */
-.composer-shell { max-width:960px; margin:0 auto; border:1px solid var(--border, #dce5e2); border-radius:22px; background:var(--pane, #fff); box-shadow:0 4px 20px #143a3210; }
+.composer-shell { max-width:960px; margin:0 auto; border:1px solid var(--color-border-secondary); border-radius:22px; background:var(--color-bg-pane); box-shadow:0 4px 20px #143a3210; }
 .composer-shell .composer { border:0; box-shadow:none; background:transparent; }
 .composer__footer { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:8px 14px 12px; border-top:1px solid #79958b22; }
 .composer__model { display:flex; align-items:center; gap:8px; font-size:12px; color:#61776e; }
@@ -232,3 +223,38 @@ button, a { touch-action: manipulation; }
 .memory-add {display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;margin-bottom:20px;}
 .memory-add textarea {flex:1;min-width:180px;resize:vertical;}
 .memory-add p {width:100%;font-size:12px;color:var(--color-danger-text);}
+
+/* Quiet controls with a clear hierarchy, shared across both appearances. */
+.btn, .cfg-btn { border:1px solid transparent; font-weight:550; gap:8px; }
+.btn--secondary, .cfg-btn--secondary { background:var(--color-bg-pane); border-color:var(--color-border-secondary); box-shadow:none; }
+.btn--light, .btn--bot { border-radius:11px; }
+.icon-btn { border:1px solid var(--color-border-secondary); }
+.icon-btn--plain { border:0; }
+.composer__toolbar .composer__btn { border-radius:12px; background:var(--color-bg-subtle); color:var(--color-text-secondary); }
+.composer__toolbar .composer__cta { border-radius:13px; background:var(--color-primary); color:var(--color-on-primary); box-shadow:none; }
+.composer__toolbar .composer__cta:hover:not(:disabled) { background:var(--color-bg-primary-hover); }
+.composer__toolbar .composer__cta:disabled { background:var(--color-bg-tertiary); color:var(--color-text-quaternary); }
+.composer__setting { border:1px solid var(--color-border-tertiary); border-radius:10px; padding-inline:9px; }
+.composer__setting:hover, .composer__model select:hover, .composer__model select:focus-visible { background:var(--color-bg-hover); border-color:var(--color-border-secondary); }
+.composer__model, .composer__voice-status { color:var(--color-text-secondary); }
+.notification-preferences input { accent-color:var(--color-primary); }
+.notification-help { background:var(--color-bg-subtle); }
+.notification-bell>span { background:var(--color-primary); color:var(--color-on-primary); }
+.notification-item.is-unread { border-inline-start-color:var(--color-primary); }
+.bubble__download { background:var(--color-bg-subtle); }
+.photo-camera__capture { background:var(--color-primary); color:var(--color-on-primary); }
+.theme-tile__art.is-dark .theme-tile__side { background:#0c1018; }
+.theme-tile__art.is-dark .theme-tile__pane { background:#10151f; }
+@media (max-width:600px) {
+  .btn, .cfg-btn { min-height:40px; }
+  .theme-tiles { gap:8px; }
+  .theme-tile { flex:1; min-width:0; padding:5px; }
+  .theme-tile__art { width:100%; min-width:72px; height:76px; }
+  .composer__setting { padding-inline:5px; }
+}
+@media (max-width:900px) {
+  .app-settings__nav { display:flex; flex-direction:row; gap:4px; padding:12px; border-bottom:1px solid var(--color-border-tertiary); }
+  .app-settings__back { width:100%; margin-bottom:4px; }
+  .app-settings__heading { display:none; }
+  .app-settings__nav .cfg-nav__item { width:auto; flex:0 0 auto; padding:8px 10px; border-radius:9px; }
+}

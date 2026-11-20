@@ -6,7 +6,7 @@
 /* buttons */
 .cfg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
-  height: 30px; padding: 0 12px; border-radius: var(--radius-full); white-space: nowrap;
+  height: 36px; padding: 0 14px; border-radius: 11px; white-space: nowrap;
   font-size: 13px; line-height: 18px; letter-spacing: 0.1px; transition: background-color 120ms var(--ease-out), opacity 120ms;
 }
 .cfg-btn:disabled { opacity: 0.45; cursor: default; }
@@ -198,7 +198,7 @@
 .theme-tile__art.is-dark .theme-tile__side { background: #0E0E0E; }
 .theme-tile__art.is-dark .theme-tile__pane { background: #161616; }
 .theme-tile__art.is-dark .theme-tile__pane i { background: #F5F5F51A; }
-.theme-tile__art.is-dark .theme-tile__pane b { background: #F5F5F5; }
+.theme-tile__art.is-dark .theme-tile__pane b { background: #438aff; }
 .theme-tile__art.is-system .theme-tile__side { background: linear-gradient(135deg, #F5F5F5 50%, #0E0E0E 50%); }
 .theme-tile__art.is-system .theme-tile__pane { background: linear-gradient(135deg, #FFFFFF 50%, #161616 50%); }
 .theme-tile__art.is-system .theme-tile__pane i { background: #8080802E; }

@@ -20,3 +20,9 @@ curl http://127.0.0.1:8841/health
 ```
 
 The service limits CPU to 125%, memory to 1800 MB, and has low scheduling priority. No paid transcription API/key is used. Accuracy depends on microphone quality, accent and background noise; test on the user's actual phone before promising word-perfect Arabic. Updating this worker requires installing the versioned Python script/service separately from the normal web release.
+
+## Local Mac preview
+
+Run `bash infra/stt/install-macos.sh` from the checkout. It installs a Python 3.12 environment and the same multilingual small model, reuses the Hugging Face cache where possible, and registers the user LaunchAgent `dev.fino.transcription`. Model downloads happen during setup; transcription runs offline, on loopback port 8841, with two CPU threads and low priority. No model API key is required. The worker starts again when the user logs into macOS.
+
+Check `curl http://127.0.0.1:8841/health`. The web backend uses this address by default. The browser still needs microphone permission; a successful sample-file transcription does not verify the physical microphone. macOS logs are in `~/.local/fino-stt/service-error.log`; recordings and transcripts are not logged. Stop the worker with `launchctl bootout gui/$(id -u)/dev.fino.transcription`.

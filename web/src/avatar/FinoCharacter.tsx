@@ -15,27 +15,37 @@ const silhouettes:Record<string,string>={
  hex:'M29 13H71L93 39V62L72 81H28L7 62V39Z',
 };
 const aliases:Record<string,string>={bean:'teardrop',egg:'blob',pebble:'blob',squircle:'square',capsule:'tablet',cylinder:'tablet',gem:'hex',crystal:'sparkle',shield:'house',dome:'cloud',arch:'house',leaf:'teardrop'};
-const palettes:Record<string,[string,string,string]>={black:['#b7e5cc','#4a9c84','#22665b'],green:['#bfe9b2','#76af63','#3b7545'],blue:['#b8def5','#6ba6d0','#3d6b9c'],cyan:['#b8ebe4','#66b6b0','#337a80'],violet:['#dcc8f3','#a28ac8','#725d98'],magenta:['#f1c8e6','#c58eb9','#995e8a'],red:['#f4c4bf','#d98d87','#a55858'],orange:['#f6d4ad','#d9a168','#a77340'],yellow:['#f4e4ad','#d3b76c','#9b833e'],brown:['#dcc7b4','#ad8d70','#7c614c'],gray:['#dce4e2','#9caeaa','#6c817b']};
-/** Distinct vector characters: shape changes the silhouette, ears, antenna and expression. */
+const palettes:Record<string,[string,string,string]>={black:['#cad7f4','#859bc7','#50648f'],green:['#bfe9b2','#76af63','#3b7545'],blue:['#b8def5','#6ba6d0','#3d6b9c'],cyan:['#b8ebe4','#66b6b0','#337a80'],violet:['#dcc8f3','#a28ac8','#725d98'],magenta:['#f1c8e6','#c58eb9','#995e8a'],red:['#f4c4bf','#d98d87','#a55858'],orange:['#f6d4ad','#d9a168','#a77340'],yellow:['#f4e4ad','#d3b76c','#9b833e'],brown:['#dcc7b4','#ad8d70','#7c614c'],gray:['#dce4e2','#9caeaa','#6c817b']};
+/** Compact companions: sculpted silhouettes, expressive eyes and no robot visor. */
 export function FinoCharacter({shape,color}:{shape:string;color:string}){
- const id='fino'+useId().replace(/[^a-zA-Z0-9_-]/g,'');const kind=silhouettes[shape]?shape:aliases[shape]??'blob';
- const [light,main,dark]=palettes[color]??palettes.black;const raised=kind==='wedge'||kind==='teardrop';const faceY=raised?44:35;
+ const id='fino'+useId().replace(/[^a-zA-Z0-9_-]/g,'');
+ const kind=silhouettes[shape]?shape:aliases[shape]??'blob';
+ const [light,main,dark]=palettes[color]??palettes.black;
+ const faceY=['wedge','teardrop','house'].includes(kind)?51:46;
+ const eyesApart=kind==='wedge'?11:13;
+ const curious=['cloud','sparkle','star'].includes(kind);
  return <svg viewBox="0 0 100 110" aria-hidden="true" focusable="false" data-character={kind}>
-  <defs><linearGradient id={id} x1="0" y1="0" x2=".8" y2="1"><stop stopColor={light}/><stop offset=".65" stopColor={main}/><stop offset="1" stopColor={dark}/></linearGradient></defs>
-  <ellipse cx="50" cy="104" rx="29" ry="4" fill={dark} opacity=".12"/>
-  <path d="M30 70Q20 73 16 86M72 70Q82 74 84 86" stroke={main} strokeWidth="11" fill="none" strokeLinecap="round"/>
-  <path d="M31 96L28 103M68 96L71 103" stroke={dark} strokeWidth="11" strokeLinecap="round"/>
-  <path d="M29 72Q50 61 73 72L77 94Q50 106 24 94Z" fill={`url(#${id})`}/>
-  {kind==='blob'&&<><circle cx="21" cy="23" r="13" fill={main}/><circle cx="79" cy="23" r="13" fill={main}/><circle cx="21" cy="23" r="7" fill={light}/><circle cx="79" cy="23" r="7" fill={light}/></>}
-  {['square','hex'].includes(kind)&&<><path d="M50 20V9" stroke={dark} strokeWidth="4"/><circle cx="50" cy="7" r="5" fill="#f5c36b"/></>}
-  {kind==='tablet'&&<><rect x="0" y="39" width="10" height="24" rx="5" fill={dark}/><rect x="90" y="39" width="10" height="24" rx="5" fill={dark}/><path d="M16 29Q50 2 84 29" fill="none" stroke={dark} strokeWidth="6"/></>}
-  <path d={silhouettes[kind]} fill={`url(#${id})`} stroke={dark} strokeWidth="1.2"/>
-  <path d={silhouettes[kind]} fill="none" stroke="white" strokeWidth="2" opacity=".25" transform="translate(0 -1)"/>
-  <rect x={kind==='wedge'?29:23} y={faceY} width={kind==='wedge'?43:54} height="27" rx={['square','hex','tablet'].includes(kind)?9:14} fill="#193f3d"/>
-  {['flower','heart','clover'].includes(kind)?<g stroke="#d9f9df" strokeWidth="3" strokeLinecap="round" fill="none"><path d={`M33 ${faceY+12}q4 -6 8 0M59 ${faceY+12}q4 -6 8 0`}/></g>:<g fill="#d9f9df"><ellipse cx="37" cy={faceY+12} rx="3.5" ry={kind==='tablet'?4:5}/><ellipse cx="63" cy={faceY+12} rx="3.5" ry={kind==='tablet'?4:5}/></g>}
-  <path d={`M45 ${faceY+20}q5 4 10 0`} fill="none" stroke="#c6ebd3" strokeWidth="2" strokeLinecap="round"/>
-  <circle cx="27" cy={faceY+22} r="4" fill="#efaa9c" opacity=".45"/><circle cx="73" cy={faceY+22} r="4" fill="#efaa9c" opacity=".45"/>
-  <rect x="39" y="82" width="22" height="12" rx="5" fill={light} opacity=".7"/>
-  {kind==='square'?<path d="M42 85l8 5 8-5" fill="none" stroke={dark} strokeWidth="1.6"/>:kind==='tablet'?<path d="M46 91l9-7" stroke={dark} strokeWidth="3" strokeLinecap="round"/>:<circle cx="50" cy="88" r="3" fill={dark} opacity=".65"/>}
+  <defs>
+   <linearGradient id={id} x1="0" y1="0" x2=".7" y2="1">
+    <stop stopColor={light}/><stop offset=".5" stopColor={main}/><stop offset="1" stopColor={dark}/>
+   </linearGradient>
+   <linearGradient id={id+'shine'} x1="0" y1="0" x2="0" y2="1">
+    <stop stopColor="white" stopOpacity=".55"/><stop offset=".7" stopColor="white" stopOpacity="0"/>
+   </linearGradient>
+  </defs>
+  <ellipse cx="50" cy="104" rx="24" ry="3" fill={dark} opacity=".14"/>
+  <path d="M24 61Q10 67 11 77M78 61Q91 65 90 76" fill="none" stroke={dark} strokeWidth="7" strokeLinecap="round"/>
+  <path d="M38 72Q38 88 34 98M62 72Q62 88 66 98" fill="none" stroke={dark} strokeWidth="12" strokeLinecap="round"/>
+  <path d={silhouettes[kind]} fill={`url(#${id})`} stroke={dark} strokeWidth="1" strokeLinejoin="round"/>
+  <path d={silhouettes[kind]} fill={`url(#${id}shine)`}/>
+  <g className="fino-character__eyes">
+   <ellipse cx={50-eyesApart} cy={faceY} rx="10" ry={curious?13:12} fill="#fffdf8"/>
+   <ellipse cx={50+eyesApart} cy={faceY} rx="10" ry="12" fill="#fffdf8"/>
+   <ellipse cx={52-eyesApart} cy={faceY+1} rx="5" ry="7" fill="#202a34"/>
+   <ellipse cx={52+eyesApart} cy={faceY+1} rx="5" ry="7" fill="#202a34"/>
+   <circle cx={53-eyesApart} cy={faceY-2} r="1.8" fill="white"/>
+   <circle cx={53+eyesApart} cy={faceY-2} r="1.8" fill="white"/>
+  </g>
+  <path d={kind==='tablet'?`M46 ${faceY+18}h8`:`M46 ${faceY+17}q4 5 8 0`} fill="none" stroke={dark} strokeWidth="2.4" strokeLinecap="round"/>
  </svg>;
 }

@@ -1,4 +1,3 @@
-import { publishBotNotification } from './notifications.js';
 import { env } from './env.js';
 import { db, now } from './db.js';
 import { hub } from './lib/hub.js';
@@ -81,7 +80,6 @@ export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
   });
   const { userId, row } = tx();
   hub.emit(userId, { type: 'rows', botId, generation: row.generation, rows: [row] });
-  if(row.body.type==='card'&&row.body.status==='pending'&&(row.body.card==='approval'||row.body.card==='question'))publishBotNotification(userId,botId,row.body.card==='approval'?row.body.title:row.body.question,`attention:${botId}:${row.generation}:${row.seq}`,'attention');
   return row;
 }
 

@@ -1,4 +1,3 @@
-import {publishBotNotification} from '../notifications.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
@@ -107,7 +106,6 @@ async function runTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
   if (!bot) return;
   const userId: string = bot.user_id;
-  const turnSeq=bot.next_seq;
   const provider = bot.agent_provider ?? env.agentProvider;
   const ctrl = new AbortController();
   aborts.set(botId, ctrl);
@@ -203,13 +201,7 @@ async function runTurn(botId: string, trigger: Trigger) {
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
     emitBot(botId);
-    if(!ctrl.signal.aborted&&['user','routine','system'].includes(trigger.type)){
-      const turns=(db.prepare('SELECT body FROM rows WHERE bot_id=? AND generation=? AND seq>=? ORDER BY seq').all(botId,bot.generation,turnSeq) as any[]).map(r=>JSON.parse(r.body));
-      const silent=turns.some(r=>r.type==='tool-call'&&r.name==='stay_silent'&&r.status==='done');
-      const message=turns.filter(r=>r.type==='message'&&r.role==='assistant'&&!r.streaming).at(-1);
-      const notified=turns.some(r=>r.type==='tool-call'&&r.name==='notify_user'&&r.status==='done');
-      if(!silent&&!notified&&message)publishBotNotification(userId,botId,message.text||'A new attachment is ready.',`turn:${botId}:${bot.generation}:${turnSeq}`,'update',trigger.type==='user');
-    }
+
   }
 }
 

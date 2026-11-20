@@ -10,6 +10,7 @@ export function DictationButton({onText,onError,onBusy,disabled}:{onText:(text:s
   const reset=()=>{if(mounted.current){setPhase('idle');callbacks.current.onBusy(false);}};
   const cancel=()=>{recording.current?.cancel();request.current?.abort();reset();};
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;recording.current?.cancel();request.current?.abort();callbacks.current.onBusy(false);};},[]);
+  useEffect(()=>{if(phase!=='permission')return;const timeout=setTimeout(()=>{recording.current?.cancel();callbacks.current.onError('Microphone permission is still waiting. Allow access in your browser, or open Fino in Safari or Chrome and try again.');reset();},20000);return()=>clearTimeout(timeout);},[phase]);
   useEffect(()=>{if(phase!=='recording')return;const began=Date.now();setSeconds(0);const t=setInterval(()=>setSeconds(Math.min(60,Math.floor((Date.now()-began)/1000))),250);return()=>clearInterval(t);},[phase]);
   const start=async()=>{
     setPhase('permission');callbacks.current.onBusy(true);

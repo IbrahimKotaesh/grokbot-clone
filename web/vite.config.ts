@@ -1,10 +1,11 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 
-const API = process.env.GROKBOT_API ?? 'http://localhost:8787';
-
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const API = process.env.GROKBOT_API ?? loadEnv(mode, root, 'GROKBOT_API').GROKBOT_API ?? 'http://localhost:8787';
+  return {
   plugins: [react()],
   resolve: {
     alias: { '@shared': fileURLToPath(new URL('../server/src', import.meta.url)) },
@@ -18,4 +19,5 @@ export default defineConfig({
   },
   // noVNC uses top-level await, so target ES2022+.
   build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
+  };
 });
