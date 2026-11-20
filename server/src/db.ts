@@ -156,3 +156,12 @@ export const now = () => Date.now();
 addColumn('bots', 'permission_mode', "TEXT NOT NULL DEFAULT 'balanced'");
 
 addColumn('bots', 'sort_order', 'INTEGER');
+
+// Conversations reuse the existing generation boundary without moving or deleting rows.
+db.exec(`CREATE TABLE IF NOT EXISTS bot_chats(
+ bot_id TEXT NOT NULL REFERENCES bots(id) ON DELETE CASCADE,generation INTEGER NOT NULL,
+ title TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,PRIMARY KEY(bot_id,generation));
+ CREATE INDEX IF NOT EXISTS rows_bot_created ON rows(bot_id,created_at DESC);
+ UPDATE bots SET next_seq=MAX(next_seq,COALESCE((SELECT MAX(seq)+1 FROM rows WHERE bot_id=bots.id),1));`);
+addColumn('approvals','generation','INTEGER');
+db.exec(`UPDATE approvals SET generation=COALESCE((SELECT r.generation FROM rows r WHERE r.bot_id=approvals.bot_id AND r.seq=approvals.row_seq AND json_extract(r.body,'$.approvalId')=approvals.id LIMIT 1),(SELECT generation FROM bots WHERE id=approvals.bot_id)) WHERE generation IS NULL`);

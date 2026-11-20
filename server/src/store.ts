@@ -1,3 +1,5 @@
+import {scopedGeneration} from './lib/chat-scope.js';
+import {ensureChats,createChat} from './chats.js';
 import {isSilentPlaceholder} from './lib/message-text.js';
 import { env } from './env.js';
 import { db, now } from './db.js';
@@ -9,8 +11,8 @@ import { Cron } from 'croner';
 
 export function toBot(r: any): Bot {
   const last = db
-    .prepare("SELECT body, created_at FROM rows WHERE bot_id=? AND generation=? AND kind IN ('message','card','event') ORDER BY seq DESC LIMIT 1")
-    .get(r.id, r.generation) as any;
+    .prepare("SELECT body, created_at FROM rows WHERE bot_id=? AND kind IN ('message','card','event') ORDER BY created_at DESC,updated_seq DESC LIMIT 1")
+    .get(r.id) as any;
   let lastPreview: string | null = null;
   if (last) {
     const b = JSON.parse(last.body) as RowBody;
@@ -45,16 +47,17 @@ export function toBot(r: any): Bot {
   };
 }
 
-export const getBotRow = (id: string) => db.prepare('SELECT * FROM bots WHERE id=?').get(id) as any;
+const rawBotRow=(id:string)=>db.prepare('SELECT * FROM bots WHERE id=?').get(id) as any;
+export const getBotRow=(id:string)=>{const r=rawBotRow(id);return r?{...r,generation:scopedGeneration(id,r.generation)}:r;};
 export const getBot = (id: string) => {
-  const r = getBotRow(id);
+  const r = rawBotRow(id);
   return r ? toBot(r) : null;
 };
 export const listBots = (userId: string) =>
   (db.prepare('SELECT * FROM bots WHERE user_id=? AND COALESCE(hidden,0)=0 ORDER BY is_primary DESC, created_at ASC').all(userId) as any[]).map(toBot);
 
 export function emitBot(botId: string) {
-  const r = getBotRow(botId);
+  const r = rawBotRow(botId);
   if (r) hub.emit(r.user_id, { type: 'bot', bot: toBot(r) });
 }
 
@@ -74,11 +77,15 @@ export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
   if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation, next_seq FROM bots WHERE id=?').get(botId) as any;
+    b.generation=scopedGeneration(botId,b.generation);
+    ensureChats(botId,false);
     const seq = b.next_seq;
     db.prepare('UPDATE bots SET next_seq = next_seq + 1 WHERE id=?').run(botId);
     const rev = bumpRev(botId);
     const t = now();
     db.prepare('INSERT INTO rows(bot_id,generation,seq,updated_seq,kind,body,created_at) VALUES (?,?,?,?,?,?,?)').run(botId, b.generation, seq, rev, kind, JSON.stringify(body), t);
+    db.prepare('UPDATE bot_chats SET updated_at=? WHERE bot_id=? AND generation=?').run(t,botId,b.generation);
+    if(body.type==='message'&&body.role==='user'&&!body.from&&body.text.trim())db.prepare("UPDATE bot_chats SET title=? WHERE bot_id=? AND generation=? AND title='New chat'").run(body.text.trim().split('\n')[0].slice(0,60),botId,b.generation);
     return { userId: b.user_id as string, row: { botId, generation: b.generation, seq, updatedSeq: rev, kind, body, createdAt: t } as Row };
   });
   const { userId, row } = tx();
@@ -91,10 +98,13 @@ export function updateRow(botId: string, seq: number, body: RowBody): Row | null
   if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation FROM bots WHERE id=?').get(botId) as any;
+    b.generation=scopedGeneration(botId,b.generation);
     const existing = db.prepare('SELECT * FROM rows WHERE bot_id=? AND generation=? AND seq=?').get(botId, b.generation, seq) as any;
     if (!existing) return null;
     const rev = bumpRev(botId);
     db.prepare('UPDATE rows SET body=?, updated_seq=? WHERE bot_id=? AND generation=? AND seq=?').run(JSON.stringify(body), rev, botId, b.generation, seq);
+    db.prepare('UPDATE bot_chats SET updated_at=? WHERE bot_id=? AND generation=?').run(now(),botId,b.generation);
+    if(body.type==='message'&&body.role==='user'&&!body.from&&body.text.trim())db.prepare("UPDATE bot_chats SET title=? WHERE bot_id=? AND generation=? AND title='New chat'").run(body.text.trim().split('\n')[0].slice(0,60),botId,b.generation);
     return { userId: b.user_id as string, row: { ...toRow(existing), body, updatedSeq: rev } as Row };
   });
   const res = tx();
@@ -124,9 +134,10 @@ export function listRows(botId: string, opts: { beforeSeq?: number; limit?: numb
 
 export function clearConversation(botId: string) {
   const b = getBotRow(botId);
-  db.prepare('UPDATE bots SET generation = generation + 1, next_seq = 1 WHERE id=?').run(botId);
+  const next=createChat(botId,'Main chat');
+  db.prepare('UPDATE bots SET generation=? WHERE id=?').run(next.generation,botId);
   db.prepare('DELETE FROM pending_turns WHERE bot_id=?').run(botId);
-  hub.emit(b.user_id, { type: 'cleared', botId, generation: b.generation + 1 });
+  hub.emit(b.user_id, { type: 'cleared', botId, generation: next.generation });
 }
 
 // ---------- LLM history (Responses API input items) ----------
@@ -153,9 +164,10 @@ export function getLive(botId: string): LiveState {
 }
 
 export function setLive(botId: string, patch: Partial<LiveState>) {
-  const next = { ...getLive(botId), ...patch, botId };
-  live.set(botId, next);
   const b = getBotRow(botId);
+  const generation=scopedGeneration(botId,patch.generation??getLive(botId).generation??b?.generation??1);
+  const next = { ...getLive(botId), ...patch, botId,generation };
+  live.set(botId, next);
   if (b) hub.emit(b.user_id, { type: 'live', state: next });
 }
 

@@ -11,7 +11,7 @@ export function NotificationsSection(){
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setMessage('');try{await fn();await refresh();}catch(e){setMessage('');setError((e as Error).message);}finally{setBusy(false);}};
  const enabled=!!device?.enabled;
  const preference=(field:'previews'|'replies',value:boolean)=>void run(async()=>{await pushRequest('/device','PATCH',{endpoint,previews:field==='previews'?value:!!device?.previews,replies:field==='replies'?value:!!device?.replies});});
- const open=async(item:AlertItem)=>{await pushRequest('/notifications/read','POST',{id:item.id});if(item.botId){useStore.getState().selectBot(item.botId);useConfigUI.getState().closeAppSettings();}else await refresh();};
+ const open=async(item:AlertItem)=>{await pushRequest('/notifications/read','POST',{id:item.id});if(item.botId){if(item.generation)useStore.getState().selectChat(item.botId,item.generation);useStore.getState().selectBot(item.botId);useConfigUI.getState().closeAppSettings();}else await refresh();};
  return <><div className="app-settings__head"><h1>Notifications</h1><p>Only the alerts you ask your bots to send. No notifications for ordinary messages or approvals.</p></div>
  <section className="notification-device"><div className="notification-device__head"><span className="notification-device__icon">{enabled?<BellRing size={23}/>:<Bell size={23}/>}</span><div><strong>{enabled?'Enabled on this device':'Enable on this device'}</strong><p>Each phone and browser needs its own permission.</p></div></div>
  {support.needsInstall&&<p className="notification-help">On iPhone: open Fino in Safari → Share → Add to Home Screen. Open the Fino icon, then tap Enable notifications.</p>}

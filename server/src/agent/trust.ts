@@ -1,3 +1,4 @@
+import {scopedGeneration} from '../lib/chat-scope.js';
 import {db,now} from '../db.js';
 import {appendRow,getBotRow} from '../store.js';
 import {newId,sha256} from '../lib/ids.js';
@@ -14,7 +15,8 @@ export function suspiciousInstructions(text:string):boolean{
 }
 export function hasSuspiciousContext(botId?:string):boolean{
  if(!botId)return false;
- return !!db.prepare('SELECT 1 FROM agent_security_events e JOIN bots b ON b.id=e.bot_id AND b.generation=e.generation WHERE e.bot_id=? LIMIT 1').get(botId);
+ const bot=db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any;if(!bot)return false;
+ return !!db.prepare('SELECT 1 FROM agent_security_events WHERE bot_id=? AND generation=? LIMIT 1').get(botId,scopedGeneration(botId,bot.generation));
 }
 export function flagSuspiciousContent(userId:string,botId:string,source:string,text:string){
  const bot=getBotRow(botId);if(!bot||bot.user_id!==userId)throw Error('Bot not found');

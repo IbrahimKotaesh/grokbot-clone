@@ -1,3 +1,4 @@
+import {inChat} from '../lib/chat-scope.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
@@ -18,12 +19,12 @@ import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, po
 
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
-export type Trigger =
+export type Trigger = (
   | { type: 'user'; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'routine'; routineId: string; name: string; prompt: string }
-  | { type: 'bot'; fromBotId: string; fromName: string; text: string; depth: number }
+  | { type: 'bot'; fromBotId: string; fromName: string; fromGeneration?:number; text: string; depth: number }
   | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
-  | { type: 'resume' };
+  | { type: 'resume' }) & {generation?:number};
 
 interface PendingState {
   /** function_call items still to process, in order. */
@@ -32,6 +33,7 @@ interface PendingState {
   outputs: any[];
   approvalId: string;
   depth: number;
+  generation?:number;
 }
 
 const MAX_STEPS = 60;
@@ -43,6 +45,7 @@ const queues = new Map<string, Promise<void>>();
 const aborts = new Map<string, AbortController>();
 
 export function enqueue(botId: string, trigger: Trigger) {
+  trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   const prev = queues.get(botId) ?? Promise.resolve();
   const next = prev.then(() => runTurn(botId, trigger)).catch((e) => console.error('[agent] turn failed', botId, e));
   queues.set(botId, next);
@@ -65,11 +68,13 @@ export function runInBotQueue<T>(botId: string, job: () => Promise<T>): Promise<
 
 export const isBotBusy = (botId: string) => queues.has(botId);
 
-function enqueueBotMessage(fromBotId: string, toBotId: string, text: string, depth: number) {
+function enqueueBotMessage(fromBotId: string, toBotId: string, text: string, depth: number,targetGeneration?:number) {
   const from = getBotRow(fromBotId);
-  if(hasSuspiciousContext(fromBotId))flagSuspiciousContent(from.user_id,toBotId,'delegated external context',text);
-  appendRow(toBotId, 'message', { type: 'message', role: 'user', text, from: { kind: 'bot', id: fromBotId, name: from.name } });
-  enqueue(toBotId, { type: 'bot', fromBotId, fromName: from.name, text, depth });
+  const target=getBotRow(toBotId),generation=targetGeneration??target.generation,tainted=hasSuspiciousContext(fromBotId);
+  inChat(toBotId,generation,()=>{if(tainted)flagSuspiciousContent(from.user_id,toBotId,'delegated external context',text);
+   appendRow(toBotId,'message',{type:'message',role:'user',text,from:{kind:'bot',id:fromBotId,name:from.name}});
+  });
+  enqueue(toBotId, { type: 'bot', fromBotId, fromName: from.name,fromGeneration:from.generation,generation, text, depth });
 }
 
 // ---------- history helpers ----------
@@ -104,7 +109,11 @@ function triggerItem(t: Trigger, attachments=''): any | null {
 
 // ---------- the turn ----------
 
-async function runTurn(botId: string, trigger: Trigger) {
+async function runTurn(botId:string,trigger:Trigger){
+ const generation=trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation;
+ if(!generation)return;return inChat(botId,generation,()=>runScopedTurn(botId,trigger));
+}
+async function runScopedTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
   if (!bot) return;
   const userId: string = bot.user_id;
@@ -113,7 +122,7 @@ async function runTurn(botId: string, trigger: Trigger) {
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
-  const ctx: ToolCtx = { userId, botId, enqueueBotMessage, depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
+  const ctx: ToolCtx = { userId, botId, enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
 
   try {
@@ -128,7 +137,7 @@ async function runTurn(botId: string, trigger: Trigger) {
         if (!toolMap.has(name)) throw new Error(`Unknown local tool: ${name}`);
         const act = activityFor(name);
         const row = appendRow(botId, 'tool-call', { type: 'tool-call', callId, name, label: act.label, status: 'running', args } as ToolCallBody);
-        const st: PendingState = { calls: [{call_id:callId,name,arguments:JSON.stringify(args),rowSeq:row.seq}],outputs:[],approvalId:'',depth };
+        const st: PendingState = { calls: [{call_id:callId,name,arguments:JSON.stringify(args),rowSeq:row.seq}],outputs:[],approvalId:'',depth,generation:bot.generation };
         while (await processCalls(ctx, st)) {
           while (!ctrl.signal.aborted) {
             const ap = db.prepare('SELECT status FROM approvals WHERE id=?').get(st.approvalId) as any;
@@ -185,7 +194,7 @@ async function runTurn(botId: string, trigger: Trigger) {
         }),
         outputs: [],
         approvalId: '',
-        depth,
+        depth,generation:bot.generation,
       };
       const paused = await processCalls(ctx, st);
       if (paused) return;
@@ -211,6 +220,8 @@ async function runTurn(botId: string, trigger: Trigger) {
 /** Run function calls in order. Returns true if the turn paused for approval. */
 async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
   const { botId, userId } = ctx;
+  if(st.generation&&st.generation!==getBotRow(botId).generation)return inChat(botId,st.generation,()=>processCalls(ctx,st));
+  st.generation??=getBotRow(botId).generation;
   while (st.calls.length) {
     const c = st.calls[0];
     const args = safeParse(c.arguments) ?? {};
@@ -235,7 +246,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         type: 'card', card: 'approval', approvalId, title: pol.requiresFreshApproval?`Review sensitive action for ${getBotRow(botId).name}`:`Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
         detail: [pol.safetyReason,describeArgs(approvalArgs)].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
-      db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at) VALUES (?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now());
+      db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at,generation) VALUES (?,?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now(),getBotRow(botId).generation);
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
       st.approvalId = approvalId;
       db.prepare('INSERT OR REPLACE INTO pending_turns(bot_id,state) VALUES (?,?)').run(botId, JSON.stringify(st));
@@ -275,7 +286,8 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
 }
 
 /** When a new message arrives while an approval is pending, close the batch with denials. */
-async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string) {
+async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string):Promise<void> {
+  if(st.generation&&st.generation!==getBotRow(ctx.botId).generation)return inChat(ctx.botId,st.generation,()=>finishPending(ctx,st,_reason));
   const { botId } = ctx;
   if (st.approvalId) {
     const ap = db.prepare('SELECT * FROM approvals WHERE id=?').get(st.approvalId) as any;
@@ -389,19 +401,24 @@ function describeArgs(args: any): string {
 }
 
 /** Resolve an approval and any duplicate requests already covered by its saved grant. */
-export function resolveApproval(userId: string, approvalId: string, decision: 'allow' | 'always' | 'deny') {
+export function resolveApproval(userId:string,approvalId:string,decision:'allow'|'always'|'deny'){
+ const record=db.prepare('SELECT a.*,b.user_id,b.generation AS main_generation FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE a.id=?').get(approvalId) as any;
+ if(!record||record.user_id!==userId)throw Error('not found');
+ return inChat(record.bot_id,record.generation??record.main_generation,()=>resolveScopedApproval(userId,approvalId,decision));
+}
+function resolveScopedApproval(userId: string, approvalId: string, decision: 'allow' | 'always' | 'deny') {
   const ap = db.prepare('SELECT a.*, b.user_id FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE a.id=?').get(approvalId) as any;
   if (!ap || ap.user_id !== userId) throw new Error('not found');
   if (ap.status !== 'pending') return;
   const keysFor = (record:any) => {
-    const card=getRow(record.bot_id,record.row_seq);
+    const card=inChat(record.bot_id,record.generation??getBotRow(record.bot_id).generation,()=>getRow(record.bot_id,record.row_seq));
     return card?.body.type==='card'&&card.body.card==='approval' ? card.body.policyKeys??[record.tool] : [record.tool];
   };
   const finish = (record:any,status:'allowed'|'always'|'denied') => {
     db.prepare('UPDATE approvals SET status=?, resolved_at=? WHERE id=? AND status=\'pending\'').run(status,now(),record.id);
-    const card=getRow(record.bot_id,record.row_seq);
-    if(card?.body.type==='card'&&card.body.card==='approval')updateRow(record.bot_id,record.row_seq,{...card.body,status});
-    if(!['codex','claude'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume'});
+    const card=inChat(record.bot_id,record.generation??getBotRow(record.bot_id).generation,()=>getRow(record.bot_id,record.row_seq));
+    if(card?.body.type==='card'&&card.body.card==='approval'){const body=card.body;inChat(record.bot_id,record.generation??getBotRow(record.bot_id).generation,()=>updateRow(record.bot_id,record.row_seq,{...body,status}));}
+    if(!['codex','claude'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume',generation:record.generation??getBotRow(record.bot_id).generation});
   };
   const ownCard=getRow(ap.bot_id,ap.row_seq);
   if(decision==='always'&&ownCard?.body.type==='card'&&ownCard.body.card==='approval'&&ownCard.body.requiresFreshApproval)decision='allow';
@@ -411,10 +428,10 @@ export function resolveApproval(userId: string, approvalId: string, decision: 'a
     finish(ap,'always');
     const pending=db.prepare("SELECT a.* FROM approvals a JOIN bots b ON b.id=a.bot_id WHERE b.user_id=? AND a.status='pending'").all(userId) as any[];
     for(const other of pending){
-      const otherCard=getRow(other.bot_id,other.row_seq);
+      const otherCard=inChat(other.bot_id,other.generation??getBotRow(other.bot_id).generation,()=>getRow(other.bot_id,other.row_seq));
       if(otherCard?.body.type==='card'&&otherCard.body.card==='approval'&&otherCard.body.requiresFreshApproval)continue;
       const covered=keysFor(other);
-      if(covered.length&&covered.every((key:string)=>keys.includes(key)&&policyFor(userId,key,{},other.bot_id).decision==='allow'))finish(other,'always');
+      if(covered.length&&covered.every((key:string)=>keys.includes(key)&&inChat(other.bot_id,other.generation??getBotRow(other.bot_id).generation,()=>policyFor(userId,key,{},other.bot_id)).decision==='allow'))finish(other,'always');
     }
   }else finish(ap,decision==='deny'?'denied':'allowed');
 }

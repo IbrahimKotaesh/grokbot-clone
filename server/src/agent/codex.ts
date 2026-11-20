@@ -15,6 +15,11 @@ import { functionSchemas, type ToolResult } from './tools.js';
 db.exec('CREATE TABLE IF NOT EXISTS codex_threads (bot_id TEXT PRIMARY KEY, generation INTEGER NOT NULL, thread_id TEXT NOT NULL)');
 if (!(db.prepare('PRAGMA table_info(codex_threads)').all() as any[]).some(c=>c.name==='tools_hash')) db.exec("ALTER TABLE codex_threads ADD COLUMN tools_hash TEXT NOT NULL DEFAULT ''");
 
+// Keep one provider session per conversation, including the pre-existing main session.
+if((db.prepare('PRAGMA table_info(codex_threads)').all() as any[]).filter(c=>c.pk).length===1)db.transaction(()=>{
+ db.exec("ALTER TABLE codex_threads RENAME TO codex_threads_legacy; CREATE TABLE codex_threads(bot_id TEXT NOT NULL,generation INTEGER NOT NULL,thread_id TEXT NOT NULL,tools_hash TEXT NOT NULL DEFAULT '',PRIMARY KEY(bot_id,generation)); INSERT INTO codex_threads(bot_id,generation,thread_id,tools_hash) SELECT bot_id,generation,thread_id,tools_hash FROM codex_threads_legacy; DROP TABLE codex_threads_legacy;");
+})();
+
 /** Codex owns conversation context and compaction; credentials stay in its normal login store. */
 export async function codexTurn(botId: string, text: string, signal: AbortSignal, execute: (name: string, args: unknown, callId: string) => Promise<ToolResult>, images: string[] = []) {
   const bot = getBotRow(botId);

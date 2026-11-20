@@ -7,7 +7,7 @@ export function injectFixtures() {
   const st = useStore.getState();
   const botId = st.selectedBotId;
   if (!botId) return;
-  const gen = st.transcripts[botId]?.generation ?? 0;
+  const gen = st.selectedChats[botId] ?? 0;
   const now = Date.now();
   let seq = 900000;
   const row = (kind: Row['kind'], body: RowBody, ago = 0): Row => ({ botId, generation: gen, seq: ++seq, updatedSeq: seq, kind, body, createdAt: now - ago });

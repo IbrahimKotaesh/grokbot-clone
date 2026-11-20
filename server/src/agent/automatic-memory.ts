@@ -1,3 +1,5 @@
+import {scopedGeneration} from '../lib/chat-scope.js';
+import {validChat} from '../chats.js';
 import {db,now} from '../db.js';
 import {saveDurableMemory,updateDurableMemory,memoryMatches} from './recall.js';
 import {curateMemories} from './memory-curator.js';
@@ -31,7 +33,7 @@ const forbidden=/(?:كلمة\s*(?:السر|المرور)|مفتاح\s*سري|\b(
 export function safeMemoryText(text:string){return text.length>=8&&text.length<=600&&!forbidden.test(text);}
 export function applyAutomaticFacts(botId:string,generation:number,sources:Source[],existing:Fact[],result:unknown){
  const bot=db.prepare('SELECT user_id,generation FROM bots WHERE id=?').get(botId) as any;
- if(!bot||bot.generation!==generation)return 0;
+ if(!bot||!validChat(botId,generation))return 0;
  if(!result||!Array.isArray((result as any).facts))throw Error('Invalid extraction response');
  let saved=0;
  db.transaction(()=>{
@@ -72,7 +74,7 @@ export async function automaticMemorySweep(curator=curateMemories){
    const sources:Source[]=[];
    for(const job of jobs){
     const row=db.prepare('SELECT body FROM rows WHERE bot_id=? AND generation=? AND seq=?').get(job.bot_id,job.generation,job.source_seq) as any;
-    if(row&&job.generation===job.current_generation){const body=JSON.parse(row.body);if(body.role==='user'&&!body.from){const text=String(body.text??'').slice(0,2000);if(text.length>=8&&!forbidden.test(text))sources.push({seq:job.source_seq,text});}}
+    if(row&&validChat(job.bot_id,job.generation)){const body=JSON.parse(row.body);if(body.role==='user'&&!body.from){const text=String(body.text??'').slice(0,2000);if(text.length>=8&&!forbidden.test(text))sources.push({seq:job.source_seq,text});}}
    }
    if(sources.length){
     const all=canonical(first.bot_id);
@@ -103,7 +105,7 @@ export function startAutomaticMemory(isBusy:(id:string)=>boolean){
 }
 export async function semanticMemoryForPrompt(userId:string,botId:string):Promise<string>{
  if(!automaticMemoryEnabled)return '';
- const row=db.prepare("SELECT body FROM rows WHERE bot_id=? AND kind='message' AND json_extract(body,'$.role')='user' ORDER BY generation DESC,seq DESC LIMIT 1").get(botId) as any;
+ const row=db.prepare("SELECT body FROM rows WHERE bot_id=? AND generation=? AND kind='message' AND json_extract(body,'$.role')='user' ORDER BY seq DESC LIMIT 1").get(botId,scopedGeneration(botId,(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation??1)) as any;
  const query=row?String(JSON.parse(row.body).text??'').slice(0,1800):'';if(!query)return '';
  try{
   const result=await memoryRequest('/search',{scope:scope(userId,botId),query},300);

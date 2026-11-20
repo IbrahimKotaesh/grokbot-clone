@@ -3,7 +3,7 @@
 // back through the normal transcript stream and are injected into the call as [work_landed] notes.
 import { create } from 'zustand';
 import type { Row } from '@shared/types';
-import { sortedRows, useStore } from '../store';
+import { sortedRows, useStore,transcriptKey } from '../store';
 import { voiceApi, type VoiceSession } from './api';
 import { MicCapture, PcmPlayer, base64ToPcm, createAudioContext, micErrorMessage, openMic, pcmToBase64 } from './audio';
 
@@ -333,7 +333,7 @@ class VoiceCall {
   private watchTranscript() {
     this.unsubStore = useStore.subscribe((s, prev) => {
       if (!this.tasks.length) return;
-      if (s.live[this.botId] !== prev.live[this.botId] || s.transcripts[this.botId] !== prev.transcripts[this.botId]) {
+      if (s.live[this.botId] !== prev.live[this.botId] || s.transcripts[transcriptKey(this.botId,s.bots.find(b=>b.id===this.botId)?.generation??1)] !== prev.transcripts[transcriptKey(this.botId,prev.bots.find(b=>b.id===this.botId)?.generation??1)]) {
         if (s.live[this.botId]?.isRunning) for (const t of this.tasks) t.sawRunning = true;
         this.scheduleCheck(400);
       }
@@ -349,7 +349,7 @@ class VoiceCall {
     if (this.ended || !this.tasks.length) return;
     const st = useStore.getState();
     const live = st.live[this.botId];
-    const rows = sortedRows(st.transcripts[this.botId]);
+    const rows = sortedRows(st.transcripts[transcriptKey(this.botId,st.bots.find(b=>b.id===this.botId)?.generation??1)]);
     const now = Date.now();
     let recheck = false;
     for (const task of [...this.tasks]) {

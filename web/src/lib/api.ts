@@ -1,5 +1,5 @@
 import {disableDevicePush} from './push';
-import type { Bot, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
+import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -33,14 +33,17 @@ export const api = {
   bots: () => req<{ bots: Bot[]; live: LiveState[] }>('GET', '/bots'),
   createBot: (b: Pick<Bot, 'name' | 'avatarShape' | 'avatarColor' | 'mode'>) => req<{ bot: Bot }>('POST', '/bots', b),
   markRead: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/read`),
-  rows: (id: string) => req<{ generation: number; rows: Row[] }>('GET', `/bots/${id}/rows`),
-  send: (id: string, text: string, images?: {name:string;dataUrl:string}[], files?: {name:string;dataUrl:string}[]) => req<{ row: Row }>('POST', `/bots/${id}/messages`, { text, ...(images?.length ? {images} : {}), ...(files?.length ? {files} : {}) }),
-  interrupt: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/interrupt`),
+  rows: (id: string,generation?:number) => req<{ generation: number; rows: Row[] }>('GET', `/bots/${id}/rows${generation===undefined?'':'?generation='+generation}`),
+  send: (id: string, text: string, images?: {name:string;dataUrl:string}[], files?: {name:string;dataUrl:string}[],generation?:number) => req<{ row: Row }>('POST', `/bots/${id}/messages`, { text,generation, ...(images?.length ? {images} : {}), ...(files?.length ? {files} : {}) }),
+  chats:(id:string)=>req<{chats:BotChat[]}>('GET',`/bots/${id}/chats`),
+  createChat:(id:string,title?:string)=>req<{chat:BotChat}>('POST',`/bots/${id}/chats`,{title}),
+  renameChat:(id:string,generation:number,title:string)=>req<{chat:BotChat}>('PATCH',`/bots/${id}/chats/${generation}`,{title}),
+  interrupt: (id: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/interrupt`,{generation}),
   fresh: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/fresh`),
 
   approve: (approvalId: string, decision: 'allow' | 'always' | 'deny') => req<{ ok: true }>('POST', `/approvals/${approvalId}`, { decision }),
-  answer: (id: string, seq: number, answer: string) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/answer`, { answer }),
-  dismiss: (id: string, seq: number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/dismiss`),
+  answer: (id: string, seq: number, answer: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/answer`, { answer,generation }),
+  dismiss: (id: string, seq: number,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/cards/${seq}/dismiss`,{generation}),
 
   routines: (id: string) => req<{ routines: Routine[] }>('GET', `/bots/${id}/routines`),
   setRoutine: (rid: string, enabled: boolean) => req<{ routine: Routine }>('PATCH', `/routines/${rid}`, { enabled }),
@@ -49,7 +52,7 @@ export const api = {
   ensureComputer: () => req<{ computer: ComputerState }>('POST', '/computer/ensure'),
 
   apps: (search = '', category = '') => req<AppsResponse>('GET', `/apps?search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`),
-  connect: (slug: string, botId?: string, seq?: number) => req<{ redirectUrl: string }>('POST', `/apps/${slug}/connect`, { botId, seq }),
+  connect: (slug: string, botId?: string, seq?: number,generation?:number) => req<{ redirectUrl: string }>('POST', `/apps/${slug}/connect`, { botId, seq,generation }),
   disconnect: (slug: string) => req<{ ok: true }>('DELETE', `/apps/${slug}`),
 
   roomMembers: (id: string) => req<{ members: RoomMember[] }>('GET', `/rooms/${id}/members`),

@@ -8,6 +8,8 @@ export type AvatarShape =
 export type AvatarColor =
   | 'black' | 'brown' | 'red' | 'orange' | 'yellow' | 'green' | 'cyan' | 'blue' | 'violet' | 'magenta' | 'gray';
 
+export interface BotChat {botId:string;generation:number;title:string;createdAt:number;updatedAt:number;messageCount:number;isMain:boolean}
+
 export interface User { id: string; email: string; name: string; avatarUrl: string | null }
 
 export type PermissionMode = 'read_only' | 'balanced' | 'ask' | 'autonomous';
@@ -159,6 +161,7 @@ export type ActivityKind =
 
 export interface LiveState {
   botId: string;
+  generation?: number;
   isRunning: boolean;
   activity: { kind: ActivityKind; detail?: string; since: number } | null;
   awaiting: { reason: string; since: number } | null;

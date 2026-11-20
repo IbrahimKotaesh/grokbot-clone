@@ -1,4 +1,4 @@
-export interface AlertItem{id:string;botId:string|null;kind:string;title:string;body:string;createdAt:number;readAt:number|null}
+export interface AlertItem{id:string;botId:string|null;generation?:number|null;kind:string;title:string;body:string;createdAt:number;readAt:number|null}
 export async function pushRequest<T>(path:string,method='GET',body?:unknown):Promise<T>{
  const r=await fetch('/api/push'+path,{method,credentials:'include',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json();if(!r.ok)throw Error(data.error??'Notifications are unavailable.');return data;

@@ -22,6 +22,11 @@ jobs:
       - run: node tests/message-rendering.mjs
       - run: node tests/approval-display.mjs
       - run: npm run build
+      - run: node tests/subchat-client.mjs
+      - run: node tests/subchats.mjs
+        env:
+          SESSION_SECRET: ci-subchat-test-value
+          DB_PATH: ':memory:'
       - run: node tests/native-auth.mjs
         env:
           SESSION_SECRET: ci-native-test-value

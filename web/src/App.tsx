@@ -43,7 +43,7 @@ function Shell() {
     const onNotification=(event:MessageEvent)=>{
       if(event.data?.type!=='fino-open-notification')return;
       try{const url=new URL(event.data.url,location.origin);if(url.origin!==location.origin)return;const botId=url.searchParams.get('bot'),id=url.searchParams.get('notification');
-        if(botId&&useStore.getState().bots.some(b=>b.id===botId)){useStore.getState().selectBot(botId);useConfigUI.getState().closeAppSettings();useConfigUI.getState().setView('chat');useStore.getState().set({viewerOpen:false});}
+        if(botId&&useStore.getState().bots.some(b=>b.id===botId)){const generation=Number(url.searchParams.get('chat'));if(Number.isSafeInteger(generation)&&generation>0)useStore.getState().selectChat(botId,generation);useStore.getState().selectBot(botId);useConfigUI.getState().closeAppSettings();useConfigUI.getState().setView('chat');useStore.getState().set({viewerOpen:false});}
         if(id)void fetch('/api/push/notifications/read',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
       }catch{/* Ignore malformed notification links. */}
     };

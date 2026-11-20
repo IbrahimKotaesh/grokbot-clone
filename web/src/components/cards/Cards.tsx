@@ -82,7 +82,7 @@ export function QuestionCard({ row, body }: { row: Row; body: Card<'question'> }
               type="button"
               className={`question-option${chosen ? ' is-chosen' : ''}`}
               disabled={!pending || !!busy}
-              onClick={() => run(String(i), () => api.answer(row.botId, row.seq, opt))}
+              onClick={() => run(String(i), () => api.answer(row.botId, row.seq, opt,row.generation))}
             >
               <span className="question-option__key">{letters[i] ?? i + 1}</span>
               <span className="question-option__label">{opt}</span>
@@ -93,7 +93,7 @@ export function QuestionCard({ row, body }: { row: Row; body: Card<'question'> }
       </div>
       {pending && (
         <div className="question-card__foot">
-          <button type="button" className="link-btn" disabled={!!busy} onClick={() => run('dismiss', () => api.dismiss(row.botId, row.seq))}>Skip</button>
+          <button type="button" className="link-btn" disabled={!!busy} onClick={() => run('dismiss', () => api.dismiss(row.botId, row.seq,row.generation))}>Skip</button>
         </div>
       )}
       {error && <div className="card__error">{error}</div>}
@@ -115,7 +115,7 @@ export function ConnectCard({ row, body }: { row: Row; body: Card<'connect'> }) 
   const connect = () => run('connect', async () => {
     const popup = openPopup('about:blank');
     try {
-      const { redirectUrl } = await api.connect(body.toolkit, row.botId, row.seq);
+      const { redirectUrl } = await api.connect(body.toolkit, row.botId, row.seq,row.generation);
       if (popup) popup.location.href = redirectUrl; else window.open(redirectUrl, '_blank');
       setWaiting(true);
     } catch (e) { popup?.close(); throw e; }
@@ -133,7 +133,7 @@ export function ConnectCard({ row, body }: { row: Row; body: Card<'connect'> }) 
       {pending ? (
         <>
           <div className="card__actions">
-            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => run('skip', () => api.dismiss(row.botId, row.seq))}>Skip</button>
+            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => run('skip', () => api.dismiss(row.botId, row.seq,row.generation))}>Skip</button>
             <button type="button" className="btn btn--primary" disabled={!!busy} onClick={connect}>{waiting ? 'Waiting for sign-in…' : 'Connect'}</button>
           </div>
           {error && <div className="card__error">{error}</div>}

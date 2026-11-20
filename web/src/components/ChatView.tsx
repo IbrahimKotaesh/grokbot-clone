@@ -1,8 +1,8 @@
+import {ChatThreads} from './ChatThreads';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
-import { api } from '../lib/api';
 import { botVars } from '../lib/colors';
-import { sortedRows, useSelectedBot, useStore } from '../store';
+import { sortedRows, transcriptKey,useSelectedBot, useStore } from '../store';
 import { useConfigUI } from '../configStore';
 import { Composer } from './Composer';
 import { Icon } from './Icon';
@@ -12,7 +12,8 @@ import { VoiceCallBar } from './VoiceCallBar';
 
 export function ChatView() {
   const bot = useSelectedBot();
-  const transcript = useStore((s) => (bot ? s.transcripts[bot.id] : undefined));
+  const generation=useStore(s=>bot?s.selectedChats[bot.id]??bot.generation:1);
+  const transcript = useStore((s) => (bot ? s.transcripts[transcriptKey(bot.id,generation)] : undefined));
   const live = useStore((s) => (bot ? s.live[bot.id] : undefined));
   const detailsOpen = useStore((s) => s.detailsOpen);
   const set = useStore((s) => s.set);
@@ -31,10 +32,11 @@ export function ChatView() {
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(null), 2000); };
 
   return (
-    <main className="chat" style={botVars(bot.avatarColor)}>
-      <Transcript bot={bot} rows={rows} live={live} loaded={!!transcript?.loaded} />
+    <main className={`chat${bot.kind==='room'?'':' chat--threaded'}`} style={botVars(bot.avatarColor)}>
+      {bot.kind!=='room'&&<ChatThreads bot={bot} generation={generation}/>}
+      <Transcript key={`transcript:${bot.id}:${generation}`} bot={bot} rows={rows} live={live&&(!live.generation||live.generation===generation)?live:undefined} loaded={!!transcript?.loaded} />
       <VoiceCallBar />
-      <Composer key={bot.id} bot={bot} running={!!live?.isRunning} />
+      <Composer key={`composer:${bot.id}:${generation}`} bot={bot} generation={generation} running={!!live?.isRunning&&(!live.generation||live.generation===generation)} />
       <header className="chat__header">
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
@@ -48,7 +50,7 @@ export function ChatView() {
               items={[
                 { label: detailsOpen ? 'Hide details' : 'Show details', hint: '⇧⌘,', onSelect: () => set({ detailsOpen: !detailsOpen }) },
                 { label: 'Open computer', onSelect: () => set({ viewerOpen: true }) },
-                { label: 'New conversation', onSelect: () => api.fresh(bot.id).then(() => flash('Started a new conversation')).catch((e) => flash(e.message)) },
+                { label: 'New chat', onSelect: () => useStore.getState().newChat(bot.id).then(() => flash('Started a new chat')).catch((e) => flash(e.message)) },
                 { label: 'Bot settings', onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
               ]}
             />

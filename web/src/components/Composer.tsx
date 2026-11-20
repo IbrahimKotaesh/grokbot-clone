@@ -23,19 +23,20 @@ const drafts = new Map<string, string>();
 const documentDrafts=new Map<string,DocumentUpload[]>();
 const photoDrafts = new Map<string, Photo[]>();
 
-export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
-  const [text, setText] = useState(() => drafts.get(bot.id) ?? '');
-  const [documents,setDocuments]=useState<DocumentUpload[]>(()=>documentDrafts.get(bot.id)??[]);
+export function Composer({ bot, running,generation=bot.generation }: { bot: Bot; running: boolean;generation?:number }) {
+  const draftKey=`${bot.id}:${generation}`;
+  const [text, setText] = useState(() => drafts.get(draftKey) ?? '');
+  const [documents,setDocuments]=useState<DocumentUpload[]>(()=>documentDrafts.get(draftKey)??[]);
   const documentRef=useRef<HTMLInputElement>(null);
-  useEffect(()=>{documentDrafts.set(bot.id,documents);},[bot.id,documents]);
-  const [photos,setPhotos]=useState<Photo[]>(()=>photoDrafts.get(bot.id)??[]);
+  useEffect(()=>{documentDrafts.set(draftKey,documents);},[draftKey,documents]);
+  const [photos,setPhotos]=useState<Photo[]>(()=>photoDrafts.get(draftKey)??[]);
   const [preparing,setPreparing]=useState(false);
   const [camera,setCamera]=useState(false);
   const fileRef=useRef<HTMLInputElement>(null);
   const captureRef=useRef<HTMLInputElement>(null);
   const mounted=useRef(true);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
-  useEffect(()=>{photoDrafts.set(bot.id,photos);},[bot.id,photos]);
+  useEffect(()=>{photoDrafts.set(draftKey,photos);},[draftKey,photos]);
   const closeCamera=useCallback(()=>setCamera(false),[]);
   const addFiles=async(files:FileList|null)=>{
     if(!files?.length)return;
@@ -68,8 +69,8 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
   const setModal = useStore((s) => s.setModal);
 
   // Per-bot drafts.
-  useEffect(() => { setText(drafts.get(bot.id) ?? ''); setError(null); }, [bot.id]);
-  useEffect(() => { drafts.set(bot.id, text); }, [bot.id, text]);
+  useEffect(() => { setText(drafts.get(draftKey) ?? ''); setError(null); }, [draftKey]);
+  useEffect(() => { drafts.set(draftKey, text); }, [draftKey, text]);
 
   // Auto-grow.
   useLayoutEffect(() => {
@@ -97,10 +98,10 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     if ((!t && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
     try {
-      await api.send(bot.id, t, photos,documents);
-      setPhotos([]);photoDrafts.delete(bot.id);setDocuments([]);documentDrafts.delete(bot.id);
+      await api.send(bot.id, t, photos,documents,generation);
+      setPhotos([]);photoDrafts.delete(draftKey);setDocuments([]);documentDrafts.delete(draftKey);
       setText('');
-      drafts.delete(bot.id);
+      drafts.delete(draftKey);
     } catch (e) {
       setError((e as Error).message || 'Message failed to send');
     } finally {
@@ -108,8 +109,8 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
     }
   };
 
-  const stop = () => api.interrupt(bot.id).catch((e) => setError(e.message));
-  const fresh = () => api.fresh(bot.id).catch((e) => setError(e.message));
+  const stop = () => api.interrupt(bot.id,generation).catch((e) => setError(e.message));
+  const fresh = () => useStore.getState().newChat(bot.id).catch((e) => setError(e.message));
 
   const changeProvider = async (agentProvider: 'codex' | 'claude') => {
     setSwitching(true); setError(null);
@@ -171,7 +172,7 @@ export function Composer({ bot, running }: { bot: Bot; running: boolean }) {
                   { label: 'Choose files', onSelect: () => documentRef.current?.click() },
                   { label: 'Choose photo', onSelect: () => fileRef.current?.click() },
                   { label: 'Take photo', onSelect: openCamera },
-                  { label: 'New conversation', onSelect: fresh },
+                  { label: 'New chat', onSelect: fresh },
                   { label: 'Connect apps', onSelect: () => setModal('apps') },
                 ]}
               />

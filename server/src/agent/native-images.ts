@@ -1,3 +1,4 @@
+import {inChat} from '../lib/chat-scope.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {publishAttachment} from '../attachments.js';
@@ -31,7 +32,7 @@ export function nativeImageReceiver(userId:string,botId:string,roots:string[]){
  let delivered=0,failed=false;
  return {
   get delivered(){return delivered;},get failed(){return failed;},
-  receive(item:any,phase:'started'|'completed'){
+  receive(item:any,phase:'started'|'completed'){return inChat(botId,bot.generation,()=>{
    if(!item?.id||completed.has(item.id))return;
    let seq=rows.get(item.id);
    if(seq===undefined){seq=appendRow(botId,'tool-call',{type:'tool-call',callId:item.id,name:'image_generation',label:'Generating an image',status:'running'}).seq;rows.set(item.id,seq);}
@@ -50,6 +51,6 @@ export function nativeImageReceiver(userId:string,botId:string,roots:string[]){
     updateRow(botId,seq,{type:'tool-call',callId:item.id,name:'image_generation',label:'Generating an image',status:'error',summary:message});
     appendRow(botId,'notice',{type:'notice',tone:'warn',text:message});
    }
-  }
+  });}
  };
 }

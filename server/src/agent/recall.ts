@@ -1,3 +1,4 @@
+import {scopedGeneration} from '../lib/chat-scope.js';
 import {db,now} from '../db.js';
 import {newId} from '../lib/ids.js';
 import {hub} from '../lib/hub.js';
@@ -11,7 +12,7 @@ export function memoryMatches(botId:string,query:string){
 }
 export function searchMemories(botId:string,query:string){return memoryMatches(botId,query).map(m=>m.text);}
 export function searchConversation(userId:string,botId:string,query:string,includeEarlier=false){
- const bot=db.prepare('SELECT user_id,generation FROM bots WHERE id=?').get(botId) as any;if(bot?.user_id!==userId)throw Error('Conversation unavailable.');
+ const bot=db.prepare('SELECT user_id,generation FROM bots WHERE id=?').get(botId) as any;if(bot?.user_id!==userId)throw Error('Conversation unavailable.');bot.generation=scopedGeneration(botId,bot.generation);
  const phrase=normalizeRecall(query),tokens=recallTokens(query);if(!tokens.size)throw Error('Use a word or phrase to search your conversation.');
  const rows=db.prepare(`SELECT seq,generation,created_at,body FROM rows WHERE bot_id=? AND kind='message' ${includeEarlier?'':'AND generation=?'} ORDER BY created_at DESC,seq DESC LIMIT 5000`).all(...(includeEarlier?[botId]:[botId,bot.generation])) as any[];
  const matches=rows.map((r,i)=>{const b=JSON.parse(r.body),text=String(b.text??''),normalized=normalizeRecall(text);const hits=[...tokens].filter(w=>normalized.includes(w));return {r,b,text,score:(normalized.includes(phrase)?10:0)+hits.length,recency:i};}).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||a.recency-b.recency).slice(0,10);

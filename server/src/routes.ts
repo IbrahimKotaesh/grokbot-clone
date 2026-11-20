@@ -1,3 +1,5 @@
+import {inChat} from './lib/chat-scope.js';
+import {createChat,listChats,renameChat,validChat,ensureChats} from './chats.js';
 import {invalidateProviderSession} from './agent/context.js';
 import {queueAutomaticMemory} from './agent/automatic-memory.js';
 import { pushApi } from './notifications.js';
@@ -203,11 +205,16 @@ api.post('/bots/:id/read', (c) => {
 
 // ---------- conversation ----------
 
+api.get('/bots/:id/chats',c=>{const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);return c.json({chats:listChats(b.id)});});
+api.post('/bots/:id/chats',async c=>{const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);if(b.kind==='room')return c.json({error:'Group chats already have their own conversation.'},400);const input=await c.req.json().catch(()=>({}));const chat=createChat(b.id,typeof input.title==='string'?input.title:'New chat');return c.json({chat},201);});
+api.patch('/bots/:id/chats/:generation',async c=>{const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);const generation=Number(c.req.param('generation'));if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);const input=await c.req.json().catch(()=>({}));if(typeof input.title!=='string'||!input.title.trim())return c.json({error:'Enter a chat name.'},400);return c.json({chat:renameChat(b.id,generation,input.title)});});
+
 api.get('/bots/:id/rows', (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
   const beforeSeq = c.req.query('beforeSeq') ? Number(c.req.query('beforeSeq')) : undefined;
-  return c.json({ generation: b.generation, rows: listRows(b.id, { beforeSeq, limit: Number(c.req.query('limit') ?? 200) }) });
+  ensureChats(b.id);const generation=Number(c.req.query('generation')??b.generation);if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
+  return inChat(b.id,generation,()=>c.json({ generation, rows: listRows(b.id, { beforeSeq, limit: Number(c.req.query('limit') ?? 200) }) }));
 });
 
 api.get('/bots/:id/attachments/:fileId', (c) => {
@@ -231,28 +238,31 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
   let body;
   try { body=await c.req.json(); } catch { return c.json({error:'Invalid message.'},400); }
   if(!body || typeof body !== 'object' || Array.isArray(body)) return c.json({error:'Invalid message.'},400);
+  const generation=body.generation??b.generation;if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   let photos,documents;
   try { photos=validateImages(body.images); documents=await extractDocuments(validateDocuments(body.files)); } catch(e) { return c.json({error:(e as Error).message},400); }
   if (!text && !photos.length && !documents.length) return c.json({ error: 'empty' }, 400);
-  const {row,images,files}=db.transaction(()=>{
+  const {row,images,files}=inChat(b.id,generation,()=>db.transaction(()=>{
     const files=saveDocuments(c.get('user').id,b.id,documents);
     const images=saveImages(c.get('user').id,b.id,photos);
     const row=appendRow(b.id,'message',{type:'message',role:'user',text,...(images.length?{images}:{}),...(files.length?{files}:{})});
     return {row,images,files};
-  })();
+  })());
   const imageIds=images.map(image=>image.id);
-  queueAutomaticMemory(b.id,b.generation,row.seq);
+  queueAutomaticMemory(b.id,generation,row.seq);
   const fileIds=files.map(file=>file.id);
   const prompt=text || (files.length?'Read and summarize the attached documents.':'Describe the attached photo.');
   if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
-  else enqueue(b.id, { type: 'user', text:prompt,imageIds,fileIds });
+  else enqueue(b.id, { type: 'user',generation, text:prompt,imageIds,fileIds });
   return c.json({ row });
 });
 
-api.post('/bots/:id/interrupt', (c) => {
+api.post('/bots/:id/interrupt', async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
+  const input=await c.req.json().catch(()=>({}));
+  if(input.generation!==undefined&&(!validChat(b.id,input.generation)||(getLive(b.id).generation!==undefined&&getLive(b.id).generation!==input.generation)))return c.json({error:'This bot is working in another chat.'},409);
   interrupt(b.id);
   return c.json({ ok: true });
 });
@@ -272,28 +282,24 @@ api.post('/approvals/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-api.post('/bots/:id/cards/:seq/answer', async (c) => {
-  const b = ownBot(c.get('user').id, c.req.param('id'));
-  if (!b) return c.json({ error: 'not found' }, 404);
-  const row = getRow(b.id, Number(c.req.param('seq')));
-  const { answer } = await c.req.json<{ answer: string }>();
-  if (!row || row.body.type !== 'card' || row.body.card !== 'question') return c.json({ error: 'not a question' }, 400);
-  updateRow(b.id, row.seq, { ...row.body, status: 'answered', answer });
-  const answerRow=appendRow(b.id, 'message', { type: 'message', role: 'user', text: answer });
-  queueAutomaticMemory(b.id,b.generation,answerRow.seq);
-  enqueue(b.id, { type: 'user', text: `[Answer to "${row.body.question}"] ${answer}` });
-  return c.json({ ok: true });
+api.post('/bots/:id/cards/:seq/answer',async c=>{
+ const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);
+ const input=await c.req.json().catch(()=>({})),generation=input.generation??b.generation;
+ if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
+ return inChat(b.id,generation,()=>{
+  const row=getRow(b.id,Number(c.req.param('seq'))),answer=String(input.answer??'').trim();
+  if(!row||row.body.type!=='card'||row.body.card!=='question'||!answer)return c.json({error:'not a question or empty answer'},400);
+  updateRow(b.id,row.seq,{...row.body,status:'answered',answer});const answerRow=appendRow(b.id,'message',{type:'message',role:'user',text:answer});queueAutomaticMemory(b.id,generation,answerRow.seq);
+  enqueue(b.id,{type:'user',generation,text:`[Answer to "${row.body.question}"] ${answer}`});return c.json({ok:true});
+ });
 });
-
-api.post('/bots/:id/cards/:seq/dismiss', (c) => {
-  const b = ownBot(c.get('user').id, c.req.param('id'));
-  if (!b) return c.json({ error: 'not found' }, 404);
-  const row = getRow(b.id, Number(c.req.param('seq')));
-  if (!row || row.body.type !== 'card') return c.json({ error: 'not a card' }, 400);
-  const body: any = { ...row.body, status: row.body.card === 'connect' ? 'skipped' : 'dismissed' };
-  updateRow(b.id, row.seq, body);
-  if (row.body.card === 'connect') enqueue(b.id, { type: 'system', text: `The user skipped connecting ${row.body.toolkitName}. Continue without it.` });
-  return c.json({ ok: true });
+api.post('/bots/:id/cards/:seq/dismiss',async c=>{
+ const b=ownBot(c.get('user').id,c.req.param('id'));if(!b)return c.json({error:'not found'},404);
+ const input=await c.req.json().catch(()=>({})),generation=input.generation??b.generation;if(!validChat(b.id,generation))return c.json({error:'Chat not found.'},404);
+ return inChat(b.id,generation,()=>{const row=getRow(b.id,Number(c.req.param('seq')));if(!row||row.body.type!=='card')return c.json({error:'not a card'},400);
+  updateRow(b.id,row.seq,{...row.body,status:row.body.card==='connect'?'skipped':'dismissed'} as any);
+  if(row.body.card==='connect')enqueue(b.id,{type:'system',generation,text:`The user skipped connecting ${row.body.toolkitName}. Continue without it.`});return c.json({ok:true});
+ });
 });
 
 // ---------- routines / tasks / memories ----------
@@ -407,11 +413,12 @@ api.get('/apps', async (c) => {
 api.post('/apps/:slug/connect', async (c) => {
   const user = c.get('user');
   const slug = c.req.param('slug');
-  const { botId, seq } = await c.req.json<{ botId?: string; seq?: number }>().catch(() => ({} as any));
+  const { botId, seq,generation } = await c.req.json<{ botId?: string; seq?: number;generation?:number }>().catch(() => ({} as any));
   const cb = new URL(`${env.serverUrl}/api/apps/callback`);
   cb.searchParams.set('slug', slug);
   if (botId) cb.searchParams.set('bot', botId);
   if (seq) cb.searchParams.set('seq', String(seq));
+  if(generation!==undefined){if(!botId||!ownBot(user.id,botId)||!validChat(botId,generation))return c.json({error:'Chat not found.'},404);cb.searchParams.set('generation',String(generation));}
   const r = await startConnect(user.id, slug, cb.toString());
   return c.json(r);
 });
@@ -427,13 +434,14 @@ api.get('/apps/callback', async (c) => {
     const connected = await connectedToolkits(userId).catch(() => new Set<string>());
     if (connected.has(slug)) {
       hub.emit(userId, { type: 'connections' });
-      if (botId && ownBot(userId, botId)) {
+      const generation=Number(c.req.query('generation')??(botId?getBot(botId)?.generation:0));
+      if (botId && ownBot(userId, botId)&&validChat(botId,generation)) {
         const info = await toolkitInfo(slug);
         if (seq) {
-          const row = getRow(botId, seq);
-          if (row?.body.type === 'card' && row.body.card === 'connect') updateRow(botId, seq, { ...row.body, status: 'connected' });
+          const row = inChat(botId,generation,()=>getRow(botId, seq));
+          if (row?.body.type === 'card' && row.body.card === 'connect'){const body=row.body;inChat(botId,generation,()=>updateRow(botId, seq, { ...body, status: 'connected' }));}
         }
-        enqueue(botId, { type: 'system', text: `The user connected ${info?.name ?? slug}. Continue with what you were doing.` });
+        enqueue(botId, { type: 'system',generation, text: `The user connected ${info?.name ?? slug}. Continue with what you were doing.` });
       }
     }
   }

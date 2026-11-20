@@ -16,6 +16,11 @@ import { functionSchemas, type ToolResult } from './tools.js';
 const exec = promisify(execFile);
 db.exec('CREATE TABLE IF NOT EXISTS claude_sessions (bot_id TEXT PRIMARY KEY, generation INTEGER NOT NULL, session_id TEXT NOT NULL)');
 
+// Keep one provider session per conversation, including the pre-existing main session.
+if((db.prepare('PRAGMA table_info(claude_sessions)').all() as any[]).filter(c=>c.pk).length===1)db.transaction(()=>{
+ db.exec("ALTER TABLE claude_sessions RENAME TO claude_sessions_legacy; CREATE TABLE claude_sessions(bot_id TEXT NOT NULL,generation INTEGER NOT NULL,session_id TEXT NOT NULL,PRIMARY KEY(bot_id,generation)); INSERT INTO claude_sessions(bot_id,generation,session_id) SELECT bot_id,generation,session_id FROM claude_sessions_legacy; DROP TABLE claude_sessions_legacy;");
+})();
+
 export async function claudeLoginStatus(): Promise<boolean> {
   try {
     const {stdout} = await exec(env.claudeBin, ['auth','status'], {timeout:15_000});

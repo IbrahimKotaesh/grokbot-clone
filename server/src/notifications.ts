@@ -1,3 +1,4 @@
+import {scopedGeneration} from './lib/chat-scope.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as webpush from 'web-push';
@@ -18,6 +19,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS push_subscriptions(
  CREATE TABLE IF NOT EXISTS push_deliveries(
  event_id TEXT NOT NULL REFERENCES notification_events(id) ON DELETE CASCADE,subscription_id TEXT NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
  attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',PRIMARY KEY(event_id,subscription_id));`);
+if(!(db.prepare('PRAGMA table_info(notification_events)').all() as any[]).some(c=>c.name==='generation'))db.exec('ALTER TABLE notification_events ADD COLUMN generation INTEGER');
 let keys:{publicKey:string;privateKey:string}|undefined;
 export function pushKeys(){
  if(keys)return keys;
@@ -48,11 +50,11 @@ export function pushMessageBody(text:string){
 export function hasNotificationText(text:string){return text.replace(/[\p{P}\p{S}\s\u200e\u200f]/gu,'').length>=2;}
 export function publishBotNotification(userId:string,botId:string|null,text:string,eventKey:string,kind='update',reply=false){
  if(!hasNotificationText(text))return null;
- const bot=botId?db.prepare('SELECT user_id,name FROM bots WHERE id=?').get(botId) as any:null;
+ const bot=botId?db.prepare('SELECT user_id,name,generation FROM bots WHERE id=?').get(botId) as any:null;
  if(botId&&bot?.user_id!==userId)return null;
  if(reply&&!db.prepare('SELECT 1 FROM push_subscriptions WHERE user_id=? AND enabled=1 AND replies=1').get(userId))return null;
  const id=newId('ntf'),title=kind==='test'?'Fino test notification':kind==='attention'?`${bot?.name??'Fino'} needs your attention`:`${bot?.name??'Fino'}`;
- const result=db.prepare('INSERT OR IGNORE INTO notification_events(id,event_key,user_id,bot_id,kind,title,body,reply,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id,eventKey,userId,botId,kind,title,text.slice(0,20000),reply?1:0,now());
+ const result=db.prepare('INSERT OR IGNORE INTO notification_events(id,event_key,user_id,bot_id,kind,title,body,reply,created_at,generation) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id,eventKey,userId,botId,kind,title,text.slice(0,20000),reply?1:0,now(),botId?scopedGeneration(botId,bot.generation):null);
  if(!result.changes)return null;
  db.prepare(`INSERT OR IGNORE INTO push_deliveries(event_id,subscription_id) SELECT ?,id FROM push_subscriptions WHERE user_id=? AND enabled=1 ${reply?'AND replies=1':''}`).run(id,userId);
  hub.emit(userId,{type:'notifications'});void dispatchPush().catch(()=>{});return id;
@@ -61,9 +63,9 @@ let dispatching=false;
 export async function dispatchPush(){
  if(dispatching)return;dispatching=true;
  try{
- const items=db.prepare(`SELECT d.event_id,d.subscription_id,d.attempts,e.bot_id,e.title,e.body,e.kind,s.endpoint,s.p256dh,s.auth,s.previews FROM push_deliveries d JOIN notification_events e ON e.id=d.event_id JOIN push_subscriptions s ON s.id=d.subscription_id WHERE d.status='pending' AND d.attempts<4 AND d.next_at<=? AND e.created_at>? AND s.enabled=1 LIMIT 12`).all(now(),now()-24*3600_000) as any[];
+ const items=db.prepare(`SELECT d.event_id,d.subscription_id,d.attempts,e.bot_id,e.generation,e.title,e.body,e.kind,s.endpoint,s.p256dh,s.auth,s.previews FROM push_deliveries d JOIN notification_events e ON e.id=d.event_id JOIN push_subscriptions s ON s.id=d.subscription_id WHERE d.status='pending' AND d.attempts<4 AND d.next_at<=? AND e.created_at>? AND s.enabled=1 LIMIT 12`).all(now(),now()-24*3600_000) as any[];
  for(let i=0;i<items.length;i+=3)await Promise.all(items.slice(i,i+3).map(async item=>{
-  const payload=JSON.stringify({id:item.event_id,botId:item.bot_id,title:item.title,body:item.previews||item.kind==='test'?pushMessageBody(item.body):'Open Fino to read this update.',url:`/?${item.bot_id?'bot='+encodeURIComponent(item.bot_id)+'&':''}notification=${encodeURIComponent(item.event_id)}`,tag:'fino-'+item.event_id});
+  const payload=JSON.stringify({id:item.event_id,botId:item.bot_id,generation:item.generation,title:item.title,body:item.previews||item.kind==='test'?pushMessageBody(item.body):'Open Fino to read this update.',url:`/?${item.bot_id?'bot='+encodeURIComponent(item.bot_id)+'&'+(item.generation?'chat='+item.generation+'&':''):''}notification=${encodeURIComponent(item.event_id)}`,tag:'fino-'+item.event_id});
   try{await pushTransport.send({endpoint:item.endpoint,keys:{p256dh:item.p256dh,auth:item.auth}},payload,{TTL:24*3600,urgency:item.kind==='attention'?'high':'normal',timeout:10000,vapidDetails:{subject:env.appUrl,...pushKeys()}});db.prepare("UPDATE push_deliveries SET status='sent',attempts=attempts+1 WHERE event_id=? AND subscription_id=?").run(item.event_id,item.subscription_id);}
   catch(e:any){if(e.statusCode===404||e.statusCode===410)db.prepare('DELETE FROM push_subscriptions WHERE id=?').run(item.subscription_id);else db.prepare("UPDATE push_deliveries SET attempts=attempts+1,next_at=?,status=? WHERE event_id=? AND subscription_id=?").run(now()+30_000*2**item.attempts,item.attempts>=3?'failed':'pending',item.event_id,item.subscription_id);}
  }));
@@ -73,7 +75,7 @@ export function initPushWorker(){const timer=setInterval(()=>{void dispatchPush(
 
 export const pushApi=new Hono<AuthVars>();
 pushApi.get('/config',c=>c.json({publicKey:pushKeys().publicKey}));
-pushApi.get('/notifications',c=>{const uid=c.get('user').id;return c.json({items:db.prepare('SELECT id,bot_id AS botId,kind,title,body,created_at AS createdAt,read_at AS readAt FROM notification_events WHERE user_id=? ORDER BY created_at DESC LIMIT 30').all(uid),unread:(db.prepare('SELECT COUNT(*) n FROM notification_events WHERE user_id=? AND read_at IS NULL').get(uid) as any).n});});
+pushApi.get('/notifications',c=>{const uid=c.get('user').id;return c.json({items:db.prepare('SELECT id,bot_id AS botId,generation,kind,title,body,created_at AS createdAt,read_at AS readAt FROM notification_events WHERE user_id=? ORDER BY created_at DESC LIMIT 30').all(uid),unread:(db.prepare('SELECT COUNT(*) n FROM notification_events WHERE user_id=? AND read_at IS NULL').get(uid) as any).n});});
 pushApi.post('/notifications/read',async c=>{const {id}=await c.req.json().catch(()=>({}));if(id)db.prepare('UPDATE notification_events SET read_at=? WHERE user_id=? AND id=?').run(now(),c.get('user').id,String(id));else db.prepare('UPDATE notification_events SET read_at=? WHERE user_id=? AND read_at IS NULL').run(now(),c.get('user').id);hub.emit(c.get('user').id,{type:'notifications'});return c.json({ok:true});});
 pushApi.post('/device',async c=>{
  try{const body=await c.req.json(),s=validateSubscription(body.subscription),uid=c.get('user').id;const existing=db.prepare('SELECT id,user_id FROM push_subscriptions WHERE endpoint=?').get(s.endpoint) as any;

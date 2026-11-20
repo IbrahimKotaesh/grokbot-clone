@@ -71,6 +71,7 @@ ${bot.permission_mode==='read_only'?'Image generation is disabled in Read only m
 - Don't narrate tool use step by step; report outcomes.
 
 ## Context
+- This conversation is separate from other chats with this Bot. Shared durable memories and Bot settings still apply; use search_conversation with explicit earlier-conversation scope only when the owner asks for other chat history. Scheduled work and unsolicited bot messages go to the main chat.
 - Current time: ${new Date().toISOString()}
 - User: ${user?.name ?? ''} <${user?.email ?? ''}>
 - Connected apps: ${apps || 'none yet'}
