@@ -39,7 +39,7 @@ export function ChatView() {
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
             <BotAvatarFor bot={bot} size={24} />
-            <span className="chat__pill-name">{bot.label || bot.name}</span>
+            <span className="chat__pill-name">{bot.name}</span>
           </button>
           {menu && (
             <Menu

@@ -4,7 +4,7 @@ import {createChat,listChats,renameChat,validChat,ensureChats} from './chats.js'
 import {invalidateProviderSession} from './agent/context.js';
 import {queueAutomaticMemory} from './agent/automatic-memory.js';
 import { pushApi } from './notifications.js';
-import { issueNativeTicket, redeemNativeTicket, validChallenge } from './lib/native-auth.js';
+import { issueNativeTicket, redeemNativeTicket, validChallenge,issueConnectionTicket,redeemConnectionTicket } from './lib/native-auth.js';
 import './attachments.js';
 import { validateDocuments,extractDocuments,saveDocuments } from './documents.js';
 import { sheetPreview, SheetError } from './sheets.js';
@@ -16,7 +16,7 @@ import { db, now } from './db.js';
 import { env } from './env.js';
 import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
-import { createSession, destroySession, requireUser, userFromCookieHeader, type AuthVars } from './lib/auth.js';
+import { createSession, destroySession, requireUser, userFromRequest, userFromCookieHeader, type AuthVars } from './lib/auth.js';
 import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
 import { enqueue, interrupt, resolveApproval } from './agent/loop.js';
 import { computerState, ensureComputer, refreshComputer, suspendComputer } from './computer.js';
@@ -44,7 +44,7 @@ function findOrCreateUser(email: string, name?: string, preferId?: string) {
 // ---------- auth ----------
 
 api.get('/auth/me', (c) => {
-  const user = userFromCookieHeader(c.req.header('cookie'));
+  const user = userFromRequest(c);
   const localAccount = env.devLogin && env.computerProvider === 'local'
     ? db.prepare('SELECT email, name FROM users ORDER BY created_at ASC LIMIT 1').get() ?? null : null;
   return c.json({ user, devLogin: env.devLogin, googleLogin: env.composioKey !== 'disabled', localAccount });
@@ -104,13 +104,24 @@ api.post('/auth/native/exchange', async (c) => {
   return c.redirect(`${env.appUrl}/`, 303);
 });
 
+// React Native exchanges the same short-lived PKCE ticket without a WebView.
+// No provider credentials or long-lived session ever enter the callback URL.
+api.post('/auth/native/session', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const id = redeemNativeTicket(String(body.code ?? ''), String(body.verifier ?? ''));
+  const owner = id ? db.prepare('SELECT email FROM users WHERE id=?').get(id) as {email:string}|undefined : null;
+  if (!owner || (env.allowedEmails.length && !env.allowedEmails.includes(owner.email.toLowerCase()))) return c.json({error:'invalid or expired login'},401);
+  const session = createSession(c,id!);
+  return c.json({session});
+});
+
 api.post('/auth/dev', async (c) => {
   if (!env.devLogin) return c.json({ error: 'disabled' }, 403);
-  const { email, name } = await c.req.json<{ email: string; name?: string }>();
+  const { email, name, native } = await c.req.json<{ email: string; name?: string; native?: boolean }>();
   if (!email?.includes('@')) return c.json({ error: 'email required' }, 400);
   const { id } = findOrCreateUser(email, name);
-  createSession(c, id);
-  return c.json({ ok: true });
+  const session = createSession(c, id);
+  return c.json(native ? {ok:true,session} : { ok: true });
 });
 
 api.post('/auth/logout', (c) => { destroySession(c); return c.json({ ok: true }); });
@@ -131,13 +142,13 @@ api.get('/events', (c) => {
     const unsub = hub.subscribe(user.id, (ev) => { queue.push(JSON.stringify(ev)); wake?.(); });
     stream.onAbort(() => { unsub(); wake?.(); });
     await stream.writeSSE({ data: JSON.stringify({ type: 'hello', serverTime: now() }) });
-    while (!stream.aborted&&userFromCookieHeader(c.req.header('cookie'))?.id===user.id) {
+    while (!stream.aborted&&userFromRequest(c)?.id===user.id) {
       if (!queue.length) {
         await Promise.race([new Promise<void>((r) => (wake = r)), new Promise((r) => setTimeout(r, 20_000))]);
         wake = null;
         if (!queue.length) { await stream.writeSSE({ data: JSON.stringify({ type: 'ping' }) }); continue; }
       }
-      if(userFromCookieHeader(c.req.header('cookie'))?.id!==user.id)break;
+      if(userFromRequest(c)?.id!==user.id)break;
       while (queue.length) await stream.writeSSE({ data: queue.shift()! });
     }
     unsub();
@@ -416,9 +427,10 @@ api.get('/apps', async (c) => {
 api.post('/apps/:slug/connect', async (c) => {
   const user = c.get('user');
   const slug = c.req.param('slug');
-  const { botId, seq,generation } = await c.req.json<{ botId?: string; seq?: number;generation?:number }>().catch(() => ({} as any));
+  const { botId, seq,generation,native } = await c.req.json<{ botId?: string; seq?: number;generation?:number;native?:boolean }>().catch(() => ({} as any));
   const cb = new URL(`${env.serverUrl}/api/apps/callback`);
   cb.searchParams.set('slug', slug);
+  if(native)cb.searchParams.set('native_ticket',issueConnectionTicket(user.id,slug));
   if (botId) cb.searchParams.set('bot', botId);
   if (seq) cb.searchParams.set('seq', String(seq));
   if(generation!==undefined){if(!botId||!ownBot(user.id,botId)||!validChat(botId,generation))return c.json({error:'Chat not found.'},404);cb.searchParams.set('generation',String(generation));}
@@ -427,15 +439,18 @@ api.post('/apps/:slug/connect', async (c) => {
 });
 
 api.get('/apps/callback', async (c) => {
-  const userId = userFromCookieHeader(c.req.header('cookie'))?.id ?? '';
   const slug = c.req.query('slug') ?? '';
+  const nativeTicket=c.req.query('native_ticket');
+  const userId = (nativeTicket?redeemConnectionTicket(nativeTicket,slug):userFromCookieHeader(c.req.header('cookie'))?.id) ?? '';
   const botId = c.req.query('bot');
   const seq = Number(c.req.query('seq') ?? 0);
   const ok = c.req.query('status') !== 'failed';
   const userExists = db.prepare('SELECT 1 FROM users WHERE id=?').get(userId);
+  let verifiedConnection=false;
   if (userExists && ok) {
     const connected = await connectedToolkits(userId).catch(() => new Set<string>());
     if (connected.has(slug)) {
+      verifiedConnection=true;
       hub.emit(userId, { type: 'connections' });
       const generation=Number(c.req.query('generation')??(botId?getBot(botId)?.generation:0));
       if (botId && ownBot(userId, botId)&&validChat(botId,generation)) {
@@ -448,6 +463,7 @@ api.get('/apps/callback', async (c) => {
       }
     }
   }
+  if(nativeTicket)return c.redirect(`fino://connected?slug=${encodeURIComponent(slug)}&status=${verifiedConnection?'complete':'failed'}`);
   return c.html(`<!doctype html><meta charset="utf-8"><title>Connected</title><body style="font-family:system-ui;padding:40px;text-align:center">${ok ? 'Connected. You can close this window.' : 'Connection failed.'}<script>try{window.opener&&window.opener.postMessage({type:'grokbot-connected',slug:${JSON.stringify(slug)},ok:${ok}},'*')}catch(e){};setTimeout(()=>window.close(),800)</script></body>`);
 });
 

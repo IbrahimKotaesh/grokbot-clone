@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
-import {transform} from 'esbuild';
-const {code}=await transform(fs.readFileSync('web/src/lib/smooth-text.ts','utf8'),{loader:'ts',format:'cjs'});
+import {transformSync} from 'esbuild';
+const {code}=transformSync(fs.readFileSync('web/src/lib/smooth-text.ts','utf8'),{loader:'ts',format:'cjs'});
 const context={module:{exports:{}},require:createRequire(import.meta.url),Intl};vm.runInNewContext(code,context);
 const {revealNext}=context.module.exports;
 for(const target of ['مرحبا بِك يا إبراهيم 👨‍👩‍👧‍👦','A smooth English response with **formatting**']) {

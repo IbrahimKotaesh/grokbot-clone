@@ -34,6 +34,8 @@ export function grantAccess(c:Context){
  setCookie(c,cookieName,payload+'.'+createHmac('sha256',secret().key).update(payload).digest('hex'),{httpOnly:true,secure:env.appUrl.startsWith('https://'),sameSite:'Lax',path:'/',maxAge:7*86400});
 }
 export const accessGate:MiddlewareHandler=async(c,next)=>{
- if(['/api/access/status','/api/access/unlock','/api/access/setup'].includes(c.req.path)||c.req.path==='/api/health'||accessAllowed(c.req.header('cookie')))return next();
+ // The system OAuth browser has a separate cookie jar from the native client.
+ // Allow only the handshake; session exchange and every data route stay gated.
+ if(['/api/access/status','/api/access/unlock','/api/access/setup','/api/auth/google/start','/api/auth/google/callback','/api/apps/callback'].includes(c.req.path)||c.req.path==='/api/health'||accessAllowed(c.req.header('cookie')))return next();
  return c.json({error:'Enter your access code.',code:'access_locked'},401);
 };

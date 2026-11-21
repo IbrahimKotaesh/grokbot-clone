@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { build } from 'esbuild';
+import { build } from './lib/bundle.mjs';
 import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 const output=new URL('../data/verification/render-test.mjs',import.meta.url);

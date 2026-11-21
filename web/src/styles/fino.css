@@ -97,11 +97,9 @@ button, a { touch-action: manipulation; }
     50% { transform: translateY(-3px) rotate(3deg); }
   }
   @keyframes fino-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-  .fino-avatar>.fino-character { animation: fino-float 9s ease-in-out infinite; transform-origin: 50% 80%; }
-  .bot-row:nth-child(even) .fino-avatar>.fino-character { animation-delay: -4s; }
+  .fino-avatar>.fino-character { transform-origin: 50% 80%; }
   .bot-row:has(.is-working) .fino-avatar>.fino-character, .pinned__avatar:has(.is-working) .fino-avatar>.fino-character { animation: fino-working 1.8s ease-in-out infinite; }
-  .sidebar-brand img, .mobile-brand img { animation: fino-float 12s ease-in-out infinite; }
-  .fino-avatar:hover>.fino-character { animation: fino-working .7s ease-in-out 1; }
+  @media(hover:hover){.fino-avatar:hover>.fino-character { animation: fino-working .7s ease-in-out 1; }}
   .bot-row, .pinned__tile, .app-row, .icon-btn, .app-row__connect { transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
   .bot-row:active, .pinned__tile:active, .icon-btn:active, .app-row__connect:active { transform: scale(.97); }
   @media (max-width: 900px) { .app.is-nav-open .sidebar { animation: fino-drawer-in 200ms ease-out; } }
@@ -505,4 +503,18 @@ html[data-fino-desktop=true] .sidebar__controls>button[aria-label="Collapse side
 }
 @media(max-width:480px){
   .composer__permissions .menu{position:fixed;left:12px;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));width:auto;min-width:0;max-width:none;max-height:60dvh;overflow-y:auto;transform:none;}
+}
+
+/* Keep the mobile drawer mounted so opening and closing share one transition. */
+@media(max-width:900px){
+ html:not([data-fino-desktop=true]) .sidebar,html:not([data-fino-desktop=true]) .sidebar.is-collapsed{display:flex;position:fixed;inset:0 auto 0 0;width:min(330px,88vw);height:100dvh;padding-top:env(safe-area-inset-top);z-index:46;transform:translate3d(-102%,0,0);visibility:hidden;pointer-events:none;animation:none;box-shadow:none;}
+ html:not([data-fino-desktop=true]) .app.is-nav-open .sidebar{transform:translate3d(0,0,0);visibility:visible;pointer-events:auto;animation:none;}
+ html:not([data-fino-desktop=true]) .nav-backdrop{display:block;position:fixed;inset:0;z-index:45;background:#0008;opacity:0;visibility:hidden;pointer-events:none;}
+ html:not([data-fino-desktop=true]) .app.is-nav-open .nav-backdrop{opacity:1;visibility:visible;pointer-events:auto;}
+ .modal{box-shadow:none;}
+ .composer__setting,.composer__btn,.composer__cta{touch-action:manipulation;}
+}
+@media(max-width:900px) and (prefers-reduced-motion:no-preference){
+ html:not([data-fino-desktop=true]) .sidebar{transition:transform 240ms cubic-bezier(.22,1,.36,1),visibility 240ms;}
+ html:not([data-fino-desktop=true]) .nav-backdrop{transition:opacity 240ms ease,visibility 240ms;}
 }

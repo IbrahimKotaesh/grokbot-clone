@@ -145,11 +145,6 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
   const streamingNow = last?.body.type === 'message' && last.body.role === 'assistant' && !!last.body.streaming;
   const showActivity = (running && !streamingNow) || waiting;
 
-  // Keep pinned to the bottom while new content arrives, unless the user scrolled up.
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-  });
   // Jump to bottom when switching bots.
   useLayoutEffect(() => {
     stick.current = true;
@@ -163,9 +158,13 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
     const el = scrollRef.current;
     const col = el?.querySelector('.transcript__col');
     if (!el || !col) return;
-    const observer = new ResizeObserver(() => { if (stick.current) el.scrollTop = el.scrollHeight; });
+    let frame=0;
+    const observer = new ResizeObserver(() => {
+      if(frame||!stick.current)return;
+      frame=requestAnimationFrame(()=>{frame=0;if(stick.current)el.scrollTop=el.scrollHeight;});
+    });
     observer.observe(col); observer.observe(el);
-    return () => observer.disconnect();
+    return () => {observer.disconnect();cancelAnimationFrame(frame);};
   }, [bot.id]);
 
   const onScroll = () => {

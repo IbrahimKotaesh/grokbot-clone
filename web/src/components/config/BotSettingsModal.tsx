@@ -1,4 +1,4 @@
-import {characterKind} from '../../avatar/FinoCharacter';
+import {characterKind, FRUIT_COLORS} from '../../avatar/FinoCharacter';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot, Memory, Routine, Skill } from '@shared/types';
 import { BotAvatar, BotAvatarFor, PICKER_SHAPES } from '../../avatar/BotAvatar';
@@ -235,14 +235,14 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
         {SHAPE_ROWS.map((row, i) => (
           <div key={i} className="shape-grid__row">
             {row.map((s) => (
-              <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => onShape(s)}>
+              <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => {onShape(s);onColor(FRUIT_COLORS[characterKind(s)]);}}>
                 <BotAvatar shape={s} color={color} size={34} ring={shape === s} />{shape===s&&<span className="look-check"><Icon name="check" size={11}/></span>}
               </button>
             ))}
           </div>
         ))}
       </div>
-      <div className="swatches" role="radiogroup" aria-label="Character color">
+      <div className="swatches" role="radiogroup" aria-label="Chat color">
         <div className="swatches__row">
           {COLOR_ORDER.map((c) => (
             <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className="swatch-cell" onClick={() => onColor(c)}>

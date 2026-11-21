@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {build} from 'esbuild';
+import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {build} from './lib/bundle.mjs';
 const output=new URL('../data/verification/subchat-store-test.mjs',import.meta.url);await fs.mkdir(new URL('.',output),{recursive:true});
 await build({stdin:{contents:"export {useStore,transcriptKey} from './web/src/store.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',define:{'import.meta.env.DEV':'false'},outfile:output.pathname});
 const saved=new Map();globalThis.localStorage={getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)};globalThis.window={matchMedia:()=>({matches:false})};

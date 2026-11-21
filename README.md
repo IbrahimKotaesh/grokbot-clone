@@ -228,3 +228,8 @@ Configuration options for idle suspension, memory consolidation, and history com
 Project code is available under the [MIT license](LICENSE). Third-party artwork and trademarks retain their owners' rights; see [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Inspired by Grok Bot. Built with [Grok](https://x.ai), [Orgo](https://orgo.ai), and [Composio](https://composio.dev). This is an independent project, unaffiliated with xAI or Cursor/Anysphere.
+
+
+## Native mobile client
+
+The independent iPhone/Android React Native client lives in [`mobile/`](mobile/). It shares the existing server and platform-neutral contracts; it does not display the web app in a WebView. See [mobile architecture and migration status](docs/MOBILE-ARCHITECTURE.md) for setup, security, release gates and remaining parity work. The legacy `ios/Fino` wrapper is retained during migration.

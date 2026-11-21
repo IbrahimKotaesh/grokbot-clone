@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot } from '@shared/types';
+import { FRUIT_COLORS, characterKind } from '../../avatar/FinoCharacter';
 import { BotAvatar, PICKER_SHAPES } from '../../avatar/BotAvatar';
 import { api } from '../../lib/api';
 import { COLOR_ORDER, palette } from '../../lib/colors';
@@ -13,8 +14,8 @@ const COLOR_ROWS = [COLOR_ORDER.slice(0, 6), COLOR_ORDER.slice(6)];
 export function CreateBotModal() {
   const setModal = useStore((s) => s.setModal);
   const [name, setName] = useState('');
-  const [shape, setShape] = useState<AvatarShape>('pebble');
-  const [color, setColor] = useState<AvatarColor>('orange');
+  const [shape, setShape] = useState<AvatarShape>('watermelon');
+  const [color, setColor] = useState<AvatarColor>('red');
   const [mode, setMode] = useState<Bot['mode']>('personal');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,21 +52,20 @@ export function CreateBotModal() {
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
-            autoFocus
             aria-label="Bot name"
           />
           <div className="shape-grid" role="radiogroup" aria-label="Character shape">
             {ROWS.map((row, i) => (
               <div key={i} className="shape-grid__row">
                 {row.map((s) => (
-                  <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => setShape(s)}>
+                  <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => {setShape(s);setColor(FRUIT_COLORS[characterKind(s)]);}}>
                     <BotAvatar shape={s} color={color} size={36} ring={shape === s} />
                   </button>
                 ))}
               </div>
             ))}
           </div>
-          <div className="swatches" role="radiogroup" aria-label="Character color">
+          <div className="swatches" role="radiogroup" aria-label="Chat color">
             {COLOR_ROWS.map((row, i) => (
               <div key={i} className="swatches__row">
                 {row.map((c) => (

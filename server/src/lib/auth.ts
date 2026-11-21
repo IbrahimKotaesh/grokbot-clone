@@ -15,10 +15,11 @@ export function createSession(c: Context, userId: string) {
   const t = token();
   db.prepare('INSERT INTO auth_sessions(token,user_id,created_at,expires_at) VALUES (?,?,?,?)').run(t, userId, now(), now() + TTL_MS);
   setCookie(c, COOKIE, t, { httpOnly: true, secure: env.appUrl.startsWith('https://'), sameSite: 'Lax', path: '/', maxAge: TTL_MS / 1000 });
+  return t;
 }
 
 export function destroySession(c: Context) {
-  const t = getCookie(c, COOKIE);
+  const t = sessionToken(c);
   if (t) db.prepare('DELETE FROM auth_sessions WHERE token=?').run(t);
   deleteCookie(c, COOKIE, { path: '/' });
 }
@@ -38,8 +39,17 @@ export function userFromCookieHeader(cookieHeader: string | undefined): User | n
   return userFromToken(m ? decodeURIComponent(m.slice(COOKIE.length + 1)) : undefined);
 }
 
+/** Native clients keep their session in Keychain/Keystore, never a URL. */
+export function sessionToken(c: Context): string | undefined {
+  const header = c.req.header('authorization');
+  return header?.startsWith('Bearer ') ? header.slice(7) : getCookie(c, COOKIE);
+}
+export function userFromRequest(c: Context): User | null {
+  return accessAllowed(c.req.header('cookie')) ? userFromToken(sessionToken(c)) : null;
+}
+
 export const requireUser: MiddlewareHandler<AuthVars> = async (c, next) => {
-  const u = accessAllowed(c.req.header('cookie'))?userFromToken(getCookie(c, COOKIE)):null;
+  const u = userFromRequest(c);
   if (!u) return c.json({ error: 'unauthenticated' }, 401);
   c.set('user', u);
   await next();

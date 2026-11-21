@@ -9,7 +9,8 @@ export function Modal({ onClose, children, className, label, top }: { onClose: (
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
     window.addEventListener('keydown', k);
     const t = setTimeout(() => {
-      const el = ref.current?.querySelector<HTMLElement>('[autofocus], input, textarea, button');
+      const selector=window.matchMedia('(pointer: coarse)').matches?'button':'[autofocus], input, textarea, button';
+      const el = ref.current?.querySelector<HTMLElement>(selector);
       el?.focus();
     });
     return () => { window.removeEventListener('keydown', k); clearTimeout(t); prev?.focus?.(); };
