@@ -1,11 +1,11 @@
 import React from "react";
-import { View, Text, ActivityIndicator } from "react-native";
-import { Stack, router } from "expo-router";
+import { View, Text } from "react-native";
+import { Stack, router, type ErrorBoundaryProps } from "expo-router";
 import { ThemeProvider, DarkTheme } from "@react-navigation/native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../lib/auth-context";
-import { IconButton, styles as s } from "../components/UI";
+import { IconButton, Button, styles as s } from "../components/UI";
 import { palette as p } from "../theme";
 const theme = {
   ...DarkTheme,
@@ -34,20 +34,6 @@ export default function RootLayout() {
 }
 function Routes() {
   const { ready, signedIn } = useAuth();
-  if (!ready)
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-        }}
-      >
-        <ActivityIndicator color={p.blue} />
-        <Text style={s.muted}>Opening your workspace…</Text>
-      </View>
-    );
   return (
     <Stack
       screenOptions={{
@@ -64,8 +50,8 @@ function Routes() {
         ),
       }}
     >
-      <Stack.Protected guard={signedIn}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Protected guard={ready && signedIn} redirectTo="/login">
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-bot"
@@ -94,11 +80,36 @@ function Routes() {
           options={{ title: "Teammate settings", presentation: "modal" }}
         />
       </Stack.Protected>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={!signedIn} redirectTo="/(tabs)/team">
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="connected" options={{ headerShown: false }} />
     </Stack>
+  );
+}
+
+// Keep a stable navigator during session hydration. The public index route owns
+// the loading screen, and every failed guard has an explicit non-cyclic target.
+export const unstable_settings = { initialRouteName: "index" };
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        padding: 28,
+        gap: 18,
+        backgroundColor: p.background,
+      }}
+    >
+      <Text style={{ fontSize: 25, fontWeight: "600", color: p.text }}>
+        Let&apos;s reopen Fino
+      </Text>
+      <Text style={{ fontSize: 16, lineHeight: 24, color: p.muted }}>
+        This screen could not open. Your conversations are saved on the server.
+      </Text>
+      <Button title="Try again" onPress={() => void retry()} />
+    </View>
   );
 }

@@ -1,6 +1,8 @@
+import { StartupScreen } from "../components/StartupScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { useAuth } from "../lib/auth-context";
 export default function Login() {
-  const { finishLogin,error } = useAuth();
-  return <LoginScreen onLogin={finishLogin} initialError={error}/>;
+  const { finishLogin, error, ready } = useAuth();
+  if (!ready) return <StartupScreen />;
+  return <LoginScreen onLogin={finishLogin} initialError={error} />;
 }

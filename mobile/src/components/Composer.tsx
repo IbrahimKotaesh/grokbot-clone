@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import React, { useState, useEffect, useCallback,useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -148,7 +148,7 @@ export function Composer({
       setError((e as Error).message);
     }
   }
-  const stopRecording = useCallback(async () => {
+  async function stopRecording() {
     if (recordTimer.current) clearTimeout(recordTimer.current);
     recordTimer.current = null;
     setTranscribing(true);
@@ -173,7 +173,7 @@ export function Composer({
     } finally {
       setTranscribing(false);
     }
-  }, [recorder]);
+  }
   return (
     <View
       style={{
