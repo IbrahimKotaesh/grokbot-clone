@@ -15,7 +15,7 @@ function Chart({chart:c}:{chart:Spec}){
  const values=c.series.flatMap(s=>s.values),low=Math.min(0,...values),high=Math.max(0,...values),range=high-low||1;
  const y=(v:number)=>240-(v-low)/range*200,x=(i:number)=>58+(i+.5)*550/c.labels.length,zero=y(0),stride=Math.ceil(c.labels.length/6);
  const ticks=Array.from({length:5},(_,i)=>low+range*i/4),total=c.series[0].values.reduce((a,b)=>a+b,0);let offset=0;
- return <figure className="chat-chart" aria-labelledby={id}>
+ return <figure className="chat-chart" aria-labelledby={id} dir="ltr">
   <figcaption id={id} dir="auto">{c.title}</figcaption>
   {c.type==='pie'?<svg className="chat-chart__pie" viewBox="0 0 280 245" role="group" aria-label={c.title}>
    {c.series[0].values.map((v,i)=>{const length=v/total*2*Math.PI*78,start=offset;offset+=length;return v>0?<circle key={i} cx="140" cy="118" r="78" fill="none" stroke={colors[i%colors.length]} strokeWidth="35" strokeDasharray={`${length} ${2*Math.PI*78-length}`} strokeDashoffset={-start} transform="rotate(-90 140 118)" {...hit(0,i)}><title>{describe(0,i)}</title></circle>:null;})}

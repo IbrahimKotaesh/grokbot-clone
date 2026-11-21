@@ -450,6 +450,8 @@ body{letter-spacing:0;}
 .chat-chart__data{font-size:12px;}
 .chat-chart__data>summary{cursor:pointer;padding:6px 0;color:var(--color-ink);}
 .chat-chart__data .md-table{margin-top:8px;}
+.chat-chart__data .md-table table{width:100%;table-layout:fixed;direction:ltr;}
+.chat-chart__data .md-table th,.chat-chart__data .md-table td{min-width:0;max-width:none;padding:7px 8px;overflow-wrap:anywhere;}
 .chat-chart-error{font-size:13px;padding:12px;border:1px dashed currentColor;border-radius:10px;}
 @media(max-width:600px){.chat-chart{padding:11px;}.chat-chart svg text{font-size:13px;}.chat-chart__legend{gap:7px 12px;}}
 .chat .bubble:has(.chat-chart){width:100%;max-width:760px;}
