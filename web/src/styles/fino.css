@@ -495,3 +495,12 @@ html[data-fino-desktop=true] .chat__header{display:flex;}
 html[data-fino-desktop=true] .chat__pill-anchor{max-width:calc(100% - 64px);margin-right:0;}
 html[data-fino-desktop=true] .chat__header-right .icon-btn{width:32px;height:32px;}
 html[data-fino-desktop=true] .sidebar__controls>button[aria-label="Collapse sidebar"],html[data-fino-desktop=true] .sidebar__controls>button[aria-label="Expand sidebar"]{display:inline-flex;}
+
+/* iOS zooms focused fields below 16px, clipping modal actions and chat controls. */
+@media(max-width:900px){
+  input:not([type=range]):not([type=color]):not([type=checkbox]):not([type=radio]),textarea,select{font-size:16px!important;}
+  .access-card input{font-size:23px!important;}
+}
+@media(max-width:480px){
+  .composer__permissions .menu{position:fixed;left:12px;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));width:auto;min-width:0;max-width:none;max-height:60dvh;overflow-y:auto;transform:none;}
+}

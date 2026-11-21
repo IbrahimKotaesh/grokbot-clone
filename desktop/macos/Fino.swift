@@ -42,14 +42,14 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         window.title="Fino";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.toolbarStyle = .unifiedCompact
         window.appearance=NSAppearance(named:.darkAqua);window.backgroundColor=NSColor(red:0.045,green:0.055,blue:0.075,alpha:1)
         window.minSize=NSSize(width:850,height:600);window.center();window.isReleasedWhenClosed=false
-        mode=NSPopUpButton();mode.addItems(withTitles:["Server","Local Browser","This Mac"]);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
-        control=NSButton(title:"Open computer",target:self,action:#selector(toggleControl));control.bezelStyle = .rounded
-        status=NSTextField(labelWithString:"Linux · Server");status.font = .systemFont(ofSize:11);status.textColor = .secondaryLabelColor;status.lineBreakMode = .byTruncatingTail
+        mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer"]);mode.selectItem(at:1);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
+        control=NSButton(title:"Connect",target:self,action:#selector(toggleControl));control.bezelStyle = .rounded
+        status=NSTextField(labelWithString:"Not connected");status.font = .systemFont(ofSize:11);status.textColor = .secondaryLabelColor;status.lineBreakMode = .byTruncatingTail
         let toolbar=NSToolbar(identifier:"FinoWorkspaceToolbar");toolbar.delegate=self;toolbar.displayMode = .iconOnly;toolbar.allowsUserCustomization=false;window.toolbar=toolbar
         let root=NSView();root.userInterfaceLayoutDirection = .leftToRight;window.contentView=root
         split=NSSplitView();split.userInterfaceLayoutDirection = .leftToRight;split.isVertical=true;split.dividerStyle = .thin;split.delegate=self;split.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(split)
         let cfg=WKWebViewConfiguration();cfg.websiteDataStore = .default();cfg.userContentController.add(self,name:"finoUI")
-        cfg.userContentController.addUserScript(WKUserScript(source:"window.__FINO_DESKTOP__=true;window.__finoDesktopState={environment:'server',connected:false,panelOpen:false};(()=>{const mark=()=>{if(document.documentElement)document.documentElement.dataset.finoDesktop='true'};mark();document.addEventListener('DOMContentLoaded',mark,{once:true})})();",injectionTime:.atDocumentStart,forMainFrameOnly:true))
+        cfg.userContentController.addUserScript(WKUserScript(source:"window.__FINO_DESKTOP__=true;window.__finoDesktopState={environment:'mac',connected:false,panelOpen:false};(()=>{const mark=()=>{if(document.documentElement)document.documentElement.dataset.finoDesktop='true'};mark();document.addEventListener('DOMContentLoaded',mark,{once:true})})();",injectionTime:.atDocumentStart,forMainFrameOnly:true))
         web=WKWebView(frame:.zero,configuration:cfg);web.navigationDelegate=self;web.uiDelegate=self;web.setValue(false,forKey:"drawsBackground")
         web.autoresizingMask=[.width,.height];split.addArrangedSubview(web)
         panel=NSView(frame:NSRect(x:0,y:0,width:500,height:800));panel.userInterfaceLayoutDirection = .leftToRight;panel.autoresizingMask=[.height];panel.wantsLayer=true;panel.layer?.backgroundColor=NSColor(red:0.045,green:0.055,blue:0.075,alpha:1).cgColor;split.addArrangedSubview(panel);panel.isHidden=true
@@ -62,27 +62,26 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool{true}
     func applicationWillTerminate(_ notification:Notification){stopControl()}
     @objc func reload(){web.reload()}
-    @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace, plus an opt-in local browser or Mac control session. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
-    @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Server":"Not connected";emitDesktopState()}
+    @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
+    @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
     @objc func toggleControl(){
         if mode.indexOfSelectedItem==0{showWorkspace();return}
         if socket != nil {stopControl();return}
-        let mac=mode.indexOfSelectedItem==2
-        let alert=NSAlert();alert.messageText=mac ? "Allow Fino to control this Mac?" : "Allow Fino to use its local browser?"
-        alert.informativeText=mac ? "Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect." : "For 30 minutes, bots responding to your direct messages can browse in Fino’s separate browser window. Its page screenshots are sent to your Fino server and selected model. Other Mac apps are not controlled. Press Stop or ⌘. to disconnect."
+        let alert=NSAlert();alert.messageText="Allow Fino to control this computer?"
+        alert.informativeText="Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
         alert.addButton(withTitle:"Allow this session");alert.addButton(withTitle:"Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else{return}
-        if mac {
+        do {
             let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
             let accessibility=AXIsProcessTrustedWithOptions(options),capture=CGPreflightScreenCaptureAccess()
             if !capture {_ = CGRequestScreenCaptureAccess()}
             guard accessibility && capture else {status.stringValue="Enable Accessibility + Screen Recording in macOS Settings, then try again.";return}
-        } else {ensureBrowser()}
+        }
         web.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in DispatchQueue.main.async {
             guard let self else{return}
             let valid=cookies.filter{cookie in let domain=cookie.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."));return domain==workspace.host && (cookie.expiresDate ?? .distantFuture)>Date()}
             guard valid.contains(where:{$0.name=="grokbot_session"}) else{self.status.stringValue="Sign in to Fino first";self.login();return}
-            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme="wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:mac ? "mac":"browser")]
+            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme="wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:"mac")]
             var req=URLRequest(url:parts.url!);req.setValue(valid.map{"\($0.name)=\($0.value)"}.joined(separator:"; "),forHTTPHeaderField:"Cookie");req.setValue(workspace.absoluteString,forHTTPHeaderField:"Origin")
             self.connectionSession=URLSession(configuration:.ephemeral);let ws=self.connectionSession!.webSocketTask(with:req);self.socket=ws;self.control.title="Stop";self.status.stringValue="Connecting…";self.emitDesktopState();ws.resume();self.receive(ws)
         }}
@@ -133,7 +132,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         address=NSTextField();address.placeholderString="Enter a URL";address.font = .systemFont(ofSize:11);address.bezelStyle = .roundedBezel;address.target=self;address.action=#selector(browserNavigate);address.setAccessibilityLabel("Browser address");browserControls.addArrangedSubview(address)
         panelContent=NSView();panelContent.translatesAutoresizingMaskIntoConstraints=false
         macPreview=NSImageView();macPreview.imageScaling = .scaleProportionallyUpOrDown;macPreview.frame=panelContent.bounds;macPreview.autoresizingMask=[.width,.height];panelContent.addSubview(macPreview)
-        placeholder=NSTextField(wrappingLabelWithString:"Connect This Mac above to preview the main display.");placeholder.textColor = .secondaryLabelColor;placeholder.alignment = .center;placeholder.translatesAutoresizingMaskIntoConstraints=false;panelContent.addSubview(placeholder)
+        placeholder=NSTextField(wrappingLabelWithString:"Connect This Computer above to preview the main display.");placeholder.textColor = .secondaryLabelColor;placeholder.alignment = .center;placeholder.translatesAutoresizingMaskIntoConstraints=false;panelContent.addSubview(placeholder)
         [header,browserControls!,panelContent!].forEach{panel.addSubview($0)}
         NSLayoutConstraint.activate([header.topAnchor.constraint(equalTo:panel.topAnchor,constant:10),header.leadingAnchor.constraint(equalTo:panel.leadingAnchor,constant:14),header.trailingAnchor.constraint(equalTo:panel.trailingAnchor,constant:-12),header.heightAnchor.constraint(equalToConstant:26),browserControls.topAnchor.constraint(equalTo:header.bottomAnchor,constant:6),browserControls.leadingAnchor.constraint(equalTo:panel.leadingAnchor,constant:12),browserControls.trailingAnchor.constraint(equalTo:panel.trailingAnchor,constant:-12),browserControls.heightAnchor.constraint(equalToConstant:28),address.widthAnchor.constraint(greaterThanOrEqualToConstant:120),panelContent.topAnchor.constraint(equalTo:browserControls.bottomAnchor,constant:8),panelContent.leadingAnchor.constraint(equalTo:panel.leadingAnchor),panelContent.trailingAnchor.constraint(equalTo:panel.trailingAnchor),panelContent.bottomAnchor.constraint(equalTo:panel.bottomAnchor),placeholder.centerXAnchor.constraint(equalTo:panelContent.centerXAnchor),placeholder.centerYAnchor.constraint(equalTo:panelContent.centerYAnchor),placeholder.widthAnchor.constraint(lessThanOrEqualToConstant:260)])
     }
@@ -146,13 +145,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func toggleWorkspace(){if panel.isHidden{showWorkspace()}else{hideWorkspace()}}
     @objc func environmentChanged(){stopControl();showWorkspace();emitDesktopState()}
     func showWorkspace(){
-        if mode.indexOfSelectedItem==1{ensureBrowser();return}
         showPanel();browser?.isHidden=true;browserControls.isHidden=true
         if mode.indexOfSelectedItem==0 {
-            paneTitle.stringValue="Server computer · Linux";macPreview.isHidden=true;placeholder.isHidden=true
+            paneTitle.stringValue="Cloud computer · Linux";macPreview.isHidden=true;placeholder.isHidden=true
             if serverView==nil{let config=WKWebViewConfiguration();config.websiteDataStore = .default();config.userContentController.add(self,name:"finoPane");config.userContentController.addUserScript(WKUserScript(source:"window.addEventListener('fino-close-computer',()=>window.webkit.messageHandlers.finoPane.postMessage({action:'close'}));",injectionTime:.atDocumentStart,forMainFrameOnly:true));serverView=WKWebView(frame:panelContent.bounds,configuration:config);serverView.autoresizingMask=[.width,.height];serverView.navigationDelegate=self;serverView.uiDelegate=self;serverView.setValue(false,forKey:"drawsBackground");panelContent.addSubview(serverView)}
             serverView.isHidden=false;var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.queryItems=[URLQueryItem(name:"desktop_view",value:"1")];if let bot=selectedBotID{parts.queryItems?.append(URLQueryItem(name:"bot",value:bot))};if serverView.url != parts.url{serverView.load(URLRequest(url:parts.url!))}
-        }else{suspendServerPreview();paneTitle.stringValue="This Mac · Main display";serverView?.isHidden=true;macPreview.isHidden=false;placeholder.isHidden=macPreview.image != nil}
+        }else{suspendServerPreview();paneTitle.stringValue="This Computer · Main display";serverView?.isHidden=true;macPreview.isHidden=false;placeholder.isHidden=macPreview.image != nil}
         emitDesktopState()
     }
     func suspendServerPreview(){if serverView?.url?.scheme=="https"{serverView?.loadHTMLString("<html><body style='background:#0c0f15'></body></html>",baseURL:nil)}}
@@ -165,7 +163,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func browserForward(){browser?.goForward()}
     @objc func browserReload(){browser?.reload()}
     @objc func browserNavigate(){let raw=address.stringValue;let value=raw.contains("://") ? raw:"https://"+raw;Task {do{try await browserAction("open_browser",["url":value])}catch{address.toolTip=error.localizedDescription}}}
-    func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":mode.indexOfSelectedItem==1 ? "browser":"mac","connected":connected,"panelOpen":!panel.isHidden];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
+    func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":"mac","connected":connected,"panelOpen":!panel.isHidden];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage){
         guard message.frameInfo.isMainFrame,message.frameInfo.securityOrigin.host==workspace.host,message.frameInfo.securityOrigin.protocol=="https",let body=message.body as? [String:Any] else{return}
         if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()}}
@@ -191,7 +189,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func perform(_ action:String,_ args:[String:Any])async throws->[String:Any]{
         guard ["computer_screenshot","computer_click","computer_type","computer_key","computer_scroll","computer_drag","open_browser"].contains(action) else{throw failure("Unsupported action")}
         guard currentDeadline>Date() else{throw failure("This action expired; ask your bot to retry")}
-        let mac=mode.indexOfSelectedItem==2
+        let mac=mode.indexOfSelectedItem==1
         if mac && action != "computer_screenshot" {
             let protected=["com.apple.systempreferences","com.apple.SecurityAgent","com.apple.keychainaccess","com.apple.Terminal","com.googlecode.iterm2","com.apple.ScriptEditor2"]
             let previousApplication=NSWorkspace.shared.frontmostApplication
@@ -265,6 +263,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func webView(_ webView:WKWebView,runJavaScriptConfirmPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping(Bool)->Void){completionHandler(false)}
     func testBrowser()async{
         do{
+            guard mode.itemTitles == ["Cloud","This Computer"],mode.indexOfSelectedItem==1 else{throw failure("Environment selector must default to This Computer with two choices")}
             mode.selectItem(at:1);control.title="Connect";ensureBrowser();browser.loadHTMLString("<html><body style='font:24px -apple-system;padding:32px;background:#101723;color:white'><h1>Fino local browser test</h1><input id='q' style='font:24px;width:400px;height:48px'><button style='font:24px' onclick=\"document.getElementById('result').textContent=document.getElementById('q').value\">Show result</button><p id='result'></p></body></html>",baseURL:nil)
             try await Task.sleep(nanoseconds:2_000_000_000)
             let bounds=try await evaluate("JSON.stringify((()=>{const r=document.querySelector('input').getBoundingClientRect();return {x:r.x+10,y:r.y+10}})())") as! String;let p=try JSONSerialization.jsonObject(with:Data(bounds.utf8)) as! [String:Any]
@@ -273,7 +272,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
             guard try await evaluate("document.getElementById('result').textContent") as? String=="Fino browser control works ✓" else{throw failure("Browser input/click assertion failed")}
             guard browser.window===window,web.bounds.width>=650,browser.bounds.width>=360,panel.frame.minX>=web.frame.maxX else{throw failure("Workspace pane layout assertion failed")}
             let shot=try await browserSnapshot();try Data(base64Encoded:shot["image"] as! String)!.write(to:URL(fileURLWithPath:"/tmp/fino-mac-browser-test.png"))
-            try Data(jsonString(["ok":true,"browserClick":true,"browserType":true,"screenshot":true,"macControlEnabled":false,"dockedBrowser":true,"mainPaneWidth":Int(web.bounds.width),"workspacePaneWidth":Int(browser.bounds.width)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));status.stringValue="Preview · Not connected";emitDesktopState()
+            try Data(jsonString(["ok":true,"twoEnvironments":true,"thisComputerDefault":true,"browserClick":true,"browserType":true,"screenshot":true,"macControlEnabled":false,"dockedBrowser":true,"mainPaneWidth":Int(web.bounds.width),"workspacePaneWidth":Int(browser.bounds.width)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));mode.selectItem(at:1);stopControl();hideWorkspace();emitDesktopState()
         }catch{try? Data(jsonString(["ok":false,"error":error.localizedDescription]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));status.stringValue="Self-test: \(error.localizedDescription)";try? Data(jsonString(["split":NSStringFromRect(split.frame),"panel":NSStringFromRect(panel.frame),"content":NSStringFromRect(panelContent.frame),"browser":NSStringFromRect(browser.frame),"window":NSStringFromRect(window.frame)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-layout-debug.json"))}
     }
 }

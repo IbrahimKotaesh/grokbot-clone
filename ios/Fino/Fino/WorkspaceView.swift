@@ -4,7 +4,15 @@ import AuthenticationServices
 import CryptoKit
 import Security
 
-private let workspace = URL(string: "https://grokbot.89-167-54-211.sslip.io")!
+private let workspace: URL = {
+    #if DEBUG && targetEnvironment(simulator)
+    // Simulator-only QA uses an isolated loopback server, never production auth.
+    if ProcessInfo.processInfo.arguments.contains("--mobile-qa") {
+        return URL(string: "http://127.0.0.1:8791/?qa=\(UUID().uuidString)")!
+    }
+    #endif
+    return URL(string: "https://grokbot.89-167-54-211.sslip.io")!
+}()
 
 struct WorkspaceView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -16,7 +24,8 @@ struct WorkspaceView: UIViewRepresentable {
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
         web.isOpaque = false
-        web.backgroundColor = UIColor(red: 0.97, green: 0.98, blue: 0.97, alpha: 1)
+        web.backgroundColor = .systemBackground
+        web.scrollView.backgroundColor = .systemBackground
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.allowsBackForwardNavigationGestures = true
         let loading = UIStackView()
@@ -51,7 +60,7 @@ struct WorkspaceView: UIViewRepresentable {
         context.coordinator.retryButton = retry
         context.coordinator.loading = loading
         context.coordinator.web = web
-        web.load(URLRequest(url: workspace))
+        web.load(URLRequest(url: workspace, cachePolicy: .reloadIgnoringLocalCacheData))
         return web
     }
     func updateUIView(_ uiView: WKWebView, context: Context) {}
@@ -65,7 +74,7 @@ struct WorkspaceView: UIViewRepresentable {
         weak var retryButton: UIButton?
         func retryLoading() {
             recoveredWebProcess = false
-            web?.load(URLRequest(url: workspace))
+            web?.load(URLRequest(url: workspace, cachePolicy: .reloadIgnoringLocalCacheData))
         }
         var navigationTimeout: DispatchWorkItem?
         var recoveredWebProcess = false
@@ -144,7 +153,7 @@ struct WorkspaceView: UIViewRepresentable {
                         self.showLoginError("The server didn't return a sign-in session."); return
                     }
                     web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
-                        DispatchQueue.main.async { web.load(URLRequest(url: workspace)) }
+                        DispatchQueue.main.async { web.load(URLRequest(url: workspace, cachePolicy: .reloadIgnoringLocalCacheData)) }
                     }
                 }
             }.resume()
@@ -187,7 +196,7 @@ struct WorkspaceView: UIViewRepresentable {
             if ["https", "http", "mailto"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
         }
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            if let url = navigationAction.request.url { UIApplication.shared.open(url) }
+            if let url = navigationAction.request.url, ["https", "http", "mailto"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
             return nil
         }
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

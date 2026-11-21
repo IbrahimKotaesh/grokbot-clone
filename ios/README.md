@@ -27,3 +27,21 @@ provider, microphone permission, and iOS web media support.
 
 The HTTPS workspace URL is configured in `WorkspaceView.swift`. Keep its host
 and the server's `APP_URL`/`SERVER_URL` consistent when moving domains.
+
+## Mobile QA (simulator only)
+
+Debug simulator builds accept `--mobile-qa` and connect only to the fixed
+loopback URL `http://127.0.0.1:8791`, using an isolated test backend/database.
+This path is compiled out of Release and physical-device builds. The normal
+launch always uses the HTTPS server above. Do not enable development login on
+the public server. Native camera permission text is included; camera hardware,
+microphone input and push delivery need real-device verification.
+
+The mobile UI keeps focused fields at least 16px to avoid iOS focus zoom and
+keeps the permission picker inside the phone viewport. The native status area
+uses dark chrome, and initial workspace loads revalidate the deployed page.
+
+For immediate access away from home, open the HTTPS workspace in iPhone Safari
+and use Share → Add to Home Screen. The server must be online; the Mac does not
+need to be on. The native Xcode build requires installation/development signing;
+it has not been distributed through TestFlight or the App Store.

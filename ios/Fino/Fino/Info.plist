@@ -12,5 +12,6 @@
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>fino</string></array></dict></array>
+<key>NSCameraUsageDescription</key><string>Take photos to share with your Fino assistants.</string>
 <key>NSMicrophoneUsageDescription</key><string>Use your microphone to dictate messages and talk with your Fino assistants.</string>
 </dict></plist>

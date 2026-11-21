@@ -142,7 +142,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
       <input hidden ref={captureRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo" onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       {camera&&<PhotoCamera onClose={closeCamera} onPhoto={photo=>setPhotos(cur=>[...cur,photo].slice(0,3))}/>}
       <div className="composer-shell">
-      {needsLocalConnection&&<div className="composer__environment-note">{desktop?.environment==='mac'?'This Mac':'Local Browser'} selected · Connect above to send a task</div>}
+      {needsLocalConnection&&<div className="composer__environment-note">This Computer selected · Connect above to send a task</div>}
       {documents.length>0&&<div className="composer__documents">{documents.map((file,i)=><div className="composer__document" key={i}><Icon name="file" size={20}/><span><strong>{file.name}</strong><small>{Math.max(1,Math.round(file.size/1024))} KB</small></span><button type="button" aria-label={`Remove file ${i+1}`} disabled={sending} onClick={()=>setDocuments(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {sending&&documents.length>0&&<div className="composer__preparing" role="status">Reading attachments…</div>}
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
