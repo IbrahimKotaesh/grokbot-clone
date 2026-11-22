@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useReveal } from "../lib/reveal";
 import { Chart } from "./Chart";
+import { PlanCard } from "./PlanCard";
 import type { Row, Bot } from "../../../packages/contracts/src/types";
 import { Button, IconButton, styles as s } from "./UI";
 import { FadeIn } from "./motion";
@@ -52,6 +53,7 @@ function Enter({ row, children }: { row: Row; children: React.ReactNode }) {
 function Message({ row, bot }: { row: Row; bot: Bot }) {
   const [answer, setAnswer] = useState("");
   const [expanded, setExpanded] = useState(false),
+    [details, setDetails] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [viewer, setViewer] = useState<string | null>(null);
@@ -73,6 +75,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
       setBusy(false);
     }
   };
+  if (body.type === "plan") return <PlanCard body={body} bot={bot} />;
   if (body.type === "tool-call") {
     const failed = body.status === "error" || body.status === "denied";
     return (
@@ -135,7 +138,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
     const icon =
       body.card === "approval" ? "shield-checkmark-outline" : body.card === "question" ? "help-circle-outline" : body.card === "connect" ? "link-outline" : "create-outline";
     const title =
-      body.card === "approval" ? body.title : body.card === "question" ? body.question : body.card === "connect" ? t("Connect {name}", { name: body.toolkitName }) : t("Draft to {name}", { name: body.to });
+      body.card === "approval" ? body.summary || body.title : body.card === "question" ? body.question : body.card === "connect" ? t("Connect {name}", { name: body.toolkitName }) : t("Draft to {name}", { name: body.to });
     const done = body.status !== "pending";
     return (
       <Enter row={row}>
@@ -144,20 +147,42 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: p.raised, alignItems: "center", justifyContent: "center" }}>
               <Ionicons name={icon} size={16} color={p.text} />
             </View>
-            <Text style={[type.headline, { color: p.text, flex: 1, paddingTop: 4 }]}>{title}</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              {body.card === "approval" && !!body.summary && (
+                <Text style={[type.footnote, { color: p.muted }]}>{t("{name} wants your OK to:", { name: bot.name })}</Text>
+              )}
+              <Text style={[type.headline, { color: p.text, paddingTop: body.card === "approval" && body.summary ? 0 : 4 }]}>{title}</Text>
+            </View>
           </View>
           {body.card === "approval" && (
             <>
-              {!!body.detail && (
-                <Text selectable style={{ color: p.muted, fontFamily: "Menlo", fontSize: 12, lineHeight: 18, backgroundColor: p.background, borderRadius: radius.sm, padding: space.md }}>
-                  {body.detail}
-                </Text>
+              {body.summary ? (
+                <>
+                  {!!body.reason && <Text style={[type.footnote, { color: p.muted }]}>{t(body.reason)}</Text>}
+                  {!!body.technical && (
+                    <Pressable accessibilityRole="button" onPress={() => setDetails((v) => !v)} hitSlop={6} style={[s.row, { gap: 4 }]}>
+                      <Text style={[type.footnote, { color: p.faint, fontWeight: "600" }]}>{details ? t("Hide details") : t("Show details")}</Text>
+                      <Ionicons name={details ? "chevron-up" : "chevron-down"} size={13} color={p.faint} />
+                    </Pressable>
+                  )}
+                  {details && !!body.technical && (
+                    <Text selectable style={{ color: p.muted, fontFamily: "Menlo", fontSize: 12, lineHeight: 18, backgroundColor: p.background, borderRadius: radius.sm, padding: space.md }}>
+                      {body.technical}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                !!body.detail && (
+                  <Text selectable style={{ color: p.muted, fontFamily: "Menlo", fontSize: 12, lineHeight: 18, backgroundColor: p.background, borderRadius: radius.sm, padding: space.md }}>
+                    {body.detail}
+                  </Text>
+                )
               )}
               {body.status === "pending" ? (
                 <View style={{ gap: space.sm }}>
                   <View style={[s.row, { gap: space.sm }]}>
                     <Button title={t("Deny")} variant="secondary" compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "deny" })} />
-                    <Button title={t("Allow")} compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
+                    <Button title={body.requiresFreshApproval ? t("Allow once") : t("Allow")} compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
                   </View>
                   {!body.requiresFreshApproval && (
                     <Button title={t("Always allow this")} variant="ghost" compact disabled={busy} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "always" })} />

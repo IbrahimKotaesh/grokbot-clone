@@ -13,6 +13,10 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
     [code, setCode] = useState(""),
     [locked, setLocked] = useState(false);
   const insets = useSafeAreaInsets();
+  const fail = (e: unknown) => {
+    console.warn("[login]", (e as Error)?.message);
+    setError((e as Error)?.message ?? String(e));
+  };
   const float = useLoop(3600);
   // Dev builds on a local server skip Google and sign straight in.
   useEffect(() => {
@@ -20,7 +24,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
     setBusy(true);
     void qaLogin()
       .then(onLogin)
-      .catch((e) => setError((e as Error).message))
+      .catch(fail)
       .finally(() => setBusy(false));
   }, []);
   async function start() {
@@ -37,7 +41,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
       }
       if (await googleLogin()) await onLogin();
     } catch (e) {
-      setError((e as Error).message);
+      fail(e);
     } finally {
       setBusy(false);
     }
@@ -87,7 +91,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
                 setError(null);
                 void appleLogin()
                   .then((ok) => (ok ? onLogin() : undefined))
-                  .catch((e) => setError((e as Error).message))
+                  .catch(fail)
                   .finally(() => setBusy(false));
               }}
             />
@@ -107,7 +111,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
                 setBusy(true);
                 void qaLogin()
                   .then(onLogin)
-                  .catch((e) => setError(e.message))
+                  .catch(fail)
                   .finally(() => setBusy(false));
               }}
             />

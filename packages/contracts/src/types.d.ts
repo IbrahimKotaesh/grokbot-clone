@@ -105,10 +105,17 @@ export interface Row {
   createdAt: number;
 }
 
-export type RowKind = "message" | "tool-call" | "card" | "event" | "notice";
+export type RowKind = "message" | "tool-call" | "card" | "event" | "notice" | "plan";
 
 export type RowBody =
-  MessageBody | ToolCallBody | CardBody | EventBody | NoticeBody;
+  MessageBody | ToolCallBody | CardBody | EventBody | NoticeBody | PlanBody;
+
+/** A live checklist the bot keeps up to date while it works through a multi-step request. */
+export interface PlanBody {
+  type: "plan";
+  title?: string;
+  steps: { text: string; status: "pending" | "in_progress" | "done" }[];
+}
 
 export interface MessageBody {
   type: "message";
@@ -149,6 +156,12 @@ export type CardBody =
       approvalId: string;
       title: string;
       detail: string;
+      /** What will happen, in one plain sentence (written by the bot for commands). */
+      summary?: string;
+      /** Why it needs the user's OK, in plain words. */
+      reason?: string;
+      /** The exact command or data, for people who want to check it. */
+      technical?: string;
       tool: string;
       toolkit?: string;
       toolkitName?: string;

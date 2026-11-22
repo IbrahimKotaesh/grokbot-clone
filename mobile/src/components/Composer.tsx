@@ -374,7 +374,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </Text>
         </FadeIn>
       )}
-      <View style={{ backgroundColor: p.raised, borderRadius: radius.xl, borderWidth: 1, borderColor: mode === "recording" ? "#ff5a5f55" : p.line, overflow: "hidden" }}>
+      <View style={{ backgroundColor: p.raised, borderRadius: 22, borderWidth: 1, borderColor: mode === "recording" ? "#ff5a5f55" : p.line, overflow: "hidden" }}>
         {mode === "idle" ? (
           <>
             {!!attachments.length && (
@@ -411,34 +411,34 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 ))}
               </ScrollView>
             )}
-            <Animated.View style={{ opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
-            <TextInput
-              ref={input}
-              accessibilityLabel={t("Message")}
-              placeholder={t("Message {name}", { name: bot.name })}
-              placeholderTextColor={p.faint}
-              selectionColor={p.text}
-              multiline
-              value={draft}
-              onChangeText={setDraft}
-              onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
-              style={{
-                fontSize: 17,
-                lineHeight: 23,
-                color: p.text,
-                minHeight: 46,
-                maxHeight: 150,
-                paddingHorizontal: space.lg,
-                paddingTop: 13,
-                paddingBottom: 4,
-                textAlign: "auto",
-                writingDirection: "auto",
-              }}
-            />
-            </Animated.View>
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingBottom: 6, gap: 2 }}>
-              <IconButton name="add" label={t("Add photo or file")} color={p.muted} size={38} iconSize={22} disabled={busy} onPress={attach} />
-              <View style={{ flex: 1 }} />
+            {/* One compact row: attach · text · main button. It grows only as the text wraps. */}
+            <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 4, paddingVertical: 4, gap: 2 }}>
+              <IconButton name="add" label={t("Add photo or file")} color={p.muted} size={36} iconSize={22} disabled={busy} onPress={attach} />
+              <Animated.View style={{ flex: 1, opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
+                <TextInput
+                  ref={input}
+                  accessibilityLabel={t("Message")}
+                  placeholder={t("Message {name}", { name: bot.name })}
+                  placeholderTextColor={p.faint}
+                  selectionColor={p.text}
+                  multiline
+                  value={draft}
+                  onChangeText={setDraft}
+                  onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
+                  style={{
+                    fontSize: 16,
+                    lineHeight: 21,
+                    color: p.text,
+                    minHeight: 36,
+                    maxHeight: 130,
+                    paddingHorizontal: 4,
+                    paddingTop: 8,
+                    paddingBottom: 7,
+                    textAlign: "auto",
+                    writingDirection: "auto",
+                  }}
+                />
+              </Animated.View>
               {/* One main button: mic while empty, send once there's something to send. Calls live in the header. */}
               <MainButton
                 kind={stopping ? "stop" : canSend || busy ? "send" : "mic"}
@@ -472,7 +472,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 </Pressable>}
               </View>
             )}
-          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: 8, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 56, paddingHorizontal: 6, gap: 4 }}>
             <IconButton name="trash-outline" label={t("Discard recording")} color={p.muted} size={40} iconSize={20} onPress={() => void stopRecording("cancel")} />
             <RecDot />
             <Text style={[type.callout, { color: p.text, fontVariant: ["tabular-nums"], width: 40 }]}>
@@ -483,7 +483,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </View>
           </FadeIn>
         ) : (
-          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: space.lg, gap: space.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 56, paddingHorizontal: space.lg, gap: space.md }}>
             <TypingDots color={p.muted} size={6} />
             <Text style={[type.callout, { color: p.muted }]}>{after.current === "send" ? t("Sending your voice message…") : t("Transcribing…")}</Text>
           </View>
@@ -529,7 +529,7 @@ function MainButton({ kind, disabled, onPress }: { kind: keyof typeof MAIN; disa
   const m = MAIN[shown];
   return (
     <Animated.View style={{ opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }}>
-      <IconButton name={m.icon} label={MAIN[kind].label} variant="primary" size={36} iconSize={m.size} disabled={disabled} onPress={onPress} />
+      <IconButton name={m.icon} label={MAIN[kind].label} variant="primary" size={34} iconSize={m.size} disabled={disabled} onPress={onPress} />
     </Animated.View>
   );
 }

@@ -45,7 +45,10 @@ export function Avatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: p.raised,
+          // The chosen color tints the circle behind the fruit, with a thin ring of the same color.
+          backgroundColor: color ? `${accentFor(color)}2e` : p.raised,
+          borderWidth: color ? Math.max(1.5, size * 0.03) : 0,
+          borderColor: color ? `${accentFor(color)}99` : "transparent",
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",

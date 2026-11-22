@@ -20,6 +20,7 @@ const copy = {
   computer: { title: t("Give your bots a computer"), detail: t("With Pro, every bot gets its own screen to browse, fill forms and use apps for you.") },
   bots: { title: t("Grow your team"), detail: t("Your plan's bot limit is reached. Upgrade to hire more specialists.") },
   voice: { title: t("Do more"), detail: t("Upgrade for more bots and computer time.") },
+  models: { title: t("Unlock stronger models"), detail: t("Pro and Max include stronger Qwen, DeepSeek, GPT, Grok and Claude models for your bots.") },
 } as const;
 
 export function UpgradeScreen({ done, feature }: { done: () => void; feature?: keyof typeof copy }) {

@@ -128,7 +128,7 @@ export function CallScreen({ done }: { done: () => void }) {
               ],
             }}
           >
-            <Avatar shape={bot.avatarShape} size={orb - 28} />
+            <Avatar shape={bot.avatarShape} size={orb - 28} color={bot.avatarColor} />
           </Animated.View>
         </View>
         <View style={{ alignItems: "center", gap: space.sm, paddingHorizontal: space.xxl }}>

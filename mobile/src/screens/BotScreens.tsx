@@ -12,6 +12,13 @@ import { relativeTime } from "../lib/format";
 import { handlePlanLimit, useBilling, hasComputer, openUpgrade } from "../lib/billing";
 import { t, n } from "../lib/i18n";
 
+interface HostedModels {
+  available: boolean;
+  plan: string;
+  models: { id: string; name: string; note: string; tier: string; allowed: boolean }[];
+  usage: { chat: number | null; computer: number | null };
+}
+
 const roles = [
   { label: t("Researcher"), icon: "search-outline", text: t("Research topics in depth, compare sources and give me a short, well-sourced summary.") },
   { label: t("Writer"), icon: "create-outline", text: t("Draft and polish emails, posts and documents in my voice. Keep it clear and concise.") },
@@ -212,7 +219,7 @@ const providerOptions: { id: ProviderId; name: string; detail: string; needs: st
   { id: "codex", name: t("ChatGPT"), detail: t("Your ChatGPT subscription or OpenAI key"), needs: ["chatgpt", "openai"], mark: "codex" },
   { id: "claude-code", name: t("Claude Code"), detail: t("Your Claude subscription · pure Claude Code, on your computer"), needs: ["@computer"], mark: "claude" },
   { id: "claude", name: t("Claude (API key)"), detail: t("Your Anthropic API key"), needs: ["anthropic"], mark: "claude" },
-  { id: "openrouter", name: "OpenRouter", detail: t("Gemini, DeepSeek, Llama… some free"), needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["openrouter/auto", "google/gemini-2.5-flash", "deepseek/deepseek-chat"] },
+  { id: "openrouter", name: t("Included models"), detail: t("DeepSeek, Qwen, GLM, Claude… part of your plan"), needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["deepseek/deepseek-v4.1-flash", "qwen/qwen3.7-flash", "z-ai/glm-5.3-flash"] },
   { id: "groq", name: "Groq", detail: t("Very fast, free tier"), needs: ["groq"], icon: "flash-outline", color: "#ff9f43", models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"] },
   { id: "xai", name: "Grok", detail: t("Fast Grok models from xAI"), needs: ["xai"], icon: "planet-outline", color: p.text },
 ];
@@ -223,8 +230,10 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
     [error, setError] = useState<string | null>(null),
     [connected, setConnected] = useState<string[] | null>(null),
     [shared, setShared] = useState(false),
-    [model, setModel] = useState(bot?.model ?? "");
+    [model, setModel] = useState(bot?.model ?? ""),
+    [hosted, setHosted] = useState<HostedModels | null>(null);
   useEffect(() => {
+    void client.request<HostedModels>("GET", "/hosted-models").then(setHosted).catch(() => setHosted(null));
     void client
       .request<{ credentials: { provider: string; connected: boolean }[]; sharedLogin: boolean }>("GET", "/credentials")
       .then((r) => {
@@ -251,7 +260,10 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
   const current = providerOptions.find((o) => o.id === provider);
   // codex/claude can fall back to the server's own login in development.
   const ready = (o: (typeof providerOptions)[number]) =>
-    o.id === "claude-code" ? computerOn : !!connected && (o.needs.some((n) => connected.includes(n)) || (shared && (o.id === "codex" || o.id === "claude")));
+    o.id === "claude-code" ? computerOn : (o.id === "openrouter" && !!hosted?.available) || (!!connected && (o.needs.some((n) => connected.includes(n)) || (shared && (o.id === "codex" || o.id === "claude"))));
+  // Fino pays for "Included models" unless the user added their own OpenRouter key.
+  const included = provider === "openrouter" && !!hosted?.available && !connected?.includes("openrouter");
+  const tierName = (tier: string) => (tier === "max" ? "Max" : tier === "pro" ? "Pro" : "Starter");
   return (
     <ScrollView style={s.screen} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
         <Header large={false} title={t("Model & permissions")} right={<IconButton name="close" label={t("Close")} variant="filled" size={34} iconSize={16} onPress={done} />} />
@@ -294,7 +306,38 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
             <Button title={t("Open Claude Code")} icon="terminal-outline" compact variant="secondary" onPress={() => openClaudeCode?.()} />
           </View>
         )}
-        {current?.models && (
+        {included && hosted && (
+          <View style={{ gap: space.sm, marginTop: space.md }}>
+            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Model")}</Text>
+            <Group>
+              {hosted.models.map((m) => {
+                const on = (bot.model || hosted.models[0].id) === m.id;
+                return (
+                  <ListRow
+                    key={m.id}
+                    title={m.name}
+                    subtitle={m.allowed ? t(m.note) : t("Included in {name}", { name: tierName(m.tier) })}
+                    chevron={false}
+                    trailing={
+                      m.allowed ? (
+                        <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? p.text : p.faint} />
+                      ) : (
+                        <Ionicons name="lock-closed" size={17} color={p.faint} />
+                      )
+                    }
+                    onPress={busy ? undefined : () => (m.allowed ? void patch({ model: m.id }) : openUpgrade("models"))}
+                  />
+                );
+              })}
+            </Group>
+            {hosted.usage.chat !== null && (
+              <Text style={[type.footnote, { color: p.muted, paddingHorizontal: space.xs }]}>
+                {t("Included AI used this month: {n}%", { n: hosted.usage.chat })}
+              </Text>
+            )}
+          </View>
+        )}
+        {current?.models && !included && (
           <View style={{ gap: space.sm, marginTop: space.md }}>
             <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Model")}</Text>
             <View style={[s.row, { gap: space.sm }]}>
@@ -358,7 +401,10 @@ interface Bundle {
 }
 export function BotSettingsScreen({ done, openModel }: { done: () => void; openModel: () => void }) {
   const bot = useWorkspace((x) => x.bots.find((b) => b.id === x.selected));
+  // The job title shows translated; it is only saved when the user actually changes it.
+  const shownLabel = bot?.label ? t(bot.label) : "";
   const [name, setName] = useState(bot?.name ?? ""),
+    [label, setLabel] = useState(shownLabel),
     [instructions, setInstructions] = useState(bot?.instructions ?? ""),
     [shape, setShape] = useState<Fruit>(fruitFor(bot?.avatarShape ?? "watermelon")),
     [color, setColor] = useState(bot?.avatarColor ?? "blue"),
@@ -376,11 +422,12 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
         .catch((e) => setError(e.message));
   }, [botId]);
   if (!bot) return null;
-  const dirty = name !== bot.name || instructions !== (bot.instructions ?? "") || shape !== fruitFor(bot.avatarShape) || color !== bot.avatarColor;
+  const labelChanged = label.trim() !== shownLabel;
+  const dirty = name !== bot.name || labelChanged || instructions !== (bot.instructions ?? "") || shape !== fruitFor(bot.avatarShape) || color !== bot.avatarColor;
   const save = () => {
     setBusy(true);
     void client
-      .patchBot(bot.id, { name, instructions, avatarShape: shape, avatarColor: color })
+      .patchBot(bot.id, { name, instructions, avatarShape: shape, avatarColor: color, ...(labelChanged ? { label: label.trim() } : {}) })
       .then(({ bot }) => {
         useWorkspace.getState().event({ type: "bot", bot });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -405,16 +452,17 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <FadeIn style={{ alignItems: "center", gap: space.sm, paddingVertical: space.lg }}>
           <Animated.View style={{ transform: [{ scale: pop }] }}>
-            <Avatar shape={shape} size={92} primary={bot.isPrimary} />
+            <Avatar shape={shape} size={92} primary={bot.isPrimary} color={color} />
           </Animated.View>
           <Text style={[type.title, { color: p.text }]}>{name || bot.name}</Text>
-          {!!bot.label && <Text style={[type.subhead, { color: p.muted }]}>{t(bot.label)}</Text>}
+          {!!(label.trim() || bot.label) && <Text style={[type.subhead, { color: p.muted }]}>{label.trim() || t(bot.label)}</Text>}
         </FadeIn>
         <ErrorText error={error} />
 
         <SectionLabel>{t("Profile")}</SectionLabel>
         <View style={[s.card, { gap: space.lg }]}>
           <TextField label={t("Name")} value={name} onChangeText={setName} maxLength={60} />
+          <TextField label={t("Job title")} placeholder={t("e.g. Accounts Payable")} value={label} onChangeText={setLabel} maxLength={60} />
           <View style={{ gap: space.sm }}>
             <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Character")}</Text>
             <CharacterPicker

@@ -38,7 +38,7 @@ export const currentPlan = (s: BillingSummary | null) => s?.plans.find((p) => p.
 /** True until we know otherwise, so a slow load never locks a paying user out. */
 export const hasComputer = (s: BillingSummary | null) => currentPlan(s)?.computer ?? true;
 
-export function openUpgrade(feature?: "computer" | "bots" | "voice") {
+export function openUpgrade(feature?: "computer" | "bots" | "voice" | "models") {
   router.push({ pathname: "/upgrade", params: feature ? { feature } : {} });
 }
 

@@ -31,6 +31,7 @@ function buildItems(rows: Row[]): Item[] {
     prevTs = row.createdAt;
     const last = items[items.length - 1];
     const b = row.body;
+    if (b.type === 'plan') continue; // live checklists are shown in the mobile app
     if (b.type === 'tool-call') {
       if (last?.kind === 'steps') last.rows.push(row);
       else items.push({ kind: 'steps', key: `s${row.seq}`, rows: [row] });

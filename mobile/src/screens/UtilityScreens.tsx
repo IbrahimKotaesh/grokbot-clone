@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable, Linking } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable, Linking, Switch } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -211,7 +211,7 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
                 style={({ pressed }) => [s.card, { borderColor: "#ffc04d40", backgroundColor: pressed ? p.raised : p.surface }]}
               >
                 <View style={s.row}>
-                  {bot && <Avatar shape={bot.avatarShape} size={38} status="attention" />}
+                  {bot && <Avatar shape={bot.avatarShape} size={38} status="attention" color={bot.avatarColor} />}
                   <View style={{ flex: 1 }}>
                     <Text style={[type.headline, { color: p.text }]}>{bot?.name ?? t("Bot")}</Text>
                     <Text style={[type.caption, { color: p.amber }]}>Waiting for approval · {relativeTime(item.awaiting?.since)}</Text>
@@ -276,8 +276,21 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
   const billing = useBilling((x) => x.summary);
   const plan = currentPlan(billing);
   const [models, setModels] = useState<string | null>(null);
+  const [autoApprove, setAutoApprove] = useState<boolean | null>(null);
+  const changeAutoApprove = (on: boolean) => {
+    const apply = () => {
+      setAutoApprove(on);
+      void client.request<{ autoApprove: boolean }>("PUT", "/account/approvals", { autoApprove: on }).then((r) => setAutoApprove(r.autoApprove)).catch(() => setAutoApprove(!on));
+    };
+    if (!on) return apply();
+    Alert.alert(t("Stop asking for approval?"), t("Your bots will run commands, use your connected apps and act on your computer without asking first. They still stop and ask if something looks suspicious."), [
+      { text: t("Cancel"), style: "cancel" },
+      { text: t("Don't ask me"), onPress: apply },
+    ]);
+  };
   useFocusEffect(
     useCallback(() => {
+      void client.request<{ autoApprove: boolean }>("GET", "/account/approvals").then((r) => setAutoApprove(r.autoApprove)).catch(() => {});
       void useBilling.getState().load().catch(() => {});
       void client
         .request<{ credentials: { provider: string; connected: boolean }[] }>("GET", "/credentials")
@@ -331,6 +344,13 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
             />
             <ListRow icon="sparkles-outline" title={t("Bots")} value={plan?.bots && billing ? `${billing.usage.bots} / ${plan.bots} + Quinn` : String(bots.length)} chevron={false} />
             <ListRow icon="apps-outline" title={t("Connected apps")} subtitle={t("Gmail, GitHub, Slack and more")} onPress={openApps} />
+            <ListRow
+              icon="flash-outline"
+              title={t("Don't ask for approval")}
+              subtitle={autoApprove ? t("Bots act on their own") : t("Bots ask before commands and app actions")}
+              trailing={<Switch value={!!autoApprove} disabled={autoApprove === null} onValueChange={changeAutoApprove} />}
+              chevron={false}
+            />
             <ListRow
               icon="desktop-outline"
               title={t("Cloud computer")}
