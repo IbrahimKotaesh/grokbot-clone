@@ -1,3 +1,4 @@
+import { TurnMeter } from '../usage-meter.js';
 import { codexHomeIfConnected, sharedLoginAllowed } from '../credentials.js';
 import {localDesktopTarget} from '../desktop-device.js';
 import {nativeImageReceiver} from './native-images.js';
@@ -33,6 +34,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
   if (!userHome && !sharedLoginAllowed()) throw new Error('Connect your ChatGPT account or an OpenAI API key in Account → AI models to use this bot.');
   const codexHome = userHome ?? process.env.CODEX_HOME ?? path.join(os.homedir(),'.codex');
   const proc = spawn(env.codexBin, ['app-server', '-c', 'features.shell_tool=false', '-c', 'features.apply_patch_freeform=false', '-c', 'features.skip_host_skill_discovery=true', '-c', 'features.omit_skill_descriptions=true', '-c', `features.image_generation=${nativeImagesAllowed}`, '-c', 'web_search="disabled"'], { cwd, stdio: ['pipe', 'pipe', 'pipe'], env: userHome ? { ...process.env, CODEX_HOME: userHome } : process.env });
+  const meter=new TurnMeter(bot.user_id,botId,'codex',(bot.agent_provider==='codex'&&bot.model)||env.codexModel||null);
   const imageReceiver=nativeImageReceiver(bot.user_id,botId,[cwd,path.join(codexHome,'generated_images')]);
   const rl = createInterface({ input: proc.stdout });
   let nextId = 0, seq: number | null = null, answer = '', completed = false;
@@ -73,6 +75,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     }
     if (m.id !== undefined && m.method) {
       void (async () => {
+        if (m.method === 'item/tool/call') meter.tool(String(m.params?.tool ?? ''));
         if (m.method !== 'item/tool/call') { send({id:m.id, error:{code:-32601,message:'Use the supplied local desktop tools; native host actions are unavailable.'}}); return; }
         try {
           const r = await execute(m.params.tool, m.params.arguments, m.params.callId ?? String(m.id));
@@ -84,6 +87,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
       return;
     }
     const p = m.params;
+    if (m.method === 'thread/tokenUsage/updated' && p?.tokenUsage?.last) { const l=p.tokenUsage.last; meter.add({input_tokens:l.inputTokens, output_tokens:l.outputTokens, input_tokens_details:{cached_tokens:l.cachedInputTokens}}); }
     if((m.method==='item/started'||m.method==='item/completed')&&p?.item?.type==='imageGeneration'){imageReceiver.receive(p.item,m.method==='item/started'?'started':'completed');return;}
     if (m.method === 'item/agentMessage/delta') {
       answer += p.delta;
@@ -126,6 +130,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
     if (flushTimer) clearTimeout(flushTimer);
     clearTimeout(timer); signal.removeEventListener('abort',abort);
     if(seq !== null) flush(false);
+    meter.save();
     rl.close(); proc.kill();
   }
 }

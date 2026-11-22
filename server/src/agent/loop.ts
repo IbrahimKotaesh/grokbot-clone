@@ -9,6 +9,8 @@ import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
+import { TurnMeter } from '../usage-meter.js';
+import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
 import { env } from '../env.js';
@@ -32,6 +34,8 @@ export type Trigger = (
 
 /** The model provider the current turn of each bot actually runs on (after any fallback). */
 const turnProvider = new Map<string, string>();
+/** Cheap-first routing state for computer work on Fino's own OpenRouter key, per running turn. */
+const routes = new Map<string, RouteState>();
 
 interface PendingState {
   /** function_call items still to process, in order. */
@@ -105,6 +109,31 @@ function pruneImages(items: any[]): any[] {
   return out;
 }
 
+/**
+ * Some Responses-API providers (OpenRouter) only accept text in a tool's reply. Move each tool reply's
+ * screenshots into a user message placed right after that group of tool replies.
+ */
+function imagesOutOfToolReplies(items: any[]): any[] {
+  const out: any[] = [];
+  let pending: any[] = [];
+  const flush = () => {
+    if (pending.length) out.push({ role: 'user', content: [{ type: 'input_text', text: 'Screenshot returned by the tool call above:' }, ...pending] });
+    pending = [];
+  };
+  for (const it of items) {
+    if (it?.type === 'function_call_output' && Array.isArray(it.output)) {
+      const text = it.output.filter((c: any) => c?.type !== 'input_image').map((c: any) => c?.text ?? '').filter(Boolean).join('\n');
+      pending.push(...it.output.filter((c: any) => c?.type === 'input_image'));
+      out.push({ ...it, output: text || 'Done. Screenshot attached below.' });
+      continue;
+    }
+    if (it?.type !== 'function_call_output') flush();
+    out.push(it);
+  }
+  flush();
+  return out;
+}
+
 function triggerItem(t: Trigger, attachments=''): any | null {
   switch (t.type) {
     case 'user': return { role: 'user', content: t.text + attachments };
@@ -132,6 +161,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   if (provider !== preferred && !trigger.providerOverride)
     appendRow(botId, 'notice', { type: 'notice', tone: 'info', text: `${PROVIDER_NAMES[preferred] ?? preferred} is out of usage for now, so this reply uses ${PROVIDER_NAMES[provider] ?? provider}.` });
   turnProvider.set(botId, provider);
+  routes.set(botId, newRoute());
   const ctrl = new AbortController();
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
@@ -222,6 +252,17 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         depth,generation:bot.generation,
       };
       const paused = await processCalls(ctx, st);
+      const route = routes.get(botId);
+      if (route) {
+        const screen = calls.filter((c: any) => /^(computer_|open_browser)/.test(c.name));
+        route.computer = screen.length > 0;
+        if (!route.escalated)
+          for (const c of screen) {
+            const out = st.outputs.find((o: any) => o.call_id === c.call_id)?.output;
+            const text = typeof out === 'string' ? out : '';
+            if (text.startsWith('Tool error') || text.includes('did not change')) route.trouble++;
+          }
+      }
       if (paused) return;
       if (st.outputs.some((o: any) => o.__endTurn)) break;
     }
@@ -253,6 +294,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (pending) await finishPending(ctx, JSON.parse(pending.state), 'turn-ended');
     }
     aborts.delete(botId);
+    routes.delete(botId);
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     await finishDesktopWork(ctx,completed&&!ctrl.signal.aborted,!!stillPending);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
@@ -360,13 +402,22 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   // Runs inside the bot's serial queue, so compaction can't race a turn.
   const history = await maybeCompact(botId, loadHistory(botId)).catch(() => loadHistory(botId));
   // The model is only called when no approval is pending, so every orphaned call can be repaired.
-  const input = [{ role: 'system', content: await systemPrompt(userId, botId) }, ...pruneImages(repairHistory(history))];
+  const history2 = pruneImages(repairHistory(history));
+  const input = [{ role: 'system', content: await systemPrompt(userId, botId) }, ...history2];
 
   const active = turnProvider.get(botId) ?? bot.agent_provider;
   const provider = (LOOP_PROVIDERS as string[]).includes(active) ? (active as LoopProvider) : 'xai';
   const llm = loopClient(userId, provider, provider === bot.agent_provider ? bot.model : null);
+  if (provider !== 'xai') input.splice(1, input.length - 1, ...imagesOutOfToolReplies(history2));
+  // On Fino's own key, screen steps run on a cheap vision model and move up only when it struggles.
+  const route = routes.get(botId);
+  let model = llm.model;
+  if (llm.hosted && route?.computer) {
+    model = computerModel(userId, route);
+    if (!route.escalated) route.cheapSteps++;
+  }
   const body: any = {
-    model: llm.model,
+    model,
     input,
     tools: llm.xaiExtras ? tools : tools.filter((t: any) => t.type === 'function'),
     reasoning: { effort: bot.effort ?? 'medium' },
@@ -379,7 +430,16 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
 
   let stream: any;
   try {
-    stream = await llm.client.responses.create(body, { signal });
+    try {
+      stream = await llm.client.responses.create(body, { signal });
+    } catch (e: any) {
+      // The cheap model refused the request (unsupported input, overloaded…): retry once on the strong one.
+      if (!(route && model === COMPUTER_CHEAP && !signal.aborted && !overComputerCap(userId))) throw e;
+      console.warn('[route] cheap computer model failed, escalating:', e?.message);
+      route.escalated = true;
+      model = body.model = COMPUTER_STRONG;
+      stream = await llm.client.responses.create(body, { signal });
+    }
   } catch (e: any) {
     // If a Composio tool schema is rejected, retry with only our own tools.
     if (e?.status === 400 && tools.length > functionSchemas().length + 2) {
@@ -433,6 +493,11 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   if (msgSeq !== null) flush(false);
   if (!final) throw new Error('model stream ended without a response');
   if (final.usage?.input_tokens) noteUsage(botId, final.usage.input_tokens, history.length);
+  const meter = new TurnMeter(userId, botId, provider, model);
+  meter.hosted = llm.hosted;
+  meter.add(final.usage);
+  for (const o of final.output ?? []) if (o.type === 'function_call') meter.tool(o.name);
+  meter.save();
   return { output: final.output ?? [] };
 }
 

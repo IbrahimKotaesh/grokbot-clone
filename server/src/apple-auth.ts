@@ -4,7 +4,7 @@
 import { createPublicKey, createVerify, type JsonWebKey } from 'node:crypto';
 
 const ISSUER = 'https://appleid.apple.com';
-const AUDIENCES = (process.env.APPLE_BUNDLE_IDS ?? 'com.ibkopixels.fino').split(',').map((s) => s.trim()).filter(Boolean);
+const AUDIENCES = (process.env.APPLE_BUNDLE_IDS ?? 'com.ibkopixels.fino,com.ibkopixels.fino.dev').split(',').map((s) => s.trim()).filter(Boolean);
 
 let keys: { at: number; list: (JsonWebKey & { kid: string; alg: string })[] } | null = null;
 async function appleKeys() {

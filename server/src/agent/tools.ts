@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {DesktopTarget} from '../desktop-device.js';
 import {freshApprovalReason} from './action-safety.js';
 import {hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
@@ -56,13 +57,18 @@ interface ToolDef {
 
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
-async function shot(ctx: ToolCtx, caption: string): Promise<ToolResult> {
+const lastShot = new Map<string, string>();
+async function shot(ctx: ToolCtx, caption: string, always = false): Promise<ToolResult> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   await new Promise((r) => setTimeout(r, 700));
   const s = await orgo.screenshot(computerId, screenId);
   if(ctx.desktopProof)ctx.desktopProof.used=true;
   const mime = s.mime_type ?? 'image/png';
   const url = s.image.startsWith('data:') ? s.image : `data:${mime};base64,${s.image}`;
+  // Don't resend an identical image: it costs tokens on every later step of the turn.
+  const key = `${ctx.botId}:${screenId}`, hash = createHash('sha1').update(url).digest('hex');
+  if (!always && lastShot.get(key) === hash) return { output: `${caption} The screen did not change since your last screenshot.`, summary: caption };
+  lastShot.set(key, hash);
   return {
     output: [
       { type: 'input_text', text: `${caption} Screen is ${s.width}x${s.height}px.` },
@@ -135,11 +141,11 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'computer_screenshot',
-    description: "Take a screenshot of your own computer screen (a Linux desktop that only you use). Use this before acting on the screen.",
+    description: "Take a screenshot of your own computer screen (a Linux desktop that only you use). Only needed when you have no recent screenshot: every action already returns one.",
     parameters: obj({}),
     activity: 'on_its_computer',
     label: 'Looking at the screen',
-    impl: async (_a, ctx) => shot(ctx, 'Current screen.'),
+    impl: async (_a, ctx) => shot(ctx, 'Current screen.', true),
   },
   {
     name: 'computer_click',
@@ -166,19 +172,20 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'computer_key',
-    description: 'Press a key or key combination using X11 keysym names joined by "+", e.g. "Return", "ctrl+l", "ctrl+shift+t", "BackSpace", "Escape", "Page_Down".',
-    parameters: obj({ keys: { type: 'string' } }, ['keys']),
+    description: 'Press a key or key combination using X11 keysym names joined by "+", e.g. "Return", "ctrl+l", "ctrl+shift+t", "BackSpace", "Escape", "Page_Down". Set repeat to press it several times in one step. Returns a fresh screenshot.',
+    parameters: obj({ keys: { type: 'string' }, repeat: { type: 'integer', description: 'How many times to press it (1-20). Default 1.' } }, ['keys']),
     activity: 'on_its_computer',
     label: 'Pressing keys',
     impl: async (a, ctx) => {
       const keys = String(a.keys).split('+').map((k) => (k.length === 1 ? k.toLowerCase() : k)).join('+');
-      await onScreen(ctx, (c, s) => orgo.key(c, s, keys));
-      return shot(ctx, `Pressed ${keys}.`);
+      const times = Math.max(1, Math.min(20, Number(a.repeat) || 1));
+      for (let i = 0; i < times; i++) await onScreen(ctx, (c, s) => orgo.key(c, s, keys));
+      return shot(ctx, times > 1 ? `Pressed ${keys} ${times} times.` : `Pressed ${keys}.`);
     },
   },
   {
     name: 'computer_scroll',
-    description: 'Scroll the mouse wheel at a position on your screen.',
+    description: 'Scroll the mouse wheel at a position on your screen. Returns a fresh screenshot.',
     parameters: obj({ x: { type: 'integer' }, y: { type: 'integer' }, direction: { type: 'string', enum: ['up', 'down'] }, amount: { type: 'integer' } }, ['x', 'y', 'direction']),
     activity: 'on_its_computer',
     label: 'Scrolling',
@@ -189,7 +196,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'computer_drag',
-    description: 'Drag with the left mouse button from one point to another on your screen.',
+    description: 'Drag with the left mouse button from one point to another on your screen. Returns a fresh screenshot.',
     parameters: obj({ start_x: { type: 'integer' }, start_y: { type: 'integer' }, end_x: { type: 'integer' }, end_y: { type: 'integer' } }, ['start_x', 'start_y', 'end_x', 'end_y']),
     activity: 'on_its_computer',
     label: 'Dragging',

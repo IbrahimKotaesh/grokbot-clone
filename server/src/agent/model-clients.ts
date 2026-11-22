@@ -3,6 +3,7 @@
 import OpenAI from 'openai';
 import { env } from '../env.js';
 import { apiKeyFor } from '../credentials.js';
+import { hostedKey } from '../hosted-models.js';
 
 export type LoopProvider = 'xai' | 'openrouter' | 'groq';
 export const LOOP_PROVIDERS: LoopProvider[] = ['xai', 'openrouter', 'groq'];
@@ -14,7 +15,7 @@ const BASE: Record<LoopProvider, string> = {
 // Sensible defaults when a bot has no model set. Users can type any model the provider offers.
 export const DEFAULT_MODEL: Record<LoopProvider, string> = {
   xai: env.xaiModel,
-  openrouter: 'openrouter/auto',
+  openrouter: process.env.OR_DEFAULT_MODEL ?? 'deepseek/deepseek-v4.1-flash',
   groq: 'openai/gpt-oss-120b',
 };
 const NAMES: Record<LoopProvider, string> = { xai: 'xAI', openrouter: 'OpenRouter', groq: 'Groq' };
@@ -23,7 +24,9 @@ const cache = new Map<string, OpenAI>();
 export function loopClient(userId: string, provider: LoopProvider, model?: string | null) {
   const own = apiKeyFor(userId, provider);
   // Only xAI has a server-wide fallback key (it also powers voice).
-  const key = own ?? (provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null);
+  // xAI and OpenRouter can fall back to the server's own key; Fino then pays (and routes OpenRouter cheaply).
+  const hosted = !own && provider === 'openrouter' && !!hostedKey();
+  const key = own ?? (provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null) ?? (hosted ? hostedKey() : null);
   if (!key) throw new Error(`Add your ${NAMES[provider]} API key in Account → AI models to use this bot.`);
   const id = `${provider}:${key.slice(-12)}`;
   let client = cache.get(id);
@@ -31,5 +34,5 @@ export function loopClient(userId: string, provider: LoopProvider, model?: strin
     client = new OpenAI({ apiKey: key, baseURL: BASE[provider], timeout: 360_000 });
     cache.set(id, client);
   }
-  return { client, model: model || DEFAULT_MODEL[provider], provider, xaiExtras: provider === 'xai' };
+  return { client, model: model || DEFAULT_MODEL[provider], provider, xaiExtras: provider === 'xai', hosted };
 }

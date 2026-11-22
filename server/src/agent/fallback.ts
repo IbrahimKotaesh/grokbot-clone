@@ -3,6 +3,7 @@
 import { db, now } from '../db.js';
 import { env } from '../env.js';
 import { sharedLoginAllowed } from '../credentials.js';
+import { hostedKey } from '../hosted-models.js';
 
 const COOLDOWN = 60 * 60_000;
 const exhausted = new Map<string, number>(); // `${userId}:${provider}` → until
@@ -37,7 +38,7 @@ export function availableProviders(userId: string): string[] {
   const list: string[] = [];
   if (keys.has('chatgpt') || keys.has('openai') || shared) list.push('codex');
   if (keys.has('anthropic') || shared) list.push('claude');
-  if (keys.has('openrouter')) list.push('openrouter');
+  if (keys.has('openrouter') || hostedKey()) list.push('openrouter');
   if (keys.has('groq')) list.push('groq');
   if (keys.has('xai') || env.xaiKey !== 'disabled') list.push('xai');
   return list;
