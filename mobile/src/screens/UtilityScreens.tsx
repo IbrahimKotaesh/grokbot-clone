@@ -12,6 +12,7 @@ import { FadeIn, TypingDots } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
 import { relativeTime } from "../lib/format";
 import { useBilling, currentPlan, type Plan } from "../lib/billing";
+import { resetPurchases } from "../lib/purchases";
 
 export function AppsScreen({ done }: { done?: () => void }) {
   const [apps, setApps] = useState<Toolkit[]>([]),
@@ -364,7 +365,7 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
                     text: "Sign out",
                     style: "destructive",
                     onPress: () =>
-                      void logout().finally(() => {
+                      void Promise.all([logout(), resetPurchases()]).finally(() => {
                         useWorkspace.getState().reset();
                         onLogout();
                       }),
@@ -373,6 +374,34 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
               }
             />
           </Group>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              Alert.alert(
+                "Delete your account?",
+                "This permanently deletes your bots, conversations, memories, files and connected keys. It can't be undone. Cancel any subscription in your App Store settings first.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete account",
+                    style: "destructive",
+                    onPress: () =>
+                      void client
+                        .request("DELETE", "/account", { confirm: "DELETE" })
+                        .then(() => Promise.all([logout().catch(() => {}), resetPurchases()]))
+                        .then(() => {
+                          useWorkspace.getState().reset();
+                          onLogout();
+                        })
+                        .catch((e) => Alert.alert("Couldn't delete your account", e.message)),
+                  },
+                ],
+              )
+            }
+            style={{ alignItems: "center", paddingVertical: space.lg, marginTop: space.sm }}
+          >
+            <Text style={[type.footnote, { color: p.faint }]}>Delete account</Text>
+          </Pressable>
         </FadeIn>
       </ScrollView>
     </View>

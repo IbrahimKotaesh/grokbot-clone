@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { router } from "expo-router";
 import { client, qaEnabled } from "./session";
+import { useWorkspace } from "./store";
+import { buyPlan, configurePurchases, restorePurchases } from "./purchases";
 
 export type PlanId = "starter" | "pro" | "max" | "enterprise";
 export interface Plan {
@@ -49,16 +51,38 @@ export function handlePlanLimit(e: unknown) {
   return true;
 }
 
+/** Waits for the store webhook to reach the server and change the plan (usually a few seconds). */
+async function waitForPlan(plan: PlanId, timeoutMs = 20000) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    await useBilling.getState().load().catch(() => {});
+    if (useBilling.getState().summary?.plan === plan) return true;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return false;
+}
+
 /**
- * Starts a purchase. The App Store build plugs RevenueCat in here (Purchases.purchasePackage);
- * the store then tells the server through its webhook, and the server changes the plan.
- * Local development switches plans directly so every plan can be tried.
+ * Starts a purchase through the App Store (RevenueCat). The store tells the server through its
+ * webhook and the server changes the plan. Local development switches plans directly.
  */
-export async function purchase(plan: PlanId): Promise<"done" | "unavailable"> {
+export async function purchase(plan: PlanId): Promise<"done" | "pending" | "cancelled" | "unavailable"> {
   if (qaEnabled()) {
     await client.request("POST", "/billing/dev-plan", { plan });
     await useBilling.getState().load();
     return "done";
   }
-  return "unavailable";
+  const user = useWorkspace.getState().user;
+  if (!user || !(await configurePurchases(user.id))) return "unavailable";
+  const r = await buyPlan(plan);
+  if (r === "cancelled") return "cancelled";
+  return (await waitForPlan(plan)) ? "done" : "pending";
+}
+
+export async function restore(): Promise<"restored" | "none" | "unavailable"> {
+  const user = useWorkspace.getState().user;
+  if (!user || !(await configurePurchases(user.id))) return "unavailable";
+  const active = await restorePurchases();
+  await useBilling.getState().load().catch(() => {});
+  return active.length ? "restored" : "none";
 }

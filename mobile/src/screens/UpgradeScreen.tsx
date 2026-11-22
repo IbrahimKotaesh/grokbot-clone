@@ -6,7 +6,12 @@ import * as Haptics from "expo-haptics";
 import { Button, ErrorText, Header, IconButton, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
 import { palette as p, type, space, radius, motion } from "../theme";
-import { useBilling, purchase, type Plan, type PlanId } from "../lib/billing";
+import { useBilling, purchase, restore, type Plan, type PlanId } from "../lib/billing";
+import * as WebBrowser from "expo-web-browser";
+import { client } from "../lib/session";
+
+/** Legal pages are served by the Fino server (web/public). */
+const LEGAL = client.base.replace(/\/$/, "");
 
 const copy = {
   computer: { title: "Give your bots a computer", detail: "With Pro, every bot gets its own screen to browse, fill forms and use apps for you." },
@@ -41,8 +46,11 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
     setError(null);
     try {
       const r = await purchase(sel.id);
-      if (r === "unavailable") Alert.alert("Coming soon", "Subscriptions open with the App Store release.");
-      else {
+      if (r === "unavailable") Alert.alert("Not available yet", "Subscriptions aren't set up in this build.");
+      else if (r === "pending") {
+        Alert.alert("Thanks!", "Your purchase went through. Your plan will update in a moment.");
+        done();
+      } else if (r === "done") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         done();
       }
@@ -112,7 +120,29 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
           busy={busy}
           onPress={() => void buy()}
         />
-        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Billed monthly through the App Store. Cancel anytime.</Text>
+        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400", lineHeight: 16 }]}>
+          Monthly subscription, renews automatically until cancelled. Payment is charged to your Apple ID at confirmation. Cancel anytime in your App Store
+          settings at least 24 hours before renewal.
+        </Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: space.lg }}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() =>
+              void restore()
+                .then((r) => Alert.alert(r === "restored" ? "Purchases restored" : r === "none" ? "Nothing to restore" : "Not available yet", r === "restored" ? "Your plan is back." : r === "none" ? "No active subscription was found for this Apple ID." : "Subscriptions aren't set up in this build."))
+                .catch((e) => setError(e.message))
+            }
+          >
+            <Text style={[type.caption, { color: p.muted }]}>Restore Purchases</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void WebBrowser.openBrowserAsync(`${LEGAL}/terms.html`)}>
+            <Text style={[type.caption, { color: p.muted }]}>Terms</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void WebBrowser.openBrowserAsync(`${LEGAL}/privacy.html`)}>
+            <Text style={[type.caption, { color: p.muted }]}>Privacy</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

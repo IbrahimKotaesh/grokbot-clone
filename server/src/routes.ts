@@ -1,3 +1,4 @@
+import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
 import { assertCanCreateBot, PlanLimitError } from './plans.js';
 import { billingApi } from './billing.js';
@@ -507,4 +508,5 @@ api.get('/sheets/:id/preview', async c => {
 api.route('/billing', billingApi);
 api.route('/credentials', credentialsApi);
 api.route('/claude-code', claudeCodeApi);
+api.route('/account', accountApi);
 api.route('/push',pushApi);
