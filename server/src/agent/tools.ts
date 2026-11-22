@@ -14,7 +14,7 @@ import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
-import { appendRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
+import { appendRow, updateRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
 import { composioTools, executeComposio, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
 import { scheduleRoutine, unscheduleRoutine } from '../routines.js';
 import { createEventRoutine, deleteEventTrigger, describeEvent, listTriggerTypes } from '../triggers.js';
@@ -58,6 +58,8 @@ interface ToolDef {
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const lastShot = new Map<string, string>();
+/** Each bot's open plan card: updated in place until every step is done or it goes stale. */
+const openPlans = new Map<string, { seq: number; at: number }>();
 async function shot(ctx: ToolCtx, caption: string, always = false): Promise<ToolResult> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   await new Promise((r) => setTimeout(r, 700));
@@ -91,6 +93,37 @@ function botByName(userId: string, name: string) {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: 'update_plan',
+    description:
+      'Show the user a live checklist while you work on a request that takes 3 or more steps (research, computer work, multi-part tasks). Call it before starting with every step pending except the first in_progress, then call it again each time a step finishes so exactly one step is in_progress. The same card updates in place. Keep steps short (2-6 words) and in the user\'s language. Skip it for quick questions.',
+    parameters: obj(
+      {
+        title: { type: 'string', description: 'Optional short title, e.g. "Booking your flight".' },
+        steps: {
+          type: 'array',
+          items: obj({ text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'in_progress', 'done'] } }, ['text', 'status']),
+        },
+      },
+      ['steps'],
+    ),
+    activity: 'working',
+    label: 'Updating the plan',
+    impl: async (a, ctx) => {
+      const steps = (Array.isArray(a.steps) ? a.steps : [])
+        .slice(0, 12)
+        .map((s: any) => ({ text: String(s?.text ?? '').slice(0, 80), status: ['pending', 'in_progress', 'done'].includes(s?.status) ? s.status : 'pending' }))
+        .filter((s: any) => s.text);
+      if (!steps.length) return { output: 'Add at least one step.' };
+      const body = { type: 'plan' as const, title: a.title ? String(a.title).slice(0, 60) : undefined, steps };
+      const open = openPlans.get(ctx.botId);
+      const fresh = open && now() - open.at < 30 * 60_000 && updateRow(ctx.botId, open.seq, body);
+      const seq = fresh ? open!.seq : appendRow(ctx.botId, 'plan', body).seq;
+      if (steps.every((s: any) => s.status === 'done')) openPlans.delete(ctx.botId);
+      else openPlans.set(ctx.botId, { seq, at: now() });
+      return { output: 'The user sees the updated plan.', summary: 'Plan updated' };
+    },
+  },
   {
     name:'update_memory',description:'Replace an outdated saved memory using its memory_id from recall. Use only current user corrections or verified evidence, preserve uncertainty, and never turn a guess into a fact. Previous text is retained in a revision log. This affects only this bot, not other bots.',
     parameters:obj({memory_id:{type:'string'},text:{type:'string'}},['memory_id','text']),activity:'remembering',label:'Updating a saved memory',
@@ -273,7 +306,14 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
   {
     name: 'shell',
     description: 'Run a bash command on your own Linux computer (as root). Use for files, scripts, CLIs and quick data work. Output is truncated to 20k characters.',
-    parameters: obj({ command: { type: 'string' }, timeout_seconds: { type: 'integer' } }, ['command']),
+    parameters: obj(
+      {
+        command: { type: 'string' },
+        purpose: { type: 'string', description: "One short plain sentence in the user's language saying what this command does and why, e.g. 'Install a PDF reader so I can open your invoice.' The user sees it when asked to approve." },
+        timeout_seconds: { type: 'integer' },
+      },
+      ['command', 'purpose'],
+    ),
     activity: 'running_commands',
     label: 'Running commands',
     impl: async (a, ctx) => {
@@ -616,7 +656,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set(['update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {
@@ -635,7 +675,13 @@ export function policyFor(userId: string, toolName: string, args: any, botId?: s
     const ask = saved !== 'always_allow' && !safe && level !== 'autonomous' && (!local || level === 'ask');
     if (ask) {decision='ask';key=slug;}
   }
-  const safetyReason=freshApprovalReason(toolName,args,hasSuspiciousContext(botId));
+  const suspicious = hasSuspiciousContext(botId);
+  let safetyReason=freshApprovalReason(toolName,args,suspicious);
+  const autoApprove = !!(db.prepare('SELECT auto_approve FROM users WHERE id=?').get(userId) as any)?.auto_approve;
+  if ((autoApprove || level === 'autonomous') && !suspicious) {
+    decision = 'allow';
+    safetyReason = undefined;
+  }
   if(safetyReason)decision='ask';
   return {decision,key,requiresFreshApproval:!!safetyReason,safetyReason,toolkit:local || key.startsWith('COMPOSIO_') ? undefined : key.split('_')[0].toLowerCase(),title:local ? key.replaceAll('_',' ') : humanizeSlug(key)};
 }

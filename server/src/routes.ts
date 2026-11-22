@@ -1,4 +1,5 @@
 import { verifyAppleIdentityToken } from './apple-auth.js';
+import { hostedSummary } from './hosted-models.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
 import { assertCanCreateBot, PlanLimitError } from './plans.js';
@@ -212,6 +213,7 @@ api.patch('/bots/:id', async (c) => {
   if (p.permissionMode !== undefined && !['read_only','balanced','ask','autonomous'].includes(p.permissionMode)) return c.json({error:'Invalid permissions.'},400);
   if (p.agentProvider !== undefined && !['codex', 'claude', 'claude-code', 'xai', 'openrouter', 'groq'].includes(p.agentProvider)) return c.json({error:'Choose a supported model provider.'},400);
   if (p.model !== undefined && (typeof p.model !== 'string' || p.model.length > 100 || /[\r\n]/.test(p.model))) return c.json({error:'Invalid model.'},400);
+  if (p.label !== undefined && (typeof p.label !== 'string' || p.label.length > 60 || /[\r\n]/.test(p.label))) return c.json({error:'Keep the job title to one short line.'},400);
   if ((p.agentProvider !== undefined || p.model !== undefined) && getLive(b.id).isRunning) return c.json({error:'Wait for the current turn to finish before changing models.'},409);
   if(p.agentProvider!==undefined&&p.agentProvider!==(b.agent_provider??env.agentProvider))invalidateProviderSession(b.id,p.agentProvider);
   const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
@@ -277,6 +279,8 @@ api.get('/bots/:id/images/:imageId', (c) => {
   if(!image) return c.json({error:'not found'},404);
   return c.body(image.data,200,{'Content-Type':image.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
 });
+
+api.get('/hosted-models', (c) => c.json(hostedSummary(c.get('user').id)));
 
 api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json({error:'Attachments are too large. Files: 10 MB each, 20 MB total; photos: 3 MB each.'},413)}), async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));

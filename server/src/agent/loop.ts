@@ -10,7 +10,7 @@ import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
 import { TurnMeter } from '../usage-meter.js';
-import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
+import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, hostedChatModel, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
 import { env } from '../env.js';
@@ -328,9 +328,13 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       // A saved grant may have arrived while toolkit metadata was loading.
       if(policyFor(userId,c.name,args,botId).decision!=='ask')continue;
+      const botName = getBotRow(botId).name;
+      const summary = plainSummary(c.name, args, pol.title, tk?.name);
+      const technical = c.name === 'shell' ? String(args?.command ?? '') : describeArgs(approvalArgs);
       const card = appendRow(botId, 'card', {
-        type: 'card', card: 'approval', approvalId, title: pol.requiresFreshApproval?`Review sensitive action for ${getBotRow(botId).name}`:`Allow ${getBotRow(botId).name} to ${pol.title.split(': ')[1] ?? pol.title}?`,
-        detail: [pol.safetyReason,describeArgs(approvalArgs)].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
+        type: 'card', card: 'approval', approvalId, title: `${botName} wants to: ${summary}`,
+        summary, reason: pol.safetyReason, technical,
+        detail: [summary, pol.safetyReason, technical].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at,generation) VALUES (?,?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now(),getBotRow(botId).generation);
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
@@ -415,7 +419,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   if (llm.hosted && route?.computer) {
     model = computerModel(userId, route);
     if (!route.escalated) route.cheapSteps++;
-  }
+  } else if (llm.hosted) model = hostedChatModel(userId, llm.model);
   const body: any = {
     model,
     input,
@@ -505,6 +509,38 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
 
 function safeParse(s: string) {
   try { return JSON.parse(s); } catch { return undefined; }
+}
+
+/** One plain sentence about what an action will do, for the approval card. */
+function plainSummary(name: string, args: any, title: string, appName?: string): string {
+  if (name === 'shell') {
+    const purpose = String(args?.purpose ?? '').trim();
+    if (purpose) return purpose.slice(0, 200);
+    const cmd = String(args?.command ?? '').trim();
+    if (/^(pip3?|npm|apt(-get)?|brew)\s+install\b/.test(cmd)) return `Install software (${cmd.split(/\s+/).slice(2, 5).join(' ')})`;
+    if (/^(curl|wget)\b/.test(cmd)) return `Download something from ${(/https?:\/\/([^/\s'"]+)/.exec(cmd)?.[1]) ?? 'the internet'}`;
+    if (/^rm\b/.test(cmd)) return 'Delete files on its computer';
+    if (/^(python3?|node|bash|sh)\s+\S+/.test(cmd)) return `Run the program ${cmd.split(/\s+/)[1]}`;
+    if (/^git\s+clone\b/.test(cmd)) return 'Download a code project';
+    return 'Run a command on its computer';
+  }
+  // Connected apps: "GMAIL_SEND_EMAIL" → "Send email in Gmail", plus who/what when the arguments say.
+  let slug = name, a: Record<string, unknown> = args ?? {};
+  try {
+    if (name === 'connected_apps') ({ name: slug, args: a } = appToolCall(args));
+  } catch {}
+  // A batch runs several app actions: describe the first one.
+  const first = Array.isArray(a.tools) ? (a.tools as any[])[0] : null;
+  if (first) {
+    slug = String(first.tool_slug ?? first.slug ?? first.name ?? slug);
+    a = (first.arguments ?? first.args ?? {}) as Record<string, unknown>;
+  }
+  const parts = slug.split('_');
+  const app = appName ?? (parts[0] ? parts[0].charAt(0) + parts[0].slice(1).toLowerCase() : '');
+  const verb = parts.slice(1).join(' ').toLowerCase();
+  const target = ['recipient_email', 'to', 'recipient', 'channel', 'email', 'title', 'subject', 'name'].map((k) => a[k]).find((v) => typeof v === 'string' && v) as string | undefined;
+  if (verb) return `${verb.charAt(0).toUpperCase() + verb.slice(1)} in ${app}${target ? ` (${String(target).slice(0, 80)})` : ''}`;
+  return title;
 }
 
 function describeArgs(args: any): string {

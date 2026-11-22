@@ -9,6 +9,21 @@ import { codexHomeFor } from './credentials.js';
 
 export const accountApi = new Hono<AuthVars>();
 
+if (!(db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).some((c) => c.name === 'auto_approve'))
+  db.exec('ALTER TABLE users ADD COLUMN auto_approve INTEGER NOT NULL DEFAULT 0');
+
+/** "Don't ask for approval": the user's bots act without asking (suspicious content still asks). */
+accountApi.get('/approvals', (c) => {
+  const row = db.prepare('SELECT auto_approve FROM users WHERE id=?').get(c.get('user').id) as { auto_approve?: number } | undefined;
+  return c.json({ autoApprove: !!row?.auto_approve });
+});
+accountApi.put('/approvals', async (c) => {
+  const body = await c.req.json<{ autoApprove?: boolean }>().catch(() => ({}) as { autoApprove?: boolean });
+  if (typeof body.autoApprove !== 'boolean') return c.json({ error: 'autoApprove must be true or false.' }, 400);
+  db.prepare('UPDATE users SET auto_approve=? WHERE id=?').run(body.autoApprove ? 1 : 0, c.get('user').id);
+  return c.json({ autoApprove: body.autoApprove });
+});
+
 accountApi.delete('/', async (c) => {
   const userId = c.get('user').id;
   const { confirm } = await c.req.json<{ confirm?: string }>().catch(() => ({ confirm: '' }));
