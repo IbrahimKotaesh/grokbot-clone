@@ -1,3 +1,4 @@
+import { assertComputerAllowed, recordComputerStatus } from './plans.js';
 import { db, now } from './db.js';
 import { env } from './env.js';
 import { hub } from './lib/hub.js';
@@ -25,6 +26,7 @@ function rowFor(userId: string) {
 }
 
 function setStatus(userId: string, status: ComputerState['status'], extra: { orgoId?: string; error?: string | null } = {}) {
+  recordComputerStatus(userId, status);
   db.prepare('UPDATE computers SET status=?, orgo_id=COALESCE(?, orgo_id), error=?, updated_at=? WHERE user_id=?').run(status, extra.orgoId ?? null, extra.error ?? null, now(), userId);
   hub.emit(userId, { type: 'computer', state: computerState(userId) });
 }
@@ -59,6 +61,11 @@ function mapStatus(s: string): ComputerState['status'] {
 
 /** Make sure the user's box exists and is running. Returns the Orgo computer UUID. */
 export function ensureComputer(userId: string): Promise<string> {
+  try {
+    assertComputerAllowed(userId);
+  } catch (e) {
+    return Promise.reject(e);
+  }
   const existing = inflight.get(userId);
   if (existing) return existing;
   const p = (async () => {

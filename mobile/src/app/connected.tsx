@@ -4,5 +4,5 @@ import { StartupScreen } from "../components/StartupScreen";
 export default function Callback() {
   const { ready, signedIn } = useAuth();
   if (!ready) return <StartupScreen />;
-  return <Redirect href={signedIn ? "/(tabs)/apps" : "/login"} />;
+  return <Redirect href={signedIn ? "/apps" : "/login"} />;
 }

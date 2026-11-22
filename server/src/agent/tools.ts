@@ -72,10 +72,11 @@ async function shot(ctx: ToolCtx, caption: string): Promise<ToolResult> {
   };
 }
 
-async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: string) => Promise<T>) {
+/** visible=false for file and shell work, which leaves nothing worth a final screenshot. */
+async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: string) => Promise<T>, visible = true) {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   const result=await fn(computerId, screenId);
-  if(ctx.desktopProof)ctx.desktopProof.used=true;
+  if(visible&&ctx.desktopProof)ctx.desktopProof.used=true;
   return result;
 }
 
@@ -236,7 +237,7 @@ export const TOOLS: ToolDef[] = [
         await orgo.bash(c, s, `mkdir -p ${dir} && : > ${dir}/${name}.b64`, 30);
         for (let i = 0; i < b64.length; i += 60000) await orgo.bash(c, s, `printf '%s' '${b64.slice(i, i + 60000)}' >> ${dir}/${name}.b64`, 30);
         return orgo.bash(c, s, `base64 -d ${dir}/${name}.b64 > ${dir}/${name} && rm ${dir}/${name}.b64 && wc -c ${dir}/${name}`, 30);
-      });
+      }, false);
       return { output: JSON.stringify({ ok: true, path: `${dir}/${name}` }), summary: `Saved ${name}` };
     },
   },
@@ -255,7 +256,7 @@ if not p.is_relative_to(root) or not p.is_file(): raise ValueError("Use a file i
 if p.stat().st_size>a["max"]: raise ValueError("File exceeds 10 MB")
 print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()}))`;
       const quote=(s:string)=>"'"+s.replace(/'/g,"'\"'\"'")+"'";
-      const result=await onScreen(ctx,(c,s)=>orgo.bash(c,s,`python3 -c ${quote(script)} ${quote(payload)}`,60));
+      const result=await onScreen(ctx,(c,s)=>orgo.bash(c,s,`python3 -c ${quote(script)} ${quote(payload)}`,60),false);
       if(result.exit_code!==0)throw new Error('Could not read the attachment. Save it inside your own Library folder and keep it under 10 MB.');
       const file=JSON.parse(result.output??'{}');
       const attached=publishAttachment(ctx.userId,ctx.botId,file.name,Buffer.from(file.data,'base64'),typeof a.caption==='string'?a.caption.slice(0,2000):'');
@@ -269,7 +270,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
     activity: 'running_commands',
     label: 'Running commands',
     impl: async (a, ctx) => {
-      const r = await onScreen(ctx, (c, s) => orgo.bash(c, s, String(a.command), Math.min(Math.max(a.timeout_seconds ?? 120, 1), 290)));
+      const r = await onScreen(ctx, (c, s) => orgo.bash(c, s, String(a.command), Math.min(Math.max(a.timeout_seconds ?? 120, 1), 290)), false);
       const out = (r.output ?? '').slice(-20000);
       return { output: JSON.stringify({ exit_code: r.exit_code, output: out }), summary: `exit ${r.exit_code}` };
     },

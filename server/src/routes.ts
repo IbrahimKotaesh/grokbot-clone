@@ -1,3 +1,7 @@
+import { claudeCodeApi } from './claude-code.js';
+import { assertCanCreateBot, PlanLimitError } from './plans.js';
+import { billingApi } from './billing.js';
+import { credentialsApi } from './credentials.js';
 import {resolveDesktopTarget,type DesktopTarget} from './desktop-device.js';
 import {inChat} from './lib/chat-scope.js';
 import {createChat,listChats,renameChat,validChat,ensureChats} from './chats.js';
@@ -167,6 +171,12 @@ api.get('/bots', (c) => c.json({ bots: listBots(c.get('user').id), live: allLive
 api.post('/bots/reorder',async c=>{const body=await c.req.json().catch(()=>({}));if(!Array.isArray(body.ids)||body.ids.length>1000||body.ids.some((id:unknown)=>typeof id!=='string'))return c.json({error:'Invalid bot order.'},400);try{return c.json({bots:reorderBots(c.get('user').id,body.ids)});}catch{return c.json({error:'The bot list changed. Refresh and try again.'},409);}});
 
 api.post('/bots', async (c) => {
+  try {
+    assertCanCreateBot(c.get('user').id);
+  } catch (e) {
+    if (e instanceof PlanLimitError) return c.json({ error: e.message, code: 'plan_limit', feature: e.feature }, 402);
+    throw e;
+  }
   const body = await c.req.json();
   return c.json({ bot: createBot(c.get('user').id, body) });
 });
@@ -176,7 +186,7 @@ api.patch('/bots/:id', async (c) => {
   if (!b) return c.json({ error: 'not found' }, 404);
   const p = await c.req.json();
   if (p.permissionMode !== undefined && !['read_only','balanced','ask','autonomous'].includes(p.permissionMode)) return c.json({error:'Invalid permissions.'},400);
-  if (p.agentProvider !== undefined && !['codex', 'claude'].includes(p.agentProvider)) return c.json({error:'Choose Codex or Claude.'},400);
+  if (p.agentProvider !== undefined && !['codex', 'claude', 'claude-code', 'xai', 'openrouter', 'groq'].includes(p.agentProvider)) return c.json({error:'Choose a supported model provider.'},400);
   if (p.model !== undefined && (typeof p.model !== 'string' || p.model.length > 100 || /[\r\n]/.test(p.model))) return c.json({error:'Invalid model.'},400);
   if ((p.agentProvider !== undefined || p.model !== undefined) && getLive(b.id).isRunning) return c.json({error:'Wait for the current turn to finish before changing models.'},409);
   if(p.agentProvider!==undefined&&p.agentProvider!==(b.agent_provider??env.agentProvider))invalidateProviderSession(b.id,p.agentProvider);
@@ -383,6 +393,7 @@ api.post('/computer/ensure', async (c) => {
     await ensureComputer(userId);
     return c.json({ computer: computerState(userId) });
   } catch (e) {
+    if (e instanceof PlanLimitError) return c.json({ error: e.message, code: 'plan_limit', feature: e.feature }, 402);
     console.warn('[computer] ensure failed', (e as Error).message);
     return c.json({ error: 'The computer could not start. Please try again.' },503);
   }
@@ -493,4 +504,7 @@ api.get('/sheets/:id/preview', async c => {
   catch(e){return c.json({error:e instanceof SheetError?e.message:'Google Sheets preview is unavailable.'},(e instanceof SheetError?e.status:502) as 400);}
 });
 
+api.route('/billing', billingApi);
+api.route('/credentials', credentialsApi);
+api.route('/claude-code', claudeCodeApi);
 api.route('/push',pushApi);

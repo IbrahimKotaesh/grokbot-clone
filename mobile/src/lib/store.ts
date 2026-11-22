@@ -10,6 +10,7 @@ import type {
 import { EventDecoder, mergeRows } from "../../../packages/client/src";
 import { client } from "./session";
 const key = (id: string, generation: number) => `${id}:${generation}`;
+let selectionRevision = 0;
 interface State {
   user: User | null;
   bots: Bot[];
@@ -56,8 +57,10 @@ export const useWorkspace = create<State>((set, get) => ({
     } else await get().select(selected);
   },
   async select(id) {
+    const revision = ++selectionRevision;
     set({ selected: id, error: null });
     const { chats } = await client.chats(id);
+    if (revision !== selectionRevision) return;
     set((s) => ({ chats: { ...s.chats, [id]: chats } }));
     const generation =
       get().generations[id] ??
@@ -68,6 +71,7 @@ export const useWorkspace = create<State>((set, get) => ({
     void client.request("POST", `/bots/${id}/read`).catch(() => {});
   },
   async selectChat(id, generation) {
+    ++selectionRevision;
     set((s) => ({
       selected: id,
       generations: { ...s.generations, [id]: generation },
@@ -133,13 +137,20 @@ export const useWorkspace = create<State>((set, get) => ({
           .catch(() => {});
         break;
       case "cleared":
-        void get()
-          .selectChat(event.botId, event.generation)
-          .catch(() => {});
+        // A background bot starting a new chat must not steal the open chat.
+        if (get().selected === event.botId)
+          void get()
+            .selectChat(event.botId, event.generation)
+            .catch(() => {});
+        else
+          set((s) => ({
+            generations: { ...s.generations, [event.botId]: event.generation },
+          }));
         break;
     }
   },
   reset() {
+    ++selectionRevision;
     set({
       user: null,
       bots: [],

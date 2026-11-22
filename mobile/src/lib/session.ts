@@ -92,16 +92,20 @@ export async function googleLogin() {
   await persist();
   return true;
 }
-export async function qaLogin() {
-  if (
-    process.env.EXPO_PUBLIC_MOBILE_QA !== "1" ||
-    !["127.0.0.1", "localhost", "10.0.2.2"].includes(
+// Dev only: a debug build pointed at a loopback server with EXPO_PUBLIC_MOBILE_QA=1.
+export function qaEnabled() {
+  return (
+    __DEV__ &&
+    process.env.EXPO_PUBLIC_MOBILE_QA === "1" &&
+    ["127.0.0.1", "localhost", "10.0.2.2"].includes(
       new URL(client.base).hostname,
     )
-  )
-    throw Error("Unavailable");
+  );
+}
+export async function qaLogin() {
+  if (!qaEnabled()) throw Error("Unavailable");
   const data = await client.request<{ session: string }>("POST", "/auth/dev", {
-    email: "mobile-qa@fino.local",
+    email: process.env.EXPO_PUBLIC_MOBILE_QA_EMAIL || "mobile-qa@fino.local",
     name: "Mobile QA",
     native: true,
   });

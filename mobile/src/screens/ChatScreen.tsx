@@ -1,156 +1,193 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
   FlatList,
-  KeyboardAvoidingView,
+
   Platform,
-  ActivityIndicator,
   Pressable,
+  ActionSheetIOS,
+  Alert,
+  Animated,
+  Easing,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { chatTimeline, type ChatItem } from "../lib/chat-timeline";
+import { WorkDetails } from "../components/WorkDetails";
 import type { Row } from "../../../packages/contracts/src/types";
 import { client } from "../lib/session";
 import { useWorkspace, rowKey } from "../lib/store";
-import {
-  Avatar,
-  IconButton,
-  Button,
-  ErrorText,
-  styles as s,
-} from "../components/UI";
+import { Avatar, IconButton, Button, ErrorText, Chip, KeyboardScreen, LockBadge, styles as s } from "../components/UI";
+import { useBilling, hasComputer } from "../lib/billing";
 import { MessageRow } from "../components/MessageRow";
-import { Composer } from "../components/Composer";
-import { palette as p } from "../theme";
+import { Composer, type ComposerHandle } from "../components/Composer";
+import { FadeIn, TypingDots, useLoop } from "../components/motion";
+import { palette as p, type, space } from "../theme";
+import { botStatus, statusLine, usesComputer } from "../lib/format";
+import { catalog } from "../lib/catalog";
 const empty: Row[] = [];
+const suggestions = [
+  { icon: "sunny-outline", label: "Plan my day" },
+  { icon: "search-outline", label: "Research a topic for me" },
+  { icon: "mail-outline", label: "Draft an email" },
+  { icon: "desktop-outline", label: "Open a website on your computer" },
+] as const;
+
 export function ChatScreen({
   openTeam,
   openSettings,
   openChats,
-  openModels,
+  openCall,
+  openComputer,
 }: {
   openTeam: () => void;
   openSettings: () => void;
   openChats: () => void;
-  openModels: () => void;
+  openCall: () => void;
+  openComputer: () => void;
 }) {
   const id = useWorkspace((x) => x.selected);
   const bot = useWorkspace((x) => x.bots.find((b) => b.id === x.selected));
-  const generation = useWorkspace((x) =>
-    id ? (x.generations[id] ?? bot?.generation ?? 1) : 1,
-  );
-  const rows = useWorkspace((x) =>
-    id ? (x.rows[rowKey(id, generation)] ?? empty) : empty,
-  );
-  const connected = useWorkspace((x) => x.connected),
-    live = useWorkspace((x) => (id ? x.live[id] : undefined));
+  const generation = useWorkspace((x) => (id ? (x.generations[id] ?? bot?.generation ?? 1) : 1));
+  const rows = useWorkspace((x) => (id ? (x.rows[rowKey(id, generation)] ?? empty) : empty));
+  const timeline = useMemo(() => chatTimeline(rows).reverse(), [rows]);
+  const live = useWorkspace((x) => (id ? x.live[id] : undefined));
+  const newChat = useWorkspace((x) => x.newChat);
   const [error, setError] = useState<string | null>(null),
     [loadingOlder, setLoadingOlder] = useState(false),
     [exhausted, setExhausted] = useState<Record<string, boolean>>({});
-  const list = useRef<FlatList<Row>>(null),
-    stick = useRef(true),
-    frame = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const list = useRef<FlatList<ChatItem>>(null);
+  const composer = useRef<ComposerHandle>(null);
+  const stick = useRef(true);
+  const [showLatest, setShowLatest] = useState(false);
+  const latest = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    stick.current = true;
-    return () => {
-      if (frame.current) clearTimeout(frame.current);
-    };
-  }, [id, generation]);
+    Animated.timing(latest, {
+      toValue: showLatest ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [showLatest]);
+  const computerLive = useLoop(1200, usesComputer(live));
+  const computerOn = useBilling((x) => hasComputer(x.summary));
   if (!bot)
     return (
-      <View style={[s.screen, s.section, { justifyContent: "center" }]}>
-        <Text style={s.title}>Choose a teammate</Text>
-        <Text style={s.muted} onPress={openTeam}>
-          Open your team to start a conversation.
-        </Text>
+      <View style={[s.screen, s.section, { justifyContent: "center", alignItems: "center" }]}>
+        <Text style={[type.title, { color: p.text }]}>Choose a bot</Text>
+        <Button title="Open your team" variant="secondary" compact onPress={openTeam} />
       </View>
     );
-  const pin = () => {
-    if (!stick.current || frame.current) return;
-    frame.current = setTimeout(() => {
-      frame.current = null;
-      list.current?.scrollToEnd({ animated: false });
-    }, 50);
+  const status = botStatus(bot, live);
+  // Marketplace bots suggest their own skills; everyone else gets general starters.
+  const template = catalog.find((t) => t.label === bot.label);
+  const starters = template ? template.skills.map((sk) => ({ icon: "flash-outline" as const, label: sk.name })) : suggestions;
+  const more = () => {
+    const actions = [
+      { label: "New conversation", run: () => void newChat(bot.id).catch((e) => setError(e.message)) },
+      { label: "All conversations", run: openChats },
+      { label: "Computer", run: openComputer },
+      { label: `${bot.name} settings`, run: openSettings },
+    ];
+    if (Platform.OS === "ios")
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: [...actions.map((a) => a.label), "Cancel"], cancelButtonIndex: actions.length, userInterfaceStyle: "dark" },
+        (i) => actions[i]?.run(),
+      );
+    else Alert.alert(bot.name, "", [...actions.map((a) => ({ text: a.label, onPress: a.run })), { text: "Cancel", style: "cancel" as const }]);
   };
   return (
-    <KeyboardAvoidingView
-      style={s.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={0}
-    >
-      <View style={s.header}>
-        <IconButton
-          name="people-outline"
-          label="Open team"
-          onPress={openTeam}
-        />
-        <Avatar shape={bot.avatarShape} size={40} primary={bot.isPrimary} />
+    <KeyboardScreen>
+      <View style={[s.header, { gap: space.xs, borderBottomWidth: 0.5, borderBottomColor: p.line }]}>
+        <IconButton name="chevron-back" label="Back to bots" onPress={openTeam} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open conversations"
+          accessibilityLabel={`${bot.name} conversations`}
           onPress={openChats}
-          style={{ flex: 1, paddingHorizontal: 10, gap: 3 }}
+          style={({ pressed }) => [s.row, { flex: 1, gap: 10, opacity: pressed ? 0.7 : 1 }]}
         >
-          <Text style={[s.text, { fontWeight: "600" }]} numberOfLines={1}>
-            {bot.name}
-          </Text>
-          <Text style={[s.muted, { fontSize: 11 }]}>
-            {connected ? "Connected" : "Reconnecting…"}
-          </Text>
+          <Avatar shape={bot.avatarShape} size={34} status={status === "unread" ? null : status} color={bot.avatarColor} />
+          <View style={{ flex: 1 }}>
+            <Text style={[type.headline, { color: p.text }]} numberOfLines={1}>
+              {bot.name}
+            </Text>
+            <Text
+              style={[type.caption, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted, fontWeight: "500" }]}
+              numberOfLines={1}
+            >
+              {statusLine(bot, live)}
+            </Text>
+          </View>
         </Pressable>
-        <IconButton
-          name="ellipsis-horizontal"
-          label="Bot settings"
-          onPress={openSettings}
-        />
+        <View>
+          <IconButton name="desktop-outline" label={`${bot.name}'s computer`} onPress={openComputer} />
+          {!computerOn && <LockBadge />}
+          {usesComputer(live) && (
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 9,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: p.green,
+                opacity: computerLive.interpolate({ inputRange: [0, 1], outputRange: [1, 0.4] }),
+              }}
+            />
+          )}
+        </View>
+        <IconButton name="call-outline" label={`Call ${bot.name}`} onPress={openCall} />
+        <IconButton name="ellipsis-horizontal" label="More" onPress={more} />
       </View>
-      <ErrorText error={error} />
+      {!!error && (
+        <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm }}>
+          <ErrorText error={error} />
+        </View>
+      )}
       <FlatList
         ref={list}
-        data={rows}
-        keyExtractor={(r) => `${r.generation}:${r.seq}`}
-        renderItem={({ item }) => <MessageRow row={item} bot={bot} />}
-        contentContainerStyle={{ paddingVertical: 12, flexGrow: 1 }}
+        inverted
+        data={timeline}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) =>
+          "work" in item ? <WorkDetails rows={item.work} bot={bot} /> : <MessageRow row={item.row} bot={bot} />
+        }
+        contentContainerStyle={{ paddingVertical: space.md, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         initialNumToRender={15}
         maxToRenderPerBatch={8}
         windowSize={7}
         onScroll={(e) => {
-          const { contentOffset, contentSize, layoutMeasurement } =
-            e.nativeEvent;
-          stick.current =
-            contentSize.height - contentOffset.y - layoutMeasurement.height <
-            100;
+          const nearLatest = e.nativeEvent.contentOffset.y < 120;
+          stick.current = nearLatest;
+          if (nearLatest === showLatest) setShowLatest(!nearLatest);
+        }}
+        onScrollBeginDrag={() => {
+          stick.current = false;
         }}
         scrollEventThrottle={64}
-        onContentSizeChange={pin}
+        onContentSizeChange={() => {
+          if (stick.current) list.current?.scrollToOffset({ offset: 0, animated: true });
+        }}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-        ListHeaderComponent={
+        ListFooterComponent={
           !exhausted[rowKey(bot.id, generation)] && rows.length >= 200 ? (
-            <View style={{ padding: 12 }}>
+            <View style={{ padding: space.md, alignItems: "center" }}>
               <Button
                 title="Load earlier messages"
-                secondary
+                variant="secondary"
+                compact
                 busy={loadingOlder}
                 onPress={() => {
                   setLoadingOlder(true);
                   void client
-                    .request<{ rows: Row[] }>(
-                      "GET",
-                      `/bots/${bot.id}/rows?generation=${generation}&beforeSeq=${rows[0].seq}`,
-                    )
+                    .request<{ rows: Row[] }>("GET", `/bots/${bot.id}/rows?generation=${generation}&beforeSeq=${rows[0].seq}`)
                     .then((result) => {
-                      if (result.rows.length < 200)
-                        setExhausted((old) => ({
-                          ...old,
-                          [rowKey(bot.id, generation)]: true,
-                        }));
-                      useWorkspace.getState().event({
-                        type: "rows",
-                        botId: bot.id,
-                        generation,
-                        rows: result.rows,
-                      });
+                      if (result.rows.length < 200) setExhausted((old) => ({ ...old, [rowKey(bot.id, generation)]: true }));
+                      useWorkspace.getState().event({ type: "rows", botId: bot.id, generation, rows: result.rows });
                     })
                     .catch((e) => setError(e.message))
                     .finally(() => setLoadingOlder(false));
@@ -160,37 +197,59 @@ export function ChatScreen({
           ) : undefined
         }
         ListEmptyComponent={
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 30,
-              gap: 18,
-            }}
-          >
-            <Avatar shape={bot.avatarShape} size={100} />
-            <Text style={[s.title, { fontSize: 24 }]}>{bot.name}</Text>
-            <Text style={[s.muted, { textAlign: "center" }]}>
-              {bot.description || "What would you like to work on?"}
-            </Text>
+          // Inverted lists flip their empty view; flip it back.
+          <View style={{ flex: 1, justifyContent: "center", padding: space.xxl, transform: [{ scaleY: -1 }] }}>
+            <FadeIn style={{ alignItems: "center", gap: space.md }}>
+              <Avatar shape={bot.avatarShape} size={84} color={bot.avatarColor} />
+              <Text style={[type.largeTitle, { color: p.text, textAlign: "center", marginTop: space.sm }]}>How can I help?</Text>
+              <Text style={[type.callout, { color: p.muted, textAlign: "center", maxWidth: 300 }]}>
+                {bot.description || `${bot.name} can browse, use its own computer, connect your apps and get things done.`}
+              </Text>
+            </FadeIn>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginTop: space.xxl }}>
+              {starters.map((sug, i) => (
+                <FadeIn key={sug.label} delay={180 + i * 70}>
+                  <Chip label={sug.label} icon={sug.icon} onPress={() => composer.current?.prefill(sug.label)} />
+                </FadeIn>
+              ))}
+            </View>
           </View>
         }
-        ListFooterComponent={
+        ListHeaderComponent={
           live?.isRunning ? (
-            <View style={[s.row, { padding: 18 }]}>
-              <ActivityIndicator size="small" color={p.blue} />
-              <Text style={s.muted}>{live.activity?.detail ?? "Working…"}</Text>
-            </View>
+            <FadeIn offset={6} style={[s.row, { paddingHorizontal: space.xl, paddingVertical: space.md, gap: 10 }]}>
+              <TypingDots color={p.muted} size={6} />
+              <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>
+                {statusLine(bot, live)}
+              </Text>
+            </FadeIn>
           ) : undefined
         }
       />
-      <Composer
-        key={`${bot.id}:${generation}`}
-        bot={bot}
-        generation={generation}
-        onModels={openModels}
-      />
-    </KeyboardAvoidingView>
+      <Animated.View
+        pointerEvents={showLatest ? "auto" : "none"}
+        style={{
+          position: "absolute",
+          alignSelf: "center",
+          bottom: 116,
+          opacity: latest,
+          transform: [{ translateY: latest.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }, { scale: latest.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Jump to latest"
+          onPress={() => {
+            stick.current = true;
+            setShowLatest(false);
+            list.current?.scrollToOffset({ offset: 0, animated: true });
+          }}
+          style={{ backgroundColor: p.elevated, borderRadius: 20, borderWidth: 1, borderColor: p.lineStrong, width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        >
+          <Ionicons name="arrow-down" size={18} color={p.text} />
+        </Pressable>
+      </Animated.View>
+      <Composer ref={composer} bot={bot} generation={generation} openCall={openCall} />
+    </KeyboardScreen>
   );
 }

@@ -1,3 +1,4 @@
+import { revenueCatWebhook } from './billing.js';
 import {attachDesktopDevices} from './desktop-device.js';
 import {accessGate} from './lib/access-code.js';
 import {accessApi} from './routes-access.js';
@@ -38,6 +39,8 @@ app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', 'no-store');
   await next();
 });
+// The store calls this with its own secret, so it sits before the access gate and sessions.
+app.post('/api/billing/webhook', revenueCatWebhook);
 app.use('/api/*',accessGate);
 app.route('/api/access',accessApi);
 app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });

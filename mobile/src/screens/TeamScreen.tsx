@@ -1,58 +1,70 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  TextInput,
-  RefreshControl,
-} from "react-native";
+import { View, Text, FlatList, RefreshControl, Pressable } from "react-native";
+import * as Haptics from "expo-haptics";
+import type { Bot } from "../../../packages/contracts/src/types";
 import { useWorkspace } from "../lib/store";
-import { Avatar, IconButton, ErrorText, styles as s } from "../components/UI";
-import { palette as p } from "../theme";
+import { Avatar, IconButton, ErrorText, Header, Button, EmptyState, SectionLabel, LockBadge, styles as s } from "../components/UI";
+import { useBilling, hasComputer } from "../lib/billing";
+import { FadeIn, PressableScale } from "../components/motion";
+import { palette as p, type, space, radius } from "../theme";
+import { botStatus, relativeTime, statusLine } from "../lib/format";
+
 export function TeamScreen({
   openChat,
   openCreate,
+  openMarketplace,
+  openCall,
+  openComputer,
 }: {
   openChat: () => void;
   openCreate: () => void;
+  openMarketplace: () => void;
+  openCall: () => void;
+  openComputer: () => void;
 }) {
   const bots = useWorkspace((x) => x.bots),
+    live = useWorkspace((x) => x.live),
     refresh = useWorkspace((x) => x.refresh),
     select = useWorkspace((x) => x.select);
-  const [search, setSearch] = useState(""),
-    [refreshing, setRefreshing] = useState(false),
+  const [refreshing, setRefreshing] = useState(false),
     [error, setError] = useState<string | null>(null);
   const primary = bots.find((b) => b.isPrimary);
-  const team = bots.filter(
-    (b) =>
-      !b.isPrimary &&
-      `${b.name} ${b.label}`.toLowerCase().includes(search.toLowerCase()),
-  );
-  const choose = async (id: string) => {
+  const team = bots.filter((b) => !b.isPrimary);
+  const working = bots.filter((b) => live[b.id]?.isRunning).length;
+  const go = async (id: string, then: () => void) => {
     setError(null);
     try {
       await select(id);
-      openChat();
+      then();
     } catch (e) {
       setError((e as Error).message);
     }
   };
   return (
     <View style={s.screen}>
-      <View style={[s.header, { justifyContent: "space-between" }]}>
-        <Text style={s.title}>Your team</Text>
-        <IconButton name="add" label="Create bot" onPress={openCreate} />
-      </View>
+      <Header
+        title="Bots"
+        subtitle={
+          bots.length
+            ? `${bots.length} ${bots.length === 1 ? "bot" : "bots"}${working ? ` · ${working} working` : ""}`
+            : undefined
+        }
+        right={
+          <>
+            <IconButton name="storefront-outline" label="Marketplace" variant="filled" onPress={openMarketplace} />
+            <IconButton name="add" label="Create your own bot" variant="filled" onPress={openCreate} />
+          </>
+        }
+      />
       <FlatList
         data={team}
         keyExtractor={(b) => b.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 16, paddingBottom: 30, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            tintColor={p.blue}
+            tintColor={p.muted}
             onRefresh={() => {
               setRefreshing(true);
               void refresh()
@@ -62,84 +74,143 @@ export function TeamScreen({
           />
         }
         ListHeaderComponent={
-          <View style={{ gap: 20, paddingBottom: 20 }}>
+          <View style={{ gap: space.sm }}>
             <ErrorText error={error} />
             {primary && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${primary.name}`}
-                onPress={() => void choose(primary.id)}
-                style={({ pressed }) => [
-                  s.card,
-                  s.row,
-                  { padding: 20 },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Avatar shape={primary.avatarShape} size={78} primary />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <Text style={[s.title, { fontSize: 23 }]}>
-                    {primary.name}
-                  </Text>
-                  <Text style={s.muted}>
-                    {primary.label || "Chief of Staff"}
-                  </Text>
-                </View>
-              </Pressable>
+              <FadeIn>
+                <PrimaryCard
+                  bot={primary}
+                  onChat={() => void go(primary.id, openChat)}
+                  onCall={() => void go(primary.id, openCall)}
+                  onComputer={() => void go(primary.id, openComputer)}
+                />
+              </FadeIn>
             )}
-            <TextInput
-              placeholder="Find a teammate"
-              accessibilityLabel="Find a teammate"
-              placeholderTextColor={p.muted}
-              value={search}
-              onChangeText={setSearch}
-              style={s.input}
-            />
-            <Text style={s.label}>Teammates</Text>
+            {team.length > 0 && <SectionLabel>Team</SectionLabel>}
           </View>
         }
-        renderItem={({ item: b }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${b.name}`}
-            onPress={() => void choose(b.id)}
-            style={({ pressed }) => [
-              s.row,
-              { padding: 12, borderRadius: 18, minHeight: 90 },
-              pressed && { backgroundColor: p.surface },
-            ]}
-          >
-            <Avatar shape={b.avatarShape} size={62} />
-            <View style={{ flex: 1, gap: 5 }}>
-              <Text style={[s.text, { fontWeight: "600" }]}>{b.name}</Text>
-              <Text style={s.muted} numberOfLines={2}>
-                {b.lastPreview || b.label || "Start a conversation"}
-              </Text>
-            </View>
-            {b.unread > 0 && (
-              <View
-                style={{
-                  backgroundColor: p.blue,
-                  borderRadius: 12,
-                  minWidth: 24,
-                  padding: 5,
-                }}
-              >
-                <Text style={{ textAlign: "center", fontWeight: "700" }}>
-                  {b.unread}
-                </Text>
-              </View>
-            )}
-          </Pressable>
+        renderItem={({ item: b, index }) => (
+          <FadeIn delay={60 + index * 45}>
+            <BotRow bot={b} onPress={() => void go(b.id, openChat)} onCall={() => void go(b.id, openCall)} />
+          </FadeIn>
         )}
         ListEmptyComponent={
-          <Text style={s.muted}>
-            {search
-              ? "No teammates match your search."
-              : "Add a teammate to grow your team."}
-          </Text>
+          <FadeIn delay={120}>
+            <EmptyState
+              icon="people-outline"
+              title="Build your team"
+              detail="Hire ready-made bots for email, accounting, HR and more, each with its own skills, computer and voice."
+              action={
+                <View style={{ gap: space.sm, alignItems: "center" }}>
+                  <Button title="Browse the Marketplace" icon="storefront" compact onPress={openMarketplace} />
+                  <Button title="Create your own" variant="ghost" compact onPress={openCreate} />
+                </View>
+              }
+            />
+          </FadeIn>
         }
       />
     </View>
+  );
+}
+
+function PrimaryCard({
+  bot,
+  onChat,
+  onCall,
+  onComputer,
+}: {
+  bot: Bot;
+  onChat: () => void;
+  onCall: () => void;
+  onComputer: () => void;
+}) {
+  const live = useWorkspace((x) => x.live[bot.id]);
+  const computerOn = useBilling((x) => hasComputer(x.summary));
+  const status = botStatus(bot, live);
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${bot.name}`}
+      onPress={onChat}
+      scaleTo={0.985}
+      style={{
+        backgroundColor: p.surface,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: p.line,
+        padding: space.lg,
+        gap: space.lg,
+      }}
+    >
+      <View style={s.row}>
+        <Avatar shape={bot.avatarShape} size={58} primary status={status} color={bot.avatarColor} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
+            {bot.name}
+          </Text>
+          <Text style={[type.subhead, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted }]} numberOfLines={1}>
+            {statusLine(bot, live)}
+          </Text>
+        </View>
+      </View>
+      {!!bot.lastPreview && (
+        <Text style={[type.callout, { color: p.muted }]} numberOfLines={2}>
+          {bot.lastPreview}
+        </Text>
+      )}
+      <View style={[s.row, { gap: space.sm }]}>
+        <Button title="Message" icon="chatbubble-ellipses" compact onPress={onChat} style={{ flex: 1 }} />
+        <IconButton name="call" label={`Call ${bot.name}`} variant="filled" onPress={onCall} />
+        <View>
+          <IconButton name="desktop-outline" label={`${bot.name}'s computer`} variant="filled" onPress={onComputer} />
+          {!computerOn && <LockBadge />}
+        </View>
+      </View>
+    </PressableScale>
+  );
+}
+
+function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCall: () => void }) {
+  const live = useWorkspace((x) => x.live[bot.id]);
+  const status = botStatus(bot, live);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${bot.name}`}
+      onPress={() => {
+        void Haptics.selectionAsync();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        s.row,
+        { paddingHorizontal: space.sm, paddingVertical: space.md, borderRadius: radius.lg, marginHorizontal: -space.sm },
+        pressed && { backgroundColor: p.surface },
+      ]}
+    >
+      <Avatar shape={bot.avatarShape} size={50} status={status} color={bot.avatarColor} />
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={s.rowBetween}>
+          <Text style={[type.headline, { color: p.text, flex: 1 }]} numberOfLines={1}>
+            {bot.name}
+          </Text>
+          <Text style={[type.caption, { color: bot.unread ? p.text : p.faint }]}>{relativeTime(bot.lastActivityAt)}</Text>
+        </View>
+        <View style={[s.row, { gap: space.sm }]}>
+          <Text
+            style={[type.subhead, { color: status === "working" ? p.green : p.muted, flex: 1 }]}
+            numberOfLines={1}
+          >
+            {live?.isRunning || live?.awaiting ? statusLine(bot, live) : bot.lastPreview || bot.label || "Start a conversation"}
+          </Text>
+          {bot.unread > 0 && (
+            <View style={{ backgroundColor: p.text, borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: p.onPrimary, fontSize: 12, fontWeight: "700" }}>{bot.unread}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+      <IconButton name="call-outline" label={`Call ${bot.name}`} color={p.muted} size={40} onPress={onCall} />
+    </Pressable>
   );
 }

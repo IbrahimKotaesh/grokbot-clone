@@ -1,30 +1,31 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, Button, ErrorText, styles as s } from "../components/UI";
-import { client, googleLogin, qaLogin, unlock } from "../lib/session";
-import { palette as p } from "../theme";
-export function LoginScreen({ onLogin,initialError=null }: { onLogin: () => Promise<void>;initialError?:string|null }) {
+import { Avatar, Button, ErrorText, TextField, KeyboardScreen } from "../components/UI";
+import { FadeIn, useLoop } from "../components/motion";
+import { client, googleLogin, qaEnabled, qaLogin, unlock } from "../lib/session";
+import { palette as p, type, space, fruits } from "../theme";
+export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => Promise<void>; initialError?: string | null }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(initialError),
     [code, setCode] = useState(""),
     [locked, setLocked] = useState(false);
   const insets = useSafeAreaInsets();
+  const float = useLoop(3600);
+  // Dev builds on a local server skip Google and sign straight in.
+  useEffect(() => {
+    if (!qaEnabled() || initialError) return;
+    setBusy(true);
+    void qaLogin()
+      .then(onLogin)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  }, []);
   async function start() {
     setBusy(true);
     setError(null);
     try {
-      const status = await client.request<{
-        required: boolean;
-        unlocked: boolean;
-      }>("GET", "/access/status");
+      const status = await client.request<{ required: boolean; unlocked: boolean }>("GET", "/access/status");
       if (status.required && !status.unlocked) {
         if (!code) {
           setLocked(true);
@@ -40,54 +41,43 @@ export function LoginScreen({ onLogin,initialError=null }: { onLogin: () => Prom
     }
   }
   return (
-    <KeyboardAvoidingView
-      style={s.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "center",
-          padding: 32,
-          paddingTop: insets.top + 32,
-          paddingBottom: insets.bottom + 32,
-          gap: 24,
-        }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={{ alignItems: "center", gap: 20 }}>
-          <Avatar shape="watermelon" size={140} />
-          <Text style={[s.title, { fontSize: 38 }]}>Fino</Text>
-          <Text style={[s.muted, { textAlign: "center", fontSize: 17 }]}>
-            Your team, wherever you are.
-          </Text>
+    <KeyboardScreen>
+      <View style={{ flex: 1, paddingHorizontal: space.xxl, paddingBottom: insets.bottom + space.lg }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space.xl }}>
+          <FadeIn>
+            <View style={{ flexDirection: "row" }}>
+              {fruits.map((f, i) => (
+                <Animated.View
+                  key={f}
+                  style={{
+                    marginLeft: i ? -14 : 0,
+                    zIndex: i === 1 || i === 2 ? 2 : 1,
+                    transform: [
+                      { translateY: float.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0, -8] : [-8, 0] }) },
+                      { scale: i === 1 || i === 2 ? 1.12 : 0.92 },
+                    ],
+                  }}
+                >
+                  <Avatar shape={f} size={78} />
+                </Animated.View>
+              ))}
+            </View>
+          </FadeIn>
+          <FadeIn delay={120} style={{ alignItems: "center", gap: space.sm }}>
+            <Text style={[type.largeTitle, { color: p.text, fontSize: 40, lineHeight: 46 }]}>Fino</Text>
+            <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 280 }]}>
+              A team of AI bots that browse, use their own computers, and get real work done.
+            </Text>
+          </FadeIn>
         </View>
-        {locked && (
-          <TextInput
-            accessibilityLabel="Access code"
-            placeholder="Your access code"
-            placeholderTextColor={p.muted}
-            secureTextEntry
-            keyboardType="number-pad"
-            maxLength={12}
-            value={code}
-            onChangeText={setCode}
-            style={s.input}
-          />
-        )}
-        <ErrorText error={error} />
-        <Button
-          title="Continue with Google"
-          busy={busy}
-          onPress={() => void start()}
-        />
-        {process.env.EXPO_PUBLIC_MOBILE_QA === "1" &&
-          ["127.0.0.1", "localhost", "10.0.2.2"].includes(
-            new URL(client.base).hostname,
-          ) && (
+        <FadeIn delay={240} style={{ gap: space.md }}>
+          {locked && <TextField placeholder="Access code" secureTextEntry keyboardType="number-pad" maxLength={12} value={code} onChangeText={setCode} autoFocus />}
+          <ErrorText error={error} />
+          <Button title={locked ? "Unlock and continue" : "Continue with Google"} icon={locked ? "lock-open" : "logo-google"} busy={busy} onPress={() => void start()} />
+          {qaEnabled() && (
             <Button
-              title="Open isolated QA workspace"
-              secondary
+              title="Open local workspace"
+              variant="secondary"
               onPress={() => {
                 setBusy(true);
                 void qaLogin()
@@ -97,10 +87,9 @@ export function LoginScreen({ onLogin,initialError=null }: { onLogin: () => Prom
               }}
             />
           )}
-        <Text style={[s.muted, { textAlign: "center" }]}>
-          Your existing bots and conversations will be here.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Your bots and conversations stay in your private workspace.</Text>
+        </FadeIn>
+      </View>
+    </KeyboardScreen>
   );
 }

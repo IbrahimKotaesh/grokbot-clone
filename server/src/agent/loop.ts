@@ -1,3 +1,6 @@
+import { availableProviders, isQuotaError, markExhausted, pickProvider, PROVIDER_NAMES } from './fallback.js';
+import { claudeCodeTurn } from './claude-code-turn.js';
+import { loopClient, LOOP_PROVIDERS, type LoopProvider } from './model-clients.js';
 import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,runDesktopTool,type DesktopTarget} from '../desktop-device.js';
 import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
@@ -19,14 +22,16 @@ import { repairHistory } from './history.js';
 import { maybeCompact, noteUsage } from './memory.js';
 import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
 
-const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 360_000 });
 
 export type Trigger = (
   | { type: 'user'; desktopTarget?:DesktopTarget|null; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'routine'; routineId: string; name: string; prompt: string }
   | { type: 'bot'; fromBotId: string; fromName: string; fromGeneration?:number; text: string; depth: number }
   | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
-  | { type: 'resume' }) & {generation?:number};
+  | { type: 'resume' }) & {generation?:number; providerOverride?: string; tried?: string[]};
+
+/** The model provider the current turn of each bot actually runs on (after any fallback). */
+const turnProvider = new Map<string, string>();
 
 interface PendingState {
   /** function_call items still to process, in order. */
@@ -120,7 +125,13 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   const bot = getBotRow(botId);
   if (!bot) return;
   const userId: string = bot.user_id;
-  const provider = bot.agent_provider ?? env.agentProvider;
+  const preferred: string = bot.agent_provider ?? env.agentProvider;
+  // A model that ran out of usage is skipped for a while in favour of the user's next connected model.
+  const tried = trigger.tried ?? [];
+  const provider: string = trigger.providerOverride ?? (preferred === 'claude-code' ? preferred : (pickProvider(userId, preferred) ?? preferred));
+  if (provider !== preferred && !trigger.providerOverride)
+    appendRow(botId, 'notice', { type: 'notice', tone: 'info', text: `${PROVIDER_NAMES[preferred] ?? preferred} is out of usage for now, so this reply uses ${PROVIDER_NAMES[provider] ?? provider}.` });
+  turnProvider.set(botId, provider);
   const ctrl = new AbortController();
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
@@ -131,6 +142,13 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
 
   try {
     const attachedContext=fileContext(userId,botId,'fileIds' in trigger?trigger.fileIds:[]);
+    // Claude Code bots: the user's words go straight to Claude Code, nothing added.
+    if (provider === 'claude-code') {
+      if (trigger.type !== 'user') return;
+      await claudeCodeTurn(botId, trigger.text, ctrl.signal);
+      completed = true;
+      return;
+    }
     if (provider === 'codex' || provider === 'claude') {
       const old = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
       if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
@@ -173,7 +191,9 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (item) {
         const images=imageInputs(userId,'imageIds' in trigger ? trigger.imageIds : []);
         if(images.length) item.content=[{type:'input_text',text:item.content},...images.map(image_url=>({type:'input_image',image_url}))];
-        appendHistory(botId, [item]);
+        // A fallback retry after another built-in model already recorded this message must not add it twice.
+        const last = tried.length ? loadHistory(botId).at(-1) : null;
+        if (!(last && last.role === 'user' && JSON.stringify(last.content) === JSON.stringify(item.content))) appendHistory(botId, [item]);
       }
     }
 
@@ -207,8 +227,25 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     }
     completed=true;
   } catch (e: any) {
+    let handled = false;
+    if (!ctrl.signal.aborted && trigger.type === 'user' && provider !== 'claude-code' && isQuotaError(e)) {
+      markExhausted(userId, provider);
+      const next = pickProvider(userId, provider, [...tried, provider]);
+      if (next) {
+        appendRow(botId, 'notice', { type: 'notice', tone: 'warn', text: `${PROVIDER_NAMES[provider] ?? provider} stopped responding (usage limit). Switching to ${PROVIDER_NAMES[next] ?? next}.` });
+        enqueue(botId, { ...trigger, providerOverride: next, tried: [...tried, provider] });
+      } else
+        appendRow(botId, 'notice', {
+          type: 'notice',
+          tone: 'error',
+          text: tried.length
+            ? 'All your connected models are out of usage right now. Add another model in Account → AI models, or try again later.'
+            : `${PROVIDER_NAMES[provider] ?? provider} is out of usage right now. Connect another model in Account → AI models so your bots can switch automatically.`,
+        });
+      handled = true;
+    }
     const msg = ctrl.signal.aborted ? 'Stopped.' : `Something went wrong: ${e?.message ?? e}`;
-    appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
+    if (!handled) appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {
     if (provider === 'codex' || provider === 'claude') {
@@ -325,27 +362,30 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   // The model is only called when no approval is pending, so every orphaned call can be repaired.
   const input = [{ role: 'system', content: await systemPrompt(userId, botId) }, ...pruneImages(repairHistory(history))];
 
+  const active = turnProvider.get(botId) ?? bot.agent_provider;
+  const provider = (LOOP_PROVIDERS as string[]).includes(active) ? (active as LoopProvider) : 'xai';
+  const llm = loopClient(userId, provider, provider === bot.agent_provider ? bot.model : null);
   const body: any = {
-    model: env.xaiModel,
+    model: llm.model,
     input,
-    tools,
+    tools: llm.xaiExtras ? tools : tools.filter((t: any) => t.type === 'function'),
     reasoning: { effort: bot.effort ?? 'medium' },
     store: false,
-    include: ['reasoning.encrypted_content'],
-    prompt_cache_key: `grokbot:${botId}:${bot.generation}`,
-    safety_identifier: sha256(userId).slice(0, 32),
     stream: true,
+    ...(llm.xaiExtras
+      ? { include: ['reasoning.encrypted_content'], prompt_cache_key: `grokbot:${botId}:${bot.generation}`, safety_identifier: sha256(userId).slice(0, 32) }
+      : {}),
   };
 
   let stream: any;
   try {
-    stream = await xai.responses.create(body, { signal });
+    stream = await llm.client.responses.create(body, { signal });
   } catch (e: any) {
     // If a Composio tool schema is rejected, retry with only our own tools.
     if (e?.status === 400 && tools.length > functionSchemas().length + 2) {
       console.warn('[agent] 400 with composio tools, retrying without:', e?.message);
-      body.tools = [...functionSchemas(), { type: 'web_search' }, { type: 'x_search' }];
-      stream = await xai.responses.create(body, { signal });
+      body.tools = llm.xaiExtras ? [...functionSchemas(), { type: 'web_search' }, { type: 'x_search' }] : functionSchemas();
+      stream = await llm.client.responses.create(body, { signal });
     } else throw e;
   }
 
@@ -427,7 +467,7 @@ function resolveScopedApproval(userId: string, approvalId: string, decision: 'al
     db.prepare('UPDATE approvals SET status=?, resolved_at=? WHERE id=? AND status=\'pending\'').run(status,now(),record.id);
     const card=inChat(record.bot_id,record.generation??getBotRow(record.bot_id).generation,()=>getRow(record.bot_id,record.row_seq));
     if(card?.body.type==='card'&&card.body.card==='approval'){const body=card.body;inChat(record.bot_id,record.generation??getBotRow(record.bot_id).generation,()=>updateRow(record.bot_id,record.row_seq,{...body,status}));}
-    if(!['codex','claude'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume',generation:record.generation??getBotRow(record.bot_id).generation});
+    if(!['codex','claude','claude-code'].includes(getBotRow(record.bot_id)?.agent_provider??env.agentProvider))enqueue(record.bot_id,{type:'resume',generation:record.generation??getBotRow(record.bot_id).generation});
   };
   const ownCard=getRow(ap.bot_id,ap.row_seq);
   if(decision==='always'&&ownCard?.body.type==='card'&&ownCard.body.card==='approval'&&ownCard.body.requiresFreshApproval)decision='allow';
