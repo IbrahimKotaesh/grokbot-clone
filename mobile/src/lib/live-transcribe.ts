@@ -63,12 +63,13 @@ export async function startLive(on: { text(t: string): void; level(v: number): v
   const sub = emitter.addListener("AudioData", (e: { encoded?: string; deltaSize?: number }) => {
     if (!e.encoded || !e.deltaSize) return;
     const bytes = base64ToBytes(e.encoded);
-    on.level(level(bytes));
+    // One loudness value per 50 ms of audio (800 samples), however the phone batches its buffers.
+    for (let o = 0; o + 1600 <= bytes.byteLength; o += 1600) on.level(level(bytes.subarray(o, o + 1600)));
     const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     if (open && ws) ws.send(buf);
     else if (!failed) queue.push(buf);
   });
-  await native.startRecording({ sampleRate: SAMPLE_RATE, channels: 1, encoding: "pcm_16bit", interval: 100, enableProcessing: false, keepAwake: false });
+  await native.startRecording({ sampleRate: SAMPLE_RATE, channels: 1, encoding: "pcm_16bit", interval: 50, enableProcessing: false, keepAwake: false });
 
   const connect = async () => {
     const { apiKey } = await client.request<{ apiKey: string }>("POST", "/voice/live-key");

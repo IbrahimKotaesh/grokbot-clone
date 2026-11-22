@@ -37,6 +37,13 @@ export interface ComposerHandle {
 }
 type Mode = "idle" | "recording" | "transcribing";
 const BARS = 48;
+const TICK = 60; // ms per new waveform bar
+interface Sample {
+  id: number;
+  v: number;
+}
+let sampleId = 0;
+const emptySamples = () => Array.from({ length: BARS }, () => ({ id: sampleId++, v: 0 }));
 
 export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: number }>(function Composer(
   { bot, generation },
@@ -48,12 +55,12 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     [mode, setMode] = useState<Mode>("idle"),
     [error, setError] = useState(""),
     [keyboard, setKeyboard] = useState(false),
-    [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
+    [levels, setLevels] = useState<Sample[]>(emptySamples);
   const input = useRef<React.ComponentRef<typeof TextInput>>(null);
   const insets = useSafeAreaInsets();
   const running = useWorkspace((x) => x.live[bot.id]?.isRunning ?? false);
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true }),
-    recording = useAudioRecorderState(recorder, 90);
+    recording = useAudioRecorderState(recorder, 60);
   const recordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What to do with the transcript once recording stops.
   const after = useRef<"send" | "insert" | "cancel">("send");
@@ -84,7 +91,29 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     setAttachments(f);
   };
   // Eases each new loudness sample into the previous one so the waveform flows instead of flickering.
-  const pushLevel = (v: number) => setLevels((old) => [...old.slice(1), old[old.length - 1] * 0.35 + v * 0.65]);
+  // Loudness arrives in uneven bursts (especially from the live stream on a real phone). It goes into a
+  // small queue, and a steady ticker draws one bar per tick, so the waveform moves at an even pace.
+  const levelQueue = useRef<number[]>([]);
+  const pushLevel = (v: number) => {
+    const q = levelQueue.current;
+    q.push(v);
+    if (q.length > 12) q.splice(0, q.length - 12);
+  };
+  useEffect(() => {
+    if (mode !== "recording") return;
+    levelQueue.current = [];
+    const t = setInterval(() => {
+      const q = levelQueue.current;
+      if (q.length > 4) q.splice(0, q.length - 4); // fell behind: catch up instead of lagging
+      const next = q.shift();
+      setLevels((old) => {
+        const prev = old[old.length - 1].v;
+        const v = next === undefined ? prev * 0.7 : prev * 0.3 + next * 0.7;
+        return [...old.slice(1), { id: sampleId++, v }];
+      });
+    }, TICK);
+    return () => clearInterval(t);
+  }, [mode]);
   const changeMode = (m: Mode) => {
     smooth();
     setMode(m);
@@ -240,7 +269,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
         recorder.record();
       }
       Keyboard.dismiss();
-      setLevels(Array(BARS).fill(0));
+      setLevels(emptySamples());
       changeMode("recording");
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       recordTimer.current = setTimeout(() => void stopRecording("insert"), 60000);
@@ -513,26 +542,38 @@ function RecDot() {
  * moments rest on a soft baseline, and heights ease between samples so it moves like speech.
  */
 const WAVE_H = 30;
-function Waveform({ levels }: { levels: number[] }) {
+const BAR_W = 3;
+const STEP = 6; // bar width + gap
+function Waveform({ levels }: { levels: Sample[] }) {
   const n = levels.length;
+  // Each new sample adds a bar on the right. Instead of jumping left a whole bar, the row starts one
+  // step to the right and glides back over the time until the next sample, so it scrolls continuously.
+  const shift = useRef(new Animated.Value(0)).current;
+  const newest = levels[n - 1]?.id;
+  React.useLayoutEffect(() => {
+    shift.setValue(STEP);
+    Animated.timing(shift, { toValue: 0, duration: TICK, easing: Easing.linear, useNativeDriver: true }).start();
+  }, [newest]);
   return (
-    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, height: WAVE_H + 6, overflow: "hidden", paddingHorizontal: 4 }}>
-      {levels.map((l, i) => (
-        <Bar key={i} level={l} fade={0.28 + 0.72 * (i / Math.max(1, n - 1)) ** 1.4} />
-      ))}
+    <View style={{ flex: 1, height: WAVE_H + 6, overflow: "hidden", justifyContent: "center" }}>
+      <Animated.View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: STEP - BAR_W, paddingRight: 4, transform: [{ translateX: shift }] }}>
+        {levels.map((l, i) => (
+          <Bar key={l.id} level={l.v} fade={0.28 + 0.72 * (i / Math.max(1, n - 1)) ** 1.4} />
+        ))}
+      </Animated.View>
     </View>
   );
 }
-const BAR_W = 3;
 function Bar({ level, fade }: { level: number; fade: number }) {
   // Background noise stays on the baseline; speech rises clearly above it.
   const x = Math.min(1, Math.max(0, (level - 0.14) / 0.86));
   const target = 4 + (WAVE_H - 4) * x ** 0.75; // bar height in points
   // All movement runs on the native thread (useNativeDriver), so the bars stay smooth while JS streams
   // audio. A stretched middle plus two round caps that slide with it keeps the ends round at any height.
-  const h = useRef(new Animated.Value(target)).current;
+  // Each bar keeps its own height (it belongs to one moment of sound); it just grows in once.
+  const h = useRef(new Animated.Value(4)).current;
   useEffect(() => {
-    Animated.timing(h, { toValue: target, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(h, { toValue: target, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   }, [target]);
   const body = WAVE_H - BAR_W;
   const scaleY = h.interpolate({ inputRange: [BAR_W, WAVE_H], outputRange: [0, 1], extrapolate: "clamp" });
