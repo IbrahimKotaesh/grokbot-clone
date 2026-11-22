@@ -11,6 +11,7 @@ import Svg, {
 import { parseChart } from "../../../packages/client/src/chart";
 import { palette as p } from "../theme";
 import { styles as s } from "./UI";
+import { t } from "../lib/i18n";
 const colors = [
   "#64a7ff",
   "#ff6c9f",
@@ -23,7 +24,7 @@ export function Chart({ raw }: { raw: string }) {
   const c = useMemo(() => parseChart(raw), [raw]),
     [selected, setSelected] = useState(""),
     [data, setData] = useState(false);
-  if (!c) return <Text style={s.muted}>The chart data is incomplete.</Text>;
+  if (!c) return <Text style={s.muted}>{t("The chart data is incomplete.")}</Text>;
   const values = c.series.flatMap((s) => s.values),
     low = Math.min(0, ...values),
     high = Math.max(0, ...values),
@@ -171,11 +172,11 @@ export function Chart({ raw }: { raw: string }) {
         )}
       </View>
       <Text accessibilityLiveRegion="polite" style={s.muted}>
-        {selected || "Tap a point to see its value"}
+        {selected || t("Tap a point to see its value")}
       </Text>
       <Pressable accessibilityRole="button" onPress={() => setData(!data)}>
         <Text style={{ color: p.blue }}>
-          {data ? "Hide data" : "View data"}
+          {data ? t("Hide data") : t("View data")}
         </Text>
       </Pressable>
       {data && (

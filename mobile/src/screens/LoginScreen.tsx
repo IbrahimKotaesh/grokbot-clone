@@ -6,6 +6,7 @@ import { Avatar, Button, ErrorText, TextField, KeyboardScreen } from "../compone
 import { FadeIn, useLoop } from "../components/motion";
 import { appleLogin, client, googleLogin, qaEnabled, qaLogin, unlock } from "../lib/session";
 import { palette as p, type, space, fruits } from "../theme";
+import { t } from "../lib/i18n";
 export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => Promise<void>; initialError?: string | null }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(initialError),
@@ -67,12 +68,12 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
           <FadeIn delay={120} style={{ alignItems: "center", gap: space.sm }}>
             <Text style={[type.largeTitle, { color: p.text, fontSize: 40, lineHeight: 46 }]}>Fino</Text>
             <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 280 }]}>
-              A team of AI bots that browse, use their own computers, and get real work done.
+              {t("A team of AI bots that browse, use their own computers, and get real work done.")}
             </Text>
           </FadeIn>
         </View>
         <FadeIn delay={240} style={{ gap: space.md }}>
-          {locked && <TextField placeholder="Access code" secureTextEntry keyboardType="number-pad" maxLength={12} value={code} onChangeText={setCode} autoFocus />}
+          {locked && <TextField placeholder={t("Access code")} secureTextEntry keyboardType="number-pad" maxLength={12} value={code} onChangeText={setCode} autoFocus />}
           <ErrorText error={error} />
           {Platform.OS === "ios" && !locked && (
             <AppleAuthentication.AppleAuthenticationButton
@@ -92,7 +93,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
             />
           )}
           <Button
-            title={locked ? "Unlock and continue" : "Continue with Google"}
+            title={locked ? t("Unlock and continue") : t("Continue with Google")}
             icon={locked ? "lock-open" : "logo-google"}
             variant={Platform.OS === "ios" && !locked ? "secondary" : "primary"}
             busy={busy}
@@ -100,7 +101,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
           />
           {qaEnabled() && (
             <Button
-              title="Open local workspace"
+              title={t("Open local workspace")}
               variant="secondary"
               onPress={() => {
                 setBusy(true);
@@ -111,7 +112,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
               }}
             />
           )}
-          <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Your bots and conversations stay in your private workspace.</Text>
+          <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>{t("Your bots and conversations stay in your private workspace.")}</Text>
         </FadeIn>
       </View>
     </KeyboardScreen>

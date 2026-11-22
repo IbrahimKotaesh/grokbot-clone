@@ -26,12 +26,13 @@ import { FadeIn, TypingDots, useLoop } from "../components/motion";
 import { palette as p, type, space } from "../theme";
 import { botStatus, statusLine, usesComputer } from "../lib/format";
 import { catalog } from "../lib/catalog";
+import { t } from "../lib/i18n";
 const empty: Row[] = [];
 const suggestions = [
-  { icon: "sunny-outline", label: "Plan my day" },
-  { icon: "search-outline", label: "Research a topic for me" },
-  { icon: "mail-outline", label: "Draft an email" },
-  { icon: "desktop-outline", label: "Open a website on your computer" },
+  { icon: "sunny-outline", label: t("Plan my day") },
+  { icon: "search-outline", label: t("Research a topic for me") },
+  { icon: "mail-outline", label: t("Draft an email") },
+  { icon: "desktop-outline", label: t("Open a website on your computer") },
 ] as const;
 
 export function ChatScreen({
@@ -75,8 +76,8 @@ export function ChatScreen({
   if (!bot)
     return (
       <View style={[s.screen, s.section, { justifyContent: "center", alignItems: "center" }]}>
-        <Text style={[type.title, { color: p.text }]}>Choose a bot</Text>
-        <Button title="Open your team" variant="secondary" compact onPress={openTeam} />
+        <Text style={[type.title, { color: p.text }]}>{t("Choose a bot")}</Text>
+        <Button title={t("Open your team")} variant="secondary" compact onPress={openTeam} />
       </View>
     );
   const status = botStatus(bot, live);
@@ -85,25 +86,25 @@ export function ChatScreen({
   const starters = template ? template.skills.map((sk) => ({ icon: "flash-outline" as const, label: sk.name })) : suggestions;
   const more = () => {
     const actions = [
-      { label: "New conversation", run: () => void newChat(bot.id).catch((e) => setError(e.message)) },
-      { label: "All conversations", run: openChats },
-      { label: "Computer", run: openComputer },
-      { label: `${bot.name} settings`, run: openSettings },
+      { label: t("New conversation"), run: () => void newChat(bot.id).catch((e) => setError(e.message)) },
+      { label: t("All conversations"), run: openChats },
+      { label: t("Computer"), run: openComputer },
+      { label: t("{name} settings", { name: bot.name }), run: openSettings },
     ];
     if (Platform.OS === "ios")
       ActionSheetIOS.showActionSheetWithOptions(
         { options: [...actions.map((a) => a.label), "Cancel"], cancelButtonIndex: actions.length, userInterfaceStyle: "dark" },
         (i) => actions[i]?.run(),
       );
-    else Alert.alert(bot.name, "", [...actions.map((a) => ({ text: a.label, onPress: a.run })), { text: "Cancel", style: "cancel" as const }]);
+    else Alert.alert(bot.name, "", [...actions.map((a) => ({ text: a.label, onPress: a.run })), { text: t("Cancel"), style: "cancel" as const }]);
   };
   return (
     <KeyboardScreen>
       <View style={[s.header, { gap: space.xs, borderBottomWidth: 0.5, borderBottomColor: p.line }]}>
-        <IconButton name="chevron-back" label="Back to bots" onPress={openTeam} />
+        <IconButton name="chevron-back" label={t("Back to bots")} onPress={openTeam} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${bot.name} conversations`}
+          accessibilityLabel={t("{name} conversations", { name: bot.name })}
           onPress={openChats}
           style={({ pressed }) => [s.row, { flex: 1, gap: 10, opacity: pressed ? 0.7 : 1 }]}
         >
@@ -121,7 +122,7 @@ export function ChatScreen({
           </View>
         </Pressable>
         <View>
-          <IconButton name="desktop-outline" label={`${bot.name}'s computer`} onPress={openComputer} />
+          <IconButton name="desktop-outline" label={t("{name}'s computer", { name: bot.name })} onPress={openComputer} />
           {!computerOn && <LockBadge />}
           {usesComputer(live) && (
             <Animated.View
@@ -139,8 +140,8 @@ export function ChatScreen({
             />
           )}
         </View>
-        {voiceCallsAvailable && <IconButton name="call-outline" label={`Call ${bot.name}`} onPress={openCall} />}
-        <IconButton name="ellipsis-horizontal" label="More" onPress={more} />
+        {voiceCallsAvailable && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} onPress={openCall} />}
+        <IconButton name="ellipsis-horizontal" label={t("More")} onPress={more} />
       </View>
       {!!error && (
         <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm }}>
@@ -178,7 +179,7 @@ export function ChatScreen({
           !exhausted[rowKey(bot.id, generation)] && rows.length >= 200 ? (
             <View style={{ padding: space.md, alignItems: "center" }}>
               <Button
-                title="Load earlier messages"
+                title={t("Load earlier messages")}
                 variant="secondary"
                 compact
                 busy={loadingOlder}
@@ -202,9 +203,9 @@ export function ChatScreen({
           <View style={{ flex: 1, justifyContent: "center", padding: space.xxl, transform: [{ scaleY: -1 }] }}>
             <FadeIn style={{ alignItems: "center", gap: space.md }}>
               <Avatar shape={bot.avatarShape} size={84} color={bot.avatarColor} />
-              <Text style={[type.largeTitle, { color: p.text, textAlign: "center", marginTop: space.sm }]}>How can I help?</Text>
+              <Text style={[type.largeTitle, { color: p.text, textAlign: "center", marginTop: space.sm }]}>{t("How can I help?")}</Text>
               <Text style={[type.callout, { color: p.muted, textAlign: "center", maxWidth: 300 }]}>
-                {bot.description || `${bot.name} can browse, use its own computer, connect your apps and get things done.`}
+                {bot.description || t("{name} can browse, use its own computer, connect your apps and get things done.", { name: bot.name })}
               </Text>
             </FadeIn>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginTop: space.xxl }}>
@@ -240,7 +241,7 @@ export function ChatScreen({
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Jump to latest"
+          accessibilityLabel={t("Jump to latest")}
           onPress={() => {
             stick.current = true;
             setShowLatest(false);

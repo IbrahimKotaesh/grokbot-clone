@@ -3,6 +3,7 @@ import { Animated, Text, View } from "react-native";
 import { Avatar } from "./UI";
 import { useLoop } from "./motion";
 import { palette as p, type } from "../theme";
+import { t } from "../lib/i18n";
 export function StartupScreen() {
   const v = useLoop(1600);
   return (
@@ -15,7 +16,7 @@ export function StartupScreen() {
       >
         <Avatar shape="watermelon" size={72} />
       </Animated.View>
-      <Text style={[type.footnote, { color: p.faint }]}>Opening your workspace…</Text>
+      <Text style={[type.footnote, { color: p.faint }]}>{t("Opening your workspace…")}</Text>
     </View>
   );
 }

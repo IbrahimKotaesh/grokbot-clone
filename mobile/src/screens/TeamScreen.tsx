@@ -9,6 +9,8 @@ import { useBilling, hasComputer } from "../lib/billing";
 import { FadeIn, PressableScale } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
 import { botStatus, plainPreview, relativeTime, statusLine } from "../lib/format";
+import { TAB_BAR_SPACE } from "../components/FloatingTabBar";
+import { t, n } from "../lib/i18n";
 
 export function TeamScreen({
   openChat,
@@ -44,16 +46,15 @@ export function TeamScreen({
   return (
     <View style={s.screen}>
       <Header
-        title="Bots"
+        title={t("Bots")}
         subtitle={
           bots.length
-            ? `${bots.length} ${bots.length === 1 ? "bot" : "bots"}${working ? ` · ${working} working` : ""}`
+            ? `${n(bots.length, "{n} bot", "{n} bots")}${working ? ` · ${t("{n} working", { n: working })}` : ""}`
             : undefined
         }
         right={
           <>
-            <IconButton name="storefront-outline" label="Marketplace" variant="filled" onPress={openMarketplace} />
-            <IconButton name="add" label="Create your own bot" variant="filled" onPress={openCreate} />
+            <IconButton name="add" label={t("Create your own bot")} variant="filled" onPress={openCreate} />
           </>
         }
       />
@@ -61,7 +62,7 @@ export function TeamScreen({
         data={team}
         keyExtractor={(b) => b.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl + TAB_BAR_SPACE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -87,7 +88,7 @@ export function TeamScreen({
                 />
               </FadeIn>
             )}
-            {team.length > 0 && <SectionLabel>Team</SectionLabel>}
+            {team.length > 0 && <SectionLabel>{t("Team")}</SectionLabel>}
           </View>
         }
         renderItem={({ item: b, index }) => (
@@ -99,12 +100,12 @@ export function TeamScreen({
           <FadeIn delay={120}>
             <EmptyState
               icon="people-outline"
-              title="Build your team"
-              detail="Hire ready-made bots for email, accounting, HR and more, each with its own skills and computer."
+              title={t("Build your team")}
+              detail={t("Hire ready-made bots for email, accounting, HR and more, each with its own skills and computer.")}
               action={
                 <View style={{ gap: space.sm, alignItems: "center" }}>
-                  <Button title="Browse the Marketplace" icon="storefront" compact onPress={openMarketplace} />
-                  <Button title="Create your own" variant="ghost" compact onPress={openCreate} />
+                  <Button title={t("Browse the Marketplace")} icon="storefront" compact onPress={openMarketplace} />
+                  <Button title={t("Create your own")} variant="ghost" compact onPress={openCreate} />
                 </View>
               }
             />
@@ -132,7 +133,7 @@ function PrimaryCard({
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`Open ${bot.name}`}
+      accessibilityLabel={t("Open {name}", { name: bot.name })}
       onPress={onChat}
       scaleTo={0.985}
       style={{
@@ -149,6 +150,7 @@ function PrimaryCard({
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
             {bot.name}
+            {!!bot.label && statusLine(bot, live) !== t(bot.label) && <Text style={[type.subhead, { color: p.faint, fontWeight: "500" }]}>{`  ·  ${t(bot.label)}`}</Text>}
           </Text>
           <Text style={[type.subhead, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted }]} numberOfLines={1}>
             {statusLine(bot, live)}
@@ -161,10 +163,10 @@ function PrimaryCard({
         </Text>
       )}
       <View style={[s.row, { gap: space.sm }]}>
-        <Button title="Message" icon="chatbubble-ellipses" compact onPress={onChat} style={{ flex: 1 }} />
-        {voiceCallsAvailable && <IconButton name="call" label={`Call ${bot.name}`} variant="filled" onPress={onCall} />}
+        <Button title={t("Message")} icon="chatbubble-ellipses" compact onPress={onChat} style={{ flex: 1 }} />
+        {voiceCallsAvailable && <IconButton name="call" label={t("Call {name}", { name: bot.name })} variant="filled" onPress={onCall} />}
         <View>
-          <IconButton name="desktop-outline" label={`${bot.name}'s computer`} variant="filled" onPress={onComputer} />
+          <IconButton name="desktop-outline" label={t("{name}'s computer", { name: bot.name })} variant="filled" onPress={onComputer} />
           {!computerOn && <LockBadge />}
         </View>
       </View>
@@ -178,7 +180,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${bot.name}`}
+      accessibilityLabel={t("Open {name}", { name: bot.name })}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress();
@@ -194,6 +196,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
         <View style={s.rowBetween}>
           <Text style={[type.headline, { color: p.text, flex: 1 }]} numberOfLines={1}>
             {bot.name}
+            {!!bot.label && <Text style={[type.subhead, { color: p.faint, fontWeight: "400" }]}>{`  ·  ${t(bot.label)}`}</Text>}
           </Text>
           <Text style={[type.caption, { color: bot.unread ? p.text : p.faint }]}>{relativeTime(bot.lastActivityAt)}</Text>
         </View>
@@ -202,7 +205,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
             style={[type.subhead, { color: status === "working" ? p.green : p.muted, flex: 1 }]}
             numberOfLines={1}
           >
-            {live?.isRunning || live?.awaiting ? statusLine(bot, live) : plainPreview(bot.lastPreview) || bot.label || "Start a conversation"}
+            {live?.isRunning || live?.awaiting ? statusLine(bot, live) : plainPreview(bot.lastPreview) || t("Start a conversation")}
           </Text>
           {bot.unread > 0 && (
             <View style={{ backgroundColor: p.text, borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" }}>
@@ -211,7 +214,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
           )}
         </View>
       </View>
-      {voiceCallsAvailable && <IconButton name="call-outline" label={`Call ${bot.name}`} color={p.muted} size={40} onPress={onCall} />}
+      {voiceCallsAvailable && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} color={p.muted} size={40} onPress={onCall} />}
     </Pressable>
   );
 }

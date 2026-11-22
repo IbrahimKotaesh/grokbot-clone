@@ -40,13 +40,15 @@ export function useReveal(target: string, streaming: boolean) {
         current.current = latest.current;
       else {
         const rest = latest.current.slice(current.current.length);
+        // Keep a calm pace, but speed up when far behind so long replies never lag the stream.
+        const step = Math.max(2, Math.ceil(rest.length / 24));
         let chunk = "",
           count = 0;
         for (const { segment } of segmenter
           ? segmenter.segment(rest)
           : Array.from(rest).map((segment) => ({ segment }))) {
           chunk += segment;
-          if (++count === 2) break;
+          if (++count >= step) break;
         }
         current.current += chunk;
       }

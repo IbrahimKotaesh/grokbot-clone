@@ -23,7 +23,7 @@ export default function Team() {
     <TeamScreen
       openChat={() => router.navigate("/chat")}
       openCreate={() => router.push("/create-bot")}
-      openMarketplace={() => router.push("/marketplace")}
+      openMarketplace={() => router.navigate("/market")}
       openCall={() => router.push("/call")}
       openComputer={() => (hasComputer(useBilling.getState().summary) ? router.push("/computer") : openUpgrade("computer"))}
     />

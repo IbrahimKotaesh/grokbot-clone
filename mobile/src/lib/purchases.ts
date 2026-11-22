@@ -6,6 +6,7 @@
 // The app identifies each buyer by their Fino user id, so the webhook knows whose plan to change.
 import { Platform } from "react-native";
 import Purchases, { LOG_LEVEL, type PurchasesPackage } from "react-native-purchases";
+import { t } from "./i18n";
 
 const KEY = Platform.OS === "ios" ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
 let configuredFor: string | null = null;
@@ -58,13 +59,13 @@ export async function storePrices(): Promise<Record<string, string>> {
 /** Returns "done", "cancelled", or throws with a readable message. */
 export async function buyPlan(plan: string): Promise<"done" | "cancelled"> {
   const pkg = await packageFor(plan);
-  if (!pkg) throw Error("This plan isn't available in the App Store yet.");
+  if (!pkg) throw Error(t("This plan isn't available in the App Store yet."));
   try {
     await Purchases.purchasePackage(pkg);
     return "done";
   } catch (e) {
     if ((e as { userCancelled?: boolean }).userCancelled) return "cancelled";
-    throw Error((e as Error).message || "The purchase didn't go through.");
+    throw Error((e as Error).message || t("The purchase didn't go through."));
   }
 }
 

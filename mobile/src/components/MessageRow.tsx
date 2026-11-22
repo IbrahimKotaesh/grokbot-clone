@@ -13,12 +13,13 @@ import { palette as p, type, space, radius } from "../theme";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { fetch as nativeFetch } from "expo/fetch";
+import { t, mirror } from "../lib/i18n";
 const rtl = (text: string) => /[֐-ࣿ]/.test(text.trim().charAt(0));
 async function openFile(url: string, name: string) {
   const absolute = new URL(url, client.base);
-  if (absolute.origin !== client.base) throw Error("This file is hosted outside your workspace.");
+  if (absolute.origin !== client.base) throw Error(t("This file is hosted outside your workspace."));
   const response = await nativeFetch(absolute.href, { headers: authHeaders() });
-  if (!response.ok) throw Error("Unable to download this file.");
+  if (!response.ok) throw Error(t("Unable to download this file."));
   const file = new File(Paths.cache, `${Date.now()}-${name.replace(/[^\w.\-]/g, "_")}`);
   file.write(new Uint8Array(await response.arrayBuffer()));
   await Sharing.shareAsync(file.uri);
@@ -26,7 +27,7 @@ async function openFile(url: string, name: string) {
 /** Bots link files in their Library by their path on the computer; fetch and share them. */
 async function openLibraryFile(botId: string, fullPath: string) {
   const m = /^\/root\/grokbot\/files\/[^/]+\/(.+)$/.exec(decodeURI(fullPath));
-  if (!m) throw Error("This file can't be opened.");
+  if (!m) throw Error(t("This file can't be opened."));
   const { url } = await client.request<{ url: string }>("POST", `/bots/${botId}/files/download`, { path: m[1] });
   const name = m[1].split("/").pop() ?? "file";
   if (url.startsWith("data:")) {
@@ -55,7 +56,11 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
     [error, setError] = useState(""),
     [viewer, setViewer] = useState<string | null>(null);
   const body = row.body;
-  const text = useReveal(body.type === "message" ? body.text : "", body.type === "message" && !!body.streaming);
+  // Bot replies type out smoothly, also when one arrives already complete (it would otherwise pop in).
+  const text = useReveal(
+    body.type === "message" ? body.text : "",
+    body.type === "message" && (!!body.streaming || (body.role === "assistant" && Date.now() - row.createdAt < 8000)),
+  );
   const { width, height } = useWindowDimensions();
   const act = async (path: string, data: unknown) => {
     setBusy(true);
@@ -74,7 +79,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
       <View style={{ paddingHorizontal: space.lg, paddingVertical: 3 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Show step details"
+          accessibilityLabel={t("Show step details")}
           accessibilityState={{ expanded }}
           onPress={() => setExpanded(!expanded)}
           style={[s.row, { gap: 10, minHeight: 32 }]}
@@ -130,7 +135,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
     const icon =
       body.card === "approval" ? "shield-checkmark-outline" : body.card === "question" ? "help-circle-outline" : body.card === "connect" ? "link-outline" : "create-outline";
     const title =
-      body.card === "approval" ? body.title : body.card === "question" ? body.question : body.card === "connect" ? `Connect ${body.toolkitName}` : `Draft to ${body.to}`;
+      body.card === "approval" ? body.title : body.card === "question" ? body.question : body.card === "connect" ? t("Connect {name}", { name: body.toolkitName }) : t("Draft to {name}", { name: body.to });
     const done = body.status !== "pending";
     return (
       <Enter row={row}>
@@ -151,15 +156,15 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
               {body.status === "pending" ? (
                 <View style={{ gap: space.sm }}>
                   <View style={[s.row, { gap: space.sm }]}>
-                    <Button title="Deny" variant="secondary" compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "deny" })} />
-                    <Button title="Allow" compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
+                    <Button title={t("Deny")} variant="secondary" compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "deny" })} />
+                    <Button title={t("Allow")} compact busy={busy} style={{ flex: 1 }} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
                   </View>
                   {!body.requiresFreshApproval && (
-                    <Button title="Always allow this" variant="ghost" compact disabled={busy} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "always" })} />
+                    <Button title={t("Always allow this")} variant="ghost" compact disabled={busy} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "always" })} />
                   )}
                 </View>
               ) : (
-                <Status label={body.status === "denied" ? "Denied" : body.status === "expired" ? "Expired" : body.status === "always" ? "Always allowed" : "Allowed"} ok={body.status === "allowed" || body.status === "always"} />
+                <Status label={body.status === "denied" ? t("Denied") : body.status === "expired" ? t("Expired") : body.status === "always" ? t("Always allowed") : t("Allowed")} ok={body.status === "allowed" || body.status === "always"} />
               )}
             </>
           )}
@@ -178,13 +183,13 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
                     ]}
                   >
                     <Text style={[type.callout, { color: p.text, flex: 1 }]}>{option}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={p.faint} />
+                    <Ionicons name="arrow-forward" size={15} color={p.faint} style={mirror("arrow-forward")} />
                   </Pressable>
                 ))}
                 <View style={[s.row, { gap: 6, backgroundColor: p.background, borderRadius: radius.md, paddingLeft: space.md, paddingRight: 4, minHeight: 46 }]}>
                   <TextInput
-                    accessibilityLabel="Your own answer"
-                    placeholder="Or type your answer"
+                    accessibilityLabel={t("Your own answer")}
+                    placeholder={t("Or type your answer")}
                     placeholderTextColor={p.faint}
                     value={answer}
                     onChangeText={setAnswer}
@@ -193,7 +198,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
                   />
                   <IconButton
                     name="arrow-up"
-                    label="Send answer"
+                    label={t("Send answer")}
                     variant="primary"
                     size={34}
                     iconSize={18}
@@ -209,10 +214,10 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
             <>
               <Text style={[type.subhead, { color: p.muted }]}>{body.reason}</Text>
               {body.status === "connected" ? (
-                <Status label="Connected" ok />
+                <Status label={t("Connected")} ok />
               ) : (
                 <Button
-                  title={`Connect ${body.toolkitName}`}
+                  title={t("Connect {name}", { name: body.toolkitName })}
                   icon="link"
                   compact
                   busy={busy}
@@ -235,9 +240,9 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
                 </Text>
               </View>
               {body.status === "pending" ? (
-                <Button title="Send" icon="paper-plane" compact busy={busy} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
+                <Button title={t("Send")} icon="paper-plane" compact busy={busy} onPress={() => void act(`/approvals/${body.approvalId}`, { decision: "allow" })} />
               ) : (
-                <Status label="Sent" ok />
+                <Status label={t("Sent")} ok />
               )}
             </>
           )}
@@ -322,7 +327,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
             <Pressable
               key={file.id}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${file.name}`}
+              accessibilityLabel={t("Open {name}", { name: file.name })}
               onPress={() => void openFile(file.url, file.name).catch((e) => setError(e.message))}
               style={({ pressed }) => [s.row, { padding: space.md, backgroundColor: pressed ? p.elevated : user ? p.elevated : p.surface, borderRadius: radius.md, borderWidth: 1, borderColor: p.line }]}
             >
@@ -361,7 +366,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
             key={image.id}
             style={{ width: user ? "80%" : "100%", marginTop: space.sm, alignSelf: user ? "flex-end" : "stretch" }}
             accessibilityRole="button"
-            accessibilityLabel={`Enlarge ${image.name}`}
+            accessibilityLabel={t("Enlarge {name}", { name: image.name })}
             onPress={() => setViewer(new URL(image.url, client.base).href)}
           >
             <Image
@@ -378,7 +383,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
         <Modal visible={!!viewer} animationType="fade" transparent onRequestClose={() => setViewer(null)}>
           <View style={{ flex: 1, backgroundColor: "#000000f2", paddingTop: 54 }}>
             <View style={{ alignItems: "flex-end", paddingRight: space.md }}>
-              <IconButton name="close" label="Close image" variant="filled" onPress={() => setViewer(null)} />
+              <IconButton name="close" label={t("Close image")} variant="filled" onPress={() => setViewer(null)} />
             </View>
             <ScrollView maximumZoomScale={4} minimumZoomScale={1} centerContent contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
               {viewer && <Image source={{ uri: viewer, headers: authHeaders() }} style={{ width, height: height - 160 }} contentFit="contain" />}

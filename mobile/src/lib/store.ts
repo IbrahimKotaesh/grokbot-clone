@@ -9,6 +9,7 @@ import type {
 } from "../../../packages/contracts/src/types";
 import { EventDecoder, mergeRows } from "../../../packages/client/src";
 import { client } from "./session";
+import { t } from "./i18n";
 const key = (id: string, generation: number) => `${id}:${generation}`;
 let selectionRevision = 0;
 interface State {
@@ -169,9 +170,9 @@ export async function watchEvents(signal: AbortSignal) {
   while (!signal.aborted) {
     try {
       const response = await client.stream(signal);
-      if (!response.ok) throw Error("Connection interrupted.");
+      if (!response.ok) throw Error(t("Connection interrupted."));
       const reader = response.body?.getReader();
-      if (!reader) throw Error("Streaming unavailable");
+      if (!reader) throw Error(t("Streaming unavailable"));
       useWorkspace.setState({ connected: true });
       attempts = 0;
       const decoder = new TextDecoder(),

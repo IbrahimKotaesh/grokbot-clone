@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { Button, styles as s } from "../components/UI";
 import { palette as p, type } from "../theme";
+import { t } from "../lib/i18n";
 const theme = {
   ...DarkTheme,
   colors: {
@@ -85,11 +86,11 @@ export const unstable_settings = { anchor: "index" };
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return (
     <View style={{ flex: 1, justifyContent: "center", padding: 28, gap: 16, backgroundColor: p.background }}>
-      <Text style={[type.title, { color: p.text }]}>Let&apos;s reopen Fino</Text>
+      <Text style={[type.title, { color: p.text }]}>{t("Let's reopen Fino")}</Text>
       <Text style={[type.body, { color: p.muted }]}>
-        This screen could not open. Your conversations are saved on the server.
+        {t("This screen could not open. Your conversations are saved on the server.")}
       </Text>
-      <Button title="Try again" onPress={() => void retry()} />
+      <Button title={t("Try again")} onPress={() => void retry()} />
     </View>
   );
 }

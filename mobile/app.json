@@ -12,7 +12,11 @@
       "buildNumber": "5",
       "appleTeamId": "345F6K6X7N",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleLocalizations": [
+          "en",
+          "ar"
+        ]
       },
       "usesAppleSignIn": true
     },
@@ -68,8 +72,17 @@
         }
       ],
       "expo-router",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true
+        }
+      ]
     ],
-    "scheme": "fino"
+    "scheme": "fino",
+    "extra": {
+      "supportsRTL": true
+    }
   }
 }

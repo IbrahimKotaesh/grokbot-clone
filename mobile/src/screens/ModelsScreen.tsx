@@ -7,6 +7,7 @@ import { client } from "../lib/session";
 import { Button, ErrorText, Header, IconButton, ProviderMark, KeyboardScreen, SectionLabel, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
+import { t as tr } from "../lib/i18n";
 
 type Provider = "chatgpt" | "openai" | "anthropic" | "xai" | "openrouter" | "groq";
 interface Credential {
@@ -16,11 +17,11 @@ interface Credential {
 }
 type KeyId = "openai" | "anthropic" | "openrouter" | "groq" | "xai";
 const keyInfo: Record<KeyId, { name: string; mark?: string; icon?: React.ComponentProps<typeof Ionicons>["name"]; color?: string; prefix: string; where: string }> = {
-  openai: { name: "OpenAI API key", mark: "codex", prefix: "sk-…", where: "platform.openai.com → API keys" },
-  anthropic: { name: "Anthropic API key", mark: "claude", prefix: "sk-ant-…", where: "console.anthropic.com → API keys" },
-  openrouter: { name: "OpenRouter", icon: "git-network-outline", color: "#a78bfa", prefix: "sk-or-…", where: "Gemini, DeepSeek, Llama… some free · openrouter.ai/keys" },
-  groq: { name: "Groq", icon: "flash-outline", color: "#ff9f43", prefix: "gsk_…", where: "Very fast, free tier · console.groq.com/keys" },
-  xai: { name: "xAI Grok", icon: "planet-outline", color: "#f5f5f7", prefix: "xai-…", where: "Fast Grok models · console.x.ai" },
+  openai: { name: tr("OpenAI API key"), mark: "codex", prefix: "sk-…", where: "platform.openai.com → API keys" },
+  anthropic: { name: tr("Anthropic API key"), mark: "claude", prefix: "sk-ant-…", where: "console.anthropic.com → API keys" },
+  openrouter: { name: "OpenRouter", icon: "git-network-outline", color: "#a78bfa", prefix: "sk-or-…", where: tr("Gemini, DeepSeek, Llama… some free · openrouter.ai/keys") },
+  groq: { name: "Groq", icon: "flash-outline", color: "#ff9f43", prefix: "gsk_…", where: tr("Very fast, free tier · console.groq.com/keys") },
+  xai: { name: "xAI Grok", icon: "planet-outline", color: "#f5f5f7", prefix: "xai-…", where: tr("Fast Grok models · console.x.ai") },
 };
 
 export function ModelsScreen({ done }: { done: () => void }) {
@@ -41,10 +42,10 @@ export function ModelsScreen({ done }: { done: () => void }) {
   }, []);
   const get = (id: Provider) => creds?.find((c) => c.provider === id);
   const remove = (id: Provider, label: string) =>
-    Alert.alert(`Disconnect ${label}?`, "Bots using it will stop until you connect another model.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(tr("Disconnect {name}?", { name: label }), tr("Bots using it will stop until you connect another model."), [
+      { text: tr("Cancel"), style: "cancel" },
       {
-        text: "Disconnect",
+        text: tr("Disconnect"),
         style: "destructive",
         onPress: () =>
           void client
@@ -55,11 +56,11 @@ export function ModelsScreen({ done }: { done: () => void }) {
     ]);
   return (
     <KeyboardScreen>
-      <Header large={false} title="AI models" left={<IconButton name="chevron-back" label="Back" onPress={done} />} />
+      <Header large={false} title={tr("AI models")} left={<IconButton name="chevron-back" label={tr("Back")} onPress={done} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl }} keyboardShouldPersistTaps="handled">
         <FadeIn style={{ gap: space.sm, paddingHorizontal: space.xs, paddingTop: space.sm }}>
-          <Text style={[type.largeTitle, { color: p.text }]}>Bring your model</Text>
-          <Text style={[type.body, { color: p.muted }]}>Your bots think with your own AI account. Connect ChatGPT, or add an API key. You can switch any time.</Text>
+          <Text style={[type.largeTitle, { color: p.text }]}>{tr("Bring your model")}</Text>
+          <Text style={[type.body, { color: p.muted }]}>{tr("Your bots think with your own AI account. Connect ChatGPT, or add an API key. You can switch any time.")}</Text>
         </FadeIn>
         <ErrorText error={error} />
         {!creds && !error && (
@@ -70,11 +71,11 @@ export function ModelsScreen({ done }: { done: () => void }) {
         {creds && (
           <>
             <FadeIn delay={60}>
-              <SectionLabel>Subscription</SectionLabel>
-              <ChatGPTCard connected={!!get("chatgpt")?.connected} onConnected={load} onDisconnect={() => remove("chatgpt", "ChatGPT")} />
+              <SectionLabel>{tr("Subscription")}</SectionLabel>
+              <ChatGPTCard connected={!!get("chatgpt")?.connected} onConnected={load} onDisconnect={() => remove("chatgpt", tr("ChatGPT"))} />
             </FadeIn>
             <FadeIn delay={120}>
-              <SectionLabel>API keys</SectionLabel>
+              <SectionLabel>{tr("API keys")}</SectionLabel>
               <View style={{ gap: space.md }}>
                 {(["anthropic", "openai"] as const).map((id) => (
                   <KeyCard key={id} id={id} cred={get(id)} onSaved={load} onRemove={() => remove(id, keyInfo[id].name)} />
@@ -82,7 +83,7 @@ export function ModelsScreen({ done }: { done: () => void }) {
               </View>
             </FadeIn>
             <FadeIn delay={150}>
-              <SectionLabel>Cheap & free models</SectionLabel>
+              <SectionLabel>{tr("Cheap & free models")}</SectionLabel>
               <View style={{ gap: space.md }}>
                 {(["openrouter", "groq", "xai"] as const).map((id) => (
                   <KeyCard key={id} id={id} cred={get(id)} onSaved={load} onRemove={() => remove(id, keyInfo[id].name)} />
@@ -91,10 +92,10 @@ export function ModelsScreen({ done }: { done: () => void }) {
             </FadeIn>
             <FadeIn delay={180} style={{ gap: space.md, marginTop: space.xl }}>
               <Note icon="information-circle-outline">
-                Claude Pro and Max subscriptions only work inside Anthropic&apos;s own apps. To use Claude here, add an Anthropic API key.
+                {tr("Claude Pro and Max subscriptions only work inside Anthropic's own apps. To use Claude here, add an Anthropic API key.")}
               </Note>
-              <Note icon="lock-closed-outline">Keys are encrypted on the server and only used by your bots. Fino never sees your ChatGPT password.</Note>
-              {shared && <Note icon="desktop-outline">Until you connect one, bots use this server&apos;s own sign-in (development mode).</Note>}
+              <Note icon="lock-closed-outline">{tr("Keys are encrypted on the server and only used by your bots. Fino never sees your ChatGPT password.")}</Note>
+              {shared && <Note icon="desktop-outline">{tr("Until you connect one, bots use this server's own sign-in (development mode).")}</Note>}
             </FadeIn>
           </>
         )}
@@ -139,7 +140,7 @@ function ChatGPTCard({ connected, onConnected, onDisconnect }: { connected: bool
         } else if (r.state !== "pending") {
           clearInterval(t);
           setLogin(null);
-          setError(r.error ?? "Sign-in didn't finish. Try again.");
+          setError(r.error ?? tr("Sign-in didn't finish. Try again."));
         }
       } catch {
         /* keep polling */
@@ -170,10 +171,10 @@ function ChatGPTCard({ connected, onConnected, onDisconnect }: { connected: bool
           <ProviderMark provider="codex" size={24} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[type.headline, { color: p.text }]}>ChatGPT</Text>
-          <Text style={[type.footnote, { color: p.muted }]}>Use your Plus or Pro subscription</Text>
+          <Text style={[type.headline, { color: p.text }]}>{tr("ChatGPT")}</Text>
+          <Text style={[type.footnote, { color: p.muted }]}>{tr("Use your Plus or Pro subscription")}</Text>
         </View>
-        {connected && <Connected label="Connected" />}
+        {connected && <Connected label={tr("Connected")} />}
       </View>
       {login ? (
         <Animated.View style={{ gap: space.md, opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }] }}>
@@ -183,16 +184,16 @@ function ChatGPTCard({ connected, onConnected, onDisconnect }: { connected: bool
               {login.code}
             </Text>
           </View>
-          <Button title="Open sign-in page" icon="open-outline" onPress={() => void WebBrowser.openBrowserAsync(login.url)} />
+          <Button title={tr("Open sign-in page")} icon="open-outline" onPress={() => void WebBrowser.openBrowserAsync(login.url)} />
           <View style={[s.row, { justifyContent: "center", gap: space.sm }]}>
             <TypingDots color={p.muted} size={4} />
-            <Text style={[type.footnote, { color: p.muted }]}>Waiting for you to finish… The code expires in 15 minutes.</Text>
+            <Text style={[type.footnote, { color: p.muted }]}>{tr("Waiting for you to finish… The code expires in 15 minutes.")}</Text>
           </View>
         </Animated.View>
       ) : connected ? (
-        <Button title="Disconnect" variant="secondary" compact onPress={onDisconnect} />
+        <Button title={tr("Disconnect")} variant="secondary" compact onPress={onDisconnect} />
       ) : (
-        <Button title="Sign in with ChatGPT" busy={busy} onPress={() => void start()} />
+        <Button title={tr("Sign in with ChatGPT")} busy={busy} onPress={() => void start()} />
       )}
       <ErrorText error={error} />
     </View>
@@ -230,7 +231,7 @@ function KeyCard({ id, cred, onSaved, onRemove }: { id: KeyId; cred?: Credential
           <Text style={[type.headline, { color: p.text }]}>{info.name}</Text>
           <Text style={[type.footnote, { color: p.muted }]}>{cred?.connected ? cred.hint : info.where}</Text>
         </View>
-        {cred?.connected ? <Connected label="Added" /> : <Ionicons name={editing ? "chevron-up" : "add-circle-outline"} size={22} color={p.muted} />}
+        {cred?.connected ? <Connected label={tr("Added")} /> : <Ionicons name={editing ? "chevron-up" : "add-circle-outline"} size={22} color={p.muted} />}
       </Pressable>
       {editing && !cred?.connected && (
         <FadeIn offset={4} duration={200} style={{ gap: space.sm }}>
@@ -246,10 +247,10 @@ function KeyCard({ id, cred, onSaved, onRemove }: { id: KeyId; cred?: Credential
             autoCorrect={false}
             style={[s.input, { fontFamily: "Menlo", fontSize: 14 }]}
           />
-          <Button title="Save key" compact busy={busy} disabled={value.trim().length < 20} onPress={() => void save()} />
+          <Button title={tr("Save key")} compact busy={busy} disabled={value.trim().length < 20} onPress={() => void save()} />
         </FadeIn>
       )}
-      {cred?.connected && <Button title="Remove" variant="secondary" compact onPress={onRemove} />}
+      {cred?.connected && <Button title={tr("Remove")} variant="secondary" compact onPress={onRemove} />}
       <ErrorText error={error} />
     </View>
   );

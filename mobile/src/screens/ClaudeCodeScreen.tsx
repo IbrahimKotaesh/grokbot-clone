@@ -9,6 +9,7 @@ import { handlePlanLimit } from "../lib/billing";
 import { Button, ErrorText, Header, IconButton, KeyboardScreen, ProviderMark, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
+import { t } from "../lib/i18n";
 
 const KEYS: { key: string; label: string }[] = [
   { key: "Escape", label: "Esc" },
@@ -78,19 +79,19 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
     <KeyboardScreen style={{ paddingTop: insets.top }}>
       <Header
         large={false}
-        title="Claude Code"
-        left={<IconButton name="chevron-down" label="Close" onPress={done} />}
+        title={t("Claude Code")}
+        left={<IconButton name="chevron-down" label={t("Close")} onPress={done} />}
         right={
           running ? (
             <IconButton
               name="power"
-              label="Stop Claude Code"
+              label={t("Stop Claude Code")}
               color={p.muted}
               onPress={() =>
-                Alert.alert("Stop Claude Code?", "The session on your computer will close.", [
-                  { text: "Cancel", style: "cancel" },
+                Alert.alert(t("Stop Claude Code?"), t("The session on your computer will close."), [
+                  { text: t("Cancel"), style: "cancel" },
                   {
-                    text: "Stop",
+                    text: t("Stop"),
                     style: "destructive",
                     onPress: () =>
                       void client
@@ -120,9 +121,9 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
               </View>
             </FadeIn>
             <FadeIn delay={80} style={{ alignItems: "center", gap: space.sm }}>
-              <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>Claude Code</Text>
+              <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>{t("Claude Code")}</Text>
               <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 320 }]}>
-                Anthropic&apos;s Claude Code running on your own cloud computer. Sign in with your Claude Pro or Max subscription and use it from your phone.
+                {t("Anthropic's Claude Code running on your own cloud computer. Sign in with your Claude Pro or Max subscription and use it from your phone.")}
               </Text>
             </FadeIn>
             <FadeIn delay={140} style={[s.card, { gap: space.md }]}>
@@ -133,16 +134,16 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
               ].map(([icon, label]) => (
                 <View key={label} style={[s.row, { gap: space.md }]}>
                   <Ionicons name={icon as never} size={18} color={p.muted} />
-                  <Text style={[type.callout, { color: p.text, flex: 1 }]}>{label}</Text>
+                  <Text style={[type.callout, { color: p.text, flex: 1 }]}>{t(label)}</Text>
                 </View>
               ))}
             </FadeIn>
             <ErrorText error={error} />
           </View>
           <FadeIn delay={200} style={{ gap: space.sm }}>
-            <Button title={starting ? "Starting… the first time takes a minute" : "Start Claude Code"} icon={starting ? undefined : "play"} busy={starting} onPress={() => void start()} />
+            <Button title={starting ? t("Starting… the first time takes a minute") : t("Start Claude Code")} icon={starting ? undefined : "play"} busy={starting} onPress={() => void start()} />
             {starting && (
-              <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400", opacity: 0.9 }]}>Waking your computer and installing Claude Code</Text>
+              <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400", opacity: 0.9 }]}>{t("Waking your computer and installing Claude Code")}</Text>
             )}
           </FadeIn>
         </View>
@@ -179,7 +180,7 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
                 <Pressable
                   key={k.key}
                   accessibilityRole="button"
-                  accessibilityLabel={`Press ${k.label}`}
+                  accessibilityLabel={t("Press {name}", { name: k.label })}
                   onPress={() => void send({ key: k.key })}
                   style={({ pressed }) => ({ paddingHorizontal: 12, height: 32, borderRadius: 8, justifyContent: "center", backgroundColor: pressed ? p.elevated : p.surface, borderWidth: 1, borderColor: p.line })}
                 >
@@ -189,8 +190,8 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
             </ScrollView>
             <View style={[s.row, { gap: space.sm, backgroundColor: p.raised, borderRadius: radius.xl, paddingLeft: space.lg, paddingRight: 5, minHeight: 46 }]}>
               <TextInput
-                accessibilityLabel="Type to Claude Code"
-                placeholder="Type to Claude Code, or paste a sign-in code"
+                accessibilityLabel={t("Type to Claude Code")}
+                placeholder={t("Type to Claude Code, or paste a sign-in code")}
                 placeholderTextColor={p.faint}
                 selectionColor={p.text}
                 value={input}
@@ -202,7 +203,7 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
               />
               <IconButton
                 name="arrow-up"
-                label="Send"
+                label={t("Send")}
                 variant="primary"
                 size={36}
                 iconSize={19}

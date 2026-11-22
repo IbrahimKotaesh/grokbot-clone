@@ -1,16 +1,17 @@
 import type { Bot, LiveState } from "../../../packages/contracts/src/types";
+import { t, lang } from "./i18n";
 
 export function relativeTime(ts: number | null | undefined) {
   if (!ts) return "";
   const diff = Date.now() - ts;
   const min = Math.round(diff / 60000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m`;
+  if (min < 1) return t("now");
+  if (min < 60) return t("{n}m", { n: min });
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}h`;
+  if (h < 24) return t("{n}h", { n: h });
   const d = Math.round(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (d < 7) return t("{n}d", { n: d });
+  return new Date(ts).toLocaleDateString(lang, { month: "short", day: "numeric" });
 }
 
 export function botStatus(bot: Bot, live?: LiveState) {
@@ -21,30 +22,30 @@ export function botStatus(bot: Bot, live?: LiveState) {
 }
 
 const activityLabels: Record<string, string> = {
-  thinking: "Thinking…",
-  working: "Working…",
-  searching_web: "Searching the web",
-  reading_web: "Reading the web",
-  browsing_web: "Browsing the web",
-  on_its_computer: "Using its computer",
-  running_commands: "Running commands",
-  waiting_on_command: "Waiting on a command",
-  messaging_named: "Sending a message",
-  connecting_service: "Connecting an app",
-  waiting_for_you: "Waiting for you",
-  drafting_file: "Drafting a file",
+  thinking: t("Thinking…"),
+  working: t("Working…"),
+  searching_web: t("Searching the web"),
+  reading_web: t("Reading the web"),
+  browsing_web: t("Browsing the web"),
+  on_its_computer: t("Using its computer"),
+  running_commands: t("Running commands"),
+  waiting_on_command: t("Waiting on a command"),
+  messaging_named: t("Sending a message"),
+  connecting_service: t("Connecting an app"),
+  waiting_for_you: t("Waiting for you"),
+  drafting_file: t("Drafting a file"),
   remembering: "Remembering",
 };
 export const usesComputer = (live?: LiveState) =>
   !!live?.isRunning && ["on_its_computer", "browsing_web", "running_commands"].includes(live.activity?.kind ?? "");
 
 export function statusLine(bot: Bot, live?: LiveState) {
-  if (live?.awaiting) return "Needs your approval";
+  if (live?.awaiting) return t("Needs your approval");
   if (live?.isRunning) {
     const kind = live.activity?.kind;
-    return live.activity?.detail || (kind && activityLabels[kind]) || "Working…";
+    return live.activity?.detail || (kind && activityLabels[kind]) || t("Working…");
   }
-  return bot.label || "Ready";
+  return bot.label ? t(bot.label) : t("Ready");
 }
 
 /** One clean line for list previews: no Markdown syntax (tables, headings, bold, links, code). */

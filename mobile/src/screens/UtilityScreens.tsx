@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable, Linking } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,6 +13,8 @@ import { palette as p, type, space, radius } from "../theme";
 import { relativeTime } from "../lib/format";
 import { useBilling, currentPlan, type Plan } from "../lib/billing";
 import { resetPurchases } from "../lib/purchases";
+import { TAB_BAR_SPACE } from "../components/FloatingTabBar";
+import { t, n, mirror, isArabic } from "../lib/i18n";
 
 export function AppsScreen({ done }: { done?: () => void }) {
   const [apps, setApps] = useState<Toolkit[]>([]),
@@ -68,7 +70,7 @@ export function AppsScreen({ done }: { done?: () => void }) {
           <Ionicons name="checkmark-circle" size={22} color={p.green} />
         ) : (
           <Button
-            title="Connect"
+            title={t("Connect")}
             compact
             variant="secondary"
             busy={busy === app.slug}
@@ -87,13 +89,13 @@ export function AppsScreen({ done }: { done?: () => void }) {
   );
   return (
     <View style={s.screen}>
-      <Header large={false} title="Connected apps" left={<IconButton name="chevron-back" label="Back" onPress={() => done?.()} />} />
+      <Header large={false} title={t("Connected apps")} left={<IconButton name="chevron-back" label={t("Back")} onPress={() => done?.()} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl }} keyboardShouldPersistTaps="handled">
         <View style={[s.row, { gap: space.sm, backgroundColor: p.raised, borderRadius: radius.md, paddingHorizontal: space.md, height: 44, marginTop: space.sm }]}>
           <Ionicons name="search" size={17} color={p.faint} />
           <TextInput
-            accessibilityLabel="Search apps"
-            placeholder="Search Gmail, GitHub, Slack…"
+            accessibilityLabel={t("Search apps")}
+            placeholder={t("Search Gmail, GitHub, Slack…")}
             placeholderTextColor={p.faint}
             selectionColor={p.text}
             value={search}
@@ -112,17 +114,17 @@ export function AppsScreen({ done }: { done?: () => void }) {
         )}
         {connected.length > 0 && (
           <FadeIn>
-            <SectionLabel>Connected</SectionLabel>
+            <SectionLabel>{t("Connected")}</SectionLabel>
             <Group>{connected.map(row)}</Group>
           </FadeIn>
         )}
         {rest.length > 0 && (
           <FadeIn delay={60}>
-            <SectionLabel>{search ? "Results" : "Available"}</SectionLabel>
+            <SectionLabel>{search ? t("Results") : t("Available")}</SectionLabel>
             <Group>{rest.map(row)}</Group>
           </FadeIn>
         )}
-        {!loading && !apps.length && !error && <EmptyState icon="apps-outline" title="No apps found" detail="Try another name." />}
+        {!loading && !apps.length && !error && <EmptyState icon="apps-outline" title={t("No apps found")} detail={t("Try another name.")} />}
       </ScrollView>
     </View>
   );
@@ -148,9 +150,9 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
     setError(null);
     const results = await Promise.allSettled([client.request<{ items: NotificationItem[] }>("GET", "/push/notifications"), client.bots()]);
     if (results[0].status === "fulfilled") setItems(results[0].value.items ?? []);
-    else setError("Couldn't load important messages. Pull down to try again.");
+    else setError(t("Couldn't load important messages. Pull down to try again."));
     if (results[1].status === "fulfilled") setWaiting(results[1].value.live.filter((x) => !!x.awaiting));
-    else setError("Couldn't refresh requests. Pull down to try again.");
+    else setError(t("Couldn't refresh requests. Pull down to try again."));
     setLoading(false);
   }, []);
   const open = async (botId: string, generation: number | null, notificationId?: string) => {
@@ -167,7 +169,7 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
       }
       openChat();
     } catch {
-      setError("Couldn't open this conversation. Please try again.");
+      setError(t("Couldn't open this conversation. Please try again."));
     }
   };
   useFocusEffect(
@@ -178,9 +180,9 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
   const unread = items.filter((i) => !i.readAt).length + waiting.length;
   return (
     <View style={s.screen}>
-      <Header title="Inbox" subtitle={unread ? `${unread} need${unread === 1 ? "s" : ""} you` : "Requests and updates from your bots"} />
+      <Header title={t("Inbox")} subtitle={unread ? n(unread, "{n} needs you", "{n} need you") : t("Requests and updates from your bots")} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl, gap: space.sm, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl + TAB_BAR_SPACE, gap: space.sm, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -198,7 +200,7 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
             <TypingDots color={p.muted} />
           </View>
         )}
-        {waiting.length > 0 && <SectionLabel>Needs you</SectionLabel>}
+        {waiting.length > 0 && <SectionLabel>{t("Needs you")}</SectionLabel>}
         {waiting.map((item, i) => {
           const bot = bots.find((b) => b.id === item.botId);
           return (
@@ -211,17 +213,17 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
                 <View style={s.row}>
                   {bot && <Avatar shape={bot.avatarShape} size={38} status="attention" />}
                   <View style={{ flex: 1 }}>
-                    <Text style={[type.headline, { color: p.text }]}>{bot?.name ?? "Bot"}</Text>
+                    <Text style={[type.headline, { color: p.text }]}>{bot?.name ?? t("Bot")}</Text>
                     <Text style={[type.caption, { color: p.amber }]}>Waiting for approval · {relativeTime(item.awaiting?.since)}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={p.faint} />
+                  <Ionicons name="chevron-forward" size={16} color={p.faint} style={mirror("chevron-forward")} />
                 </View>
                 <Text style={[type.callout, { color: p.text }]}>{item.awaiting?.reason}</Text>
               </Pressable>
             </FadeIn>
           );
         })}
-        {items.length > 0 && <SectionLabel>Updates</SectionLabel>}
+        {items.length > 0 && <SectionLabel>{t("Updates")}</SectionLabel>}
         {items.map((item, i) => {
           const bot = bots.find((b) => b.id === item.botId);
           return (
@@ -258,7 +260,7 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
         {!loading && !error && !items.length && !waiting.length && (
           <View style={{ flex: 1, justifyContent: "center" }}>
             <FadeIn>
-              <EmptyState icon="checkmark-done" title="You're all caught up" detail="Approvals and important updates from your bots will land here." />
+              <EmptyState icon="checkmark-done" title={t("You're all caught up")} detail={t("Approvals and important updates from your bots will land here.")} />
             </FadeIn>
           </View>
         )}
@@ -280,8 +282,8 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
       void client
         .request<{ credentials: { provider: string; connected: boolean }[] }>("GET", "/credentials")
         .then((r) => {
-          const on = r.credentials.filter((c) => c.connected).map((c) => ({ chatgpt: "ChatGPT", openai: "OpenAI", anthropic: "Claude", xai: "xAI" })[c.provider] ?? c.provider);
-          setModels(on.length ? on.join(", ") : "Not connected");
+          const on = r.credentials.filter((c) => c.connected).map((c) => ({ chatgpt: t("ChatGPT"), openai: "OpenAI", anthropic: "Claude", xai: "xAI" })[c.provider] ?? c.provider);
+          setModels(on.length ? on.join(", ") : t("Not connected"));
         })
         .catch(() => {});
       void client
@@ -292,18 +294,18 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
   );
   const initial = (user?.name || user?.email || "?").trim()[0]?.toUpperCase();
   const computerLabel =
-    computer?.status === "running" ? "Online" : computer?.status === "suspended" ? "Asleep" : computer?.status === "absent" ? "Not set up" : computer?.status ? "Starting" : "…";
+    computer?.status === "running" ? t("Online") : computer?.status === "suspended" ? t("Asleep") : computer?.status === "absent" ? t("Not set up") : computer?.status ? t("Starting") : "…";
   return (
     <View style={s.screen}>
-      <Header title="Account" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl }}>
+      <Header title={t("Settings")} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl + TAB_BAR_SPACE }}>
         <FadeIn style={[s.card, s.row, { padding: space.lg }]}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.text, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ color: p.onPrimary, fontSize: 22, fontWeight: "700" }}>{initial}</Text>
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
-              {user?.name || "Your account"}
+              {user?.name || t("Your account")}
             </Text>
             <Text style={[type.subhead, { color: p.muted }]} numberOfLines={1}>
               {user?.email}
@@ -314,25 +316,25 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
           <PlanCard plan={plan} usage={billing?.usage} onPress={openPlan} />
         </FadeIn>
         <FadeIn delay={60}>
-          <SectionLabel>Workspace</SectionLabel>
+          <SectionLabel>{t("Workspace")}</SectionLabel>
           <Group>
-            <ListRow icon="hardware-chip-outline" title="AI models" subtitle={models ?? "…"} onPress={openModels} />
+            <ListRow icon="hardware-chip-outline" title={t("AI models")} subtitle={models ?? "…"} onPress={openModels} />
             <ListRow
               leading={
                 <View style={[s.rowIcon, { backgroundColor: "#df9c7822" }]}>
                   <ProviderMark provider="claude" size={17} />
                 </View>
               }
-              title="Claude Code"
-              subtitle={plan && !plan.computer ? "Pro · runs on your computer" : "Use your Claude subscription on your computer"}
+              title={t("Claude Code")}
+              subtitle={plan && !plan.computer ? t("Pro · runs on your computer") : t("Use your Claude subscription on your computer")}
               onPress={openClaudeCode}
             />
-            <ListRow icon="sparkles-outline" title="Bots" value={plan?.bots && billing ? `${billing.usage.bots} / ${plan.bots} + Quinn` : String(bots.length)} chevron={false} />
-            <ListRow icon="apps-outline" title="Connected apps" subtitle="Gmail, GitHub, Slack and more" onPress={openApps} />
+            <ListRow icon="sparkles-outline" title={t("Bots")} value={plan?.bots && billing ? `${billing.usage.bots} / ${plan.bots} + Quinn` : String(bots.length)} chevron={false} />
+            <ListRow icon="apps-outline" title={t("Connected apps")} subtitle={t("Gmail, GitHub, Slack and more")} onPress={openApps} />
             <ListRow
               icon="desktop-outline"
-              title="Cloud computer"
-              subtitle="Shared machine, a separate screen for each bot"
+              title={t("Cloud computer")}
+              subtitle={t("Shared machine, a separate screen for each bot")}
               trailing={
                 <View style={[s.row, { gap: 6 }]}>
                   <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: computer?.status === "running" ? p.green : p.faint }} />
@@ -344,10 +346,11 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
           </Group>
         </FadeIn>
         <FadeIn delay={120}>
-          <SectionLabel>About</SectionLabel>
+          <SectionLabel>{t("About")}</SectionLabel>
           <Group>
-            <ListRow icon="cloud-done-outline" title="Always working" subtitle="Your bots keep going when you close the app." />
-            <ListRow icon="information-circle-outline" title="Version" value={Constants.expoConfig?.version ?? "1.0"} />
+            <ListRow icon="cloud-done-outline" title={t("Always working")} subtitle={t("Your bots keep going when you close the app.")} />
+            <ListRow icon="language-outline" title={t("Language")} value={isArabic ? "العربية" : "English"} onPress={() => void Linking.openSettings()} />
+            <ListRow icon="information-circle-outline" title={t("Version")} value={Constants.expoConfig?.version ?? "1.0"} />
           </Group>
         </FadeIn>
         <FadeIn delay={180}>
@@ -355,14 +358,14 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
           <Group>
             <ListRow
               icon="log-out-outline"
-              title="Sign out"
+              title={t("Sign out")}
               destructive
               chevron={false}
               onPress={() =>
-                Alert.alert("Sign out of Fino?", "Your bots and conversations stay on the server.", [
-                  { text: "Cancel", style: "cancel" },
+                Alert.alert(t("Sign out of Fino?"), t("Your bots and conversations stay on the server."), [
+                  { text: t("Cancel"), style: "cancel" },
                   {
-                    text: "Sign out",
+                    text: t("Sign out"),
                     style: "destructive",
                     onPress: () =>
                       void Promise.all([logout(), resetPurchases()]).finally(() => {
@@ -378,12 +381,12 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
             accessibilityRole="button"
             onPress={() =>
               Alert.alert(
-                "Delete your account?",
-                "This permanently deletes your bots, conversations, memories, files and connected keys. It can't be undone. Cancel any subscription in your App Store settings first.",
+                t("Delete your account?"),
+                t("This permanently deletes your bots, conversations, memories, files and connected keys. It can't be undone. Cancel any subscription in your App Store settings first."),
                 [
-                  { text: "Cancel", style: "cancel" },
+                  { text: t("Cancel"), style: "cancel" },
                   {
-                    text: "Delete account",
+                    text: t("Delete account"),
                     style: "destructive",
                     onPress: () =>
                       void client
@@ -393,14 +396,14 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
                           useWorkspace.getState().reset();
                           onLogout();
                         })
-                        .catch((e) => Alert.alert("Couldn't delete your account", e.message)),
+                        .catch((e) => Alert.alert(t("Couldn't delete your account"), e.message)),
                   },
                 ],
               )
             }
             style={{ alignItems: "center", paddingVertical: space.lg, marginTop: space.sm }}
           >
-            <Text style={[type.footnote, { color: p.faint }]}>Delete account</Text>
+            <Text style={[type.footnote, { color: p.faint }]}>{t("Delete account")}</Text>
           </Pressable>
         </FadeIn>
       </ScrollView>
@@ -413,7 +416,7 @@ function PlanCard({ plan, usage, onPress }: { plan: Plan | null; usage?: { compu
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Your plan"
+      accessibilityLabel={t("Your plan")}
       onPress={onPress}
       style={({ pressed }) => [s.card, { marginTop: space.md, gap: space.md, backgroundColor: pressed ? p.raised : p.surface, borderColor: p.lineStrong }]}
     >
@@ -422,22 +425,22 @@ function PlanCard({ plan, usage, onPress }: { plan: Plan | null; usage?: { compu
           <Ionicons name="sparkles" size={18} color={p.amber} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[type.headline, { color: p.text }]}>{plan ? `${plan.name} plan` : "Your plan"}</Text>
+          <Text style={[type.headline, { color: p.text }]}>{plan ? t("{name} plan", { name: plan.name }) : t("Your plan")}</Text>
           <Text style={[type.footnote, { color: p.muted }]}>
             {!plan
               ? "…"
               : plan.computer
                 ? plan.computerHours === null
-                  ? "Unlimited computer use"
-                  : `Computer · ${((usage?.computerMinutes ?? 0) / 60).toFixed(1)} of ${plan.computerHours} h this month`
-                : "Assistant only · no computer use"}
+                  ? t("Unlimited computer use")
+                  : t("Computer · {used} of {total} h this month", { used: ((usage?.computerMinutes ?? 0) / 60).toFixed(1), total: plan.computerHours })
+                : t("Assistant only · no computer use")}
           </Text>
         </View>
         {top ? (
-          <Ionicons name="chevron-forward" size={16} color={p.faint} />
+          <Ionicons name="chevron-forward" size={16} color={p.faint} style={mirror("chevron-forward")} />
         ) : (
           <View style={{ backgroundColor: p.text, borderRadius: radius.full, paddingHorizontal: 12, height: 30, justifyContent: "center" }}>
-            <Text style={{ color: p.onPrimary, fontWeight: "700", fontSize: 13 }}>Upgrade</Text>
+            <Text style={{ color: p.onPrimary, fontWeight: "700", fontSize: 13 }}>{t("Upgrade")}</Text>
           </View>
         )}
       </View>

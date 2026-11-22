@@ -8,6 +8,7 @@ import { Avatar, IconButton } from "../components/UI";
 import { FadeIn, TypingDots, useLoop, useRipple } from "../components/motion";
 import { palette as p, type, space, accentFor } from "../theme";
 import { startVoiceCall, type CallPhase, type VoiceCall } from "../lib/voice-call";
+import { t } from "../lib/i18n";
 
 export function CallScreen({ done }: { done: () => void }) {
   const bot = useWorkspace((x) => x.bots.find((b) => b.id === x.selected));
@@ -53,14 +54,14 @@ export function CallScreen({ done }: { done: () => void }) {
   };
   const statusText =
     phase === "connecting"
-      ? "Connecting…"
+      ? t("Connecting…")
       : phase === "live"
         ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
         : phase === "unavailable"
-          ? "Voice calls aren't connected yet"
+          ? t("Voice calls aren't connected yet")
           : phase === "error"
-            ? "Call failed"
-            : "Call ended";
+            ? t("Call failed")
+            : t("Call ended");
   const orb = 148;
   return (
     <View style={{ flex: 1, backgroundColor: p.background, paddingTop: insets.top, paddingBottom: insets.bottom + space.lg }}>
@@ -80,11 +81,11 @@ export function CallScreen({ done }: { done: () => void }) {
         }}
       />
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: space.sm, minHeight: 52 }}>
-        <IconButton name="chevron-down" label="Minimize call" onPress={done} />
+        <IconButton name="chevron-down" label={t("Minimize call")} onPress={done} />
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingRight: space.md }}>
           <Ionicons name="lock-closed" size={11} color={p.faint} />
-          <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>Private call</Text>
+          <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>{t("Private call")}</Text>
         </View>
       </View>
 
@@ -152,7 +153,7 @@ export function CallScreen({ done }: { done: () => void }) {
       <FadeIn delay={120} style={{ flexDirection: "row", justifyContent: "space-evenly", alignItems: "flex-start", paddingHorizontal: space.lg }}>
         <Control
           icon={muted ? "mic-off" : "mic-outline"}
-          label={muted ? "Unmute" : "Mute"}
+          label={muted ? t("Unmute") : t("Mute")}
           on={muted}
           disabled={phase !== "live"}
           onPress={() => {
@@ -162,7 +163,7 @@ export function CallScreen({ done }: { done: () => void }) {
         />
         <Control
           icon={speaker ? "volume-high" : "volume-medium-outline"}
-          label="Speaker"
+          label={t("Speaker")}
           on={speaker}
           disabled={phase !== "live"}
           onPress={() => {
@@ -170,7 +171,7 @@ export function CallScreen({ done }: { done: () => void }) {
             call.current?.setSpeaker(!speaker);
           }}
         />
-        <Control icon="chatbubble-outline" label="Chat" onPress={done} />
+        <Control icon="chatbubble-outline" label={t("Chat")} onPress={done} />
         <EndButton onPress={hangUp} />
       </FadeIn>
     </View>
@@ -228,7 +229,7 @@ function EndButton({ onPress }: { onPress: () => void }) {
       <Animated.View style={{ transform: [{ scale }] }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="End call"
+          accessibilityLabel={t("End call")}
           onPress={onPress}
           style={({ pressed }) => ({
             width: 64,
@@ -243,7 +244,7 @@ function EndButton({ onPress }: { onPress: () => void }) {
           <Ionicons name="call" size={26} color="#fff" />
         </Pressable>
       </Animated.View>
-      <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>End</Text>
+      <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{t("End")}</Text>
     </View>
   );
 }

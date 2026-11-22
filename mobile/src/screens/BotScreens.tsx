@@ -10,12 +10,13 @@ import { FadeIn } from "../components/motion";
 import { palette as p, fruits, fruitColor, chatColors, type Fruit, fruitFor, type, space, radius, motion } from "../theme";
 import { relativeTime } from "../lib/format";
 import { handlePlanLimit, useBilling, hasComputer, openUpgrade } from "../lib/billing";
+import { t, n } from "../lib/i18n";
 
 const roles = [
-  { label: "Researcher", icon: "search-outline", text: "Research topics in depth, compare sources and give me a short, well-sourced summary." },
-  { label: "Writer", icon: "create-outline", text: "Draft and polish emails, posts and documents in my voice. Keep it clear and concise." },
-  { label: "Developer", icon: "code-slash-outline", text: "Help me build and debug software. Explain trade-offs and keep changes small." },
-  { label: "Assistant", icon: "calendar-outline", text: "Handle my everyday tasks: schedule, reminders, inbox triage and quick errands." },
+  { label: t("Researcher"), icon: "search-outline", text: t("Research topics in depth, compare sources and give me a short, well-sourced summary.") },
+  { label: t("Writer"), icon: "create-outline", text: t("Draft and polish emails, posts and documents in my voice. Keep it clear and concise.") },
+  { label: t("Developer"), icon: "code-slash-outline", text: t("Help me build and debug software. Explain trade-offs and keep changes small.") },
+  { label: t("Assistant"), icon: "calendar-outline", text: t("Handle my everyday tasks: schedule, reminders, inbox triage and quick errands.") },
 ] as const;
 
 /** Spring "pop" whenever `trigger` changes. */
@@ -92,14 +93,14 @@ export function CreateBotScreen({ done }: { done: () => void }) {
   };
   return (
     <KeyboardScreen>
-      <Header large={false} title="New bot" left={<IconButton name="close" label="Cancel" onPress={done} />} />
+      <Header large={false} title={t("New bot")} left={<IconButton name="close" label={t("Cancel")} onPress={done} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: space.xxl, gap: space.lg }} keyboardShouldPersistTaps="handled">
         <FadeIn style={{ alignItems: "center", gap: space.md, paddingTop: space.lg }}>
           <Animated.View style={{ transform: [{ scale: pop }] }}>
             <Avatar shape={shape} size={104} />
           </Animated.View>
           <Text style={[type.title, { color: name.trim() ? p.text : p.faint }]} numberOfLines={1}>
-            {name.trim() || "Your new bot"}
+            {name.trim() || t("Your new bot")}
           </Text>
           {!!role && <Text style={[type.subhead, { color: p.muted, marginTop: -8 }]}>{role}</Text>}
         </FadeIn>
@@ -107,9 +108,9 @@ export function CreateBotScreen({ done }: { done: () => void }) {
           <CharacterPicker value={shape} onChange={setShape} />
         </FadeIn>
         <FadeIn delay={120} style={{ gap: space.lg }}>
-          <TextField label="Name" placeholder="e.g. Nova" value={name} onChangeText={setName} maxLength={60} autoFocus returnKeyType="next" />
+          <TextField label={t("Name")} placeholder={t("e.g. Nova")} value={name} onChangeText={setName} maxLength={60} autoFocus returnKeyType="next" />
           <View style={{ gap: space.sm }}>
-            <Text style={[s.label, { paddingHorizontal: space.xs }]}>Role</Text>
+            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Role")}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
               {roles.map((r) => (
                 <Chip
@@ -131,8 +132,8 @@ export function CreateBotScreen({ done }: { done: () => void }) {
             </View>
           </View>
           <TextField
-            label="Instructions"
-            placeholder="What should it focus on? You can change this anytime."
+            label={t("Instructions")}
+            placeholder={t("What should it focus on? You can change this anytime.")}
             value={instructions}
             onChangeText={setInstructions}
             multiline
@@ -142,7 +143,7 @@ export function CreateBotScreen({ done }: { done: () => void }) {
         <ErrorText error={error} />
       </ScrollView>
       <View style={{ paddingHorizontal: space.xl, paddingVertical: space.md, borderTopWidth: 0.5, borderTopColor: p.line }}>
-        <Button title="Create bot" disabled={!name.trim()} busy={busy} onPress={create} />
+        <Button title={t("Create bot")} disabled={!name.trim()} busy={busy} onPress={create} />
       </View>
     </KeyboardScreen>
   );
@@ -160,9 +161,9 @@ export function ChatsScreen({ done }: { done: () => void }) {
   if (!id) return null;
   return (
     <ScrollView style={s.screen} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.md }}>
-        <Header large={false} title="Conversations" right={<IconButton name="close" label="Close" variant="filled" size={34} iconSize={16} onPress={done} />} />
+        <Header large={false} title={t("Conversations")} right={<IconButton name="close" label={t("Close")} variant="filled" size={34} iconSize={16} onPress={done} />} />
         <Button
-          title="New conversation"
+          title={t("New conversation")}
           icon="add"
           busy={busy}
           onPress={() => {
@@ -183,7 +184,7 @@ export function ChatsScreen({ done }: { done: () => void }) {
                   key={chat.generation}
                   icon={on ? "chatbubble" : "chatbubble-outline"}
                   title={chat.title}
-                  subtitle={`${chat.messageCount} ${chat.messageCount === 1 ? "message" : "messages"} · ${relativeTime(chat.updatedAt)}`}
+                  subtitle={`${n(chat.messageCount, "{n} message", "{n} messages")} · ${relativeTime(chat.updatedAt)}`}
                   trailing={on ? <Ionicons name="checkmark" size={18} color={p.text} /> : undefined}
                   chevron={false}
                   onPress={() =>
@@ -201,19 +202,19 @@ export function ChatsScreen({ done }: { done: () => void }) {
 }
 
 const permissions: { id: PermissionMode; name: string; detail: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
-  { id: "read_only", name: "Read only", detail: "Read and research. Writes stay blocked.", icon: "eye-outline" },
-  { id: "balanced", name: "Balanced", detail: "Works on its own, asks before sensitive actions.", icon: "shield-half-outline" },
-  { id: "ask", name: "Ask first", detail: "Asks before every action.", icon: "hand-left-outline" },
-  { id: "autonomous", name: "Autonomous", detail: "Acts with all the access you granted.", icon: "flash-outline" },
+  { id: "read_only", name: t("Read only"), detail: t("Read and research. Writes stay blocked."), icon: "eye-outline" },
+  { id: "balanced", name: t("Balanced"), detail: t("Works on its own, asks before sensitive actions."), icon: "shield-half-outline" },
+  { id: "ask", name: t("Ask first"), detail: t("Asks before every action."), icon: "hand-left-outline" },
+  { id: "autonomous", name: t("Autonomous"), detail: t("Acts with all the access you granted."), icon: "flash-outline" },
 ];
 type ProviderId = "codex" | "claude-code" | "claude" | "openrouter" | "groq" | "xai";
 const providerOptions: { id: ProviderId; name: string; detail: string; needs: string[]; mark?: string; icon?: React.ComponentProps<typeof Ionicons>["name"]; color?: string; models?: string[] }[] = [
-  { id: "codex", name: "ChatGPT", detail: "Your ChatGPT subscription or OpenAI key", needs: ["chatgpt", "openai"], mark: "codex" },
-  { id: "claude-code", name: "Claude Code", detail: "Your Claude subscription · pure Claude Code, on your computer", needs: ["@computer"], mark: "claude" },
-  { id: "claude", name: "Claude (API key)", detail: "Your Anthropic API key", needs: ["anthropic"], mark: "claude" },
-  { id: "openrouter", name: "OpenRouter", detail: "Gemini, DeepSeek, Llama… some free", needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["openrouter/auto", "google/gemini-2.5-flash", "deepseek/deepseek-chat"] },
-  { id: "groq", name: "Groq", detail: "Very fast, free tier", needs: ["groq"], icon: "flash-outline", color: "#ff9f43", models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"] },
-  { id: "xai", name: "Grok", detail: "Fast Grok models from xAI", needs: ["xai"], icon: "planet-outline", color: p.text },
+  { id: "codex", name: t("ChatGPT"), detail: t("Your ChatGPT subscription or OpenAI key"), needs: ["chatgpt", "openai"], mark: "codex" },
+  { id: "claude-code", name: t("Claude Code"), detail: t("Your Claude subscription · pure Claude Code, on your computer"), needs: ["@computer"], mark: "claude" },
+  { id: "claude", name: t("Claude (API key)"), detail: t("Your Anthropic API key"), needs: ["anthropic"], mark: "claude" },
+  { id: "openrouter", name: "OpenRouter", detail: t("Gemini, DeepSeek, Llama… some free"), needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["openrouter/auto", "google/gemini-2.5-flash", "deepseek/deepseek-chat"] },
+  { id: "groq", name: "Groq", detail: t("Very fast, free tier"), needs: ["groq"], icon: "flash-outline", color: "#ff9f43", models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"] },
+  { id: "xai", name: "Grok", detail: t("Fast Grok models from xAI"), needs: ["xai"], icon: "planet-outline", color: p.text },
 ];
 export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => void; openModels?: () => void; openClaudeCode?: () => void }) {
   const computerOn = useBilling((x) => hasComputer(x.summary));
@@ -253,9 +254,9 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
     o.id === "claude-code" ? computerOn : !!connected && (o.needs.some((n) => connected.includes(n)) || (shared && (o.id === "codex" || o.id === "claude")));
   return (
     <ScrollView style={s.screen} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
-        <Header large={false} title="Model & permissions" right={<IconButton name="close" label="Close" variant="filled" size={34} iconSize={16} onPress={done} />} />
+        <Header large={false} title={t("Model & permissions")} right={<IconButton name="close" label={t("Close")} variant="filled" size={34} iconSize={16} onPress={done} />} />
         <ErrorText error={error} />
-        <SectionLabel>Brain</SectionLabel>
+        <SectionLabel>{t("Brain")}</SectionLabel>
         <Group>
           {providerOptions.map((o) => {
             const on = provider === o.id;
@@ -269,7 +270,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
                   </View>
                 }
                 title={o.name}
-                subtitle={o.id === "claude-code" && !ok ? "Pro · runs on your computer" : connected === null ? o.detail : ok ? o.detail : "Not connected · tap to add a key"}
+                subtitle={o.id === "claude-code" && !ok ? t("Pro · runs on your computer") : connected === null ? o.detail : ok ? o.detail : t("Not connected · tap to add a key")}
                 chevron={false}
                 trailing={<Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? p.text : p.faint} />}
                 onPress={
@@ -288,18 +289,18 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
         </Group>
         {provider === "claude-code" && (
           <View style={[s.card, { gap: space.md, marginTop: space.md }]}>
-            <Text style={[type.callout, { color: p.text }]}>This bot is Claude Code as it is: no extra instructions, tools or approvals. It runs on your computer with your Claude subscription.</Text>
-            <Text style={[type.footnote, { color: p.muted }]}>Sign in once: open Claude Code, type /login and follow Anthropic&apos;s sign-in.</Text>
-            <Button title="Open Claude Code" icon="terminal-outline" compact variant="secondary" onPress={() => openClaudeCode?.()} />
+            <Text style={[type.callout, { color: p.text }]}>{t("This bot is Claude Code as it is: no extra instructions, tools or approvals. It runs on your computer with your Claude subscription.")}</Text>
+            <Text style={[type.footnote, { color: p.muted }]}>{t("Sign in once: open Claude Code, type /login and follow Anthropic's sign-in.")}</Text>
+            <Button title={t("Open Claude Code")} icon="terminal-outline" compact variant="secondary" onPress={() => openClaudeCode?.()} />
           </View>
         )}
         {current?.models && (
           <View style={{ gap: space.sm, marginTop: space.md }}>
-            <Text style={[s.label, { paddingHorizontal: space.xs }]}>Model</Text>
+            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Model")}</Text>
             <View style={[s.row, { gap: space.sm }]}>
               <TextInput
-                accessibilityLabel="Model id"
-                placeholder={`Default · ${current.models[0]}`}
+                accessibilityLabel={t("Model id")}
+                placeholder={t("Default · {name}", { name: current.models[0] })}
                 placeholderTextColor={p.faint}
                 selectionColor={p.text}
                 value={model}
@@ -308,7 +309,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
                 autoCorrect={false}
                 style={[s.input, { flex: 1, fontFamily: "Menlo", fontSize: 14 }]}
               />
-              <Button title="Save" compact variant="secondary" disabled={busy || model === (bot.model ?? "")} onPress={() => void patch({ model: model.trim() })} />
+              <Button title={t("Save")} compact variant="secondary" disabled={busy || model === (bot.model ?? "")} onPress={() => void patch({ model: model.trim() })} />
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
               {current.models.map((m) => (
@@ -327,7 +328,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
         )}
         {provider !== "claude-code" && (
           <>
-        <SectionLabel>Permissions</SectionLabel>
+        <SectionLabel>{t("Permissions")}</SectionLabel>
         <Group>
           {permissions.map((mode) => (
             <ListRow
@@ -343,7 +344,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
         </Group>
           </>
         )}
-        <Text style={[type.footnote, { color: p.faint, paddingHorizontal: space.xs, marginTop: space.md }]}>Each bot keeps its own choice. Changes apply from the next message.</Text>
+        <Text style={[type.footnote, { color: p.faint, paddingHorizontal: space.xs, marginTop: space.md }]}>{t("Each bot keeps its own choice. Changes apply from the next message.")}</Text>
       </ScrollView>
   );
 }
@@ -393,11 +394,11 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
     <KeyboardScreen>
       <Header
         large={false}
-        title="Bot settings"
-        left={<IconButton name="close" label="Close" onPress={done} />}
+        title={t("Bot settings")}
+        left={<IconButton name="close" label={t("Close")} onPress={done} />}
         right={
           <Pressable accessibilityRole="button" disabled={!dirty || !name.trim() || busy} onPress={save} hitSlop={10} style={{ paddingHorizontal: space.md }}>
-            <Text style={[type.headline, { color: dirty && name.trim() ? p.text : p.faint }]}>{busy ? "Saving…" : "Save"}</Text>
+            <Text style={[type.headline, { color: dirty && name.trim() ? p.text : p.faint }]}>{busy ? t("Saving…") : t("Save")}</Text>
           </Pressable>
         }
       />
@@ -407,15 +408,15 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
             <Avatar shape={shape} size={92} primary={bot.isPrimary} />
           </Animated.View>
           <Text style={[type.title, { color: p.text }]}>{name || bot.name}</Text>
-          {!!bot.label && <Text style={[type.subhead, { color: p.muted }]}>{bot.label}</Text>}
+          {!!bot.label && <Text style={[type.subhead, { color: p.muted }]}>{t(bot.label)}</Text>}
         </FadeIn>
         <ErrorText error={error} />
 
-        <SectionLabel>Profile</SectionLabel>
+        <SectionLabel>{t("Profile")}</SectionLabel>
         <View style={[s.card, { gap: space.lg }]}>
-          <TextField label="Name" value={name} onChangeText={setName} maxLength={60} />
+          <TextField label={t("Name")} value={name} onChangeText={setName} maxLength={60} />
           <View style={{ gap: space.sm }}>
-            <Text style={[s.label, { paddingHorizontal: space.xs }]}>Character</Text>
+            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Character")}</Text>
             <CharacterPicker
               value={shape}
               size={52}
@@ -426,7 +427,7 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
             />
           </View>
           <View style={{ gap: space.sm }}>
-            <Text style={[s.label, { paddingHorizontal: space.xs }]}>Accent</Text>
+            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Accent")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 2, paddingHorizontal: 2 }}>
               {Object.entries(chatColors).map(([key, hex]) => (
                 <Pressable
@@ -447,32 +448,32 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
           </View>
         </View>
 
-        <SectionLabel>Instructions</SectionLabel>
+        <SectionLabel>{t("Instructions")}</SectionLabel>
         <TextField
-          placeholder={`How should ${bot.name} work? Tone, focus, things to avoid…`}
+          placeholder={t("How should {name} work? Tone, focus, things to avoid…", { name: bot.name })}
           value={instructions}
           onChangeText={setInstructions}
           multiline
           style={{ minHeight: 130, textAlignVertical: "top", backgroundColor: p.surface, borderColor: p.line }}
         />
 
-        <SectionLabel>Brain</SectionLabel>
+        <SectionLabel>{t("Brain")}</SectionLabel>
         <Group>
           <ListRow
             icon="hardware-chip-outline"
-            title="Model & permissions"
-            value={providerOptions.find((o) => o.id === (bot.agentProvider ?? "codex"))?.name ?? "ChatGPT"}
+            title={t("Model & permissions")}
+            value={providerOptions.find((o) => o.id === (bot.agentProvider ?? "codex"))?.name ?? t("ChatGPT")}
             onPress={openModel}
           />
-          <ListRow icon="mic-outline" title="Voice" value={bot.voice ? bot.voice[0].toUpperCase() + bot.voice.slice(1) : "Default"} chevron={false} />
+          <ListRow icon="mic-outline" title={t("Voice")} value={bot.voice ? bot.voice[0].toUpperCase() + bot.voice.slice(1) : t("Default")} chevron={false} />
         </Group>
 
-        <SectionLabel>Knowledge</SectionLabel>
+        <SectionLabel>{t("Knowledge")}</SectionLabel>
         <Group>
-          <ListRow icon="bulb-outline" title="Memory" value={bundle ? String(bundle.memories.length) : "…"} onPress={() => toggle("memory")} />
-          <ListRow icon="repeat-outline" title="Routines" value={bundle ? String(bundle.routines.length) : "…"} onPress={() => toggle("routines")} />
-          <ListRow icon="checkbox-outline" title="Tasks" value={bundle ? String(bundle.tasks.length) : "…"} onPress={() => toggle("tasks")} />
-          <ListRow icon="extension-puzzle-outline" title="Skills" value={bundle ? String(bundle.skills.length) : "…"} onPress={() => toggle("skills")} />
+          <ListRow icon="bulb-outline" title={t("Memory")} value={bundle ? String(bundle.memories.length) : "…"} onPress={() => toggle("memory")} />
+          <ListRow icon="repeat-outline" title={t("Routines")} value={bundle ? String(bundle.routines.length) : "…"} onPress={() => toggle("routines")} />
+          <ListRow icon="checkbox-outline" title={t("Tasks")} value={bundle ? String(bundle.tasks.length) : "…"} onPress={() => toggle("tasks")} />
+          <ListRow icon="extension-puzzle-outline" title={t("Skills")} value={bundle ? String(bundle.skills.length) : "…"} onPress={() => toggle("skills")} />
         </Group>
         {bundle && section && (
           <FadeIn key={section} offset={6} duration={240} style={{ gap: space.sm, marginTop: space.md }}>
@@ -486,7 +487,7 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
                   </View>
                 ))
               ) : (
-                <EmptyState icon="bulb-outline" title="Nothing remembered yet" detail={`${bot.name} saves useful facts about you here as you talk.`} />
+                <EmptyState icon="bulb-outline" title={t("Nothing remembered yet")} detail={`${bot.name} saves useful facts about you here as you talk.`} />
               ))}
             {section === "routines" &&
               (bundle.routines.length ? (
@@ -497,7 +498,7 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
                       <Text style={[type.footnote, { color: p.muted }]}>{r.description || r.schedule}</Text>
                     </View>
                     <Switch
-                      accessibilityLabel={`Enable ${r.name}`}
+                      accessibilityLabel={t("Enable {name}", { name: r.name })}
                       value={r.enabled}
                       trackColor={{ true: p.green, false: p.elevated }}
                       onValueChange={(enabled) =>
@@ -510,7 +511,7 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
                   </View>
                 ))
               ) : (
-                <EmptyState icon="repeat-outline" title="No routines" detail={`Ask ${bot.name} to do something every morning or every week.`} />
+                <EmptyState icon="repeat-outline" title={t("No routines")} detail={t("Ask {name} to do something every morning or every week.", { name: bot.name })} />
               ))}
             {section === "tasks" &&
               (bundle.tasks.length ? (
@@ -524,18 +525,18 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
                   </View>
                 ))
               ) : (
-                <EmptyState icon="checkbox-outline" title="No tasks" detail="Longer jobs show up here while they run." />
+                <EmptyState icon="checkbox-outline" title={t("No tasks")} detail={t("Longer jobs show up here while they run.")} />
               ))}
             {section === "skills" &&
               (bundle.skills.length ? (
                 bundle.skills.map((skill) => (
                   <View key={skill.id} style={s.card}>
                     <Text style={[type.headline, { color: p.text }]}>{skill.name}</Text>
-                    <Text style={[type.footnote, { color: p.muted }]}>{skill.description}</Text>
+                    <Text style={[type.footnote, { color: p.muted }]}>{t(skill.description)}</Text>
                   </View>
                 ))
               ) : (
-                <EmptyState icon="extension-puzzle-outline" title="No skills yet" detail="Skills teach a bot a repeatable way of doing a job." />
+                <EmptyState icon="extension-puzzle-outline" title={t("No skills yet")} detail={t("Skills teach a bot a repeatable way of doing a job.")} />
               ))}
           </FadeIn>
         )}

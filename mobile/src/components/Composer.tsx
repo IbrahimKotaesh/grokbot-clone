@@ -31,6 +31,7 @@ import { useWorkspace } from "../lib/store";
 import { IconButton } from "./UI";
 import { FadeIn, TypingDots, useLoop } from "./motion";
 import { palette as p, type, space, radius } from "../theme";
+import { t } from "../lib/i18n";
 
 export interface ComposerHandle {
   prefill(text: string): void;
@@ -160,7 +161,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       if (picked.canceled) return;
       const added: typeof attachments = [];
       for (const file of picked.assets) {
-        if ((file.size ?? 0) > 10 * 1024 * 1024) throw Error("Choose files under 10 MB.");
+        if ((file.size ?? 0) > 10 * 1024 * 1024) throw Error(t("Choose files under 10 MB."));
         added.push({
           name: file.name,
           dataUrl: `data:${file.mimeType ?? "application/octet-stream"};base64,${await new File(file.uri).base64()}`,
@@ -176,14 +177,14 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     try {
       if (camera) {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) throw Error("Enable camera access in your phone settings.");
+        if (!permission.granted) throw Error(t("Enable camera access in your phone settings."));
       }
       const result = camera
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.65, base64: true })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.65, base64: true, allowsMultipleSelection: true, selectionLimit: 4 });
       if (result.canceled) return;
       const added = result.assets.map((asset, i) => {
-        if (!asset.base64 || asset.base64.length > 4 * 1024 * 1024) throw Error("Choose a smaller photo (under 3 MB).");
+        if (!asset.base64 || asset.base64.length > 4 * 1024 * 1024) throw Error(t("Choose a smaller photo (under 3 MB)."));
         return { name: asset.fileName ?? `Photo-${i + 1}.jpg`, dataUrl: `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`, image: true };
       });
       editAttachments((old) => [...old, ...added].slice(0, 8));
@@ -193,16 +194,16 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
   }
   function attach() {
     const options = [
-      { label: "Take photo", run: () => void photo(true) },
-      { label: "Photo library", run: () => void photo() },
-      { label: "Choose files", run: () => void files() },
+      { label: t("Take photo"), run: () => void photo(true) },
+      { label: t("Photo library"), run: () => void photo() },
+      { label: t("Choose files"), run: () => void files() },
     ];
     if (Platform.OS === "ios")
       ActionSheetIOS.showActionSheetWithOptions(
         { options: [...options.map((o) => o.label), "Cancel"], cancelButtonIndex: options.length, userInterfaceStyle: "dark" },
         (i) => options[i]?.run(),
       );
-    else Alert.alert("Add to message", "", [...options.map((o) => ({ text: o.label, onPress: o.run })), { text: "Cancel", style: "cancel" as const }]);
+    else Alert.alert(t("Add to message"), "", [...options.map((o) => ({ text: o.label, onPress: o.run })), { text: t("Cancel"), style: "cancel" as const }]);
   }
   async function send(text = draft) {
     if (busy || (!text.trim() && !attachments.length)) return;
@@ -253,7 +254,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       body: data,
     });
     const result = await response.json();
-    if (!response.ok) throw Error(result.error ?? "Transcription failed.");
+    if (!response.ok) throw Error(result.error ?? t("Transcription failed."));
     return String(result.text ?? "").trim();
   }
   async function startRecording() {
@@ -269,7 +270,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       else if (speechAvailable()) dictation.current = await listen(lang);
       else {
         const permission = await AudioModule.requestRecordingPermissionsAsync();
-        if (!permission.granted) throw Error("Enable microphone access in your phone settings.");
+        if (!permission.granted) throw Error(t("Enable microphone access in your phone settings."));
         await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
         await recorder.prepareToRecordAsync();
         recorder.record();
@@ -316,15 +317,15 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             text = await serverTranscribe(r.audioUri, "audio/wav").catch(() => "");
           }
           if (!text && r.error === "service-not-allowed")
-            throw Error("Turn on Dictation in Settings → General → Keyboard so Fino can turn your voice into text.");
-          if (!text && r.error === "language-not-supported") throw Error("This language isn't available for voice typing on your phone yet.");
+            throw Error(t("Turn on Dictation in Settings → General → Keyboard so Fino can turn your voice into text."));
+          if (!text && r.error === "language-not-supported") throw Error(t("This language isn't available for voice typing on your phone yet."));
         }
       } else {
         await recorder.stop();
         await setAudioModeAsync({ allowsRecording: false });
         if (next !== "cancel") {
           changeMode("transcribing");
-          if (!recorder.uri) throw Error("No audio was captured.");
+          if (!recorder.uri) throw Error(t("No audio was captured."));
           text = await serverTranscribe(recorder.uri, "audio/mp4");
         }
       }
@@ -333,7 +334,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         return;
       }
-      if (!text) throw Error("I couldn't hear anything. Try again a little closer.");
+      if (!text) throw Error(t("I couldn't hear anything. Try again a little closer."));
       changeMode("transcribing");
       if (after.current === "send") await send([draft, text].filter(Boolean).join(" "));
       else {
@@ -398,7 +399,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                       )}
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`Remove ${a.name}`}
+                        accessibilityLabel={t("Remove {name}", { name: a.name })}
                         hitSlop={8}
                         onPress={() => editAttachments((old) => old.filter((_, j) => j !== i))}
                         style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: "#000000b0", alignItems: "center", justifyContent: "center" }}
@@ -413,8 +414,8 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             <Animated.View style={{ opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
             <TextInput
               ref={input}
-              accessibilityLabel="Message"
-              placeholder={`Message ${bot.name}`}
+              accessibilityLabel={t("Message")}
+              placeholder={t("Message {name}", { name: bot.name })}
               placeholderTextColor={p.faint}
               selectionColor={p.text}
               multiline
@@ -436,7 +437,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             />
             </Animated.View>
             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingBottom: 6, gap: 2 }}>
-              <IconButton name="add" label="Add photo or file" color={p.muted} size={38} iconSize={22} disabled={busy} onPress={attach} />
+              <IconButton name="add" label={t("Add photo or file")} color={p.muted} size={38} iconSize={22} disabled={busy} onPress={attach} />
               <View style={{ flex: 1 }} />
               {/* One main button: mic while empty, send once there's something to send. Calls live in the header. */}
               <MainButton
@@ -458,11 +459,11 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                   numberOfLines={4}
                   style={[type.callout, { flex: 1, color: live ? p.text : p.faint, textAlign: "auto", writingDirection: "auto" }]}
                 >
-                  {live || "Listening…"}
+                  {live || t("Listening…")}
                 </Text>
                 {!liveAvailable() && <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Dictation language: ${langInfo.name}. Tap to switch.`}
+                  accessibilityLabel={t("Dictation language: {name}. Tap to switch.", { name: langInfo.name })}
                   hitSlop={8}
                   onPress={() => void switchLanguage()}
                   style={{ minWidth: 34, height: 26, paddingHorizontal: 8, borderRadius: radius.full, backgroundColor: p.elevated, alignItems: "center", justifyContent: "center" }}
@@ -472,24 +473,24 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
               </View>
             )}
           <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: 8, gap: 4 }}>
-            <IconButton name="trash-outline" label="Discard recording" color={p.muted} size={40} iconSize={20} onPress={() => void stopRecording("cancel")} />
+            <IconButton name="trash-outline" label={t("Discard recording")} color={p.muted} size={40} iconSize={20} onPress={() => void stopRecording("cancel")} />
             <RecDot />
             <Text style={[type.callout, { color: p.text, fontVariant: ["tabular-nums"], width: 40 }]}>
               {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
             </Text>
             <Waveform levels={levels} />
-            <IconButton name="checkmark" label="Done, put the text in the message box" variant="primary" size={38} iconSize={21} onPress={() => void stopRecording("insert")} />
+            <IconButton name="checkmark" label={t("Done, put the text in the message box")} variant="primary" size={38} iconSize={21} onPress={() => void stopRecording("insert")} />
           </View>
           </FadeIn>
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: space.lg, gap: space.md }}>
             <TypingDots color={p.muted} size={6} />
-            <Text style={[type.callout, { color: p.muted }]}>{after.current === "send" ? "Sending your voice message…" : "Transcribing…"}</Text>
+            <Text style={[type.callout, { color: p.muted }]}>{after.current === "send" ? t("Sending your voice message…") : t("Transcribing…")}</Text>
           </View>
         )}
       </View>
       {mode === "recording" && (
-        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Tap ✓ to put the text in the box</Text>
+        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>{t("Tap ✓ to put the text in the box")}</Text>
       )}
     </View>
   );
@@ -510,9 +511,9 @@ function smooth(kind: "spring" | "ease" = "spring") {
 }
 
 const MAIN = {
-  mic: { icon: "mic", label: "Record a voice message", size: 19 },
-  send: { icon: "arrow-up", label: "Send message", size: 20 },
-  stop: { icon: "stop", label: "Stop response", size: 15 },
+  mic: { icon: "mic", label: t("Record a voice message"), size: 19 },
+  send: { icon: "arrow-up", label: t("Send message"), size: 20 },
+  stop: { icon: "stop", label: t("Stop response"), size: 15 },
 } as const;
 /** The composer's main button. Its icon swaps with a quick scale so the change is noticeable but calm. */
 function MainButton({ kind, disabled, onPress }: { kind: keyof typeof MAIN; disabled?: boolean; onPress: () => void }) {
@@ -568,7 +569,7 @@ function Waveform({ levels }: { levels: Sample[] }) {
   }, [newest]);
   return (
     <View style={{ flex: 1, height: WAVE_H + 6, overflow: "hidden", justifyContent: "center" }}>
-      <Animated.View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: STEP - BAR_W, paddingRight: 4, transform: [{ translateX: shift }] }}>
+      <Animated.View style={{ direction: "ltr", flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: STEP - BAR_W, paddingRight: 4, transform: [{ translateX: shift }] }}>
         {levels.map((l, i) => (
           <Bar key={l.id} level={l.v} fade={0.28 + 0.72 * (i / Math.max(1, n - 1)) ** 1.4} />
         ))}

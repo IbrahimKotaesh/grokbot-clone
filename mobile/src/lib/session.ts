@@ -3,6 +3,7 @@ import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { fetch as nativeFetch } from "expo/fetch";
 import { createClient } from "../../../packages/client/src";
+import { t } from "./i18n";
 const server =
   process.env.EXPO_PUBLIC_API_URL ?? "https://grokbot.89-167-54-211.sslip.io";
 const key = "fino.native.session.v1." + new URL(server).hostname;
@@ -47,12 +48,12 @@ export async function unlock(code: string) {
   });
   if (!response.ok) {
     const data = await response.json();
-    throw Error(data.error ?? "Unable to unlock.");
+    throw Error(data.error ?? t("Unable to unlock."));
   }
   const cookie = response.headers
     .get("set-cookie")
     ?.match(/fino_access=([^;]+)/)?.[1];
-  if (!cookie) throw Error("The server did not return an access session.");
+  if (!cookie) throw Error(t("The server did not return an access session."));
   access = `fino_access=${cookie}`;
   await persist();
 }
@@ -82,7 +83,7 @@ export async function googleLogin() {
     callback.hostname !== "auth" ||
     !callback.searchParams.get("code")
   )
-    throw Error("The sign-in callback was not valid.");
+    throw Error(t("The sign-in callback was not valid."));
   const data = await client.request<{ session: string }>(
     "POST",
     "/auth/native/session",
@@ -104,7 +105,7 @@ export async function appleLogin(): Promise<boolean> {
     if ((e as { code?: string }).code === "ERR_REQUEST_CANCELED") return false;
     throw e;
   }
-  if (!credential.identityToken) throw Error("Apple didn't return a sign-in token. Please try again.");
+  if (!credential.identityToken) throw Error(t("Apple didn't return a sign-in token. Please try again."));
   const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(" ");
   const data = await client.request<{ session: string }>("POST", "/auth/apple", { identityToken: credential.identityToken, fullName });
   session = data.session;
@@ -162,6 +163,6 @@ export async function connectApp(
     url.searchParams.get("slug") !== slug ||
     url.searchParams.get("status") !== "complete"
   )
-    throw Error("The account connection could not finish. Please try again.");
+    throw Error(t("The account connection could not finish. Please try again."));
   return true;
 }

@@ -11,14 +11,15 @@ import * as WebBrowser from "expo-web-browser";
 import { client } from "../lib/session";
 import { useWorkspace } from "../lib/store";
 import { configurePurchases, storePrices } from "../lib/purchases";
+import { t } from "../lib/i18n";
 
 /** Legal pages are served by the Fino server (web/public). */
 const LEGAL = client.base.replace(/\/$/, "");
 
 const copy = {
-  computer: { title: "Give your bots a computer", detail: "With Pro, every bot gets its own screen to browse, fill forms and use apps for you." },
-  bots: { title: "Grow your team", detail: "Your plan's bot limit is reached. Upgrade to hire more specialists." },
-  voice: { title: "Do more", detail: "Upgrade for more bots and computer time." },
+  computer: { title: t("Give your bots a computer"), detail: t("With Pro, every bot gets its own screen to browse, fill forms and use apps for you.") },
+  bots: { title: t("Grow your team"), detail: t("Your plan's bot limit is reached. Upgrade to hire more specialists.") },
+  voice: { title: t("Do more"), detail: t("Upgrade for more bots and computer time.") },
 } as const;
 
 export function UpgradeScreen({ done, feature }: { done: () => void; feature?: keyof typeof copy }) {
@@ -44,20 +45,20 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   }, [summary?.plan]);
   const plans = (summary?.plans ?? []).filter((x) => x.id !== "free");
   const sel = plans.find((x) => x.id === selected);
-  const head = feature ? copy[feature] : { title: "Choose your plan", detail: "Bring your own ChatGPT or API key. Fino gives your bots a home, skills and a computer." };
+  const head = feature ? copy[feature] : { title: t("Choose your plan"), detail: t("Bring your own ChatGPT or API key. Fino gives your bots a home, skills and a computer.") };
   const buy = async () => {
     if (!sel) return;
     if (sel.id === "enterprise") {
-      Alert.alert("Enterprise", "Tell us about your team and we'll set up a private workspace, SSO and your own marketplace.", [{ text: "OK" }]);
+      Alert.alert(t("Enterprise"), t("Tell us about your team and we'll set up a private workspace, SSO and your own marketplace."), [{ text: t("OK") }]);
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const r = await purchase(sel.id);
-      if (r === "unavailable") Alert.alert("Not available yet", "Subscriptions aren't set up in this build.");
+      if (r === "unavailable") Alert.alert(t("Not available yet"), t("Subscriptions aren't set up in this build."));
       else if (r === "pending") {
-        Alert.alert("Thanks!", "Your purchase went through. Your plan will update in a moment.");
+        Alert.alert(t("Thanks!"), t("Your purchase went through. Your plan will update in a moment."));
         done();
       } else if (r === "done") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -73,7 +74,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   const cur = plans.find((x) => x.id === current);
   return (
     <View style={[s.screen, { paddingTop: insets.top }]}>
-      <Header large={false} title="" left={<IconButton name="close" label="Close" onPress={done} />} />
+      <Header large={false} title="" left={<IconButton name="close" label={t("Close")} onPress={done} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.md }}>
         <FadeIn style={{ gap: space.sm, paddingHorizontal: space.xs, marginBottom: space.sm }}>
           <View style={[s.row, { gap: 6, alignSelf: "flex-start", backgroundColor: "#ffc04d1f", borderRadius: radius.full, paddingHorizontal: 10, height: 26 }]}>
@@ -97,7 +98,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
         {cur?.computer && cur.computerHours !== null && (
           <FadeIn delay={320} style={[s.card, { gap: space.sm }]}>
             <View style={s.rowBetween}>
-              <Text style={[type.subhead, { color: p.text }]}>Computer this month</Text>
+              <Text style={[type.subhead, { color: p.text }]}>{t("Computer this month")}</Text>
               <Text style={[type.subhead, { color: p.muted }]}>
                 {(used / 60).toFixed(1)} / {cur.computerHours} h
               </Text>
@@ -110,7 +111,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
         <FadeIn delay={360} style={[s.row, { gap: space.md, paddingHorizontal: space.xs, alignItems: "flex-start", marginTop: space.sm }]}>
           <Ionicons name="key-outline" size={16} color={p.faint} style={{ marginTop: 2 }} />
           <Text style={[type.footnote, { color: p.faint, flex: 1 }]}>
-            Plans don&apos;t include AI usage. Your bots run on your own ChatGPT account or API key, so you only pay for what you already use.
+            {t("Plans don't include AI usage. Your bots run on your own ChatGPT account or API key, so you only pay for what you already use.")}
           </Text>
         </FadeIn>
       </ScrollView>
@@ -118,12 +119,12 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
         <Button
           title={
             !sel
-              ? "Loading…"
+              ? t("Loading…")
               : sel.id === current
                 ? `You're on ${sel.name}`
                 : sel.id === "enterprise"
-                  ? "Talk to us"
-                  : `${rank(sel.id) > rank(current) ? "Upgrade" : "Switch"} to ${sel.name} · ${price(sel)}/mo`
+                  ? t("Talk to us")
+                  : t(rank(sel.id) > rank(current) ? "Upgrade to {name} · {price}" : "Switch to {name} · {price}", { name: sel.name, price: `${price(sel)}${t("/mo")}` })
           }
           disabled={!sel || sel.id === current}
           busy={busy}
@@ -139,17 +140,17 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
             hitSlop={8}
             onPress={() =>
               void restore()
-                .then((r) => Alert.alert(r === "restored" ? "Purchases restored" : r === "none" ? "Nothing to restore" : "Not available yet", r === "restored" ? "Your plan is back." : r === "none" ? "No active subscription was found for this Apple ID." : "Subscriptions aren't set up in this build."))
+                .then((r) => Alert.alert(r === "restored" ? t("Purchases restored") : r === "none" ? t("Nothing to restore") : t("Not available yet"), r === "restored" ? t("Your plan is back.") : r === "none" ? t("No active subscription was found for this Apple ID.") : t("Subscriptions aren't set up in this build.")))
                 .catch((e) => setError(e.message))
             }
           >
-            <Text style={[type.caption, { color: p.muted }]}>Restore Purchases</Text>
+            <Text style={[type.caption, { color: p.muted }]}>{t("Restore Purchases")}</Text>
           </Pressable>
           <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void WebBrowser.openBrowserAsync(`${LEGAL}/terms.html`)}>
-            <Text style={[type.caption, { color: p.muted }]}>Terms</Text>
+            <Text style={[type.caption, { color: p.muted }]}>{t("Terms")}</Text>
           </Pressable>
           <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void WebBrowser.openBrowserAsync(`${LEGAL}/privacy.html`)}>
-            <Text style={[type.caption, { color: p.muted }]}>Privacy</Text>
+            <Text style={[type.caption, { color: p.muted }]}>{t("Privacy")}</Text>
           </Pressable>
         </View>
       </View>
@@ -168,7 +169,7 @@ function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; pri
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${plan.name}${price && plan.priceUsd ? `, ${price} a month` : ""}`}
+      accessibilityLabel={`${plan.name}${price && plan.priceUsd ? `, ${price}${t("/mo")}` : ""}`}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress();
@@ -207,7 +208,7 @@ function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; pri
               <Text style={[type.subhead, { color: p.muted, fontWeight: "400" }]}>/mo</Text>
             </Text>
           ) : (
-            <Text style={[type.headline, { color: p.muted }]}>Custom</Text>
+            <Text style={[type.headline, { color: p.muted }]}>{t("Custom")}</Text>
           )}
         </View>
         <View style={{ gap: 8 }}>
@@ -220,7 +221,7 @@ function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; pri
           {!plan.computer && (
             <View style={[s.row, { gap: 10 }]}>
               <Ionicons name="lock-closed-outline" size={16} color={p.faint} />
-              <Text style={[type.callout, { color: p.faint }]}>No computer use</Text>
+              <Text style={[type.callout, { color: p.faint }]}>{t("No computer use")}</Text>
             </View>
           )}
         </View>

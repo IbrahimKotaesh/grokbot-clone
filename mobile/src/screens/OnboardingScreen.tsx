@@ -9,14 +9,15 @@ import { FadeIn, TypingDots, useLoop } from "../components/motion";
 import { palette as p, type, space, radius, fruits } from "../theme";
 import { catalog, starterTeams, templateById, type BotTemplate } from "../lib/catalog";
 import { installTemplate, isInstalled, markOnboarded, rememberProfile } from "../lib/install";
+import { t as tr, n, mirror } from "../lib/i18n";
 
 type Step = "welcome" | "about" | "use" | "team" | "pick" | "build";
 type Team = "accounting" | "hr" | "other";
-const jobs = ["Founder", "Accountant", "HR", "Marketing", "Developer", "Student"];
+const jobs = ["Founder", tr("Accountant"), tr("HR"), tr("Marketing"), tr("Developer"), "Student"];
 const teams: { id: Team; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; detail: string }[] = [
-  { id: "accounting", label: "Accounting & Finance", icon: "calculator-outline", detail: "Bills, invoices, payroll and cash flow" },
-  { id: "hr", label: "HR & People", icon: "people-outline", detail: "Hiring, onboarding and policy questions" },
-  { id: "other", label: "Something else", icon: "sparkles-outline", detail: "Email, research and content to start" },
+  { id: "accounting", label: tr("Accounting & Finance"), icon: "calculator-outline", detail: tr("Bills, invoices, payroll and cash flow") },
+  { id: "hr", label: tr("HR & People"), icon: "people-outline", detail: tr("Hiring, onboarding and policy questions") },
+  { id: "other", label: tr("Something else"), icon: "sparkles-outline", detail: tr("Email, research and content to start") },
 ];
 
 export function OnboardingScreen({ done }: { done: () => void }) {
@@ -51,14 +52,14 @@ export function OnboardingScreen({ done }: { done: () => void }) {
     <KeyboardScreen style={{ paddingTop: insets.top }}>
       {/* top bar: back · progress · skip */}
       <View style={[s.row, { paddingHorizontal: space.sm, height: 52, gap: space.sm }]}>
-        <View style={{ width: 44 }}>{index > 0 && step !== "build" && <IconButton name="chevron-back" label="Back" onPress={back} />}</View>
+        <View style={{ width: 44 }}>{index > 0 && step !== "build" && <IconButton name="chevron-back" label={tr("Back")} onPress={back} />}</View>
         <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: p.raised, overflow: "hidden" }}>
           <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: p.text, width: progress.interpolate({ inputRange: [0, 1], outputRange: ["4%", "100%"] }) }} />
         </View>
         <View style={{ width: 52, alignItems: "flex-end", paddingRight: space.sm }}>
           {step !== "build" && (
             <Pressable onPress={() => void skip()} hitSlop={10} accessibilityRole="button">
-              <Text style={[type.subhead, { color: p.muted }]}>Skip</Text>
+              <Text style={[type.subhead, { color: p.muted }]}>{tr("Skip")}</Text>
             </Pressable>
           )}
         </View>
@@ -68,12 +69,12 @@ export function OnboardingScreen({ done }: { done: () => void }) {
       {step === "about" && (
         <StepShell
           key="about"
-          title="Tell us about you"
-          subtitle="Your bots use this to tailor their help."
-          footer={<Button title="Continue" disabled={!name.trim()} onPress={() => go("use")} />}
+          title={tr("Tell us about you")}
+          subtitle={tr("Your bots use this to tailor their help.")}
+          footer={<Button title={tr("Continue")} disabled={!name.trim()} onPress={() => go("use")} />}
         >
-          <TextField label="Your name" placeholder="e.g. Ibrahim" value={name} onChangeText={setName} autoFocus returnKeyType="next" />
-          <TextField label="What do you do?" placeholder="e.g. Accountant at a design studio" value={job} onChangeText={setJob} />
+          <TextField label={tr("Your name")} placeholder="e.g. Ibrahim" value={name} onChangeText={setName} autoFocus returnKeyType="next" />
+          <TextField label={tr("What do you do?")} placeholder="e.g. Accountant at a design studio" value={job} onChangeText={setJob} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
             {jobs.map((j) => (
               <Chip key={j} label={j} selected={job === j} onPress={() => setJob(job === j ? "" : j)} />
@@ -82,11 +83,11 @@ export function OnboardingScreen({ done }: { done: () => void }) {
         </StepShell>
       )}
       {step === "use" && (
-        <StepShell key="use" title="How will you use Fino?" subtitle="We'll set up a starter team for you. You can change it anytime.">
+        <StepShell key="use" title={tr("How will you use Fino?")} subtitle={tr("We'll set up a starter team for you. You can change it anytime.")}>
           <ChoiceCard
             icon="home-outline"
-            title="Personal"
-            detail="Email, calendar and research help for your own life."
+            title={tr("Personal")}
+            detail={tr("Email, calendar and research help for your own life.")}
             selected={use === "personal"}
             delay={60}
             onPress={() => {
@@ -98,8 +99,8 @@ export function OnboardingScreen({ done }: { done: () => void }) {
           />
           <ChoiceCard
             icon="briefcase-outline"
-            title="Work"
-            detail="A team of specialists for your department."
+            title={tr("Work")}
+            detail={tr("A team of specialists for your department.")}
             selected={use === "work"}
             delay={120}
             onPress={() => {
@@ -110,12 +111,12 @@ export function OnboardingScreen({ done }: { done: () => void }) {
         </StepShell>
       )}
       {step === "team" && (
-        <StepShell key="team" title="Which team are you on?" subtitle="We'll pick bots that already know the job.">
+        <StepShell key="team" title={tr("Which team are you on?")} subtitle={tr("We'll pick bots that already know the job.")}>
           {teams.map((t, i) => (
             <ChoiceCard
               key={t.id}
               icon={t.icon}
-              title={t.label}
+              title={tr(t.label)}
               detail={t.detail}
               selected={team === t.id}
               delay={60 + i * 60}
@@ -131,18 +132,18 @@ export function OnboardingScreen({ done }: { done: () => void }) {
       {step === "pick" && (
         <StepShell
           key="pick"
-          title="Meet your team"
-          subtitle="Each bot comes with ready-made skills. Turn off any you don't need."
-          footer={<Button title={picked.length ? `Create my team · ${picked.length + 1}` : "Continue with Quinn only"} onPress={() => go("build")} />}
+          title={tr("Meet your team")}
+          subtitle={tr("Each bot comes with ready-made skills. Turn off any you don't need.")}
+          footer={<Button title={picked.length ? tr("Create my team · {n}", { n: picked.length + 1 }) : tr("Continue with Quinn only")} onPress={() => go("build")} />}
         >
           {primary && (
             <FadeIn style={[s.card, s.row]}>
               <Avatar shape={primary.avatarShape} size={46} primary />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[type.headline, { color: p.text }]}>{primary.name}</Text>
-                <Text style={[type.footnote, { color: p.muted }]}>Chief of Staff · coordinates everyone</Text>
+                <Text style={[type.footnote, { color: p.muted }]}>{tr("Chief of Staff · coordinates everyone")}</Text>
               </View>
-              <Text style={[type.caption, { color: p.faint }]}>Included</Text>
+              <Text style={[type.caption, { color: p.faint }]}>{tr("Included")}</Text>
             </FadeIn>
           )}
           {(use === "personal" ? starterTeams.personal : starterTeams[team ?? "other"]).map((id, i) => {
@@ -202,12 +203,12 @@ function Welcome({ onNext }: { onNext: () => void }) {
         <FadeIn delay={120} style={{ alignItems: "center", gap: space.md }}>
           <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>Your AI team{"\n"}is almost ready</Text>
           <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 300 }]}>
-            Answer three quick questions and we&apos;ll hire the right bots for you, each with its own skills and computer.
+            {tr("Answer three quick questions and we'll hire the right bots for you, each with its own skills and computer.")}
           </Text>
         </FadeIn>
       </View>
       <FadeIn delay={260}>
-        <Button title="Get started" icon="arrow-forward" onPress={onNext} />
+        <Button title={tr("Get started")} icon="arrow-forward" onPress={onNext} />
       </FadeIn>
     </View>
   );
@@ -275,7 +276,7 @@ function ChoiceCard({
           <Text style={[type.headline, { color: p.text }]}>{title}</Text>
           <Text style={[type.subhead, { color: p.muted }]}>{detail}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={p.faint} />
+        <Ionicons name="chevron-forward" size={18} color={p.faint} style={mirror("chevron-forward")} />
       </Pressable>
     </FadeIn>
   );
@@ -297,14 +298,14 @@ export function TemplateToggle({ t, on, installed, onToggle }: { t: BotTemplate;
         <Avatar shape={t.shape} size={46} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[type.headline, { color: p.text }]}>
-            {t.name} <Text style={{ color: p.muted, fontWeight: "400" }}>· {t.label}</Text>
+            {t.name} <Text style={{ color: p.muted, fontWeight: "400" }}>· {tr(t.label)}</Text>
           </Text>
           <Text style={[type.footnote, { color: p.muted }]} numberOfLines={2}>
-            {t.description}
+            {tr(t.description)}
           </Text>
         </View>
         {installed ? (
-          <Text style={[type.caption, { color: p.faint }]}>On team</Text>
+          <Text style={[type.caption, { color: p.faint }]}>{tr("On team")}</Text>
         ) : (
           <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={26} color={on ? p.text : p.faint} />
         )}
@@ -367,9 +368,9 @@ function Build({ templates, onFinish }: { templates: BotTemplate[]; onFinish: ()
               <TypingDots color={p.text} size={7} />
             </View>
           )}
-          <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>{finished ? "Your team is ready" : "Hiring your team…"}</Text>
+          <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>{finished ? tr("Your team is ready") : tr("Hiring your team…")}</Text>
           <Text style={[type.body, { color: p.muted, textAlign: "center" }]}>
-            {finished ? "Say hi to Quinn. It already knows who you are and who's on the team." : "Setting up each bot with its skills."}
+            {finished ? tr("Say hi to Quinn. It already knows who you are and who's on the team.") : tr("Setting up each bot with its skills.")}
           </Text>
         </View>
         {templates.map((t, i) => {
@@ -381,12 +382,12 @@ function Build({ templates, onFinish }: { templates: BotTemplate[]; onFinish: ()
                 <Text style={[type.headline, { color: p.text }]}>{t.name}</Text>
                 <Text style={[type.footnote, { color: r.phase === "error" ? p.red : p.muted }]}>
                   {r.phase === "waiting"
-                    ? t.label
+                    ? tr(t.label)
                     : r.phase === "error"
-                      ? "Couldn't add this bot"
+                      ? tr("Couldn't add this bot")
                       : r.phase === "done"
-                        ? `${t.skills.length} skills ready`
-                        : `Adding skills ${r.skills}/${t.skills.length}`}
+                        ? n(t.skills.length, "{n} skill ready", "{n} skills ready")
+                        : tr("Adding skills {n}/{total}", { n: r.skills, total: t.skills.length })}
                 </Text>
               </View>
               {r.phase === "done" ? (
@@ -403,7 +404,7 @@ function Build({ templates, onFinish }: { templates: BotTemplate[]; onFinish: ()
       </ScrollView>
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: Math.max(insets.bottom, space.lg) }}>
         <Button
-          title={finished ? "Start" : "Setting up…"}
+          title={finished ? tr("Start") : tr("Setting up…")}
           icon={finished ? "arrow-forward" : undefined}
           busy={closing}
           disabled={!finished}

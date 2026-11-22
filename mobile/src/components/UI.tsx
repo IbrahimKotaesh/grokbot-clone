@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { palette as p, fruitAssets, fruitFor, type, space, radius, accentFor } from "../theme";
 import { PressableScale, useLoop } from "./motion";
+import { mirror } from "../lib/i18n";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -126,7 +127,7 @@ export function IconButton({
         opacity: disabled ? 0.35 : 1,
       }}
     >
-      <Ionicons name={name} size={iconSize ?? Math.round(size * 0.5)} color={fg} />
+      <Ionicons name={name} size={iconSize ?? Math.round(size * 0.5)} color={fg} style={mirror(name)} />
     </PressableScale>
   );
 }
@@ -178,7 +179,7 @@ export function Button({
         <ActivityIndicator color={fg} />
       ) : (
         <View style={styles.row8}>
-          {icon && <Ionicons name={icon} size={compact ? 16 : 18} color={disabled ? p.faint : fg} />}
+          {icon && <Ionicons name={icon} size={compact ? 16 : 18} color={disabled ? p.faint : fg} style={mirror(icon)} />}
           <Text style={[styles.buttonText, compact && { fontSize: 15 }, { color: disabled ? p.faint : fg }]}>{title}</Text>
         </View>
       )}
@@ -291,7 +292,7 @@ export function ListRow({
       </View>
       {!!value && <Text style={[type.callout, { color: p.muted }]}>{value}</Text>}
       {trailing}
-      {chevron && <Ionicons name="chevron-forward" size={16} color={p.faint} />}
+      {chevron && <Ionicons name="chevron-forward" size={16} color={p.faint} style={mirror("chevron-forward")} />}
     </View>
   );
   if (!onPress) return body;

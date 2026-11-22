@@ -10,17 +10,18 @@ import { Avatar, Button, ErrorText, Group, Header, IconButton, ListRow, Provider
 import { FadeIn, TypingDots, useLoop } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
 import { statusLine, usesComputer } from "../lib/format";
+import { t } from "../lib/i18n";
 
 const statusCopy: Record<ComputerState["status"], { label: string; tone: "live" | "busy" | "off" | "bad" }> = {
-  running: { label: "Online", tone: "live" },
-  creating: { label: "Setting up", tone: "busy" },
-  starting: { label: "Starting", tone: "busy" },
-  resuming: { label: "Waking up", tone: "busy" },
-  suspending: { label: "Going to sleep", tone: "busy" },
-  suspended: { label: "Asleep", tone: "off" },
-  stopped: { label: "Off", tone: "off" },
-  absent: { label: "Not set up yet", tone: "off" },
-  error: { label: "Needs attention", tone: "bad" },
+  running: { label: t("Online"), tone: "live" },
+  creating: { label: t("Setting up"), tone: "busy" },
+  starting: { label: t("Starting"), tone: "busy" },
+  resuming: { label: t("Waking up"), tone: "busy" },
+  suspending: { label: t("Going to sleep"), tone: "busy" },
+  suspended: { label: t("Asleep"), tone: "off" },
+  stopped: { label: t("Off"), tone: "off" },
+  absent: { label: t("Not set up yet"), tone: "off" },
+  error: { label: t("Needs attention"), tone: "bad" },
 };
 
 export function ComputerScreen({ done, openClaudeCode }: { done: () => void; openClaudeCode?: () => void }) {
@@ -81,16 +82,16 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
     <View style={[s.screen, { paddingTop: insets.top }]}>
       <Header
         large={false}
-        title="Computer"
-        left={<IconButton name="chevron-down" label="Close" onPress={done} />}
-        right={<IconButton name="refresh" label="Refresh status" color={p.muted} onPress={() => void loadState()} />}
+        title={t("Computer")}
+        left={<IconButton name="chevron-down" label={t("Close")} onPress={done} />}
+        right={<IconButton name="refresh" label={t("Refresh status")} color={p.muted} onPress={() => void loadState()} />}
       />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl, gap: space.md }}>
         <FadeIn style={[s.row, { paddingVertical: space.sm }]}>
           <Avatar shape={bot.avatarShape} size={44} color={bot.avatarColor} status={working ? "working" : null} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[type.headline, { color: p.text }]}>{bot.name}&apos;s screen</Text>
-            <Text style={[type.footnote, { color: p.muted }]}>Its own desktop on your cloud computer</Text>
+            <Text style={[type.footnote, { color: p.muted }]}>{t("Its own desktop on your cloud computer")}</Text>
           </View>
           <View style={[s.row, { gap: 6, backgroundColor: p.surface, borderRadius: radius.full, paddingHorizontal: 10, height: 28, borderWidth: 1, borderColor: p.line }]}>
             <Animated.View
@@ -103,7 +104,7 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
         <FadeIn delay={80}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Enlarge screen"
+            accessibilityLabel={t("Enlarge screen")}
             disabled={!running || noScreen}
             onPress={() => setZoom(true)}
             style={{
@@ -144,12 +145,12 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
                   <Ionicons name={running ? "desktop-outline" : "moon-outline"} size={30} color={p.faint} />
                 )}
                 <Text style={[type.callout, { color: p.text, textAlign: "center" }]}>
-                  {running ? `${bot.name} hasn't opened a screen yet` : computer?.status === "absent" ? "No computer yet" : `The computer is ${st.label.toLowerCase()}`}
+                  {running ? t("{name} hasn't opened a screen yet", { name: bot.name }) : computer?.status === "absent" ? t("No computer yet") : t("The computer is {name}", { name: st.label.toLowerCase() })}
                 </Text>
                 <Text style={[type.footnote, { color: p.muted, textAlign: "center", maxWidth: 260 }]}>
                   {running
-                    ? "Ask it to open a website or an app and you'll watch it work here."
-                    : "Wake it up to see what your bot sees. It sleeps on its own when nobody is using it."}
+                    ? t("Ask it to open a website or an app and you'll watch it work here.")
+                    : t("Wake it up to see what your bot sees. It sleeps on its own when nobody is using it.")}
                 </Text>
               </View>
             )}
@@ -169,17 +170,17 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
         <FadeIn delay={140} style={{ gap: space.sm }}>
           {!running ? (
             <Button
-              title={computer?.status === "absent" ? "Set up computer" : "Wake computer"}
+              title={computer?.status === "absent" ? t("Set up computer") : t("Wake computer")}
               icon="power"
               busy={busy === "wake" || statusCopy[computer?.status ?? "absent"].tone === "busy"}
               onPress={() => void run("wake", "POST", "/computer/ensure")}
             />
           ) : (
-            <Button title="Give it a task" icon="chatbubble-ellipses" onPress={done} />
+            <Button title={t("Give it a task")} icon="chatbubble-ellipses" onPress={done} />
           )}
         </FadeIn>
 
-        <SectionLabel>Controls</SectionLabel>
+        <SectionLabel>{t("Controls")}</SectionLabel>
         <Group>
           <ListRow
             leading={
@@ -187,18 +188,18 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
                 <ProviderMark provider="claude" size={17} />
               </View>
             }
-            title="Claude Code"
-            subtitle="Run Claude Code here with your own Claude subscription"
+            title={t("Claude Code")}
+            subtitle={t("Run Claude Code here with your own Claude subscription")}
             onPress={openClaudeCode}
           />
           <ListRow
             icon="sparkles-outline"
-            title="Clean screen"
-            subtitle={`Close ${bot.name}'s windows and start fresh`}
+            title={t("Clean screen")}
+            subtitle={t("Close {name}'s windows and start fresh", { name: bot.name })}
             onPress={!running ? undefined : () =>
-              Alert.alert("Clean this screen?", `${bot.name}'s open windows will close.`, [
-                { text: "Cancel", style: "cancel" },
-                { text: "Clean screen", style: "destructive", onPress: () => void run("reset", "POST", `/bots/${bot.id}/screen/reset`) },
+              Alert.alert(t("Clean this screen?"), t("{name}'s open windows will close.", { name: bot.name }), [
+                { text: t("Cancel"), style: "cancel" },
+                { text: t("Clean screen"), style: "destructive", onPress: () => void run("reset", "POST", `/bots/${bot.id}/screen/reset`) },
               ])
             }
             chevron={false}
@@ -206,24 +207,24 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
           />
           <ListRow
             icon="moon-outline"
-            title="Put computer to sleep"
-            subtitle="Pauses every bot's screen to save resources"
+            title={t("Put computer to sleep")}
+            subtitle={t("Pauses every bot's screen to save resources")}
             onPress={
               running
                 ? () =>
-                    Alert.alert("Put the computer to sleep?", "All bots share this machine. It wakes again when one needs it.", [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Sleep", onPress: () => void run("sleep", "POST", "/computer/suspend") },
+                    Alert.alert(t("Put the computer to sleep?"), t("All bots share this machine. It wakes again when one needs it."), [
+                      { text: t("Cancel"), style: "cancel" },
+                      { text: t("Sleep"), onPress: () => void run("sleep", "POST", "/computer/suspend") },
                     ])
                 : undefined
             }
             chevron={false}
           />
         </Group>
-        <SectionLabel>About</SectionLabel>
+        <SectionLabel>{t("About")}</SectionLabel>
         <Group>
-          <ListRow icon="layers-outline" title="Own screen per bot" subtitle="Every bot works in its own window space, so they never get in each other's way." />
-          <ListRow icon="shield-checkmark-outline" title="You stay in control" subtitle="Sensitive actions still ask for your approval in the chat." />
+          <ListRow icon="layers-outline" title={t("Own screen per bot")} subtitle={t("Every bot works in its own window space, so they never get in each other's way.")} />
+          <ListRow icon="shield-checkmark-outline" title={t("You stay in control")} subtitle={t("Sensitive actions still ask for your approval in the chat.")} />
         </Group>
       </ScrollView>
       <Modal visible={zoom} animationType="fade" supportedOrientations={["portrait", "landscape"]} onRequestClose={() => setZoom(false)}>
@@ -232,7 +233,7 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
             {frame && <Image source={{ uri: frame, headers: authHeaders() }} style={{ width, height: height * 0.8 }} contentFit="contain" cachePolicy="none" transition={160} />}
           </ScrollView>
           <View style={{ position: "absolute", top: 56, right: space.lg }}>
-            <IconButton name="close" label="Close" variant="filled" onPress={() => setZoom(false)} />
+            <IconButton name="close" label={t("Close")} variant="filled" onPress={() => setZoom(false)} />
           </View>
         </View>
       </Modal>
