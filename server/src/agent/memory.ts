@@ -1,4 +1,5 @@
 import {recallTokens} from './recall.js';
+import { hostedKey } from '../hosted-models.js';
 import OpenAI from 'openai';
 import { db, now } from '../db.js';
 import '../db-config.js';
@@ -14,7 +15,11 @@ import { getBotRow, getLive } from '../store.js';
  *  (c) a bounded, relevance-ranked memory section for the system prompt.
  */
 
-const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 300_000 });
+const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 90_000 });
+const xaiReady = env.xaiKey !== 'disabled';
+// Without an xAI key, summaries are written by a cheap long-context model on Fino's OpenRouter key.
+const SUMMARY_MODEL = process.env.OR_SUMMARY_MODEL ?? 'deepseek/deepseek-v4.1-flash';
+const summarizer = hostedKey() ? new OpenAI({ apiKey: hostedKey()!, baseURL: 'https://openrouter.ai/api/v1', timeout: 90_000 }) : null;
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 
@@ -162,8 +167,10 @@ async function compactWithXai(old: any[]): Promise<any[]> {
 
 async function compactWithSummary(old: any[]): Promise<any[]> {
   const transcript = renderTranscript(old);
-  const res: any = await xai.responses.create({
-    model: env.xaiModel,
+  const client = xaiReady ? xai : summarizer;
+  if (!client) throw new Error('no model available to summarize');
+  const res: any = await client.responses.create({
+    model: xaiReady ? env.xaiModel : SUMMARY_MODEL,
     input: [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: transcript }],
     store: false,
     reasoning: { effort: 'low' },
@@ -206,6 +213,7 @@ export async function maybeCompact(botId: string, items: any[], opts: { force?: 
   let replaced: any[];
   try {
     if (memoryConfig.compactMethod === 'summary') throw new Error('xAI compaction disabled by GROKBOT_COMPACT_METHOD=summary');
+    if (!xaiReady) throw new Error('no xAI key on this server');
     replaced = await compactWithXai(old);
   } catch (e: any) {
     console.warn(`[memory] compact via /responses/compact failed for ${botId}: ${e?.message ?? e}; falling back to a summary`);
