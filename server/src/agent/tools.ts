@@ -15,6 +15,7 @@ import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
 import { appendRow, updateRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
+import { readPage } from './read-page.js';
 import { composioTools, executeComposio, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
 import { scheduleRoutine, unscheduleRoutine } from '../routines.js';
 import { createEventRoutine, deleteEventTrigger, describeEvent, listTriggerTypes } from '../triggers.js';
@@ -60,6 +61,9 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 const lastShot = new Map<string, string>();
 /** Each bot's open plan card: updated in place until every step is done or it goes stale. */
 const openPlans = new Map<string, { seq: number; at: number }>();
+/** Pages each bot read in its current burst of work: research stops at a handful of pages. */
+const pageReads = new Map<string, { n: number; at: number }>();
+const MAX_PAGES = 8;
 async function shot(ctx: ToolCtx, caption: string, always = false): Promise<ToolResult> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   await new Promise((r) => setTimeout(r, 700));
@@ -93,6 +97,26 @@ function botByName(userId: string, name: string) {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: 'read_page',
+    description:
+      'Read a public web page by URL without using the computer: returns its title, readable text and main links. Use it for articles, docs, prices, news and any page you only need to read. Follow links by calling it again. Use the computer only to click, log in or fill forms.',
+    parameters: obj({ url: { type: 'string' }, max_chars: { type: 'integer', description: 'How much text to return (default 12000, max 40000).' } }, ['url']),
+    activity: 'reading_web',
+    label: 'Reading a page',
+    impl: async (a, ctx) => {
+      const r = pageReads.get(ctx.botId);
+      const count = r && now() - r.at < 3 * 60_000 ? r.n : 0;
+      if (count >= MAX_PAGES) return { output: `You have read ${MAX_PAGES} pages for this request. Stop reading and answer with what you found, saying what you could not confirm.`, summary: 'Enough pages read' };
+      pageReads.set(ctx.botId, { n: count + 1, at: now() });
+      const page = await readPage(String(a.url), a.max_chars);
+      const links = page.links.map((l) => `- ${l.text}: ${l.url}`).join('\n');
+      return {
+        output: `URL: ${page.url}\nTitle: ${page.title}\n\n${page.text}${links ? `\n\nLinks on the page:\n${links}` : ''}`,
+        summary: page.title || page.url,
+      };
+    },
+  },
   {
     name: 'update_plan',
     description:
@@ -656,7 +680,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set(['read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {

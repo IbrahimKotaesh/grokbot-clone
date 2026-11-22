@@ -1,5 +1,5 @@
 import {isReadOnlySlug} from '../composio.js';
-const SAFE_READS=new Set(['update_plan','report_suspicious_content','recall','search_conversation','read_file','view_photo','computer_screenshot','list_routines','list_event_triggers','list_subagents','ask_user','stay_silent','notify_user','COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
+const SAFE_READS=new Set(['read_page','update_plan','report_suspicious_content','recall','search_conversation','read_file','view_photo','computer_screenshot','list_routines','list_event_triggers','list_subagents','ask_user','stay_silent','notify_user','COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 /** A positive, intentionally small list. Scripts/expansions/operators are never inferred safe. */
 export function plainReadCommand(command:unknown):boolean{
  return typeof command==='string'&&/^(?:pwd|whoami|date(?:[ \t]+-u)?|uname(?:[ \t]+-[A-Za-z]+)?|ls(?:[ \t]+[A-Za-z0-9_./-]+)*)[ \t]*$/.test(command.trim());

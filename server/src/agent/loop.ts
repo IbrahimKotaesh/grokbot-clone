@@ -34,6 +34,9 @@ export type Trigger = (
 
 /** The model provider the current turn of each bot actually runs on (after any fallback). */
 const turnProvider = new Map<string, string>();
+/** OpenRouter's built-in web search for any model: the Parallel engine in fast mode (about $0.001 a search). */
+const OPENROUTER_WEB_SEARCH = { type: 'openrouter:web_search', parameters: { engine: process.env.OR_SEARCH_ENGINE ?? 'parallel', mode: 'fast', max_results: 5, max_uses: 3 } };
+
 /** Cheap-first routing state for computer work on Fino's own OpenRouter key, per running turn. */
 const routes = new Map<string, RouteState>();
 
@@ -359,7 +362,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
         else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
-        if(!toolMap.has(c.name)||['connected_apps','read_file','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
+        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };
@@ -423,7 +426,9 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   const body: any = {
     model,
     input,
-    tools: llm.xaiExtras ? tools : tools.filter((t: any) => t.type === 'function'),
+    tools: llm.xaiExtras
+      ? tools
+      : [...tools.filter((t: any) => t.type === 'function'), ...(provider === 'openrouter' ? [OPENROUTER_WEB_SEARCH] : [])],
     reasoning: { effort: bot.effort ?? 'medium' },
     store: false,
     stream: true,
