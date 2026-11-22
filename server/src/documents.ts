@@ -1,4 +1,5 @@
 import {spawn} from 'node:child_process';
+import { ocrPdf, hasNoText } from './pdf-ocr.js';
 import {fileURLToPath} from 'node:url';
 import {db,now} from './db.js';
 import {newId} from './lib/ids.js';
@@ -24,22 +25,28 @@ export function validateDocuments(value:unknown):DocumentInput[]{
   return {name,mime:DOCUMENT_MIMES[ext],data,ext};
  });
 }
+/** Text of one document, extracted in a separate Python process (pypdf for PDFs). */
+export function extractText(ext:string,data:Buffer,name='document'):Promise<{text:string;note:string}>{
+  return new Promise<{text:string;note:string}>((resolve,reject)=>{
+   const proc=spawn(process.env.DOCUMENT_PYTHON??'/opt/fino-documents/venv/bin/python',[fileURLToPath(new URL('../scripts/extract-document.py',import.meta.url)),ext],{stdio:['pipe','pipe','pipe']});
+   let output='';const timer=setTimeout(()=>{proc.kill('SIGKILL');reject(Error('Document processing took too long. Try a smaller file.'));},30_000);
+   proc.stdout.setEncoding('utf8');
+   proc.stdout.on('data',chunk=>{output+=chunk;if(output.length>1500000){proc.kill('SIGKILL');reject(Error('Document text is too large.'));}});
+   proc.stderr.on('data',()=>{});proc.stdin.on('error',()=>{});
+   proc.on('error',()=>{clearTimeout(timer);reject(Error('Document reading is temporarily unavailable.'));});
+   proc.on('close',code=>{clearTimeout(timer);if(code!==0)return reject(Error(`Could not read ${name}. Check that it is valid, unlocked and within the document limits.`));try{resolve(JSON.parse(output));}catch{reject(Error('Could not extract document text.'));}});
+   proc.stdin.end(data);
+  });
+}
+
 let extracting=false;
 export async function extractDocuments(files:DocumentInput[]):Promise<DocumentInput[]>{
  if(!files.length)return files;
  if(extracting)throw Error('Another document is being prepared. Please try again shortly.');
  extracting=true;
  try {for(const file of files){
-  const result=await new Promise<{text:string;note:string}>((resolve,reject)=>{
-   const proc=spawn(process.env.DOCUMENT_PYTHON??'/opt/fino-documents/venv/bin/python',[fileURLToPath(new URL('../scripts/extract-document.py',import.meta.url)),file.ext],{stdio:['pipe','pipe','pipe']});
-   let output='';const timer=setTimeout(()=>{proc.kill('SIGKILL');reject(Error('Document processing took too long. Try a smaller file.'));},30_000);
-   proc.stdout.setEncoding('utf8');
-   proc.stdout.on('data',chunk=>{output+=chunk;if(output.length>1500000){proc.kill('SIGKILL');reject(Error('Document text is too large.'));}});
-   proc.stderr.on('data',()=>{});proc.stdin.on('error',()=>{});
-   proc.on('error',()=>{clearTimeout(timer);reject(Error('Document reading is temporarily unavailable.'));});
-   proc.on('close',code=>{clearTimeout(timer);if(code!==0)return reject(Error(`Could not read ${file.name}. Check that it is valid, unlocked and within the document limits.`));try{resolve(JSON.parse(output));}catch{reject(Error('Could not extract document text.'));}});
-   proc.stdin.end(file.data);
-  });file.text=result.text;file.note=result.note;
+  const result=await extractText(file.ext,file.data,file.name);file.text=result.text;file.note=result.note;
+  if(file.ext==='pdf'&&hasNoText(file.text)){try{const ocr=await ocrPdf(file.data,file.name);if(ocr){file.text=ocr;file.note='Scanned PDF: text read with OCR, check numbers that matter.';}}catch(e){console.warn('[ocr]',(e as Error).message);}}
  }return files;}finally{extracting=false;}
 }
 export function saveDocuments(userId:string,botId:string,files:DocumentInput[]):NonNullable<MessageBody['files']>{

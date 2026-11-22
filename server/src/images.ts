@@ -14,12 +14,16 @@ export function validateImages(value: unknown): {name:string; mime:string; data:
   if (!Array.isArray(value) || value.length > MAX_IMAGES) throw new Error('Attach up to 3 photos.');
   return value.map(image => {
     if (!image || typeof image.dataUrl !== 'string' || image.dataUrl.length > MAX_BYTES * 4 / 3 + 100) throw new Error('Each photo must be under 3 MB.');
-    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image.dataUrl);
+    const m = /^data:image\/[\w.+-]+;base64,([A-Za-z0-9+/]+={0,2})$/.exec(image.dataUrl);
     if (!m) throw new Error('Choose a JPEG, PNG or WebP photo.');
-    const data = Buffer.from(m[2], 'base64');
-    const valid = m[1] === 'image/jpeg' ? data[0]===255 && data[1]===216 && data[2]===255 : m[1] === 'image/png' ? data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : data.subarray(0,4).toString()==='RIFF' && data.subarray(8,12).toString()==='WEBP';
-    if (!valid || data.length > MAX_BYTES) throw new Error('Invalid photo or photo too large.');
-    return {name: typeof image.name === 'string' ? image.name.replace(/[\r\n\x00]/g,'').slice(0,120) : 'Photo',mime:m[1],data};
+    const data = Buffer.from(m[1], 'base64');
+    // The phone's label can be wrong (pickers re-encode photos), so the bytes decide the type.
+    const mime = data[0]===255 && data[1]===216 && data[2]===255 ? 'image/jpeg'
+      : data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? 'image/png'
+      : data.subarray(0,4).toString()==='RIFF' && data.subarray(8,12).toString()==='WEBP' ? 'image/webp' : null;
+    if (!mime) throw new Error('Choose a JPEG, PNG or WebP photo (HEIC photos: set Camera → Formats → Most Compatible).');
+    if (data.length > MAX_BYTES) throw new Error('Each photo must be under 3 MB.');
+    return {name: typeof image.name === 'string' ? image.name.replace(/[\r\n\x00]/g,'').slice(0,120) : 'Photo',mime,data};
   });
 }
 export function saveImages(userId:string,botId:string,images:ReturnType<typeof validateImages>): NonNullable<MessageBody['images']> {

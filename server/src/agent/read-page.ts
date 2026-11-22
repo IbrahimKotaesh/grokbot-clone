@@ -3,8 +3,11 @@
 // every hop (including redirects) is resolved and private/internal networks are refused.
 import { lookup } from 'node:dns/promises';
 import net from 'node:net';
+import { extractText } from '../documents.js';
+import { ocrPdf, hasNoText } from '../pdf-ocr.js';
 
 const MAX_BYTES = 2_000_000;
+const MAX_PDF_BYTES = 10_000_000;
 const MAX_REDIRECTS = 5;
 const TIMEOUT_MS = 15_000;
 
@@ -95,7 +98,8 @@ export async function readPage(rawUrl: string, maxChars = 12_000) {
   if (!res) throw new Error('The page could not be read.');
   if (!res.ok) throw new Error(`The site answered ${res.status}.`);
   const type = res.headers.get('content-type') ?? '';
-  if (!/text\/|html|xml|json/i.test(type)) throw new Error(`This is not a web page (${type || 'unknown type'}). Use the computer for files like PDFs.`);
+  const isPdf = /application\/pdf/i.test(type) || (/octet-stream/i.test(type) && /\.pdf$/i.test(url.pathname));
+  if (!isPdf && !/text\/|html|xml|json/i.test(type)) throw new Error(`This file type can't be read here (${type || 'unknown type'}).`);
   // Read at most MAX_BYTES so a huge page can't exhaust memory.
   const reader = res.body?.getReader();
   const chunks: Uint8Array[] = [];
@@ -105,13 +109,29 @@ export async function readPage(rawUrl: string, maxChars = 12_000) {
     if (done || !value) break;
     chunks.push(value);
     size += value.length;
-    if (size >= MAX_BYTES) {
+    if (size >= (isPdf ? MAX_PDF_BYTES : MAX_BYTES)) {
       await reader.cancel();
       break;
     }
   }
-  const raw = new TextDecoder('utf-8', { fatal: false }).decode(Buffer.concat(chunks));
-  const page = /html|xml/i.test(type) ? htmlToText(raw, url) : { title: '', text: raw, links: [] };
+  const bytes = Buffer.concat(chunks);
+  let page: { title: string; text: string; links: { text: string; url: string }[] };
+  if (isPdf) {
+    // PDFs: the same extractor as uploaded files; scanned ones go through OCR.
+    if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('This link is not a valid PDF.');
+    const name = decodeURIComponent(url.pathname.split('/').pop() || 'document.pdf');
+    let { text } = await extractText('pdf', bytes, name);
+    let note = '';
+    if (hasNoText(text)) {
+      text = await ocrPdf(bytes, name);
+      note = text ? '[Scanned PDF: text read with OCR, check numbers that matter.]\n' : '';
+      if (!text) throw new Error('This PDF has no readable text and OCR is not available.');
+    }
+    page = { title: name, text: note + text, links: [] };
+  } else {
+    const raw = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    page = /html|xml/i.test(type) ? htmlToText(raw, url) : { title: '', text: raw, links: [] };
+  }
   const limit = Math.max(2000, Math.min(Number(maxChars) || 12_000, 40_000));
   const truncated = page.text.length > limit;
   return {

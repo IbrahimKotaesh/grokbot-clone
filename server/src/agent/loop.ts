@@ -362,7 +362,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
         else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
-        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
+        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };
@@ -429,7 +429,9 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     tools: llm.xaiExtras
       ? tools
       : [...tools.filter((t: any) => t.type === 'function'), ...(provider === 'openrouter' ? [OPENROUTER_WEB_SEARCH] : [])],
-    reasoning: { effort: bot.effort ?? 'medium' },
+    // Fino's included models answer with light thinking (much faster); OpenRouter picks the fastest host.
+    reasoning: { effort: llm.hosted ? (process.env.OR_EFFORT ?? 'low') : (bot.effort ?? 'medium') },
+    ...(provider === 'openrouter' ? { provider: { sort: process.env.OR_PROVIDER_SORT ?? 'throughput' } } : {}),
     store: false,
     stream: true,
     ...(llm.xaiExtras

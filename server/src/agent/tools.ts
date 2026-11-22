@@ -98,9 +98,48 @@ function botByName(userId: string, name: string) {
 
 export const TOOLS: ToolDef[] = [
   {
+    name: 'team_updates',
+    description:
+      "See what the user's other Bots said and found recently (emails they flagged, results, replies), newest first. Search by words (any language, any word matches) and/or one Bot's name. As the primary Bot, check this before telling the user you couldn't find something.",
+    parameters: obj(
+      {
+        query: { type: 'string', description: 'Words to look for, e.g. a person, company or topic. Leave empty for the latest updates.' },
+        bot_name: { type: 'string', description: "Only this Bot's messages." },
+        days: { type: 'integer', description: 'How far back (1-60 days, default 14).' },
+      },
+      [],
+    ),
+    activity: 'working',
+    label: "Checking the team's updates",
+    impl: async (a, ctx) => {
+      const days = Math.max(1, Math.min(60, Number(a.days) || 14));
+      const rows = db
+        .prepare(
+          "SELECT b.name AS bot, r.body, r.created_at FROM rows r JOIN bots b ON b.id=r.bot_id WHERE b.user_id=? AND r.bot_id<>? AND r.kind IN ('message','card','event') AND r.created_at>=? ORDER BY r.created_at DESC LIMIT 600",
+        )
+        .all(ctx.userId, ctx.botId, now() - days * 86_400_000) as { bot: string; body: string; created_at: number }[];
+      const words = String(a.query ?? '').toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+      const only = String(a.bot_name ?? '').trim().toLowerCase();
+      const items: string[] = [];
+      for (const r of rows) {
+        if (only && r.bot.toLowerCase() !== only) continue;
+        let body: any;
+        try { body = JSON.parse(r.body); } catch { continue; }
+        const text = body.type === 'message' ? `${body.role === 'user' ? 'User' : r.bot}: ${body.text ?? ''}` : body.type === 'card' ? `${r.bot} (card): ${body.summary ?? body.title ?? body.question ?? ''}` : `${r.bot} (event): ${body.text ?? ''}`;
+        if (!text.trim() || (words.length && !words.some((w) => text.toLowerCase().includes(w)))) continue;
+        items.push(`[${new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')} · ${r.bot}] ${text.slice(0, 700)}`);
+        if (items.length >= 15) break;
+      }
+      return {
+        output: items.length ? items.join('\n\n') : `No messages from other Bots in the last ${days} days${words.length ? ` mention ${a.query}` : ''}. Try other words, a longer period, or search the connected apps directly.`,
+        summary: items.length ? `${items.length} team updates` : 'No team updates found',
+      };
+    },
+  },
+  {
     name: 'read_page',
     description:
-      'Read a public web page by URL without using the computer: returns its title, readable text and main links. Use it for articles, docs, prices, news and any page you only need to read. Follow links by calling it again. Use the computer only to click, log in or fill forms.',
+      'Read a public web page or PDF by URL without using the computer: returns its title, readable text and main links (PDFs, including scanned ones, come back as text). Use it for articles, docs, reports, prices, news and any page you only need to read. Follow links by calling it again. Use the computer only to click, log in or fill forms.',
     parameters: obj({ url: { type: 'string' }, max_chars: { type: 'integer', description: 'How much text to return (default 12000, max 40000).' } }, ['url']),
     activity: 'reading_web',
     label: 'Reading a page',
@@ -680,7 +719,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set(['team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {

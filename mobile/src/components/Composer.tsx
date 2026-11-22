@@ -187,7 +187,12 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       if (result.canceled) return;
       const added = result.assets.map((asset, i) => {
         if (!asset.base64 || asset.base64.length > 4 * 1024 * 1024) throw Error(t("Choose a smaller photo (under 3 MB)."));
-        return { name: asset.fileName ?? `Photo-${i + 1}.jpg`, dataUrl: `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`, image: true };
+        const b64 = asset.base64;
+        const mime = b64.startsWith("/9j/") ? "image/jpeg" : b64.startsWith("iVBOR") ? "image/png" : b64.startsWith("UklGR") ? "image/webp" : null;
+        if (!mime) throw Error(t("Choose a JPEG, PNG or WebP photo."));
+        const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+        const base = (asset.fileName ?? `Photo-${i + 1}`).replace(/\.[^.]+$/, "");
+        return { name: `${base}.${ext}`, dataUrl: `data:${mime};base64,${b64}`, image: true };
       });
       editAttachments((old) => [...old, ...added].slice(0, 8));
     } catch (e) {
