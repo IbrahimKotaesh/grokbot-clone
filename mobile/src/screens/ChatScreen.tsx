@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { chatTimeline, type ChatItem } from "../lib/chat-timeline";
 import { WorkDetails } from "../components/WorkDetails";
-import type { Row } from "../../../packages/contracts/src/types";
+import type { Bot, Row } from "../../../packages/contracts/src/types";
 import { client } from "../lib/session";
 import { useWorkspace, rowKey } from "../lib/store";
 import { Avatar, IconButton, Button, ErrorText, Chip, KeyboardScreen, LockBadge, styles as s } from "../components/UI";
@@ -218,11 +218,12 @@ export function ChatScreen({
         }
         ListHeaderComponent={
           live?.isRunning ? (
-            <FadeIn offset={6} style={[s.row, { paddingHorizontal: space.xl, paddingVertical: space.md, gap: 10 }]}>
-              <TypingDots color={p.muted} size={6} />
-              <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>
+            <FadeIn offset={6} style={[s.row, { paddingHorizontal: space.lg, paddingVertical: space.md, gap: 10 }]}>
+              <ThinkingAvatar bot={bot} />
+              <Text style={[type.footnote, { color: p.muted, flexShrink: 1 }]} numberOfLines={1}>
                 {statusLine(bot, live)}
               </Text>
+              <TypingDots color={p.muted} size={4} />
             </FadeIn>
           ) : undefined
         }
@@ -252,5 +253,22 @@ export function ChatScreen({
       </Animated.View>
       <Composer ref={composer} bot={bot} generation={generation} />
     </KeyboardScreen>
+  );
+}
+
+/** The bot's own face while it works: it breathes gently, so the chat feels like that bot is thinking. */
+function ThinkingAvatar({ bot }: { bot: Bot }) {
+  const v = useLoop(1600);
+  return (
+    <Animated.View
+      style={{
+        transform: [
+          { scale: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] }) },
+          { translateY: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -1.5, 0] }) },
+        ],
+      }}
+    >
+      <Avatar shape={bot.avatarShape} size={26} color={bot.avatarColor} />
+    </Animated.View>
   );
 }
