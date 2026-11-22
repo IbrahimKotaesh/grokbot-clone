@@ -36,7 +36,7 @@ export interface ComposerHandle {
   prefill(text: string): void;
 }
 type Mode = "idle" | "recording" | "transcribing";
-const BARS = 32;
+const BARS = 48;
 
 export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: number }>(function Composer(
   { bot, generation },
@@ -83,6 +83,8 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     smooth();
     setAttachments(f);
   };
+  // Eases each new loudness sample into the previous one so the waveform flows instead of flickering.
+  const pushLevel = (v: number) => setLevels((old) => [...old.slice(1), old[old.length - 1] * 0.35 + v * 0.65]);
   const changeMode = (m: Mode) => {
     smooth();
     setMode(m);
@@ -113,8 +115,8 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
   useEffect(() => {
     if (!recording.isRecording) return;
     const db = recording.metering ?? -60;
-    const level = Math.max(0.06, Math.min(1, (db + 55) / 50));
-    setLevels((old) => [...old.slice(1), level]);
+    const level = Math.max(0, Math.min(1, (db + 50) / 42));
+    pushLevel(level);
   }, [recording.durationMillis]);
 
   async function files() {
@@ -186,7 +188,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
   }
   function listen(language: SpeechLang) {
     return startDictation(language, {
-      level: (v) => setLevels((old) => [...old.slice(1), v]),
+      level: (v) => pushLevel(v),
       text: (t) => {
         smooth("ease");
         setLive([spoken.current, t].filter(Boolean).join(" "));
@@ -225,11 +227,9 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       setLive("");
       if (liveAvailable())
         liveSession.current = await startLive({
-          text: (t) => {
-            smooth("ease");
-            setLive(t);
-          },
-          level: (v) => setLevels((old) => [...old.slice(1), v]),
+          // Words stream in the background but aren't shown one by one (too jumpy); the whole text lands at once.
+          text: () => {},
+          level: (v) => pushLevel(v),
         });
       else if (speechAvailable()) dictation.current = await listen(lang);
       else {
@@ -243,7 +243,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       setLevels(Array(BARS).fill(0));
       changeMode("recording");
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      recordTimer.current = setTimeout(() => void stopRecording("send"), 60000);
+      recordTimer.current = setTimeout(() => void stopRecording("insert"), 60000);
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -303,7 +303,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       if (after.current === "send") await send([draft, text].filter(Boolean).join(" "));
       else {
         setDraft((old) => [old, text].filter(Boolean).join(" "));
-        setTimeout(() => input.current?.focus(), 80);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -411,7 +411,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </>
         ) : mode === "recording" ? (
           <FadeIn offset={4} duration={200}>
-            {(liveAvailable() || speechAvailable()) && (
+            {speechAvailable() && (
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md }}>
                 <Text
                   numberOfLines={4}
@@ -437,8 +437,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
               {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
             </Text>
             <Waveform levels={levels} />
-            <IconButton name="text-outline" label="Turn into text to edit" color={p.text} variant="filled" size={38} iconSize={18} onPress={() => void stopRecording("insert")} />
-            <IconButton name="arrow-up" label="Send voice message" variant="primary" size={38} iconSize={20} onPress={() => void stopRecording("send")} />
+            <IconButton name="checkmark" label="Done, put the text in the message box" variant="primary" size={38} iconSize={21} onPress={() => void stopRecording("insert")} />
           </View>
           </FadeIn>
         ) : (
@@ -449,7 +448,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
         )}
       </View>
       {mode === "recording" && (
-        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Send it as a message, or tap Aa to edit the text first</Text>
+        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>Tap ✓ to put the text in the box</Text>
       )}
     </View>
   );
@@ -509,30 +508,29 @@ function RecDot() {
   );
 }
 
+/**
+ * Live voice waveform: rounded bars that scroll in from the right. Newer bars are brighter, quiet
+ * moments rest on a soft baseline, and heights ease between samples so it moves like speech.
+ */
+const WAVE_H = 30;
 function Waveform({ levels }: { levels: number[] }) {
+  const n = levels.length;
   return (
-    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2.5, height: 36, overflow: "hidden" }}>
+    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, height: WAVE_H + 6, overflow: "hidden", paddingHorizontal: 4 }}>
       {levels.map((l, i) => (
-        <Bar key={i} level={l} />
+        <Bar key={i} level={l} fade={0.28 + 0.72 * (i / Math.max(1, n - 1)) ** 1.4} />
       ))}
     </View>
   );
 }
-function Bar({ level }: { level: number }) {
-  const h = useRef(new Animated.Value(level)).current;
+function Bar({ level, fade }: { level: number; fade: number }) {
+  // Perceptual curve: lifts normal speech so the bars feel alive without clipping loud parts.
+  // Background noise stays on the baseline; speech rises clearly above it.
+  const x = Math.min(1, Math.max(0, (level - 0.14) / 0.86));
+  const target = 4 + (WAVE_H - 4) * x ** 0.75;
+  const h = useRef(new Animated.Value(target)).current;
   useEffect(() => {
-    Animated.timing(h, { toValue: level, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-  }, [level]);
-  return (
-    <Animated.View
-      style={{
-        width: 3,
-        height: 32,
-        borderRadius: 2,
-        backgroundColor: p.text,
-        opacity: 0.85,
-        transform: [{ scaleY: h }],
-      }}
-    />
-  );
+    Animated.timing(h, { toValue: target, duration: 120, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [target]);
+  return <Animated.View style={{ width: 3, height: h, borderRadius: 1.5, backgroundColor: p.text, opacity: fade }} />;
 }
