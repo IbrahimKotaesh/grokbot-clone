@@ -92,6 +92,25 @@ export async function googleLogin() {
   await persist();
   return true;
 }
+/** Sign in with Apple: the server verifies Apple's identity token and returns a session. */
+export async function appleLogin(): Promise<boolean> {
+  const AppleAuthentication = await import("expo-apple-authentication");
+  let credential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "ERR_REQUEST_CANCELED") return false;
+    throw e;
+  }
+  if (!credential.identityToken) throw Error("Apple didn't return a sign-in token. Please try again.");
+  const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(" ");
+  const data = await client.request<{ session: string }>("POST", "/auth/apple", { identityToken: credential.identityToken, fullName });
+  session = data.session;
+  await persist();
+  return true;
+}
 // Dev only: a debug build pointed at a loopback server with EXPO_PUBLIC_MOBILE_QA=1.
 export function qaEnabled() {
   return (

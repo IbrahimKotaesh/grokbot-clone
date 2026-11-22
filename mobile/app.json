@@ -7,19 +7,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.ibkopixels.fino",
       "buildNumber": "4",
       "appleTeamId": "345F6K6X7N",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "UISupportedInterfaceOrientations~ipad": [
-          "UIInterfaceOrientationPortrait",
-          "UIInterfaceOrientationPortraitUpsideDown",
-          "UIInterfaceOrientationLandscapeLeft",
-          "UIInterfaceOrientationLandscapeRight"
-        ]
-      }
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -56,7 +51,15 @@
         }
       ],
       "./plugins/with-scene-delegate",
-      "expo-router"
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Record voice messages to transcribe them in your conversation.",
+          "speechRecognitionPermission": "Turn your voice messages into text as you speak."
+        }
+      ],
+      "expo-router",
+      "expo-apple-authentication"
     ],
     "scheme": "fino"
   }

@@ -4,7 +4,7 @@ import { client, qaEnabled } from "./session";
 import { useWorkspace } from "./store";
 import { buyPlan, configurePurchases, restorePurchases } from "./purchases";
 
-export type PlanId = "starter" | "pro" | "max" | "enterprise";
+export type PlanId = "free" | "starter" | "pro" | "max" | "enterprise";
 export interface Plan {
   id: PlanId;
   name: string;

@@ -42,7 +42,7 @@ export async function revenueCatWebhook(c: Context) {
   if (!user) return c.json({ ok: true });
   const plans = ((e.entitlement_ids ?? []) as string[]).map((id) => ENTITLEMENTS[id]).filter(Boolean);
   const best = plans.sort((a, b) => RANK.indexOf(b) - RANK.indexOf(a))[0];
-  if (['EXPIRATION', 'CANCELLATION_EXPIRED'].includes(e.type)) setPlan(user.id, 'starter');
+  if (['EXPIRATION', 'CANCELLATION_EXPIRED'].includes(e.type)) setPlan(user.id, 'free');
   else if (best && ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION', 'NON_RENEWING_PURCHASE'].includes(e.type))
     setPlan(user.id, best, typeof e.expiration_at_ms === 'number' ? e.expiration_at_ms : null);
   return c.json({ ok: true });

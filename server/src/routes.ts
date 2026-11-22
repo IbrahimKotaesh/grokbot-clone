@@ -1,3 +1,4 @@
+import { verifyAppleIdentityToken } from './apple-auth.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
 import { assertCanCreateBot, PlanLimitError } from './plans.js';
@@ -118,6 +119,28 @@ api.post('/auth/native/session', async (c) => {
   if (!owner || (env.allowedEmails.length && !env.allowedEmails.includes(owner.email.toLowerCase()))) return c.json({error:'invalid or expired login'},401);
   const session = createSession(c,id!);
   return c.json({session});
+});
+
+// Sign in with Apple (native). Accounts are matched by Apple's stable user id, then by email.
+if (!(db.prepare('PRAGMA table_info(users)').all() as any[]).some((col) => col.name === 'apple_sub')) db.exec('ALTER TABLE users ADD COLUMN apple_sub TEXT');
+api.post('/auth/apple', async (c) => {
+  const body = await c.req.json<{ identityToken?: string; fullName?: string }>().catch(() => ({}) as { identityToken?: string; fullName?: string });
+  let who;
+  try {
+    who = await verifyAppleIdentityToken(String(body.identityToken ?? ''));
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 401);
+  }
+  const linked = db.prepare('SELECT id, email FROM users WHERE apple_sub=?').get(who.sub) as { id: string; email: string } | undefined;
+  let id = linked?.id;
+  let email = linked?.email ?? who.email;
+  if (!id) {
+    if (!email) return c.json({ error: 'Apple did not share an email address. Try again and choose to share or hide your email.' }, 400);
+    id = findOrCreateUser(email, String(body.fullName ?? '').trim().slice(0, 80) || undefined).id;
+    db.prepare('UPDATE users SET apple_sub=? WHERE id=?').run(who.sub, id);
+  }
+  if (env.allowedEmails.length && !env.allowedEmails.includes(String(email).toLowerCase())) return c.json({ error: 'This account is not allowed on this server.' }, 403);
+  return c.json({ session: createSession(c, id) });
 });
 
 api.post('/auth/dev', async (c) => {

@@ -12,6 +12,7 @@ import {
   Keyboard,
   Animated,
   Easing,
+  LayoutAnimation,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,6 +25,7 @@ import { fetch as nativeFetch } from "expo/fetch";
 import type { Bot } from "../../../packages/contracts/src/types";
 import type { Attachment } from "../../../packages/client/src";
 import { client, authHeaders } from "../lib/session";
+import { SPEECH_LANGS, getSpeechLang, setSpeechLang, speechAvailable, startDictation, type Dictation, type SpeechLang } from "../lib/speech";
 import { useWorkspace } from "../lib/store";
 import { IconButton } from "./UI";
 import { FadeIn, TypingDots, useLoop } from "./motion";
@@ -35,8 +37,8 @@ export interface ComposerHandle {
 type Mode = "idle" | "recording" | "transcribing";
 const BARS = 32;
 
-export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: number; openCall: () => void }>(function Composer(
-  { bot, generation, openCall },
+export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: number }>(function Composer(
+  { bot, generation },
   ref,
 ) {
   const [draft, setDraft] = useState(""),
@@ -54,6 +56,34 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
   const recordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What to do with the transcript once recording stops.
   const after = useRef<"send" | "insert" | "cancel">("send");
+  // Apple dictation when the phone supports it, otherwise a recording sent to the server.
+  const dictation = useRef<Dictation | null>(null);
+  const spoken = useRef(""); // text from before a language switch
+  const [live, setLive] = useState(""),
+    [lang, setLang] = useState<SpeechLang>(getSpeechLang),
+    [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (mode !== "recording") return;
+    const started = Date.now();
+    setElapsed(0);
+    const t = setInterval(() => setElapsed(Date.now() - started), 250);
+    return () => clearInterval(t);
+  }, [mode]);
+  useEffect(() => () => dictation.current?.abort(), []);
+  const editAttachments = (f: (old: typeof attachments) => typeof attachments) => {
+    smooth();
+    setAttachments(f);
+  };
+  const changeMode = (m: Mode) => {
+    smooth();
+    setMode(m);
+  };
+  // Grow the box line by line with a soft ease rather than a jump.
+  const inputHeight = useRef(0);
+  const onInputSize = (h: number) => {
+    if (inputHeight.current && Math.abs(h - inputHeight.current) > 2) smooth("ease");
+    inputHeight.current = h;
+  };
 
   useImperativeHandle(ref, () => ({
     prefill(text) {
@@ -91,7 +121,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           image: false,
         });
       }
-      setAttachments((old) => [...old, ...added].slice(0, 8));
+      editAttachments((old) => [...old, ...added].slice(0, 8));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -110,7 +140,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
         if (!asset.base64 || asset.base64.length > 4 * 1024 * 1024) throw Error("Choose a smaller photo (under 3 MB).");
         return { name: asset.fileName ?? `Photo-${i + 1}.jpg`, dataUrl: `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`, image: true };
       });
-      setAttachments((old) => [...old, ...added].slice(0, 8));
+      editAttachments((old) => [...old, ...added].slice(0, 8));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -145,16 +175,56 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       setBusy(false);
     }
   }
+  function listen(language: SpeechLang) {
+    return startDictation(language, {
+      level: (v) => setLevels((old) => [...old.slice(1), v]),
+      text: (t) => {
+        smooth("ease");
+        setLive([spoken.current, t].filter(Boolean).join(" "));
+      },
+    });
+  }
+  async function switchLanguage() {
+    const next = SPEECH_LANGS.find((l) => l.id !== lang)!.id;
+    setLang(next);
+    setSpeechLang(next);
+    void Haptics.selectionAsync();
+    if (!dictation.current) return;
+    try {
+      const r = await dictation.current.stop();
+      spoken.current = [spoken.current, r.text].filter(Boolean).join(" ");
+      dictation.current = await listen(next);
+    } catch (e) {
+      dictation.current = null;
+      setError((e as Error).message);
+    }
+  }
+  async function serverTranscribe(uri: string, contentType: string) {
+    const data = await new File(uri).bytes();
+    const response = await nativeFetch(`${client.base}/api/voice/transcribe`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": contentType },
+      body: data,
+    });
+    const result = await response.json();
+    if (!response.ok) throw Error(result.error ?? "Transcription failed.");
+    return String(result.text ?? "").trim();
+  }
   async function startRecording() {
     try {
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
-      if (!permission.granted) throw Error("Enable microphone access in your phone settings.");
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
+      spoken.current = "";
+      setLive("");
+      if (speechAvailable()) dictation.current = await listen(lang);
+      else {
+        const permission = await AudioModule.requestRecordingPermissionsAsync();
+        if (!permission.granted) throw Error("Enable microphone access in your phone settings.");
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        await recorder.prepareToRecordAsync();
+        recorder.record();
+      }
       Keyboard.dismiss();
       setLevels(Array(BARS).fill(0));
-      setMode("recording");
+      changeMode("recording");
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       recordTimer.current = setTimeout(() => void stopRecording("send"), 60000);
       setError("");
@@ -166,26 +236,40 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     after.current = next;
     if (recordTimer.current) clearTimeout(recordTimer.current);
     recordTimer.current = null;
+    const d = dictation.current;
+    dictation.current = null;
     try {
-      await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false });
+      let text = "";
+      if (d) {
+        if (next === "cancel") d.abort();
+        else {
+          const r = await d.stop();
+          text = [spoken.current, r.text].filter(Boolean).join(" ").trim();
+          // Apple heard nothing: let the server try the saved audio.
+          if (!text && r.audioUri) {
+            changeMode("transcribing");
+            text = await serverTranscribe(r.audioUri, "audio/wav").catch(() => "");
+          }
+          if (!text && r.error === "service-not-allowed")
+            throw Error("Turn on Dictation in Settings → General → Keyboard so Fino can turn your voice into text.");
+          if (!text && r.error === "language-not-supported") throw Error("This language isn't available for voice typing on your phone yet.");
+        }
+      } else {
+        await recorder.stop();
+        await setAudioModeAsync({ allowsRecording: false });
+        if (next !== "cancel") {
+          changeMode("transcribing");
+          if (!recorder.uri) throw Error("No audio was captured.");
+          text = await serverTranscribe(recorder.uri, "audio/mp4");
+        }
+      }
       if (next === "cancel") {
-        setMode("idle");
+        changeMode("idle");
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         return;
       }
-      setMode("transcribing");
-      if (!recorder.uri) throw Error("No audio was captured.");
-      const data = await new File(recorder.uri).bytes();
-      const response = await nativeFetch(`${client.base}/api/voice/transcribe`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "audio/mp4" },
-        body: data,
-      });
-      const result = await response.json();
-      if (!response.ok) throw Error(result.error ?? "Transcription failed.");
-      const text = String(result.text ?? "").trim();
       if (!text) throw Error("I couldn't hear anything. Try again a little closer.");
+      changeMode("transcribing");
       if (after.current === "send") await send([draft, text].filter(Boolean).join(" "));
       else {
         setDraft((old) => [old, text].filter(Boolean).join(" "));
@@ -194,13 +278,14 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setMode("idle");
+      changeMode("idle");
     }
   }
 
   const canSend = !!draft.trim() || !!attachments.length;
   const stopping = running && !canSend;
-  const seconds = Math.floor(recording.durationMillis / 1000);
+  const seconds = Math.floor(elapsed / 1000);
+  const langInfo = SPEECH_LANGS.find((l) => l.id === lang)!;
   return (
     <View
       style={{
@@ -219,7 +304,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </Text>
         </FadeIn>
       )}
-      <View style={{ backgroundColor: p.raised, borderRadius: radius.xl, borderWidth: 1, borderColor: p.line, overflow: "hidden" }}>
+      <View style={{ backgroundColor: p.raised, borderRadius: radius.xl, borderWidth: 1, borderColor: mode === "recording" ? "#ff5a5f55" : p.line, overflow: "hidden" }}>
         {mode === "idle" ? (
           <>
             {!!attachments.length && (
@@ -246,7 +331,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                         accessibilityRole="button"
                         accessibilityLabel={`Remove ${a.name}`}
                         hitSlop={8}
-                        onPress={() => setAttachments((old) => old.filter((_, j) => j !== i))}
+                        onPress={() => editAttachments((old) => old.filter((_, j) => j !== i))}
                         style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: "#000000b0", alignItems: "center", justifyContent: "center" }}
                       >
                         <Ionicons name="close" size={13} color="#fff" />
@@ -265,6 +350,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
               multiline
               value={draft}
               onChangeText={setDraft}
+              onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
               style={{
                 fontSize: 17,
                 lineHeight: 23,
@@ -281,27 +367,40 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingBottom: 6, gap: 2 }}>
               <IconButton name="add" label="Add photo or file" color={p.muted} size={38} iconSize={22} disabled={busy} onPress={attach} />
               <View style={{ flex: 1 }} />
-              <IconButton name="mic-outline" label="Record a voice message" color={p.muted} size={38} iconSize={21} disabled={busy} onPress={() => void startRecording()} />
-              {canSend || running || busy ? (
-                <IconButton
-                  name={stopping ? "stop" : "arrow-up"}
-                  label={stopping ? "Stop response" : "Send message"}
-                  variant="primary"
-                  size={36}
-                  iconSize={stopping ? 15 : 20}
-                  disabled={busy}
-                  onPress={() => {
-                    if (stopping) void client.request("POST", `/bots/${bot.id}/interrupt`, { generation }).catch((e) => setError(e.message));
-                    else void send();
-                  }}
-                />
-              ) : (
-                <IconButton name="call" label={`Call ${bot.name}`} variant="primary" size={36} iconSize={17} onPress={openCall} />
-              )}
+              {/* One main button: mic while empty, send once there's something to send. Calls live in the header. */}
+              <MainButton
+                kind={stopping ? "stop" : canSend || busy ? "send" : "mic"}
+                disabled={busy}
+                onPress={() => {
+                  if (stopping) void client.request("POST", `/bots/${bot.id}/interrupt`, { generation }).catch((e) => setError(e.message));
+                  else if (canSend) void send();
+                  else void startRecording();
+                }}
+              />
             </View>
           </>
         ) : mode === "recording" ? (
-          <FadeIn offset={4} duration={200} style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: 8, gap: 4 }}>
+          <FadeIn offset={4} duration={200}>
+            {speechAvailable() && (
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md }}>
+                <Text
+                  numberOfLines={4}
+                  style={[type.callout, { flex: 1, color: live ? p.text : p.faint, textAlign: "auto", writingDirection: "auto" }]}
+                >
+                  {live || "Listening…"}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Dictation language: ${langInfo.name}. Tap to switch.`}
+                  hitSlop={8}
+                  onPress={() => void switchLanguage()}
+                  style={{ minWidth: 34, height: 26, paddingHorizontal: 8, borderRadius: radius.full, backgroundColor: p.elevated, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ color: p.text, fontSize: 13, fontWeight: "700" }}>{langInfo.short}</Text>
+                </Pressable>
+              </View>
+            )}
+          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: 8, gap: 4 }}>
             <IconButton name="trash-outline" label="Discard recording" color={p.muted} size={40} iconSize={20} onPress={() => void stopRecording("cancel")} />
             <RecDot />
             <Text style={[type.callout, { color: p.text, fontVariant: ["tabular-nums"], width: 40 }]}>
@@ -310,6 +409,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             <Waveform levels={levels} />
             <IconButton name="text-outline" label="Turn into text to edit" color={p.text} variant="filled" size={38} iconSize={18} onPress={() => void stopRecording("insert")} />
             <IconButton name="arrow-up" label="Send voice message" variant="primary" size={38} iconSize={20} onPress={() => void stopRecording("send")} />
+          </View>
           </FadeIn>
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: space.lg, gap: space.md }}>
@@ -324,6 +424,44 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     </View>
   );
 });
+
+/** Animates the next layout change (the box growing or shrinking) instead of jumping. */
+function smooth(kind: "spring" | "ease" = "spring") {
+  LayoutAnimation.configureNext(
+    kind === "spring"
+      ? {
+          duration: 340,
+          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.86 },
+          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        }
+      : { duration: 180, update: { type: LayoutAnimation.Types.easeInEaseOut } },
+  );
+}
+
+const MAIN = {
+  mic: { icon: "mic", label: "Record a voice message", size: 19 },
+  send: { icon: "arrow-up", label: "Send message", size: 20 },
+  stop: { icon: "stop", label: "Stop response", size: 15 },
+} as const;
+/** The composer's main button. Its icon swaps with a quick scale so the change is noticeable but calm. */
+function MainButton({ kind, disabled, onPress }: { kind: keyof typeof MAIN; disabled?: boolean; onPress: () => void }) {
+  const v = useRef(new Animated.Value(1)).current;
+  const [shown, setShown] = useState(kind);
+  useEffect(() => {
+    if (kind === shown) return;
+    Animated.timing(v, { toValue: 0, duration: 90, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+      setShown(kind);
+      Animated.spring(v, { toValue: 1, damping: 14, stiffness: 260, mass: 0.6, useNativeDriver: true }).start();
+    });
+  }, [kind]);
+  const m = MAIN[shown];
+  return (
+    <Animated.View style={{ opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }}>
+      <IconButton name={m.icon} label={MAIN[kind].label} variant="primary" size={36} iconSize={m.size} disabled={disabled} onPress={onPress} />
+    </Animated.View>
+  );
+}
 
 function RecDot() {
   const v = useLoop(1000);

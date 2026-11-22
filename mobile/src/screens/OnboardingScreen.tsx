@@ -202,7 +202,7 @@ function Welcome({ onNext }: { onNext: () => void }) {
         <FadeIn delay={120} style={{ alignItems: "center", gap: space.md }}>
           <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>Your AI team{"\n"}is almost ready</Text>
           <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 300 }]}>
-            Answer three quick questions and we&apos;ll hire the right bots for you, each with its own skills, computer and voice.
+            Answer three quick questions and we&apos;ll hire the right bots for you, each with its own skills and computer.
           </Text>
         </FadeIn>
       </View>

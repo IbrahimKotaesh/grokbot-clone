@@ -230,7 +230,6 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
         <FadeIn delay={200} style={[s.card, { gap: space.md }]}>
           {[
             ["desktop-outline", "Its own computer screen"],
-            ["call-outline", "Voice calls"],
             ["shield-checkmark-outline", "Asks before sending, paying or deleting"],
           ].map(([icon, label]) => (
             <View key={label} style={[s.row, { gap: space.md }]}>

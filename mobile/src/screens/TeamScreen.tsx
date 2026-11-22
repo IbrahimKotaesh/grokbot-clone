@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { voiceCallsAvailable } from "../lib/voice-call";
 import { View, Text, FlatList, RefreshControl, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import type { Bot } from "../../../packages/contracts/src/types";
@@ -7,7 +8,7 @@ import { Avatar, IconButton, ErrorText, Header, Button, EmptyState, SectionLabel
 import { useBilling, hasComputer } from "../lib/billing";
 import { FadeIn, PressableScale } from "../components/motion";
 import { palette as p, type, space, radius } from "../theme";
-import { botStatus, relativeTime, statusLine } from "../lib/format";
+import { botStatus, plainPreview, relativeTime, statusLine } from "../lib/format";
 
 export function TeamScreen({
   openChat,
@@ -99,7 +100,7 @@ export function TeamScreen({
             <EmptyState
               icon="people-outline"
               title="Build your team"
-              detail="Hire ready-made bots for email, accounting, HR and more, each with its own skills, computer and voice."
+              detail="Hire ready-made bots for email, accounting, HR and more, each with its own skills and computer."
               action={
                 <View style={{ gap: space.sm, alignItems: "center" }}>
                   <Button title="Browse the Marketplace" icon="storefront" compact onPress={openMarketplace} />
@@ -156,12 +157,12 @@ function PrimaryCard({
       </View>
       {!!bot.lastPreview && (
         <Text style={[type.callout, { color: p.muted }]} numberOfLines={2}>
-          {bot.lastPreview}
+          {plainPreview(bot.lastPreview)}
         </Text>
       )}
       <View style={[s.row, { gap: space.sm }]}>
         <Button title="Message" icon="chatbubble-ellipses" compact onPress={onChat} style={{ flex: 1 }} />
-        <IconButton name="call" label={`Call ${bot.name}`} variant="filled" onPress={onCall} />
+        {voiceCallsAvailable && <IconButton name="call" label={`Call ${bot.name}`} variant="filled" onPress={onCall} />}
         <View>
           <IconButton name="desktop-outline" label={`${bot.name}'s computer`} variant="filled" onPress={onComputer} />
           {!computerOn && <LockBadge />}
@@ -201,7 +202,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
             style={[type.subhead, { color: status === "working" ? p.green : p.muted, flex: 1 }]}
             numberOfLines={1}
           >
-            {live?.isRunning || live?.awaiting ? statusLine(bot, live) : bot.lastPreview || bot.label || "Start a conversation"}
+            {live?.isRunning || live?.awaiting ? statusLine(bot, live) : plainPreview(bot.lastPreview) || bot.label || "Start a conversation"}
           </Text>
           {bot.unread > 0 && (
             <View style={{ backgroundColor: p.text, borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" }}>
@@ -210,7 +211,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
           )}
         </View>
       </View>
-      <IconButton name="call-outline" label={`Call ${bot.name}`} color={p.muted} size={40} onPress={onCall} />
+      {voiceCallsAvailable && <IconButton name="call-outline" label={`Call ${bot.name}`} color={p.muted} size={40} onPress={onCall} />}
     </Pressable>
   );
 }

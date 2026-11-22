@@ -9,6 +9,8 @@ import { palette as p, type, space, radius, motion } from "../theme";
 import { useBilling, purchase, restore, type Plan, type PlanId } from "../lib/billing";
 import * as WebBrowser from "expo-web-browser";
 import { client } from "../lib/session";
+import { useWorkspace } from "../lib/store";
+import { configurePurchases, storePrices } from "../lib/purchases";
 
 /** Legal pages are served by the Fino server (web/public). */
 const LEGAL = client.base.replace(/\/$/, "");
@@ -16,7 +18,7 @@ const LEGAL = client.base.replace(/\/$/, "");
 const copy = {
   computer: { title: "Give your bots a computer", detail: "With Pro, every bot gets its own screen to browse, fill forms and use apps for you." },
   bots: { title: "Grow your team", detail: "Your plan's bot limit is reached. Upgrade to hire more specialists." },
-  voice: { title: "Talk more", detail: "Get more voice-call minutes with every bot." },
+  voice: { title: "Do more", detail: "Upgrade for more bots and computer time." },
 } as const;
 
 export function UpgradeScreen({ done, feature }: { done: () => void; feature?: keyof typeof copy }) {
@@ -25,17 +27,24 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   const load = useBilling((x) => x.load);
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
-  const current = summary?.plan ?? "starter";
-  const [selected, setSelected] = useState<PlanId>(current === "starter" ? "pro" : current === "pro" ? "max" : current);
+  const current = summary?.plan ?? "free";
+  const [selected, setSelected] = useState<PlanId>(current === "free" || current === "starter" ? "pro" : current === "pro" ? "max" : current);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const userId = useWorkspace((x) => x.user?.id);
   useEffect(() => {
     void load().catch((e) => setError(e.message));
   }, []);
   useEffect(() => {
-    if (summary) setSelected((sel) => (sel === summary.plan && summary.plan === "starter" ? "pro" : sel));
+    // Show the App Store price in the buyer's own currency when it is available.
+    if (userId) void configurePurchases(userId).then((ok) => (ok ? storePrices() : {})).then(setPrices).catch(() => {});
+  }, [userId]);
+  const price = (plan: Plan) => prices[plan.id] ?? (plan.priceUsd !== null ? "$" + plan.priceUsd : null);
+  useEffect(() => {
+    if (summary) setSelected((sel) => (sel === summary.plan && (summary.plan === "starter" || summary.plan === "free") ? "pro" : sel));
   }, [summary?.plan]);
-  const plans = summary?.plans ?? [];
+  const plans = (summary?.plans ?? []).filter((x) => x.id !== "free");
   const sel = plans.find((x) => x.id === selected);
-  const head = feature ? copy[feature] : { title: "Choose your plan", detail: "Bring your own ChatGPT or API key. Fino gives your bots a home, a computer and a voice." };
+  const head = feature ? copy[feature] : { title: "Choose your plan", detail: "Bring your own ChatGPT or API key. Fino gives your bots a home, skills and a computer." };
   const buy = async () => {
     if (!sel) return;
     if (sel.id === "enterprise") {
@@ -82,7 +91,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
         <ErrorText error={error} />
         {plans.map((plan, i) => (
           <FadeIn key={plan.id} delay={60 + i * 60}>
-            <PlanCard plan={plan} selected={selected === plan.id} current={current === plan.id} onPress={() => setSelected(plan.id)} />
+            <PlanCard plan={plan} price={price(plan)} selected={selected === plan.id} current={current === plan.id} onPress={() => setSelected(plan.id)} />
           </FadeIn>
         ))}
         {cur?.computer && cur.computerHours !== null && (
@@ -114,7 +123,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
                 ? `You're on ${sel.name}`
                 : sel.id === "enterprise"
                   ? "Talk to us"
-                  : `${rank(sel.id) > rank(current) ? "Upgrade" : "Switch"} to ${sel.name} · $${sel.priceUsd}/mo`
+                  : `${rank(sel.id) > rank(current) ? "Upgrade" : "Switch"} to ${sel.name} · ${price(sel)}/mo`
           }
           disabled={!sel || sel.id === current}
           busy={busy}
@@ -147,9 +156,9 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
     </View>
   );
 }
-const rank = (id: PlanId) => ["starter", "pro", "max", "enterprise"].indexOf(id);
+const rank = (id: PlanId) => ["free", "starter", "pro", "max", "enterprise"].indexOf(id);
 
-function PlanCard({ plan, selected, current, onPress }: { plan: Plan; selected: boolean; current: boolean; onPress: () => void }) {
+function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; price: string | null; selected: boolean; current: boolean; onPress: () => void }) {
   const v = useRef(new Animated.Value(selected ? 1 : 0)).current;
   useEffect(() => {
     Animated.spring(v, { toValue: selected ? 1 : 0, useNativeDriver: false, ...motion.spring }).start();
@@ -159,7 +168,7 @@ function PlanCard({ plan, selected, current, onPress }: { plan: Plan; selected: 
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${plan.name}${plan.priceUsd ? `, ${plan.priceUsd} dollars a month` : ""}`}
+      accessibilityLabel={`${plan.name}${price && plan.priceUsd ? `, ${price} a month` : ""}`}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress();
@@ -192,9 +201,9 @@ function PlanCard({ plan, selected, current, onPress }: { plan: Plan; selected: 
               )}
             </View>
           </View>
-          {plan.priceUsd !== null ? (
+          {price !== null ? (
             <Text style={[type.title, { color: p.text }]}>
-              ${plan.priceUsd}
+              {price}
               <Text style={[type.subhead, { color: p.muted, fontWeight: "400" }]}>/mo</Text>
             </Text>
           ) : (

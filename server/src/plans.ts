@@ -2,7 +2,7 @@
 // price what Fino itself provides: bots, the cloud computer and voice.
 import { db, now } from './db.js';
 
-export type PlanId = 'starter' | 'pro' | 'max' | 'enterprise';
+export type PlanId = 'free' | 'starter' | 'pro' | 'max' | 'enterprise';
 export interface Plan {
   id: PlanId;
   name: string;
@@ -16,17 +16,22 @@ export interface Plan {
 }
 
 export const PLANS: Record<PlanId, Plan> = {
+  // Everyone without an active subscription. Paid plans must clearly add something.
+  free: {
+    id: 'free', name: 'Free', priceUsd: 0, bots: 1, computer: false, computerHours: 0, voiceMinutes: 10, marketplace: 'personal',
+    highlights: ['Quinn + 1 bot', 'Chat and voice messages', 'Personal marketplace bots'],
+  },
   starter: {
-    id: 'starter', name: 'Starter', priceUsd: 15, bots: 3, computer: false, computerHours: 0, voiceMinutes: 30, marketplace: 'personal',
-    highlights: ['Quinn + 3 bots', 'Chat, voice messages and files', 'Personal marketplace bots', '30 voice-call minutes'],
+    id: 'starter', name: 'Starter', priceUsd: 14.99, bots: 3, computer: false, computerHours: 0, voiceMinutes: 30, marketplace: 'personal',
+    highlights: ['Quinn + 3 bots', 'Chat, voice messages and files', 'Personal marketplace bots', 'Use your own AI model'],
   },
   pro: {
-    id: 'pro', name: 'Pro', priceUsd: 50, bots: 10, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
-    highlights: ['Quinn + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', '120 voice-call minutes'],
+    id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 10, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
+    highlights: ['Quinn + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', 'Claude Code on your computer'],
   },
   max: {
-    id: 'max', name: 'Max', priceUsd: 200, bots: null, computer: true, computerHours: 100, voiceMinutes: 600, marketplace: 'all',
-    highlights: ['Unlimited bots', 'Computer use · 100 h/month', 'Priority computer and support', '600 voice-call minutes'],
+    id: 'max', name: 'Max', priceUsd: 199.99, bots: null, computer: true, computerHours: 100, voiceMinutes: 600, marketplace: 'all',
+    highlights: ['Unlimited bots', 'Computer use · 100 h/month', 'Every marketplace bot', 'Priority support'],
   },
   enterprise: {
     id: 'enterprise', name: 'Enterprise', priceUsd: null, bots: null, computer: true, computerHours: null, voiceMinutes: null, marketplace: 'all',
@@ -46,10 +51,15 @@ db.exec('CREATE TABLE IF NOT EXISTS computer_usage (id INTEGER PRIMARY KEY AUTOI
 db.exec('CREATE INDEX IF NOT EXISTS computer_usage_user ON computer_usage(user_id, started_at)');
 
 export function planOf(userId: string): Plan {
-  const row = db.prepare('SELECT plan FROM users WHERE id=?').get(userId) as { plan?: string } | undefined;
-  return PLANS[isPlanId(row?.plan) ? row!.plan : 'starter'];
+  const row = db.prepare('SELECT plan, plan_renews_at FROM users WHERE id=?').get(userId) as { plan?: string; plan_renews_at?: number | null } | undefined;
+  // New accounts are stored as starter with no renewal date: that means "never paid", i.e. Free.
+  if (!row || !isPlanId(row.plan) || row.plan === 'free' || (row.plan === 'starter' && !row.plan_renews_at)) return PLANS.free;
+  return PLANS[row.plan];
 }
 export function setPlan(userId: string, plan: PlanId, renewsAt: number | null = null) {
+  if (plan === 'free') plan = 'starter', renewsAt = null;
+  // A paid plan always carries a renewal date so it is never mistaken for Free.
+  else if (plan !== 'max' && plan !== 'enterprise' && !renewsAt) renewsAt = now() + 31 * 86400_000;
   db.prepare('UPDATE users SET plan=?, plan_renews_at=? WHERE id=?').run(plan, renewsAt, userId);
 }
 

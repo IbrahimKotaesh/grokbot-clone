@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Animated } from "react-native";
+import { View, Text, Animated, Platform } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Button, ErrorText, TextField, KeyboardScreen } from "../components/UI";
 import { FadeIn, useLoop } from "../components/motion";
-import { client, googleLogin, qaEnabled, qaLogin, unlock } from "../lib/session";
+import { appleLogin, client, googleLogin, qaEnabled, qaLogin, unlock } from "../lib/session";
 import { palette as p, type, space, fruits } from "../theme";
 export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => Promise<void>; initialError?: string | null }) {
   const [busy, setBusy] = useState(false),
@@ -73,7 +74,30 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
         <FadeIn delay={240} style={{ gap: space.md }}>
           {locked && <TextField placeholder="Access code" secureTextEntry keyboardType="number-pad" maxLength={12} value={code} onChangeText={setCode} autoFocus />}
           <ErrorText error={error} />
-          <Button title={locked ? "Unlock and continue" : "Continue with Google"} icon={locked ? "lock-open" : "logo-google"} busy={busy} onPress={() => void start()} />
+          {Platform.OS === "ios" && !locked && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={25}
+              style={{ height: 50, width: "100%", opacity: busy ? 0.5 : 1 }}
+              onPress={() => {
+                if (busy) return;
+                setBusy(true);
+                setError(null);
+                void appleLogin()
+                  .then((ok) => (ok ? onLogin() : undefined))
+                  .catch((e) => setError((e as Error).message))
+                  .finally(() => setBusy(false));
+              }}
+            />
+          )}
+          <Button
+            title={locked ? "Unlock and continue" : "Continue with Google"}
+            icon={locked ? "lock-open" : "logo-google"}
+            variant={Platform.OS === "ios" && !locked ? "secondary" : "primary"}
+            busy={busy}
+            onPress={() => void start()}
+          />
           {qaEnabled() && (
             <Button
               title="Open local workspace"

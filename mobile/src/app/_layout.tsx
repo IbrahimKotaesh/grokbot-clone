@@ -1,5 +1,7 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, LogBox } from "react-native";
+// Clean frames for App Store screenshots (dev only).
+if (__DEV__ && process.env.EXPO_PUBLIC_SCREENSHOTS === "1") LogBox.ignoreAllLogs(true);
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { ThemeProvider, DarkTheme } from "@react-navigation/native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";

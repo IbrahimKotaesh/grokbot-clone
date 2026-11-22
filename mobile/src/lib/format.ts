@@ -46,3 +46,21 @@ export function statusLine(bot: Bot, live?: LiveState) {
   }
   return bot.label || "Ready";
 }
+
+/** One clean line for list previews: no Markdown syntax (tables, headings, bold, links, code). */
+export function plainPreview(text: string | null | undefined) {
+  if (!text) return "";
+  return text
+    .split("\n")
+    .filter((l) => !/^\s*\|?\s*:?-{2,}/.test(l)) // table separator rows
+    .map((l) =>
+      l
+        .replace(/^\s*\|(.*)\|\s*$/, (_, row: string) => row.split("|").map((c) => c.trim()).filter(Boolean).join(" · "))
+        .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/, ""),
+    )
+    .join(" ")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__|\*|_|~~|`{1,3})(.+?)\1/g, "$2")
+    .replace(/\s+/g, " ")
+    .trim();
+}

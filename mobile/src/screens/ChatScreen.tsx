@@ -1,4 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect } from "react";
+import { voiceCallsAvailable } from "../lib/voice-call";
 import {
   View,
   Text,
@@ -138,7 +139,7 @@ export function ChatScreen({
             />
           )}
         </View>
-        <IconButton name="call-outline" label={`Call ${bot.name}`} onPress={openCall} />
+        {voiceCallsAvailable && <IconButton name="call-outline" label={`Call ${bot.name}`} onPress={openCall} />}
         <IconButton name="ellipsis-horizontal" label="More" onPress={more} />
       </View>
       {!!error && (
@@ -249,7 +250,7 @@ export function ChatScreen({
           <Ionicons name="arrow-down" size={18} color={p.text} />
         </Pressable>
       </Animated.View>
-      <Composer ref={composer} bot={bot} generation={generation} openCall={openCall} />
+      <Composer ref={composer} bot={bot} generation={generation} />
     </KeyboardScreen>
   );
 }
