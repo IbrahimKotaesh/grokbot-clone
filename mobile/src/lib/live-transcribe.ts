@@ -32,6 +32,13 @@ function base64ToBytes(b64: string) {
  * so a fixed scale makes every bar look the same. Instead the range adapts to the speaker: a slowly
  * rising noise floor and a slowly falling peak, with the level placed between them.
  */
+const dbg = { n: 0, events: 0, bytes: 0, minDb: 0, maxDb: -200, minV: 1, maxV: 0, at: 0 };
+function flushDbg() {
+  const now = Date.now();
+  if (now - dbg.at < 1000) return;
+  if (dbg.at) console.log(`[wave] events=${dbg.events} bytes=${dbg.bytes} windows=${dbg.n} dB=${dbg.minDb.toFixed(0)}..${dbg.maxDb.toFixed(0)} floor=${floorDb.toFixed(0)} peak=${peakDb.toFixed(0)} level=${dbg.minV.toFixed(2)}..${dbg.maxV.toFixed(2)}`);
+  Object.assign(dbg, { n: 0, events: 0, bytes: 0, minDb: 0, maxDb: -200, minV: 1, maxV: 0, at: now });
+}
 let floorDb = -50,
   peakDb = -20;
 function resetLevels() {
@@ -53,7 +60,10 @@ function level(bytes: Uint8Array) {
   peakDb = db > peakDb ? db : peakDb - 0.12; // about 2.5 dB per second
   if (peakDb < floorDb + 15) peakDb = floorDb + 15;
   const x = Math.max(0, Math.min(1, (db - floorDb - 3) / (peakDb - floorDb - 3)));
-  return x ** 1.3; // a little extra contrast between soft and loud syllables
+  const out = x ** 1.3; // a little extra contrast between soft and loud syllables
+  // TEMP diagnostics: one line per second in the Metro log.
+  dbg.n++; dbg.minDb = Math.min(dbg.minDb, db); dbg.maxDb = Math.max(dbg.maxDb, db); dbg.minV = Math.min(dbg.minV, out); dbg.maxV = Math.max(dbg.maxV, out);
+  return out;
 }
 
 export async function startLive(on: { text(t: string): void; level(v: number): void }): Promise<LiveSession> {
@@ -78,6 +88,9 @@ export async function startLive(on: { text(t: string): void; level(v: number): v
   const sub = emitter.addListener("AudioData", (e: { encoded?: string; deltaSize?: number }) => {
     if (!e.encoded || !e.deltaSize) return;
     const bytes = base64ToBytes(e.encoded);
+    dbg.events++;
+    dbg.bytes += bytes.byteLength;
+    flushDbg();
     // One loudness value per 50 ms of audio (800 samples), however the phone batches its buffers.
     for (let o = 0; o + 1600 <= bytes.byteLength; o += 1600) on.level(level(bytes.subarray(o, o + 1600)));
     const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

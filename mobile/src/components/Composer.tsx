@@ -133,8 +133,13 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     },
   }));
   useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", () => setKeyboard(true));
-    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setKeyboard(false));
+    // Move the box with the keyboard (same duration and curve), so it rides up and down as one piece.
+    const follow = (e: { duration?: number }, open: boolean) => {
+      LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: LayoutAnimation.Types.keyboard } });
+      setKeyboard(open);
+    };
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (e) => follow(e, true));
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", (e) => follow(e, false));
     return () => {
       show.remove();
       hide.remove();
