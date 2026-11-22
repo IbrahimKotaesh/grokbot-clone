@@ -523,14 +523,27 @@ function Waveform({ levels }: { levels: number[] }) {
     </View>
   );
 }
+const BAR_W = 3;
 function Bar({ level, fade }: { level: number; fade: number }) {
-  // Perceptual curve: lifts normal speech so the bars feel alive without clipping loud parts.
   // Background noise stays on the baseline; speech rises clearly above it.
   const x = Math.min(1, Math.max(0, (level - 0.14) / 0.86));
-  const target = 4 + (WAVE_H - 4) * x ** 0.75;
+  const target = 4 + (WAVE_H - 4) * x ** 0.75; // bar height in points
+  // All movement runs on the native thread (useNativeDriver), so the bars stay smooth while JS streams
+  // audio. A stretched middle plus two round caps that slide with it keeps the ends round at any height.
   const h = useRef(new Animated.Value(target)).current;
   useEffect(() => {
-    Animated.timing(h, { toValue: target, duration: 120, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(h, { toValue: target, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   }, [target]);
-  return <Animated.View style={{ width: 3, height: h, borderRadius: 1.5, backgroundColor: p.text, opacity: fade }} />;
+  const body = WAVE_H - BAR_W;
+  const scaleY = h.interpolate({ inputRange: [BAR_W, WAVE_H], outputRange: [0, 1], extrapolate: "clamp" });
+  const up = h.interpolate({ inputRange: [BAR_W, WAVE_H], outputRange: [0, -body / 2], extrapolate: "clamp" });
+  const down = h.interpolate({ inputRange: [BAR_W, WAVE_H], outputRange: [0, body / 2], extrapolate: "clamp" });
+  const cap = { position: "absolute" as const, width: BAR_W, height: BAR_W, borderRadius: BAR_W / 2, backgroundColor: p.text };
+  return (
+    <View style={{ width: BAR_W, height: WAVE_H, alignItems: "center", justifyContent: "center", opacity: fade }}>
+      <Animated.View style={{ width: BAR_W, height: body, backgroundColor: p.text, transform: [{ scaleY }] }} />
+      <Animated.View style={[cap, { transform: [{ translateY: up }] }]} />
+      <Animated.View style={[cap, { transform: [{ translateY: down }] }]} />
+    </View>
+  );
 }

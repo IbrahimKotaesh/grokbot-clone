@@ -37,7 +37,9 @@ function level(bytes: Uint8Array) {
     sum += s * s;
   }
   const rms = Math.sqrt(sum / Math.max(1, n / 4));
-  return Math.max(0.06, Math.min(1, rms * 6));
+  // Same decibel scale as the recorder's meter (about -50 dB silence … -8 dB loud speech).
+  const db = 20 * Math.log10(Math.max(rms, 1e-5));
+  return Math.max(0, Math.min(1, (db + 50) / 42));
 }
 
 export async function startLive(on: { text(t: string): void; level(v: number): void }): Promise<LiveSession> {
