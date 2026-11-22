@@ -16,7 +16,7 @@ import {
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { palette as p, fruitAssets, fruitFor, type, space, radius, accentFor } from "../theme";
+import { palette as p, fruitAssets, fruitFor, type, space, radius, accentFor, onThemeChange } from "../theme";
 import { PressableScale, useLoop } from "./motion";
 import { mirror } from "../lib/i18n";
 
@@ -413,7 +413,7 @@ export function ErrorText({ error }: { error: string | null }) {
   ) : null;
 }
 
-export const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   icon: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 22 },
   pressed: { opacity: 0.7 },
   badge: {
@@ -504,6 +504,8 @@ export const styles = StyleSheet.create({
     borderColor: p.line,
   },
 });
+export const styles = makeStyles();
+onThemeChange(() => Object.assign(styles, makeStyles()));
 
 export function ProviderMark({ provider, size = 22 }: { provider: string; size?: number }) {
   return (
@@ -514,6 +516,21 @@ export function ProviderMark({ provider, size = 22 }: { provider: string; size?:
       contentFit="contain"
     />
   );
+}
+
+/** The logo of the company behind a model id like "deepseek/deepseek-v4.1-flash". */
+const MODEL_LOGOS: { prefix: string; source: number; tint?: string }[] = [
+  { prefix: "deepseek/", source: require("../../assets/models/deepseek.svg") },
+  { prefix: "qwen/", source: require("../../assets/models/qwen.svg") },
+  { prefix: "z-ai/", source: require("../../assets/models/glm.svg") },
+  { prefix: "x-ai/", source: require("../../assets/models/grok.svg"), tint: p.text },
+  { prefix: "openai/", source: require("../../assets/chatgpt.svg"), tint: p.text },
+  { prefix: "anthropic/", source: require("../../assets/claude.svg"), tint: "#df9c78" },
+];
+export function ModelMark({ model, size = 20, dim = false }: { model: string; size?: number; dim?: boolean }) {
+  const logo = MODEL_LOGOS.find((l) => model.startsWith(l.prefix));
+  if (!logo) return <Ionicons name="sparkles" size={size - 4} color={dim ? p.faint : "#a78bfa"} />;
+  return <Image source={logo.source} style={{ width: size, height: size, opacity: dim ? 0.4 : 1 }} tintColor={logo.tint} contentFit="contain" />;
 }
 
 /** Small lock that sits on a feature the current plan doesn't include. */

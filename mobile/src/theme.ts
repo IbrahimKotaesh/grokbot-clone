@@ -1,7 +1,10 @@
 // Fino design tokens. Near-black canvas, neutral greys, white primary actions.
 // Every screen reads colour, type, spacing and motion from here — no ad-hoc values.
 
-export const palette = {
+import { Appearance } from "react-native";
+import * as SecureStore from "expo-secure-store";
+
+const dark = {
   background: "#000000",
   surface: "#0f0f10", // cards, grouped lists
   raised: "#1b1b1d", // inputs, user bubble, chips
@@ -20,6 +23,71 @@ export const palette = {
   amber: "#ffc04d",
   scrim: "#000000b3",
 };
+
+const light: typeof dark = {
+  background: "#f7f7f5",
+  surface: "#ffffff",
+  raised: "#ececea",
+  elevated: "#e2e2df",
+  line: "#e2e2de",
+  lineStrong: "#cfcfca",
+  text: "#141416",
+  muted: "#6b6b70",
+  faint: "#a3a3a8",
+  onPrimary: "#ffffff",
+  primary: "#141416",
+  blue: "#2f6fe0",
+  red: "#e5484d",
+  redSoft: "#e5484d1f",
+  green: "#1f9d6a",
+  amber: "#d99a00",
+  scrim: "#00000066",
+};
+
+/** Light, dark, or follow the phone. Saved on the device; applied live without a restart. */
+export type ThemeChoice = "system" | "light" | "dark";
+const KEY = "fino.theme";
+function readChoice(): ThemeChoice {
+  try {
+    const v = SecureStore.getItem(KEY);
+    return v === "light" || v === "dark" ? v : "system";
+  } catch {
+    return "system";
+  }
+}
+const resolve = (c: ThemeChoice): "light" | "dark" => (c === "system" ? (Appearance.getColorScheme() === "light" ? "light" : "dark") : c);
+export let themeChoice: ThemeChoice = readChoice();
+export let scheme = resolve(themeChoice);
+if (themeChoice !== "system") Appearance.setColorScheme(themeChoice);
+
+// One shared object: screens read palette.x while rendering, so swapping its values and
+// re-rendering the app is enough to change the whole look.
+export const palette = { ...(scheme === "light" ? light : dark) };
+
+const listeners = new Set<() => void>();
+export function onThemeChange(fn: () => void) {
+  listeners.add(fn);
+  return () => void listeners.delete(fn);
+}
+function apply() {
+  const next = resolve(themeChoice);
+  if (next === scheme && palette.background === (next === "light" ? light : dark).background) return;
+  scheme = next;
+  Object.assign(palette, scheme === "light" ? light : dark);
+  listeners.forEach((fn) => fn());
+}
+export function setThemeChoice(choice: ThemeChoice) {
+  themeChoice = choice;
+  try {
+    SecureStore.setItem(KEY, choice);
+  } catch {}
+  Appearance.setColorScheme(choice === "system" ? "unspecified" : choice);
+  apply();
+}
+// Following the phone: react when it switches between light and dark.
+Appearance.addChangeListener(() => {
+  if (themeChoice === "system") apply();
+});
 
 export const type = {
   largeTitle: { fontSize: 32, lineHeight: 38, fontWeight: "700", letterSpacing: -0.6 },

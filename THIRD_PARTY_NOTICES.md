@@ -53,3 +53,10 @@ SOFTWARE.
 The original UI artwork is restored from the project's design export: bot silhouettes and eyes (`web/artwork/` and `web/src/avatar/shapes.gen.ts`), UI icons and app tiles (`web/public/assets/`), and the favicon. Artwork originating in xAI/Cursor's Grok Bot app and third-party app logos remains the property of its respective owners; the project's MIT license does not grant rights to that artwork. Inclusion does not imply affiliation or endorsement.
 
 App logos supplied at runtime by Composio also remain the property of their respective owners. The Google sign-in mark is a trademark of Google LLC.
+
+
+## LobeHub Icons
+
+Model provider logos in `mobile/assets/models/` (DeepSeek, Qwen, Zhipu GLM, Grok) come from
+LobeHub Icons (`@lobehub/icons-static-svg` 1.105.0), MIT License, Copyright (c) LobeHub.
+The logos themselves are trademarks of their respective owners and are used only to identify each model.

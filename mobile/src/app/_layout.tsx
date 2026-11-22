@@ -1,31 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, LogBox } from "react-native";
 // Clean frames for App Store screenshots (dev only).
 if (__DEV__ && process.env.EXPO_PUBLIC_SCREENSHOTS === "1") LogBox.ignoreAllLogs(true);
 import { Stack, type ErrorBoundaryProps } from "expo-router";
-import { ThemeProvider, DarkTheme } from "@react-navigation/native";
+import { ThemeProvider, DarkTheme, DefaultTheme } from "@react-navigation/native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { Button, styles as s } from "../components/UI";
-import { palette as p, type } from "../theme";
+import { palette as p, type, scheme as initialScheme, onThemeChange } from "../theme";
 import { t } from "../lib/i18n";
-const theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: p.text,
-    background: p.background,
-    card: p.background,
-    text: p.text,
-    border: p.line,
-  },
+const navTheme = (mode: "light" | "dark") => {
+  const base = mode === "light" ? DefaultTheme : DarkTheme;
+  return { ...base, colors: { ...base.colors, primary: p.text, background: p.background, card: p.background, text: p.text, border: p.line } };
 };
 export default function RootLayout() {
+  // Switching light/dark swaps the palette's values; re-mounting the tree repaints every screen.
+  const [mode, setMode] = useState(initialScheme);
+  const [version, setVersion] = useState(0);
+  useEffect(
+    () =>
+      onThemeChange(() => {
+        setMode(p.background === "#000000" ? "dark" : "light");
+        setVersion((v) => v + 1);
+      }),
+    [],
+  );
   return (
-    <SafeAreaProvider>
-      <ThemeProvider value={theme}>
-        <StatusBar style="light" />
+    <SafeAreaProvider key={version}>
+      <ThemeProvider value={navTheme(mode)}>
+        <StatusBar style={mode === "light" ? "dark" : "light"} />
         <AuthProvider>
           <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
             <Routes />

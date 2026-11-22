@@ -28,7 +28,9 @@ import { client, authHeaders } from "../lib/session";
 import { liveAvailable, startLive, type LiveSession } from "../lib/live-transcribe";
 import { SPEECH_LANGS, getSpeechLang, setSpeechLang, speechAvailable, startDictation, type Dictation, type SpeechLang } from "../lib/speech";
 import { useWorkspace } from "../lib/store";
-import { IconButton } from "./UI";
+import { IconButton, ModelMark, ProviderMark } from "./UI";
+import { router } from "expo-router";
+import { modelName } from "../lib/models";
 import { FadeIn, TypingDots, useLoop } from "./motion";
 import { palette as p, type, space, radius } from "../theme";
 import { t } from "../lib/i18n";
@@ -411,35 +413,40 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 ))}
               </ScrollView>
             )}
-            {/* One compact row: attach · text · main button. It grows only as the text wraps. */}
-            <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 4, paddingVertical: 4, gap: 2 }}>
-              <IconButton name="add" label={t("Add photo or file")} color={p.muted} size={36} iconSize={22} disabled={busy} onPress={attach} />
-              <Animated.View style={{ flex: 1, opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
-                <TextInput
-                  ref={input}
-                  accessibilityLabel={t("Message")}
-                  placeholder={t("Message {name}", { name: bot.name })}
-                  placeholderTextColor={p.faint}
-                  selectionColor={p.text}
-                  multiline
-                  value={draft}
-                  onChangeText={setDraft}
-                  onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
-                  style={{
-                    fontSize: 16,
-                    lineHeight: 21,
-                    color: p.text,
-                    minHeight: 36,
-                    maxHeight: 130,
-                    paddingHorizontal: 4,
-                    paddingTop: 8,
-                    paddingBottom: 7,
-                    textAlign: "auto",
-                    writingDirection: "auto",
-                  }}
-                />
-              </Animated.View>
-              {/* One main button: mic while empty, send once there's something to send. Calls live in the header. */}
+            {/* Text on top; below it: attach, the bot's model (tap to change), voice and send. */}
+            <Animated.View style={{ opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
+              <TextInput
+                ref={input}
+                accessibilityLabel={t("Message")}
+                placeholder={t("Message {name}", { name: bot.name })}
+                placeholderTextColor={p.faint}
+                selectionColor={p.text}
+                multiline
+                value={draft}
+                onChangeText={setDraft}
+                onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
+                style={{
+                  fontSize: 16,
+                  lineHeight: 21,
+                  color: p.text,
+                  minHeight: 38,
+                  maxHeight: 130,
+                  paddingHorizontal: space.md + 2,
+                  paddingTop: 11,
+                  paddingBottom: 2,
+                  textAlign: "auto",
+                  writingDirection: "auto",
+                }}
+              />
+            </Animated.View>
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingBottom: 6, paddingTop: 2, gap: 6 }}>
+              <IconButton name="add" label={t("Add photo or file")} color={p.muted} size={34} iconSize={21} variant="filled" disabled={busy} onPress={attach} />
+              <ModelChip bot={bot} />
+              <View style={{ flex: 1 }} />
+              {(canSend || stopping) && !busy && (
+                <IconButton name="mic-outline" label={t("Record a voice message")} color={p.muted} size={34} iconSize={19} variant="filled" disabled={busy} onPress={() => void startRecording()} />
+              )}
+              {/* Main button: mic while empty, send once there's something to send, stop while the bot replies. */}
               <MainButton
                 kind={stopping ? "stop" : canSend || busy ? "send" : "mic"}
                 disabled={busy}
@@ -507,6 +514,34 @@ function smooth(kind: "spring" | "ease" = "spring") {
           delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
         }
       : { duration: 180, update: { type: LayoutAnimation.Types.easeInEaseOut } },
+  );
+}
+
+/** The bot's current model, like "DeepSeek V4.1 Flash" with its logo. Tapping opens the model settings. */
+function ModelChip({ bot }: { bot: Bot }) {
+  const provider = (bot as { agentProvider?: string }).agentProvider ?? "codex";
+  const model = bot.model ?? "";
+  const label =
+    provider === "openrouter" ? modelName(model) : provider === "claude-code" ? "Claude Code" : provider === "claude" ? "Claude" : provider === "xai" ? "Grok" : provider === "groq" ? "Groq" : "ChatGPT";
+  const mark =
+    provider === "openrouter" ? <ModelMark model={model || "deepseek/"} size={15} /> : provider === "claude" || provider === "claude-code" ? <ProviderMark provider="claude" size={14} /> : provider === "codex" ? <ProviderMark provider="codex" size={14} /> : null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("Model: {name}. Tap to change.", { name: label })}
+      onPress={() => {
+        void Haptics.selectionAsync();
+        router.push("/model");
+      }}
+      hitSlop={4}
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: pressed ? p.elevated : p.background, maxWidth: 210 })}
+    >
+      {mark}
+      <Text numberOfLines={1} style={{ color: p.text, fontSize: 14, fontWeight: "500", flexShrink: 1 }}>
+        {label}
+      </Text>
+      <Ionicons name="chevron-down" size={13} color={p.muted} />
+    </Pressable>
   );
 }
 

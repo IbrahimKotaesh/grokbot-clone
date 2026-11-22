@@ -607,4 +607,10 @@ export const ar: Record<string, string> = {
   "Stop asking for approval?": "إيقاف طلب الموافقة؟",
   "Your bots will run commands, use your connected apps and act on your computer without asking first. They still stop and ask if something looks suspicious.": "ستنفّذ بوتاتك الأوامر وتستخدم تطبيقاتك المربوطة وتعمل على حاسوبك دون أن تسألك أولاً. لكنها ستتوقف وتسألك إذا بدا شيء مريباً.",
   "Don't ask me": "لا تسألني",
+  "Your own account": "حسابك الخاص",
+  Appearance: "المظهر",
+  System: "حسب الهاتف",
+  Light: "فاتح",
+  Dark: "داكن",
+  "Model: {name}. Tap to change.": "النموذج: {name}. اضغط للتغيير.",
 };

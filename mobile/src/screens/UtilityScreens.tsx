@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable, Linking, Switch } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert, RefreshControl, Pressable, Linking, Switch, ActionSheetIOS, Platform } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,7 +9,7 @@ import { client, logout, connectApp } from "../lib/session";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, ErrorText, Header, IconButton, Group, ListRow, SectionLabel, EmptyState, ProviderMark, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, themeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { relativeTime } from "../lib/format";
 import { useBilling, currentPlan, type Plan } from "../lib/billing";
 import { resetPurchases } from "../lib/purchases";
@@ -369,6 +369,19 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
           <SectionLabel>{t("About")}</SectionLabel>
           <Group>
             <ListRow icon="cloud-done-outline" title={t("Always working")} subtitle={t("Your bots keep going when you close the app.")} />
+            <ListRow
+              icon="contrast-outline"
+              title={t("Appearance")}
+              value={themeChoice === "light" ? t("Light") : themeChoice === "dark" ? t("Dark") : t("System")}
+              onPress={() => {
+                const choices: ThemeChoice[] = ["system", "light", "dark"];
+                const labels = [t("System"), t("Light"), t("Dark")];
+                const pick = (i: number) => i >= 0 && i < 3 && setThemeChoice(choices[i]);
+                if (Platform.OS === "ios")
+                  ActionSheetIOS.showActionSheetWithOptions({ title: t("Appearance"), options: [...labels, t("Cancel")], cancelButtonIndex: 3 }, pick);
+                else Alert.alert(t("Appearance"), "", [...labels.map((l, i) => ({ text: l, onPress: () => pick(i) })), { text: t("Cancel"), style: "cancel" as const }]);
+              }}
+            />
             <ListRow icon="language-outline" title={t("Language")} value={isArabic ? "العربية" : "English"} onPress={() => void Linking.openSettings()} />
             <ListRow icon="information-circle-outline" title={t("Version")} value={Constants.expoConfig?.version ?? "1.0"} />
           </Group>

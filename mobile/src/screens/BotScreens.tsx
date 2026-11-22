@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import type { Bot, Memory, Routine, Task, Skill, PermissionMode } from "../../../packages/contracts/src/types";
 import { client } from "../lib/session";
 import { useWorkspace } from "../lib/store";
-import { Avatar, Button, ErrorText, Header, IconButton, Group, ListRow, SectionLabel, TextField, Chip, EmptyState, ProviderMark, KeyboardScreen, styles as s } from "../components/UI";
+import { Avatar, Button, ErrorText, Header, IconButton, Group, ListRow, SectionLabel, TextField, Chip, EmptyState, ProviderMark, ModelMark, KeyboardScreen, styles as s } from "../components/UI";
 import { FadeIn } from "../components/motion";
 import { palette as p, fruits, fruitColor, chatColors, type Fruit, fruitFor, type, space, radius, motion } from "../theme";
 import { relativeTime } from "../lib/format";
@@ -269,9 +269,57 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
         <Header large={false} title={t("Model & permissions")} right={<IconButton name="close" label={t("Close")} variant="filled" size={34} iconSize={16} onPress={done} />} />
         <ErrorText error={error} />
         <SectionLabel>{t("Brain")}</SectionLabel>
+        {hosted?.available && (
+          <>
+            {/* Fino's included models, picked directly: the plan decides which are open. */}
+            <Group>
+              {hosted.models.map((m) => {
+                const on = included && (bot.model || hosted.models[0].id) === m.id;
+                return (
+                  <ListRow
+                    key={m.id}
+                    leading={
+                      <View style={[s.rowIcon, { width: 34, height: 34, borderRadius: 10 }]}>
+                        <ModelMark model={m.id} size={20} dim={!m.allowed} />
+                      </View>
+                    }
+                    title={m.name}
+                    subtitle={m.allowed ? t(m.note) : t("Included in {name}", { name: tierName(m.tier) })}
+                    chevron={false}
+                    trailing={
+                      m.allowed ? (
+                        <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? p.text : p.faint} />
+                      ) : (
+                        <Ionicons name="lock-closed" size={17} color={p.faint} />
+                      )
+                    }
+                    onPress={
+                      busy
+                        ? undefined
+                        : () => {
+                            if (!m.allowed) return openUpgrade("models");
+                            setModel(m.id);
+                            void patch({ agentProvider: "openrouter" as Bot["agentProvider"], model: m.id });
+                          }
+                    }
+                  />
+                );
+              })}
+            </Group>
+            {hosted.usage.chat !== null && (
+              <Text style={[type.footnote, { color: p.muted, paddingHorizontal: space.xs, marginTop: space.xs }]}>
+                {t("Included AI used this month: {n}%", { n: hosted.usage.chat })}
+              </Text>
+            )}
+            <SectionLabel>{t("Your own account")}</SectionLabel>
+          </>
+        )}
         <Group>
-          {providerOptions.map((o) => {
-            const on = provider === o.id;
+          {providerOptions
+            // With included models on, OpenRouter only appears for people who added their own key.
+            .filter((o) => !(o.id === "openrouter" && hosted?.available && !connected?.includes("openrouter")))
+            .map((o) => {
+            const on = provider === o.id && !(o.id === "openrouter" && included);
             const ok = ready(o);
             return (
               <ListRow
@@ -281,7 +329,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
                     {o.mark ? <ProviderMark provider={o.mark} size={20} /> : <Ionicons name={o.icon!} size={18} color={o.color} />}
                   </View>
                 }
-                title={o.name}
+                title={o.id === "openrouter" ? "OpenRouter" : o.name}
                 subtitle={o.id === "claude-code" && !ok ? t("Pro · runs on your computer") : connected === null ? o.detail : ok ? o.detail : t("Not connected · tap to add a key")}
                 chevron={false}
                 trailing={<Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? p.text : p.faint} />}
@@ -304,37 +352,6 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
             <Text style={[type.callout, { color: p.text }]}>{t("This bot is Claude Code as it is: no extra instructions, tools or approvals. It runs on your computer with your Claude subscription.")}</Text>
             <Text style={[type.footnote, { color: p.muted }]}>{t("Sign in once: open Claude Code, type /login and follow Anthropic's sign-in.")}</Text>
             <Button title={t("Open Claude Code")} icon="terminal-outline" compact variant="secondary" onPress={() => openClaudeCode?.()} />
-          </View>
-        )}
-        {included && hosted && (
-          <View style={{ gap: space.sm, marginTop: space.md }}>
-            <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Model")}</Text>
-            <Group>
-              {hosted.models.map((m) => {
-                const on = (bot.model || hosted.models[0].id) === m.id;
-                return (
-                  <ListRow
-                    key={m.id}
-                    title={m.name}
-                    subtitle={m.allowed ? t(m.note) : t("Included in {name}", { name: tierName(m.tier) })}
-                    chevron={false}
-                    trailing={
-                      m.allowed ? (
-                        <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? p.text : p.faint} />
-                      ) : (
-                        <Ionicons name="lock-closed" size={17} color={p.faint} />
-                      )
-                    }
-                    onPress={busy ? undefined : () => (m.allowed ? void patch({ model: m.id }) : openUpgrade("models"))}
-                  />
-                );
-              })}
-            </Group>
-            {hosted.usage.chat !== null && (
-              <Text style={[type.footnote, { color: p.muted, paddingHorizontal: space.xs }]}>
-                {t("Included AI used this month: {n}%", { n: hosted.usage.chat })}
-              </Text>
-            )}
           </View>
         )}
         {current?.models && !included && (
