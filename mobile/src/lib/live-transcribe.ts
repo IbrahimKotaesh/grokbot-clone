@@ -27,7 +27,17 @@ function base64ToBytes(b64: string) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-/** Loudness 0…1 of a 16-bit PCM chunk, for the waveform. */
+/**
+ * Loudness 0…1 of a 16-bit PCM chunk, for the waveform. The phone's mic evens out volume on its own,
+ * so a fixed scale makes every bar look the same. Instead the range adapts to the speaker: a slowly
+ * rising noise floor and a slowly falling peak, with the level placed between them.
+ */
+let floorDb = -50,
+  peakDb = -20;
+function resetLevels() {
+  floorDb = -50;
+  peakDb = -20;
+}
 function level(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let sum = 0;
@@ -39,11 +49,16 @@ function level(bytes: Uint8Array) {
   const rms = Math.sqrt(sum / Math.max(1, n / 4));
   // Same decibel scale as the recorder's meter (about -50 dB silence … -8 dB loud speech).
   const db = 20 * Math.log10(Math.max(rms, 1e-5));
-  return Math.max(0, Math.min(1, (db + 50) / 42));
+  floorDb = db < floorDb ? db : floorDb + 0.015 * (db - floorDb);
+  peakDb = db > peakDb ? db : peakDb - 0.12; // about 2.5 dB per second
+  if (peakDb < floorDb + 15) peakDb = floorDb + 15;
+  const x = Math.max(0, Math.min(1, (db - floorDb - 3) / (peakDb - floorDb - 3)));
+  return x ** 1.3; // a little extra contrast between soft and loud syllables
 }
 
 export async function startLive(on: { text(t: string): void; level(v: number): void }): Promise<LiveSession> {
   if (!native) throw Error("Live voice typing needs the latest app version.");
+  resetLevels();
   const permission = await native.requestPermissionsAsync();
   if (permission?.status !== "granted" && !permission?.granted) throw Error("Enable microphone access in your phone settings.");
 

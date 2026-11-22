@@ -108,12 +108,13 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       const next = q.shift();
       setLevels((old) => {
         const prev = old[old.length - 1].v;
-        const v = next === undefined ? prev * 0.7 : prev * 0.3 + next * 0.7;
+        const v = next === undefined ? prev * 0.6 : prev * 0.15 + next * 0.85;
         return [...old.slice(1), { id: sampleId++, v }];
       });
     }, TICK);
     return () => clearInterval(t);
   }, [mode]);
+  const textIn = useRef(new Animated.Value(1)).current;
   const changeMode = (m: Mode) => {
     smooth();
     setMode(m);
@@ -331,7 +332,11 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
       changeMode("transcribing");
       if (after.current === "send") await send([draft, text].filter(Boolean).join(" "));
       else {
+        // The transcript eases into the box (fade + small rise) instead of popping in.
+        textIn.setValue(0);
+        changeMode("idle");
         setDraft((old) => [old, text].filter(Boolean).join(" "));
+        Animated.timing(textIn, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e) {
@@ -400,6 +405,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 ))}
               </ScrollView>
             )}
+            <Animated.View style={{ opacity: textIn, transform: [{ translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>
             <TextInput
               ref={input}
               accessibilityLabel="Message"
@@ -423,6 +429,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 writingDirection: "auto",
               }}
             />
+            </Animated.View>
             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingBottom: 6, gap: 2 }}>
               <IconButton name="add" label="Add photo or file" color={p.muted} size={38} iconSize={22} disabled={busy} onPress={attach} />
               <View style={{ flex: 1 }} />
