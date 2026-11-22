@@ -16,7 +16,7 @@ import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
 import { appendRow, updateRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
 import { readPage } from './read-page.js';
-import { composioTools, executeComposio, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
+import { composioTools, executeComposio, executeComposio as runAppTool, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
 import { scheduleRoutine, unscheduleRoutine } from '../routines.js';
 import { createEventRoutine, deleteEventTrigger, describeEvent, listTriggerTypes } from '../triggers.js';
 import { setCheckins } from '../proactive.js';
@@ -59,6 +59,19 @@ interface ToolDef {
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const lastShot = new Map<string, string>();
+/** One Gmail action through Composio, returning its data (or a plain error the bot can act on). */
+async function gmailCall(userId: string, slug: string, args: Record<string, unknown>) {
+  if (env.composioKey === 'disabled') throw new Error('App connections are not set up on this server.');
+  const r: any = await runAppTool(userId, 'COMPOSIO_MULTI_EXECUTE_TOOL', { tools: [{ tool_slug: slug, arguments: args }], sync_response_to_workbench: false });
+  const res = r?.data?.results?.[0]?.response;
+  if (!res?.successful) {
+    const msg = JSON.stringify(res?.error ?? r?.error ?? '').slice(0, 300);
+    if (/connect|auth|account/i.test(msg)) throw new Error('Gmail is not connected. Call request_app_connection for gmail.');
+    throw new Error(`Gmail did not answer: ${msg || 'unknown error'}`);
+  }
+  return res.data;
+}
+
 /** Each bot's open plan card: updated in place until every step is done or it goes stale. */
 const openPlans = new Map<string, { seq: number; at: number }>();
 /** Pages each bot read in its current burst of work: research stops at a handful of pages. */
@@ -97,6 +110,39 @@ function botByName(userId: string, name: string) {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: 'search_email',
+    description:
+      "Search the user's Gmail in one step. query uses Gmail search words: a name, company or topic, from:someone, subject:word, newer_than:30d, has:attachment. Returns the newest matching emails (date, from, to, subject, a short preview, id). Use read_email for the full text. Prefer this over connected_apps for finding emails.",
+    parameters: obj({ query: { type: 'string' }, max_results: { type: 'integer', description: 'How many emails (1-25, default 10).' } }, ['query']),
+    activity: 'connecting_service',
+    label: 'Searching email',
+    impl: async (a, ctx) => {
+      const data = await gmailCall(ctx.userId, 'GMAIL_FETCH_EMAILS', { query: String(a.query ?? ''), max_results: Math.max(1, Math.min(25, Number(a.max_results) || 10)) });
+      const messages = (data?.messages ?? []) as any[];
+      if (!messages.length) return { output: `No emails match "${a.query}". Try fewer or different words (a name, company, or from:address).`, summary: 'No matching emails' };
+      const lines = messages.map((m) => {
+        const text = String(m.messageText ?? m.preview?.body ?? '').replace(/\s+/g, ' ').trim().slice(0, 220);
+        return `- ${m.messageTimestamp ?? ''} | From: ${m.sender ?? ''} | To: ${m.to ?? ''} | Subject: ${m.subject ?? ''} | id: ${m.messageId}\n  ${text}`;
+      });
+      return { output: lines.join('\n'), summary: `${messages.length} emails` };
+    },
+  },
+  {
+    name: 'read_email',
+    description: 'Read one email in full by the id from search_email.',
+    parameters: obj({ message_id: { type: 'string' } }, ['message_id']),
+    activity: 'connecting_service',
+    label: 'Reading an email',
+    impl: async (a, ctx) => {
+      const m = await gmailCall(ctx.userId, 'GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID', { message_id: String(a.message_id ?? ''), format: 'full' });
+      const text = String(m?.messageText ?? '').trim();
+      return {
+        output: `From: ${m?.sender ?? ''}\nTo: ${m?.to ?? ''}\nDate: ${m?.messageTimestamp ?? ''}\nSubject: ${m?.subject ?? ''}\n\n${text.slice(0, 12000)}${text.length > 12000 ? '\n[…email continues]' : ''}`,
+        summary: String(m?.subject ?? 'Email'),
+      };
+    },
+  },
   {
     name: 'team_updates',
     description:
@@ -719,7 +765,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set(['search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {

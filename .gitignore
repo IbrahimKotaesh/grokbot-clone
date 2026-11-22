@@ -35,3 +35,4 @@ ios/**/DerivedData/
 # Private access-code verifier and atomic write files.
 access-secret.json
 access-secret.json.*.tmp
+agent-eval-results.json

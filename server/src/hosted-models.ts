@@ -119,8 +119,9 @@ export interface RouteState {
   cheapSteps: number;
   trouble: number; // failed or no-op screen actions on the cheap model
   escalated: boolean;
+  uses: Record<string, number>; // how often each tool ran in this turn (the loop watcher)
 }
-export const newRoute = (): RouteState => ({ computer: false, cheapSteps: 0, trouble: 0, escalated: false });
+export const newRoute = (): RouteState => ({ computer: false, cheapSteps: 0, trouble: 0, escalated: false, uses: {} });
 
 /** Stay on the cheap model until it struggles (2 failed/no-op actions or 25 steps), unless the month's budget is used up. */
 export function computerModel(userId: string, r: RouteState): string {

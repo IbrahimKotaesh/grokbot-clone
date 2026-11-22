@@ -37,6 +37,12 @@ const turnProvider = new Map<string, string>();
 /** OpenRouter's built-in web search for any model: the Parallel engine in fast mode (about $0.001 a search). */
 const OPENROUTER_WEB_SEARCH = { type: 'openrouter:web_search', parameters: { engine: process.env.OR_SEARCH_ENGINE ?? 'parallel', mode: 'fast', max_results: 5, max_uses: 3 } };
 
+/**
+ * Loop watcher: how many times a lookup tool may run in one turn. Past it the bot is told to stop and
+ * answer with what it found (cheap models otherwise keep trying more search words or pages).
+ */
+const REPEAT_LIMITS: Record<string, number> = { search_email: 6, read_email: 6, read_page: 8, team_updates: 4, search_conversation: 4, recall: 4, COMPOSIO_SEARCH_TOOLS: 3, COMPOSIO_MULTI_EXECUTE_TOOL: 8 };
+
 /** Cheap-first routing state for computer work on Fino's own OpenRouter key, per running turn. */
 const routes = new Map<string, RouteState>();
 
@@ -359,10 +365,14 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       setLive(botId, { isRunning: true, activity: { kind: c.name === 'send_to_bot' ? 'messaging_named' : act.kind, detail, since: now() }, awaiting: null });
       try {
         const impl = toolMap.get(c.name);
-        if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
+        const route = routes.get(botId);
+        const used = route ? (route.uses[c.name] = (route.uses[c.name] ?? 0) + 1) : 0;
+        if (REPEAT_LIMITS[c.name] && used > REPEAT_LIMITS[c.name])
+          res = { output: `You already used ${c.name} ${used - 1} times for this request. Stop searching and answer now with what you found; say clearly what you could not find.`, summary: 'Stopped repeating' };
+        else if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
         else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
-        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
+        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };
