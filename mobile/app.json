@@ -58,6 +58,15 @@
           "speechRecognitionPermission": "Turn your voice messages into text as you speak."
         }
       ],
+      [
+        "@siteed/audio-studio",
+        {
+          "enablePhoneStateHandling": false,
+          "enableNotifications": false,
+          "enableBackgroundAudio": false,
+          "enableDeviceDetection": false
+        }
+      ],
       "expo-router",
       "expo-apple-authentication"
     ],

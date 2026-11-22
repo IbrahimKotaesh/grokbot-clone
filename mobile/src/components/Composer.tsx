@@ -25,6 +25,7 @@ import { fetch as nativeFetch } from "expo/fetch";
 import type { Bot } from "../../../packages/contracts/src/types";
 import type { Attachment } from "../../../packages/client/src";
 import { client, authHeaders } from "../lib/session";
+import { liveAvailable, startLive, type LiveSession } from "../lib/live-transcribe";
 import { SPEECH_LANGS, getSpeechLang, setSpeechLang, speechAvailable, startDictation, type Dictation, type SpeechLang } from "../lib/speech";
 import { useWorkspace } from "../lib/store";
 import { IconButton } from "./UI";
@@ -69,7 +70,15 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     const t = setInterval(() => setElapsed(Date.now() - started), 250);
     return () => clearInterval(t);
   }, [mode]);
-  useEffect(() => () => dictation.current?.abort(), []);
+  // Live Soniox stream (words appear while speaking); falls back to a recording when unavailable.
+  const liveSession = useRef<LiveSession | null>(null);
+  useEffect(
+    () => () => {
+      dictation.current?.abort();
+      liveSession.current?.abort();
+    },
+    [],
+  );
   const editAttachments = (f: (old: typeof attachments) => typeof attachments) => {
     smooth();
     setAttachments(f);
@@ -214,7 +223,15 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     try {
       spoken.current = "";
       setLive("");
-      if (speechAvailable()) dictation.current = await listen(lang);
+      if (liveAvailable())
+        liveSession.current = await startLive({
+          text: (t) => {
+            smooth("ease");
+            setLive(t);
+          },
+          level: (v) => setLevels((old) => [...old.slice(1), v]),
+        });
+      else if (speechAvailable()) dictation.current = await listen(lang);
       else {
         const permission = await AudioModule.requestRecordingPermissionsAsync();
         if (!permission.granted) throw Error("Enable microphone access in your phone settings.");
@@ -238,9 +255,22 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     recordTimer.current = null;
     const d = dictation.current;
     dictation.current = null;
+    const ls = liveSession.current;
+    liveSession.current = null;
     try {
       let text = "";
-      if (d) {
+      if (ls) {
+        if (next === "cancel") ls.abort();
+        else {
+          const r = await ls.finish();
+          text = r.text;
+          // The live stream broke or heard nothing: send the saved recording to the server instead.
+          if (!text && r.fileUri) {
+            changeMode("transcribing");
+            text = await serverTranscribe(r.fileUri, "audio/wav").catch(() => "");
+          }
+        }
+      } else if (d) {
         if (next === "cancel") d.abort();
         else {
           const r = await d.stop();
@@ -381,7 +411,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </>
         ) : mode === "recording" ? (
           <FadeIn offset={4} duration={200}>
-            {speechAvailable() && (
+            {(liveAvailable() || speechAvailable()) && (
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md }}>
                 <Text
                   numberOfLines={4}
@@ -389,7 +419,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 >
                   {live || "Listening…"}
                 </Text>
-                <Pressable
+                {!liveAvailable() && <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Dictation language: ${langInfo.name}. Tap to switch.`}
                   hitSlop={8}
@@ -397,7 +427,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                   style={{ minWidth: 34, height: 26, paddingHorizontal: 8, borderRadius: radius.full, backgroundColor: p.elevated, alignItems: "center", justifyContent: "center" }}
                 >
                   <Text style={{ color: p.text, fontSize: 13, fontWeight: "700" }}>{langInfo.short}</Text>
-                </Pressable>
+                </Pressable>}
               </View>
             )}
           <View style={{ flexDirection: "row", alignItems: "center", minHeight: 84, paddingHorizontal: 8, gap: 4 }}>

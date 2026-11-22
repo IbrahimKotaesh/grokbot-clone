@@ -99,3 +99,21 @@ async function sonioxAsync(audio: ArrayBuffer, contentType: string): Promise<Tra
     void fetch(`${API}/files/${fileId}`, { method: 'DELETE', headers: H }).catch(() => {});
   }
 }
+
+/** A short-lived, single-use key the phone uses to stream straight to Soniox (the real key stays here). */
+export async function sonioxLiveKey(userId: string) {
+  const r = await fetch(`${API}/auth/temporary-api-key`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${KEY()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      usage_type: 'transcribe_websocket',
+      expires_in_seconds: 60,
+      single_use: true,
+      max_session_duration_seconds: 180,
+      client_reference_id: userId,
+    }),
+  });
+  const body = (await r.json().catch(() => ({}))) as { api_key?: string; message?: string };
+  if (!r.ok || !body.api_key) throw new Error(`Soniox ${r.status}: ${body.message ?? 'no key'}`);
+  return body.api_key;
+}

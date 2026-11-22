@@ -1,7 +1,7 @@
 import {Hono} from 'hono';
 import {bodyLimit} from 'hono/body-limit';
 import type {AuthVars} from './lib/auth.js';
-import {sonioxEnabled, sonioxTranscribe} from './soniox.js';
+import {sonioxEnabled, sonioxLiveKey, sonioxTranscribe} from './soniox.js';
 export const transcriptionApi=new Hono<AuthVars>();
 
 /** The on-server Whisper model: free but slow. Used when Soniox isn't set up or fails. */
@@ -33,4 +33,11 @@ transcriptionApi.post('/transcribe',bodyLimit({maxSize:8*1024*1024,onError:c=>c.
   console.log(`[transcribe] ${sonioxEnabled()?'soniox':'local'} ${audio.byteLength}B ${type} → ${result.text.length} chars, ${result.language??'?'}, ${Date.now()-started}ms`);
   if(!result.text)return c.json({error:'No speech was detected. Try speaking closer to the microphone.'},422);
   return c.json({text:result.text,language:result.language});
+});
+
+// Live voice typing: a one-time key so the phone can stream the microphone straight to Soniox.
+transcriptionApi.post('/live-key',async c=>{
+  if(!sonioxEnabled())return c.json({error:'Live voice typing is not set up on this server.'},503);
+  try{return c.json({apiKey:await sonioxLiveKey(c.get('user').id)});}
+  catch(e){console.warn('[transcribe] live key failed:',(e as Error).message);return c.json({error:'Live voice typing is unavailable right now.'},503);}
 });
