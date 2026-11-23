@@ -72,7 +72,6 @@ export function Sidebar() {
   return (
     <aside id="workspace-sidebar" aria-label={t("Conversations")} className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar__titlebar">
-        <div className="sidebar-brand"><img src="/characters/fino-brand-blue.png" alt="" /><span>Fino</span></div>
         <div className="sidebar__controls">
           <button type="button" className="icon-btn mobile-drawer-close" aria-label={t("Close conversations")} onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={22} /></button>
           <button type="button" className="icon-btn icon-btn--plain" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")} title="Toggle sidebar (⌘B)">
