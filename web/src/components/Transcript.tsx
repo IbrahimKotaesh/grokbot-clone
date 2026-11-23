@@ -11,6 +11,7 @@ import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
 import { Markdown } from './Markdown';
 import { api } from '../lib/api';
+import { startersFor } from '../../../packages/contracts/src/jobs';
 import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
 
@@ -171,9 +172,9 @@ function SystemRow({ row, running }: { row: Row; running: boolean }) {
   return null;
 }
 
-interface Props { bot: Bot; rows: Row[]; live: LiveState | undefined; loaded: boolean }
+interface Props { bot: Bot; rows: Row[]; live: LiveState | undefined; loaded: boolean; generation?: number }
 
-export function Transcript({ bot, rows, live, loaded }: Props) {
+export function Transcript({ bot, rows, live, loaded, generation }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const [showJump, setShowJump] = useState(false);
@@ -261,7 +262,7 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
     <div className="transcript-wrap">
     <div className="transcript" ref={scrollRef} onScroll={onScroll}>
       <div className="transcript__col">
-        {loaded && rows.length === 0 && <EmptyChat bot={bot} />}
+        {loaded && rows.length === 0 && <EmptyChat bot={bot} generation={generation} />}
         {items.map((it) => {
           switch (it.kind) {
             case 'divider':
@@ -294,12 +295,27 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
   );
 }
 
-function EmptyChat({ bot }: { bot: Bot }) {
+function EmptyChat({ bot, generation }: { bot: Bot; generation?: number }) {
+  const [sent, setSent] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const start = (text: string) => {
+    if (sent) return;
+    setSent(text); setError('');
+    api.send(bot.id, text, undefined, undefined, generation).catch((e) => { setSent(null); setError((e as Error).message); });
+  };
   return (
     <div className="empty-chat">
       <BotAvatarFor bot={bot} size={72} />
       <div className="empty-chat__title">{bot.name}</div>
       <div className="empty-chat__sub">{(bot.description && t(bot.description)) || (bot.mode === 'teammate' ? t("A Bot for the whole team. Hand it a task and it will see it through.") : t("Your personal assistant. Hand it a task and it will see it through."))}</div>
+      {bot.kind !== 'room' && (
+        <div className="empty-chat__starters">
+          {startersFor(bot).map((s) => (
+            <button key={s} type="button" className="starter-chip" dir="auto" disabled={!!sent} onClick={() => start(t(s))}>{t(s)}</button>
+          ))}
+        </div>
+      )}
+      {error && <div className="notice is-error" role="alert">{error}</div>}
     </div>
   );
 }
