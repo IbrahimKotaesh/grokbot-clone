@@ -13,6 +13,7 @@ import './styles/viewer.css';
 import './styles/voice.css';
 import './styles/fino.css';
 import './styles/phone-look.css';
+import './styles/workspace.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

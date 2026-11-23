@@ -440,4 +440,9 @@ export const arWeb: Record<string, string> = {
   "Accessibility (to click and type) and Screen Recording (to see the screen). Fino guides you.": "Accessibility (ليكبس ويكتب) وScreen Recording (ليشوف الشاشة). Fino بيدلّك خطوة بخطوة.",
   "Allow": "اسمح",
   "Maybe later": "بعدين",
+  "{name}'s computer": "كمبيوتر {name}",
+  "Show computer": "اعرض الكمبيوتر",
+  "Hide computer": "خبّي الكمبيوتر",
+  "Asleep. It wakes up when {name} needs it.": "نايم. بيصحى لما {name} يحتاجه.",
+  "New chat with {name}": "محادثة جديدة مع {name}",
 };

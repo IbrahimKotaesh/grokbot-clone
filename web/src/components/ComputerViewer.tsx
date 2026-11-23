@@ -12,7 +12,7 @@ type Mode = 'watch' | 'control';
 type Conn = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 /** Fullscreen computer stage: noVNC over our relay. Watch mode is view-only; Take control reconnects with mode=control. */
-export function ComputerViewer({docked=false}:{docked?:boolean}) {
+export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel?:boolean}) {
   const bot = useSelectedBot();
   const computer = useStore((s) => s.computer);
   const set = useStore((s) => s.set);
@@ -33,8 +33,9 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
     finally { setWaking(false); }
   };
   useEffect(() => {
-    // Opening a sleeping computer is itself a request to wake it.
-    if (bot && !running) void wake();
+    setWakeError(''); setMode('watch');
+    // Opening a sleeping computer is itself a request to wake it. The side panel only watches: it never wakes it on its own.
+    if (bot && !running && !panel) void wake();
     // Only once on opening/switching; a failed attempt waits for an explicit retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bot?.id]);
@@ -44,6 +45,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
       // In control mode Escape belongs to the remote desktop.
       if (e.key === 'Escape' && mode === 'watch') { e.preventDefault(); close(); }
     };
+    if (panel) return;
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,8 +84,8 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
   const busy = waking || computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
 
   return (
-    <div className={`viewer${docked?' viewer--docked':''}`} role={docked?'region':'dialog'} aria-modal={docked?undefined:true} aria-label={`${bot.name}'s computer`} style={botVars(bot.avatarColor)}>
-      <div className="viewer__scrim" onClick={mode === 'watch' ? close : undefined} />
+    <div className={`viewer${docked||panel?' viewer--docked':''}${panel?' viewer--panel':''}`} role={docked||panel?'region':'dialog'} aria-modal={docked||panel?undefined:true} aria-label={`${bot.name}'s computer`} style={botVars(bot.avatarColor)}>
+      {!panel && <><div className="viewer__scrim" onClick={mode === 'watch' ? close : undefined} />
       <div className="viewer__top">
         <div className="viewer__title">
           <BotAvatarFor bot={bot} size={24} />
@@ -91,7 +93,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
           <span className="viewer__status">{computerStatusText(computer)}</span>
         </div>
         <button type="button" className="viewer__close" onClick={close} aria-label={t("Close computer")}><Icon name="close" color="#FFFFFF" /></button>
-      </div>
+      </div></>}
 
       <div className="viewer__stage">
         {running ? (
@@ -111,7 +113,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
         ) : (
           <div className="viewer__overlay viewer__overlay--asleep">
             <span className="viewer__sleep-face"><i /><i /></span>
-            <span>{busy ? t("Starting your computer…") : wakeError || (computer?.status === 'error' ? t("The computer is unavailable.") : t("The computer is asleep."))}</span>
+            <span>{busy ? t("Starting your computer…") : wakeError || (computer?.status === 'error' ? t("The computer is unavailable.") : panel ? t("Asleep. It wakes up when {name} needs it.", { name: bot.name }) : t("The computer is asleep."))}</span>
             {!busy && <button type="button" className="btn btn--light" onClick={() => void wake()}>{wakeError || computer?.status === 'error' ? t("Try again") : t("Wake computer")}</button>}
           </div>
         )}
@@ -121,7 +123,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
         <div className={`viewer__bar${mode === 'control' ? ' is-control' : ''}`}>
           {mode === 'watch' ? (
             <>
-              <span className="viewer__bar-text"><b>{t("Watching")}</b> {t("· Take control to use the mouse and keyboard")}</span>
+              <span className="viewer__bar-text"><b>{t("Watching")}</b>{!panel && <> {t("· Take control to use the mouse and keyboard")}</>}</span>
               <button type="button" className="btn btn--light" onClick={() => setMode('control')}>{t("Take control")}</button>
             </>
           ) : (

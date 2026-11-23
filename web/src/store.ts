@@ -51,7 +51,7 @@ interface State {
 export const transcriptKey=(botId:string,generation:number)=>`${botId}:${generation}`;
 const LS_CHATS='fino.selectedChats';
 const LS_SELECTED = 'grokbot.selectedBot';
-const LS_DETAILS = 'grokbot.detailsOpen';
+const LS_DETAILS = 'fino.computerPanel'; // the right-side computer panel: open unless hidden
 const LS_SIDEBAR = 'grokbot.sidebarCollapsed';
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };

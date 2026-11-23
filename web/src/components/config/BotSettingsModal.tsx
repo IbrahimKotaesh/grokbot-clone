@@ -11,6 +11,8 @@ import { useStore } from '../../store';
 import { Icon } from '../Icon';
 import { Modal } from '../modals/Modal';
 import { Glyph } from './glyphs';
+import { LibraryTab } from './LibraryTab';
+import { MembersCard } from '../MembersCard';
 import { ConfirmButton, Field, Segmented, Switch, nextRunLabel, shortDate } from './ui';
 
 const EFFORTS: { value: Bot['effort']; label: string }[] = [
@@ -55,6 +57,8 @@ export function BotSettingsModal() {
     { id: 'skills', label: t("Skills"), count: data?.skills.length },
     { id: 'memories', label: t("Memories"), count: data?.memories.length },
     { id: 'routines', label: t("Routines"), count: (routines ?? data?.routines)?.length },
+    { id: 'library', label: t("Library") },
+    ...(bot.kind === 'room' ? [{ id: 'members' as const, label: t("Members") }] : []),
   ];
 
   return (
@@ -81,6 +85,8 @@ export function BotSettingsModal() {
           {target.tab === 'skills' && <SkillsTab bot={bot} skills={data?.skills} onChange={reload} />}
           {target.tab === 'memories' && <MemoriesTab bot={bot} data={data} onChange={reload} />}
           {target.tab === 'routines' && <RoutinesTab bot={bot} routines={routines ?? data?.routines} />}
+          {target.tab === 'library' && <LibraryTab bot={bot} />}
+          {target.tab === 'members' && bot.kind === 'room' && <MembersCard room={bot} />}
         </div>
       </div>
     </Modal>

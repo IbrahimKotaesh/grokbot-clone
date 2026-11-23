@@ -7,7 +7,7 @@ import { startEvents } from './lib/events';
 import { useStore } from './store';
 import { ChatView } from './components/ChatView';
 import { ComputerViewer } from './components/ComputerViewer';
-import { DetailsPanel } from './components/DetailsPanel';
+import { ComputerPanel } from './components/ComputerPanel';
 import { Sidebar } from './components/Sidebar';
 import { SignIn } from './components/SignIn';
 import { ConnectAppsModal } from './components/modals/ConnectAppsModal';
@@ -28,6 +28,8 @@ function Shell() {
   const collapsed = useStore((s) => s.sidebarCollapsed);
   const selectedBot = useStore(s=>s.bots.find(b=>b.id===s.selectedBotId));
   const hasBot = useStore((s) => !!s.selectedBotId);
+  // The Mac app shows its own Fino Browser panel on the right, so the web panel stays out of it.
+  const showPanel = detailsOpen && hasBot && selectedBot?.kind !== 'room' && !isMacDesktop();
   const navOpen = useStore((s) => s.mobileNavOpen);
   const navButton = useRef<HTMLButtonElement>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => !onboardingDone());
@@ -113,16 +115,16 @@ function Shell() {
 
   if(screenOnly)return <div className="desktop-computer-shell"><ComputerViewer docked/></div>;
   return (
-    <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
+    <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${showPanel && view === 'chat' ? ' has-computer' : ''}`}>
       <div className="mobile-topbar">
         <button ref={navButton} type="button" className="icon-btn" aria-label={t("Open conversations")} aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
         <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>
-        <button type="button" className="icon-btn" aria-label={t("Show conversation details")} onClick={() => useStore.getState().set({detailsOpen:true})}><Icon name="sidebar" size={21}/></button>
+        {selectedBot && selectedBot.kind !== 'room' && !isMacDesktop() ? <button type="button" className="icon-btn" aria-label={t("Show computer")} aria-pressed={detailsOpen} onClick={() => useStore.getState().set({detailsOpen:!detailsOpen})}><Icon name="monitor" size={21}/></button> : <span className="mobile-topbar__spacer" />}
       </div>
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
       {view === 'tasks' ? <TasksView /> : <ChatView />}
-      {detailsOpen && hasBot && view === 'chat' && <><button className="details-backdrop" aria-label={t("Close conversation details")} onClick={() => useStore.getState().set({ detailsOpen: false })} /><DetailsPanel /></>}
+      {showPanel && view === 'chat' && <ComputerPanel />}
       {modal === 'create' && <CreateBotModal />}
       {modal === 'group' && <CreateGroupModal />}
       {modal === 'search' && <SearchModal />}

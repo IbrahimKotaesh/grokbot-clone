@@ -5,7 +5,7 @@ import { botVars } from '../lib/colors';
 import { sortedRows, transcriptKey,useSelectedBot, useStore } from '../store';
 import { useConfigUI } from '../configStore';
 import { Composer } from './Composer';
-import { ComputerPip } from './ComputerPip';
+import { isMacDesktop } from '../lib/desktop';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
 import { Transcript } from './Transcript';
@@ -48,8 +48,6 @@ export function ChatView() {
               align="center"
               onClose={() => setMenu(false)}
               items={[
-                { label: detailsOpen ? t("Hide details") : t("Show details"), hint: '⇧⌘,', onSelect: () => set({ detailsOpen: !detailsOpen }) },
-                { label: t("Open computer"), onSelect: () => set({ viewerOpen: true }) },
                 { label: t("New chat"), onSelect: () => useStore.getState().newChat(bot.id).then(() => flash(t("Started a new chat"))).catch((e) => flash(e.message)) },
                 { label: t("Bot settings"), onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
               ]}
@@ -57,15 +55,13 @@ export function ChatView() {
           )}
         </span>
         <div className="chat__header-right">
-          {!detailsOpen && (
-            <button type="button" className="icon-btn icon-btn--bordered" onClick={() => set({ detailsOpen: true })} aria-label={t("Show details")} title={t("Show details")}>
+          {!detailsOpen && bot.kind !== 'room' && !isMacDesktop() && (
+            <button type="button" className="icon-btn icon-btn--bordered chat__show-computer" onClick={() => set({ detailsOpen: true })} aria-label={t("Show computer")} title={t("Show computer")}>
               <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />
             </button>
           )}
-          <button type="button" className="share-btn" onClick={() => flash(t("Sharing isn’t available in Fino yet"))}>{t("Share")}</button>
         </div>
       </header>
-      {!detailsOpen && bot.kind !== 'room' && <ComputerPip bot={bot} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
   );
