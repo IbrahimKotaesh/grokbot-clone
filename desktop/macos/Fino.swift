@@ -5,7 +5,8 @@ import CryptoKit
 import ScreenCaptureKit
 import ApplicationServices
 
-let workspace = URL(string: Bundle.main.object(forInfoDictionaryKey: "FinoWorkspaceURL") as? String ?? "https://grokbot.89-167-54-211.sslip.io")!
+// For local testing: `defaults write com.ibkopixels.fino.mac FinoWorkspaceURL http://localhost:5173` (delete the key to go back).
+let workspace = URL(string: UserDefaults.standard.string(forKey: "FinoWorkspaceURL") ?? Bundle.main.object(forInfoDictionaryKey: "FinoWorkspaceURL") as? String ?? "https://grokbot.89-167-54-211.sslip.io")!
 func jsonString(_ value: Any) -> String { String(data: try! JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), encoding: .utf8)! }
 func failure(_ message: String) -> NSError { NSError(domain: "Fino", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
@@ -81,7 +82,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
             guard let self else{return}
             let valid=cookies.filter{cookie in let domain=cookie.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."));return domain==workspace.host && (cookie.expiresDate ?? .distantFuture)>Date()}
             guard valid.contains(where:{$0.name=="grokbot_session"}) else{self.status.stringValue="Sign in to Fino first";self.login();return}
-            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme="wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:"mac")]
+            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme=workspace.scheme=="http" ? "ws":"wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:"mac")]
             var req=URLRequest(url:parts.url!);req.setValue(valid.map{"\($0.name)=\($0.value)"}.joined(separator:"; "),forHTTPHeaderField:"Cookie");req.setValue(workspace.absoluteString,forHTTPHeaderField:"Origin")
             self.connectionSession=URLSession(configuration:.ephemeral);let ws=self.connectionSession!.webSocketTask(with:req);self.socket=ws;self.control.title="Stop";self.status.stringValue="Connecting…";self.emitDesktopState();ws.resume();self.receive(ws)
         }}
@@ -165,7 +166,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func browserNavigate(){let raw=address.stringValue;let value=raw.contains("://") ? raw:"https://"+raw;Task {do{try await browserAction("open_browser",["url":value])}catch{address.toolTip=error.localizedDescription}}}
     func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":"mac","connected":connected,"panelOpen":!panel.isHidden];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage){
-        guard message.frameInfo.isMainFrame,message.frameInfo.securityOrigin.host==workspace.host,message.frameInfo.securityOrigin.protocol=="https",let body=message.body as? [String:Any] else{return}
+        guard message.frameInfo.isMainFrame,message.frameInfo.securityOrigin.host==workspace.host,(message.frameInfo.securityOrigin.protocol=="https" || workspace.host=="localhost"),let body=message.body as? [String:Any] else{return}
         if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()}}
         if message.webView===serverView,body["action"] as? String=="close"{hideWorkspace()}
     }
@@ -261,7 +262,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func webView(_ webView:WKWebView,createWebViewWith configuration:WKWebViewConfiguration,for navigationAction:WKNavigationAction,windowFeatures:WKWindowFeatures)->WKWebView?{if let url=navigationAction.request.url,["http","https"].contains(url.scheme ?? "") {if webView===browser {browser.load(URLRequest(url:url))}else{NSWorkspace.shared.open(url)}};return nil}
     /// Microphone and camera for Fino's own pages (voice typing, photos); macOS still asks once for the app itself.
     func webView(_ webView:WKWebView,requestMediaCapturePermissionFor origin:WKSecurityOrigin,initiatedByFrame frame:WKFrameInfo,type:WKMediaCaptureType,decisionHandler:@escaping(WKPermissionDecision)->Void){
-        decisionHandler(webView===web && origin.protocol=="https" && origin.host==workspace.host ? .grant : .prompt)
+        decisionHandler(webView===web && origin.host==workspace.host && (origin.protocol=="https" || origin.host=="localhost") ? .grant : .prompt)
     }
     func webView(_ webView:WKWebView,runJavaScriptAlertPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping()->Void){completionHandler()}
     func webView(_ webView:WKWebView,runJavaScriptConfirmPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping(Bool)->Void){completionHandler(false)}

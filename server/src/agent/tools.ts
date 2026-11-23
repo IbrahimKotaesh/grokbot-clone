@@ -106,7 +106,8 @@ async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: stri
 }
 
 function botByName(userId: string, name: string) {
-  return db.prepare('SELECT * FROM bots WHERE user_id=? AND lower(name)=lower(?)').get(userId, name.trim()) as any;
+  // Names can carry stray spaces from editing ("Mo "), so compare trimmed on both sides.
+  return db.prepare('SELECT * FROM bots WHERE user_id=? AND lower(trim(name))=lower(?)').get(userId, String(name ?? '').trim()) as any;
 }
 
 export const TOOLS: ToolDef[] = [
