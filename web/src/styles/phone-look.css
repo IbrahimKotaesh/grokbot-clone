@@ -418,3 +418,13 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 /* Tasks with no update for a day: amber "Stalled" instead of a green "Working on it". */
 .task-chip.is-stalled { background: color-mix(in srgb, var(--p-amber) 16%, transparent); color: var(--p-amber); }
 .task-row.is-stalled .task-row__ring { border-color: var(--p-amber); border-style: dashed; animation: none; }
+
+/* "Sol finished · View" */
+.finish-toast { position: fixed; left: 50%; bottom: 22px; z-index: 70; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: min(460px, calc(100% - 32px)); padding: 10px 10px 10px 12px; border-radius: 16px; background: var(--color-bg-elevated); color: var(--p-text); box-shadow: var(--shadow-modal), 0 0 0 .5px var(--p-line-strong); animation: finish-in .35s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes finish-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.finish-toast__text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; font-size: 13.5px; }
+.finish-toast__text small { color: var(--p-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.finish-toast__view, .finish-toast__ghost { flex: none; height: 32px; padding: 0 12px; border-radius: 10px; border: 0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.finish-toast__view { background: var(--chat-blue); color: #fff; }
+.finish-toast__ghost { background: transparent; color: var(--p-muted); box-shadow: inset 0 0 0 1px var(--p-line-strong); }
+@media (prefers-reduced-motion: reduce) { .finish-toast { animation: none; } }

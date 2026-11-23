@@ -13,6 +13,7 @@ import { Icon } from '../Icon';
 import { ToolkitLogo } from '../ToolkitLogo';
 import { Glyph } from './glyphs';
 import { ConfirmButton, Segmented, Switch } from './ui';
+import { chime, finishSoundOn, setFinishSound } from '../../lib/finishNotices';
 import { langChoice, setLangChoice, t } from '../../lib/i18n';
 
 const SECTIONS: { id: AppSection; label: string }[] = [
@@ -71,6 +72,28 @@ function PageHead({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
+/** When a bot finishes while Fino is in the background: system notification and a soft sound. */
+function FinishSettings() {
+  const [sound, setSound] = useState(finishSoundOn());
+  const [perm, setPerm] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+  return (
+    <section className="cfg-section">
+      <div className="cfg-section__label">{t('When a bot finishes')}</div>
+      <div className="cfg-card">
+        <div className="cfg-row">
+          <div className="cfg-row__text">
+            <div className="cfg-row__title">{t('Play a soft sound')}</div>
+            <div className="cfg-row__sub">{t('A short chime when a bot finishes while Fino is in the background.')}</div>
+          </div>
+          <Switch on={sound} label={t('Play a soft sound')} onChange={() => { const next = !sound; setFinishSound(next); setSound(next); if (next) chime(); }} />
+        </div>
+      </div>
+      {perm === 'default' && <button type="button" className="btn btn--light" onClick={() => void Notification.requestPermission().then(setPerm)}>{t('Turn on notifications')}</button>}
+      <div className="cfg-field__hint">{perm === 'granted' ? t('Notifications are on. You get one when a bot finishes while Fino is in the background.') : perm === 'denied' ? t('Notifications are blocked for this site in your browser settings.') : perm === 'unsupported' ? t('This browser can’t show notifications.') : t('Get a notification when a bot finishes while Fino is in the background.')}</div>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 function ThemeTile({ value, label, current, onPick }: { value: Theme; label: string; current: Theme; onPick: (t: Theme) => void }) {
@@ -105,6 +128,7 @@ function GeneralSection() {
         <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('System') }, { value: 'en', label: t("English") }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
         <div className="cfg-field__hint">{t('Your choice is saved on this device. System follows your browser’s language.')}</div>
       </section>
+      <FinishSettings />
     </>
   );
 }

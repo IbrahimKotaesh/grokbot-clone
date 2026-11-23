@@ -21,6 +21,7 @@ import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
 import { Landing, MacOffer } from './components/Landing';
 import { ResizeHandle, restoreColumnWidths } from './components/ResizeHandle';
+import { FinishToast } from './components/FinishToast';
 restoreColumnWidths();
 
 function Shell() {
@@ -135,6 +136,7 @@ function Shell() {
       {modal === 'apps' && <ConnectAppsModal />}
       {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
+      <FinishToast />
       {showOnboarding && aiChecked && <Onboarding requireAI={needsAI} onClose={() => { setShowOnboarding(false); setNeedsAI(false); }} />}
       {!showOnboarding && aiChecked && !isMacDesktop() && <MacOffer />}
     </div>
