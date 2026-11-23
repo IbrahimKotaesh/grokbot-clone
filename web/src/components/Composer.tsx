@@ -14,6 +14,7 @@ import { DictationButton } from './DictationButton';
 import { PhotoCamera } from './PhotoCamera';
 import { prepareDocument, DOCUMENT_ACCEPT, type DocumentUpload } from '../lib/documents';
 import { preparePhoto, type Photo } from '../lib/photos';
+import { BotAvatarFor } from '../avatar/BotAvatar';
 
 const permissionChoices = [
   {id:'read_only',name:t('Read only'),icon:Eye,description:t("Read connected data and screenshots. No commands or changes.")},
@@ -75,6 +76,32 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
 
   // Per-bot drafts.
   useEffect(() => { setText(drafts.get(draftKey) ?? ''); setError(null); }, [draftKey]);
+  // Group chats: typing @ lists the members; picking one writes @Name so only that bot answers.
+  const isRoom = bot.kind === 'room';
+  const allBots = useStore((st) => st.bots);
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (!isRoom) { setMemberIds([]); return; }
+    api.roomMembers(bot.id).then((r) => setMemberIds(r.members.map((m) => m.id))).catch(() => setMemberIds([]));
+  }, [bot.id, isRoom]);
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [mentionActive, setMentionActive] = useState(0);
+  const mentionList = mention ? allBots.filter((b) => memberIds.includes(b.id) && b.name.trim().toLowerCase().startsWith(mention.query.toLowerCase())).slice(0, 6) : [];
+  const findMention = (value: string, caret: number) => {
+    if (!isRoom) return setMention(null);
+    const m = /(^|\s)@([^\s@]{0,30})$/.exec(value.slice(0, caret));
+    setMention(m ? { start: caret - m[2].length - 1, query: m[2] } : null);
+    setMentionActive(0);
+  };
+  const pickMention = (name: string) => {
+    if (!mention) return;
+    const el = ref.current;
+    const caret = el?.selectionStart ?? text.length;
+    const insert = `@${name.trim()} `;
+    const next = text.slice(0, mention.start) + insert + text.slice(caret);
+    setText(next); setMention(null);
+    requestAnimationFrame(() => { if (el) { el.focus(); const at = mention.start + insert.length; el.setSelectionRange(at, at); } });
+  };
   useEffect(() => { drafts.set(draftKey, text); }, [draftKey, text]);
 
   // Auto-grow.
@@ -152,15 +179,31 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {preparing&&<div className="composer__preparing" role="status">{t("Preparing attachments…")}</div>}
       <div className="composer__writing">
+          {mentionList.length > 0 && (
+            <div className="mention-menu" role="listbox" aria-label={t('Mention a bot')}>
+              {mentionList.map((b, i) => (
+                <button key={b.id} type="button" role="option" aria-selected={i === mentionActive} className={`mention-menu__item${i === mentionActive ? ' is-active' : ''}`}
+                  onMouseDown={(e) => { e.preventDefault(); pickMention(b.name); }} onMouseMove={() => setMentionActive(i)}>
+                  <BotAvatarFor bot={b} size={22} /><span dir="auto">{b.name.trim()}</span>{b.label && <small>{t(b.label)}</small>}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
             dir="auto"
             ref={ref}
             className="composer__input"
             rows={1}
             value={text}
-            placeholder={t('Message {name}…',{name:bot.name})}
-            onChange={(e) => { setText(e.target.value); }}
+            placeholder={isRoom ? t('Message the group… type @ to ask one bot') : t('Message {name}…',{name:bot.name})}
+            onChange={(e) => { setText(e.target.value); findMention(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
             onKeyDown={(e) => {
+              if (mentionList.length) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); setMentionActive((a) => (a + 1) % mentionList.length); return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); setMentionActive((a) => (a - 1 + mentionList.length) % mentionList.length); return; }
+                if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionList[mentionActive]?.name ?? mentionList[0].name); return; }
+                if (e.key === 'Escape') { e.preventDefault(); setMention(null); return; }
+              }
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
             }}
             aria-label={t('Message {name}…',{name:bot.name})}

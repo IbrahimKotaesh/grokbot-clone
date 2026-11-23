@@ -552,4 +552,6 @@ export const arWeb: Record<string, string> = {
   "Nothing matches “{q}”": "ما في شي بيطابق “{q}”",
   "Searching…": "عم دوّر…",
   "Search bots and messages": "دوّر على بوت أو رسالة",
+  "Mention a bot": "اذكر بوت",
+  "Message the group… type @ to ask one bot": "اكتب للمجموعة… أو @ لتسأل بوت واحد",
 };

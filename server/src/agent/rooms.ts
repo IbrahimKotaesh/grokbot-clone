@@ -46,7 +46,7 @@ export function dispatchRoomMessage(roomId: string, text: string, enqueue: (botI
     return;
   }
   const lower = text.toLowerCase();
-  const mentioned = members.filter((m) => lower.includes(`@${m.name.toLowerCase()}`));
+  const mentioned = members.filter((m) => lower.includes(`@${m.name.trim().toLowerCase()}`));
   const responders = (mentioned.length ? mentioned : members).slice(0, MAX_RESPONDERS);
   const recent = (db.prepare("SELECT body FROM rows WHERE bot_id=? AND generation=? AND kind='message' ORDER BY seq DESC LIMIT 12").all(roomId, room.generation) as any[])
     .reverse()
