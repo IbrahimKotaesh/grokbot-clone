@@ -131,6 +131,10 @@ export interface MessageBody {
   role: "user" | "assistant";
   text: string;
   streaming?: boolean;
+  /** When the bot read this message (the person's own messages only). */
+  seenAt?: number;
+  /** An emoji the bot put on the person's message. */
+  reaction?: string;
   /** Set when a message came from another bot, a routine or a voice call rather than the user typing. */
   from?: { kind: "bot" | "routine" | "voice"; id: string; name: string };
   images?: { id: string; name: string; url: string }[];

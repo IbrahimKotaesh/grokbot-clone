@@ -15,7 +15,7 @@ import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
 import { restartBotComputer, screenFor } from '../computer.js';
-import { appendRow, updateRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
+import { appendRow, updateRow, getBotRow, listRows, listRoutines, toRoutine, describeCron } from '../store.js';
 import { readPage } from './read-page.js';
 import { composioTools, executeComposio, executeComposio as runAppTool, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
 import { scheduleRoutine, unscheduleRoutine } from '../routines.js';
@@ -112,6 +112,9 @@ async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: stri
   if(visible&&ctx.desktopProof)ctx.desktopProof.used=true;
   return result;
 }
+
+/** Emojis a bot may put on the person's message. */
+const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏', '🔥', '👀', '✅'];
 
 function botByName(userId: string, name: string) {
   // Names can carry stray spaces from editing ("Mo "), so compare trimmed on both sides.
@@ -548,6 +551,20 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
     },
   },
   {
+    name: 'react_to_message',
+    description: "Put one emoji on the user's latest message, like in a chat app (e.g. 👍 for a clear request, ❤️ for thanks, 😂 for a joke, 🎉 for good news). Optional and occasional: only when it feels natural, never instead of a reply. Call it at the start, then do the work.",
+    parameters: obj({ emoji: { type: 'string', enum: REACTIONS } }, ['emoji']),
+    activity: 'working',
+    label: 'Reacting',
+    impl: async (a, ctx) => {
+      const emoji = REACTIONS.includes(String(a.emoji)) ? String(a.emoji) : '👍';
+      const asked = listRows(ctx.botId, { limit: 12 }).reverse().find((r) => r.body.type === 'message' && r.body.role === 'user' && !r.body.from);
+      if (!asked || asked.body.type !== 'message') return { output: 'No message to react to.' };
+      updateRow(ctx.botId, asked.seq, { ...asked.body, reaction: emoji });
+      return { output: `Reacted ${emoji}. Now continue with your reply.`, summary: `Reacted ${emoji}` };
+    },
+  },
+  {
     name: 'stay_silent',
     description: 'End this turn without sending the user anything. Use during check-ins, routines or bot-to-bot exchanges when there is nothing worth telling the user.',
     parameters: obj({ reason: { type: 'string' } }),
@@ -830,7 +847,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set(['react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {

@@ -5,7 +5,7 @@ export function chatTimeline(rows: Row[]): ChatItem[] {
   const items: ChatItem[] = [];
   for (const row of rows) {
     if ((row.body as { replaced?: boolean }).replaced) continue; // a reply the person asked to try again
-    if (row.body.type === "tool-call" && row.body.name === "update_plan") continue;
+    if (row.body.type === "tool-call" && (row.body.name === "update_plan" || row.body.name === "react_to_message")) continue;
     const key = `${row.generation}:${row.seq}`;
     if (["tool-call", "event", "notice"].includes(row.body.type)) {
       const previous = items[items.length - 1];

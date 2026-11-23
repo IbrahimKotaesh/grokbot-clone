@@ -35,7 +35,7 @@ function previewFor(bot: Bot, running: boolean, awaiting: string | null) {
 
 const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect }: { bot: Bot; selected: boolean; running: boolean; awaiting: string | null; onSelect: (id: string) => void }) {
   return (
-    <button type="button" className={`bot-row${selected ? ' is-selected' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
+    <button type="button" className={`bot-row${selected ? ' is-selected' : ''}${bot.unread > 0 && !selected && !running ? ' is-unread' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
       <span className="bot-row__avatar">
         <BotAvatarFor bot={bot} size={52} />
         {(running || awaiting || bot.unread > 0) && (
@@ -93,10 +93,10 @@ export function Sidebar() {
       <div className="sidebar__scroll">
         {primary && (
           <div className="pinned"><BotConversations bot={primary} collapsed={collapsed}>
-            <button type="button" className={`pinned__tile${selectedBotId === primary.id ? ' is-selected' : ''}`} onClick={() => selectBot(primary.id)} title={displayName(primary)}>
+            <button type="button" className={`pinned__tile${selectedBotId === primary.id ? ' is-selected' : ''}${primary.unread > 0 && selectedBotId !== primary.id && !live[primary.id]?.isRunning ? ' is-unread' : ''}`} onClick={() => selectBot(primary.id)} title={displayName(primary)}>
               <span className="pinned__avatar">
                 <BotAvatarFor bot={primary} size={collapsed ? 44 : 88} />
-                {live[primary.id]?.isRunning && <span className="status-dot is-working pinned__dot" />}
+                {live[primary.id]?.isRunning ? <span className="status-dot is-working pinned__dot" /> : primary.unread > 0 && selectedBotId !== primary.id && <span className="status-dot is-unread pinned__dot" aria-label={t("Unread activity")} />}
               </span>
               {!collapsed && <span className="pinned__label">{displayName(primary)}</span>}
             </button>

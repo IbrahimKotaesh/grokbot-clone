@@ -566,4 +566,7 @@ export const arWeb: Record<string, string> = {
   "step of work": "خطوة شغل",
   "reply": "رد",
   "task done": "مهمة خلصت",
+  "Reacted {emoji}": "تفاعل بـ {emoji}",
+  "Seen by {name}": "شافها {name}",
+  "Seen": "شافها",
 };

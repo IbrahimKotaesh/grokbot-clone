@@ -194,8 +194,10 @@ export const useStore = create<State>((set, get) => ({
       case 'bot': {
         const exists = s.bots.some((b) => b.id === ev.bot.id);
         // Opening a bot marks it read; keep the open bot at 0 unread.
-        if (ev.bot.id === s.selectedBotId && ev.bot.unread > 0 && document.visibilityState === 'visible') api.markRead(ev.bot.id).catch(() => {});
-        set((st) => ({ bots: exists ? st.bots.map((b) => (b.id === ev.bot.id ? ev.bot : b)) : [...st.bots, ev.bot] }));
+        const seenNow = ev.bot.id === s.selectedBotId && ev.bot.unread > 0 && document.visibilityState === 'visible';
+        if (seenNow) api.markRead(ev.bot.id).catch(() => {});
+        const bot = seenNow ? { ...ev.bot, unread: 0 } : ev.bot;
+        set((st) => ({ bots: exists ? st.bots.map((b) => (b.id === bot.id ? bot : b)) : [...st.bots, bot] }));
         return;
       }
       case 'computer':

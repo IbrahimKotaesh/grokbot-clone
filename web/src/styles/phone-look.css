@@ -147,6 +147,10 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .sidebar .bot-row:hover, .bot-conversations__item:hover { background: var(--color-bg-hover); }
 .sidebar .bot-row.is-selected, .sidebar .bot-row[aria-current='true'], .sidebar .pinned__tile.is-selected { background: var(--p-raised); }
 .sidebar .bot-row__preview { color: var(--p-muted); opacity: 1; }
+/* A bot with a reply you haven't read stands out: bright name and preview. */
+.sidebar .bot-row.is-unread .bot-row__name { color: var(--p-text); font-weight: 700; }
+.sidebar .bot-row.is-unread .bot-row__preview { color: var(--p-text); font-weight: 600; }
+.sidebar .pinned__tile.is-unread .pinned__label { color: var(--p-text); font-weight: 700; }
 .sidebar__team-label { color: var(--p-muted); text-transform: none; letter-spacing: 0; }
 
 /* ---------- panels, cards, menus ---------- */

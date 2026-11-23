@@ -434,7 +434,7 @@ api.get('/search', (c) => {
 // What the bots actually did in the last 7 days, and a plain estimate of the time it saved:
 // each step (a search, a page read, an email, a click on the computer) ≈ 2 minutes of a person's work,
 // each reply ≈ 1 minute. Internal bookkeeping steps don't count.
-const QUIET_STEPS = new Set(['update_plan', 'stay_silent', 'remember', 'recall', 'update_memory', 'team_updates', 'search_conversation', 'list_routines', 'list_event_triggers', 'list_subagents']);
+const QUIET_STEPS = new Set(['react_to_message', 'update_plan', 'stay_silent', 'remember', 'recall', 'update_memory', 'team_updates', 'search_conversation', 'list_routines', 'list_event_triggers', 'list_subagents']);
 api.get('/stats/week', (c) => {
   const userId = c.get('user').id;
   const since = now() - 7 * 24 * 3600 * 1000;

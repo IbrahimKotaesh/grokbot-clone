@@ -35,7 +35,7 @@ function buildItems(rows: Row[]): Item[] {
     prevTs = row.createdAt;
     const last = items[items.length - 1];
     const b = row.body;
-    if (b.type === 'tool-call' && b.name === 'update_plan') continue; // shown as the plan card
+    if (b.type === 'tool-call' && (b.name === 'update_plan' || b.name === 'react_to_message')) continue; // plan card / emoji on the message
     if (b.type === 'tool-call') {
       if (last?.kind === 'steps') last.rows.push(row);
       else items.push({ kind: 'steps', key: `s${row.seq}`, rows: [row] });
@@ -68,7 +68,7 @@ function cornerClass(i: number, n: number) {
 
 const SERVER_CAPTIONS = new Set(['Computer · final screenshot']);
 
-const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean; onRetry?: () => void }) {
+const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, seenBy }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean; onRetry?: () => void; seenBy?: Bot }) {
   const b = row.body as MessageBody;
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
@@ -87,11 +87,13 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry }: { row: R
             })}
           </div>
         )}
+        {side === 'right' && b.reaction && <span className="bubble__reaction" role="img" aria-label={t('Reacted {emoji}', { emoji: b.reaction })}>{b.reaction}</span>}
       </div>:null}
       <div className="bubble__meta">
         <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
         {side === 'left' && !b.streaming && b.text.trim() && <CopyButton text={b.text} />}
         {onRetry && <RetryButton onRetry={onRetry} />}
+        {seenBy && b.seenAt && <span className="bubble__seen" title={t('Seen by {name}', { name: seenBy.name })}><BotAvatarFor bot={seenBy} size={14} />{t('Seen')}</span>}
       </div>
     </div>
   );
@@ -198,6 +200,8 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     const asked = [...shown].reverse().find((r) => r.body.type === 'message' && r.body.role === 'user');
     return asked && asked.body.type === 'message' && !asked.body.from ? lastReply.seq : undefined;
   }, [shownRows, running, waiting]);
+  // "Seen" shows under the person's latest message only.
+  const lastAskSeq = useMemo(() => [...shownRows].reverse().find((r) => r.body.type === 'message' && r.body.role === 'user' && !r.body.from)?.seq, [shownRows]);
   const [retryError, setRetryError] = useState('');
   const retry = () => {
     setRetryError(''); stick.current = true;
@@ -289,7 +293,7 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
                 <div key={it.key} className={`group is-${it.side}`}>
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} /></Fragment>
+                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} seenBy={r.seq === lastAskSeq ? bot : undefined} /></Fragment>
                   ))}
                 </div>
               );

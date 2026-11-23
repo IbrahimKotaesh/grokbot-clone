@@ -18,7 +18,7 @@ import { db, now } from '../db.js';
 import { env } from '../env.js';
 import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
-import { appendHistory, appendRow, emitBot, getBotRow, getRow, loadHistory, setLive, updateRow } from '../store.js';
+import { appendHistory, appendRow, emitBot, getBotRow, getRow, listRows, loadHistory, setLive, updateRow } from '../store.js';
 import type { MessageBody, ToolCallBody } from '../types.js';
 import { composioTools, toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
@@ -181,7 +181,13 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
 
   const ctx: ToolCtx = { userId, botId, desktopProof:{used:false},desktopTarget:localDesktopTarget(), enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
   let completed=false;
+  const firstSeq = (db.prepare('SELECT next_seq FROM bots WHERE id=?').get(botId) as any)?.next_seq ?? 0;
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
+  // The bot has read the person's message: mark it seen (shown under the message, like a chat app).
+  if (trigger.type === 'user') {
+    const asked = listRows(botId, { limit: 12 }).reverse().find((r) => r.body.type === 'message' && r.body.role === 'user' && !r.body.from);
+    if (asked && asked.body.type === 'message' && !asked.body.seenAt) updateRow(botId, asked.seq, { ...asked.body, seenAt: now() });
+  }
 
   try {
     const attachedContext=fileContext(userId,botId,'fileIds' in trigger?trigger.fileIds:[]);
@@ -312,6 +318,9 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     await finishDesktopWork(ctx,completed&&!ctrl.signal.aborted,!!stillPending);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
+    // A new reply the person hasn't read yet: the bot stands out in the list until they open it.
+    const replied = db.prepare("SELECT 1 FROM rows WHERE bot_id=? AND seq>=? AND kind='message' AND json_extract(body,'$.role')='assistant' AND length(coalesce(json_extract(body,'$.text'),''))>0 LIMIT 1").get(botId, firstSeq);
+    if (replied) db.prepare('UPDATE bots SET unread = unread + 1 WHERE id=?').run(botId);
     emitBot(botId);
 
   }
@@ -519,7 +528,6 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
           // finalize this message; a later message in the same response gets its own row
           const citations = (ev.item.content ?? []).flatMap((c: any) => (c.annotations ?? []).filter((a: any) => a.url).map((a: any) => ({ url: a.url, title: a.title })));
           updateRow(botId, msgSeq, { type: 'message', role: 'assistant', text, streaming: false, citations: citations.length ? citations : undefined });
-          db.prepare('UPDATE bots SET unread = unread + 1 WHERE id=?').run(botId);
           msgSeq = null;
           text = '';
         }
