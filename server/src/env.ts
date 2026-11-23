@@ -27,10 +27,10 @@ export const env = {
   orgoCpu: Number(process.env.ORGO_CPU ?? 2),
   orgoResolution: process.env.ORGO_RESOLUTION ?? '1280x800x24',
   sessionSecret: req('SESSION_SECRET'),
-  // PUBLIC_SIGNUP=1 opens Fino to everyone: no email allowlist and no access-code gate.
-  publicSignup: process.env.PUBLIC_SIGNUP === '1',
-  allowedEmails: process.env.PUBLIC_SIGNUP === '1' ? [] : (process.env.ALLOWED_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+  // Fino is open to everyone by default: no email allowlist and no access-code gate. PUBLIC_SIGNUP=0 makes a private server.
+  publicSignup: process.env.PUBLIC_SIGNUP !== '0',
+  allowedEmails: process.env.PUBLIC_SIGNUP !== '0' ? [] : (process.env.ALLOWED_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
   // The passwordless local login would let anyone open any account on a public site, so it is off there.
-  devLogin: process.env.DEV_LOGIN === '1' && process.env.PUBLIC_SIGNUP !== '1',
+  devLogin: process.env.DEV_LOGIN === '1' && process.env.PUBLIC_SIGNUP === '0',
   dbPath: process.env.DB_PATH ?? new URL('../../data/grokbot.db', import.meta.url).pathname,
 };

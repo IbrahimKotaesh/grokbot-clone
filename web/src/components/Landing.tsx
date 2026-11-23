@@ -18,13 +18,13 @@ export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => 
 type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
 // An example team. Every new account starts with Quinn; people add the others themselves.
 const TEAM: Bot[] = [
-  { id: 'nour', name: 'Nour', role: 'Research', img: '/characters/dino.png', reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'kai', name: 'Kai', role: 'Inbox', img: '/characters/ghost.png', reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
-  { id: 'quinn', name: 'Quinn', role: 'Chief of Staff', img: '/characters/fino-brand-blue.png', reply: 'Got it. I’ll split this up and hand each part to the right teammate.', match: /$^/ },
-  { id: 'sol', name: 'Sol', role: 'Planner', img: '/characters/pebble.png', reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
-  { id: 'mira', name: 'Mira', role: 'Writer', img: '/characters/arch.png', reply: 'Send it over. I’ll read it and write you a clear one-page summary.', match: /write|draft|summar|doc|post|report|translate/i },
+  { id: 'nour', name: 'Nour', role: 'Research', img: '/characters/fruits/orange.webp', reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
+  { id: 'quinn', name: 'Quinn', role: 'Chief of Staff', img: '/characters/fruits/watermelon.webp', reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'kai', name: 'Kai', role: 'Inbox', img: '/characters/fruits/olive.webp', reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
+  { id: 'sol', name: 'Sol', role: 'Planner', img: '/characters/fruits/fig.webp', reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
-const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? TEAM[2];
+const QUINN = TEAM[1];
+const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
 
 export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (mode: 'signin' | 'signup') => void }) {
@@ -38,7 +38,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
   const giveJob = (e: FormEvent) => {
     e.preventDefault();
     const job = task.trim();
-    if (!job) { setSaid(TEAM[2]); return; }
+    if (!job) { setSaid(QUINN); return; }
     store.set(FIRST_TASK, job.slice(0, 2000));
     start('signup');
   };
@@ -168,7 +168,7 @@ function Demo() {
       </div>
       <div className="lp-desk" aria-label="Demo: a bot searching a jobs site in its browser">
         <div className="lp-desk__chat">
-          <div className="lp-desk__head"><img src="/characters/dino.png" alt="" width={28} height={28} /> Nour <span>Research</span></div>
+          <div className="lp-desk__head"><img src="/characters/fruits/orange.webp" alt="" width={28} height={28} /> Nour <span>Research</span></div>
           <div className="lp-msgs">
             <p className="lp-msg lp-msg--me">Find financial analyst jobs in Amsterdam and shortlist five.</p>
             {step >= 1 && <p className="lp-msg">Opening a jobs site in my browser.</p>}
