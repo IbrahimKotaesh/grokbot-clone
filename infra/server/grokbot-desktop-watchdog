@@ -1,0 +1,13 @@
+#!/bin/bash
+# Safety net for the bots' desktop container. With --init there should be no dead (zombie) processes;
+# if they pile up anyway, or the container nears its process limit, restart it before every bot freezes.
+set -uo pipefail
+name=grokbot-desktop
+docker inspect "$name" >/dev/null 2>&1 || exit 0
+zombies=$(docker exec "$name" ps -eo stat= 2>/dev/null | grep -c '^Z')
+total=$(docker exec "$name" ps -e --no-headers 2>/dev/null | wc -l)
+if [ "${zombies:-0}" -gt 200 ] || [ "${total:-0}" -gt 900 ]; then
+  logger -t grokbot-desktop-watchdog "restarting $name: zombies=$zombies processes=$total"
+  docker restart "$name" >/dev/null
+  docker exec "$name" sh -c 'rm -f /tmp/grokbot-screen-*.started /tmp/grokbot-relay-*' || true
+fi

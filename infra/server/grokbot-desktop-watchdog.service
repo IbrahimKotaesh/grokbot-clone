@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart the bots' desktop container if dead processes pile up
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/grokbot-desktop-watchdog
