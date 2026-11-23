@@ -81,35 +81,29 @@ function ComputerCard({ bot }: { bot: Bot }) {
       } catch { /* keep last frame */ }
     };
     load();
-    const t = setInterval(load, 4000);
-    return () => { alive = false; clearInterval(t); if (url) URL.revokeObjectURL(url); };
+    const timer = setInterval(load, 2500);
+    return () => { alive = false; clearInterval(timer); if (url) URL.revokeObjectURL(url); };
   }, [bot.id, running]);
 
   const busy = computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
   return (
-    <div className="panel-card">
-      <div className="panel-row panel-row--computer" role="button" tabIndex={0} onClick={() => set({ viewerOpen: true })} onKeyDown={(e) => { if (e.key === 'Enter') set({ viewerOpen: true }); }}>
-        <span className="panel-row__text">
-          <span className="panel-row__title">{t("Bot's computer")}</span>
-          <span className="panel-row__meta">{computerStatusText(computer)}{computer?.error && computer.status === 'error' ? ` · ${computer.error}` : ''}</span>
-        </span>
-        <span className={`computer-thumb${shot ? ' has-shot' : ''}`}>
-          {shot ? <img src={shot} alt="Bot's screen" /> : running || busy ? (
-            <span className="computer-thumb__awake"><span className={`status-dot ${busy ? 'is-attention' : 'is-working'}`} /></span>
-          ) : (
-            <>
-              <span className="computer-thumb__face"><i /><i /></span>
-              <span className="computer-thumb__z1">z</span>
-              <span className="computer-thumb__z2">z</span>
-            </>
-          )}
-        </span>
+    <div className="computer-hero">
+      <button type="button" className={`computer-hero__screen${shot ? ' has-shot' : ''}`} onClick={() => set({ viewerOpen: true })} aria-label={t('Open computer')}>
+        {shot ? <img src={shot} alt={t("Bot's screen")} /> : running || busy ? (
+          <span className="computer-hero__waking"><span className={`status-dot ${busy ? 'is-attention' : 'is-working'}`} /></span>
+        ) : (
+          <span className="computer-hero__asleep"><span className="computer-thumb__face"><i /><i /></span><span>z z</span></span>
+        )}
+        <span className="computer-hero__badge"><span className={`status-dot ${running ? 'is-working' : busy ? 'is-attention' : ''}`} />{computerStatusText(computer)}</span>
+      </button>
+      <div className="computer-hero__bar">
+        <span className="computer-hero__title">{t("Bot's computer")}{computer?.error && computer.status === 'error' ? ` · ${computer.error}` : ''}</span>
+        {!running && !busy ? (
+          <button type="button" className="link-btn link-btn--small" onClick={() => api.ensureComputer().catch(() => {})}>{t('Wake computer')}</button>
+        ) : (
+          <button type="button" className="link-btn link-btn--small" onClick={() => set({ viewerOpen: true })}>{t('Open computer')}</button>
+        )}
       </div>
-      {!running && !busy && (
-        <button type="button" className="panel-row panel-row--action" onClick={() => api.ensureComputer().catch(() => {})}>
-          <Icon name="monitor" size={14} opacity={0.56} /> {t('Wake computer')}
-        </button>
-      )}
     </div>
   );
 }
@@ -142,6 +136,7 @@ export function DetailsPanel() {
           <BotAvatarFor bot={bot} size={64} />
           <div className="details__name" title={displayName(bot)}>{displayName(bot)}</div>
         </div>
+        {bot.kind !== 'room' && <ComputerCard bot={bot} />}
         <div className="details__tabs">
           <div className="segmented">
             <button type="button" className={tab === 'activity' ? 'is-active' : ''} onClick={() => setTab('activity')}>{t("Activity")}</button>
@@ -182,14 +177,6 @@ export function DetailsPanel() {
                   </button>
                 </div>
               </section>
-            )}
-            {bot.kind !== 'room' && (
-              <>
-                <section>
-                  <div className="section-label">{t("Computer")}</div>
-                  <ComputerCard bot={bot} />
-                </section>
-              </>
             )}
           </div>
         ) : tab === 'tasks' ? <BotTasks bot={bot} /> : <LibraryTab bot={bot} />}

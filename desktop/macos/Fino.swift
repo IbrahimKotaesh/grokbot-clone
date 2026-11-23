@@ -259,6 +259,10 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         if !["https","http","about"].contains(url.scheme ?? "") {decisionHandler(.cancel);return};decisionHandler(.allow)
     }
     func webView(_ webView:WKWebView,createWebViewWith configuration:WKWebViewConfiguration,for navigationAction:WKNavigationAction,windowFeatures:WKWindowFeatures)->WKWebView?{if let url=navigationAction.request.url,["http","https"].contains(url.scheme ?? "") {if webView===browser {browser.load(URLRequest(url:url))}else{NSWorkspace.shared.open(url)}};return nil}
+    /// Microphone and camera for Fino's own pages (voice typing, photos); macOS still asks once for the app itself.
+    func webView(_ webView:WKWebView,requestMediaCapturePermissionFor origin:WKSecurityOrigin,initiatedByFrame frame:WKFrameInfo,type:WKMediaCaptureType,decisionHandler:@escaping(WKPermissionDecision)->Void){
+        decisionHandler(webView===web && origin.protocol=="https" && origin.host==workspace.host ? .grant : .prompt)
+    }
     func webView(_ webView:WKWebView,runJavaScriptAlertPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping()->Void){completionHandler()}
     func webView(_ webView:WKWebView,runJavaScriptConfirmPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping(Bool)->Void){completionHandler(false)}
     func testBrowser()async{
