@@ -101,7 +101,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
 
   const desktop=useDesktopState(),needsLocalConnection=!!desktop&&desktop.environment!=='server'&&!desktop.connected;
   const send = async () => {
-    if(needsLocalConnection){setError(t("Connect the selected local environment using the top toolbar first."));return;}
+    if(needsLocalConnection){setError(t("Connect first: press Connect to send, or pick Cloud computer in the menu at the top right."));return;}
     const msg = text.trim();
     if ((!msg && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
@@ -149,7 +149,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
       <input hidden ref={captureRef} type="file" accept="image/*" capture="environment" aria-label={t("Take a photo")} onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       {camera&&<PhotoCamera onClose={closeCamera} onPhoto={photo=>setPhotos(cur=>[...cur,photo].slice(0,3))}/>}
       <div className="composer-shell">
-      {needsLocalConnection&&<div className="composer__environment-note">{t("This Computer selected · Connect above to send a task")}</div>}
+      {needsLocalConnection&&<div className="composer__environment-note"><span>{desktop?.environment==='browser'?t("Your bots work in the Fino Browser."):t("Your bots work on this Mac.")}</span> <button type="button" className="link-btn" onClick={()=>(window as Window&{webkit?:{messageHandlers?:{finoUI?:{postMessage:(v:unknown)=>void}}}}).webkit?.messageHandlers?.finoUI?.postMessage({action:'connect'})}>{t("Connect to send")}</button></div>}
       {documents.length>0&&<div className="composer__documents">{documents.map((file,i)=><div className="composer__document" key={i}><Icon name="file" size={20}/><span><strong>{file.name}</strong><small>{Math.max(1,Math.round(file.size/1024))} KB</small></span><button type="button" aria-label={`Remove file ${i+1}`} disabled={sending} onClick={()=>setDocuments(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {sending&&documents.length>0&&<div className="composer__preparing" role="status">{t("Reading attachments…")}</div>}
       {photos.length>0&&<div className="composer__photos">{photos.map((photo,i)=><div className="composer__photo" key={i}><img src={photo.dataUrl} alt={photo.name}/><button type="button" aria-label={`Remove photo ${i+1}`} disabled={sending} onClick={()=>setPhotos(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}

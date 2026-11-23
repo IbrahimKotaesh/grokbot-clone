@@ -15,16 +15,19 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     let rep = NSBitmapImageRep(cgImage:context.makeImage()!)
     guard let data=rep.representation(using:.png,properties:[:]),data.count <= 3*1024*1024 else {throw failure("Screenshot exceeds 3 MB")};return data
 }
-@MainActor final class FinoApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, ASWebAuthenticationPresentationContextProviding, URLSessionTaskDelegate, NSToolbarDelegate, NSSplitViewDelegate, WKScriptMessageHandler {
+@MainActor final class FinoApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, ASWebAuthenticationPresentationContextProviding, URLSessionTaskDelegate, NSToolbarDelegate, NSSplitViewDelegate, WKScriptMessageHandler, NSMenuDelegate {
     var window:NSWindow!,web:WKWebView!,browser:WKWebView!,serverView:WKWebView!
     var split:NSSplitView!,panel:NSView!,panelContent:NSView!,paneTitle:NSTextField!,address:NSTextField!,browserControls:NSStackView!,macPreview:NSImageView!,placeholder:NSTextField!
     var selectedBotID:String?
     var control:NSButton!,mode:NSPopUpButton!,status:NSTextField!
+    /// The one toolbar control: where bots work, its connection, and a menu with the choices.
+    var computerPill:NSButton!,computerBar:NSMenu!
     var socket:URLSessionWebSocketTask?,connectionSession:URLSession?,authentication:ASWebAuthenticationSession?
     var actionTask:Task<Void,Never>?
     var expires:Date?,queue:[[String:Any]]=[],running=false,connected=false
     var currentDeadline=Date.distantFuture
     var setup:ComputerSetup?
+    var cursor:NSImageView?
     var screenSize=CGSize(width:1280,height:800)
     let selfTest=CommandLine.arguments.contains("--self-test")
     func applicationDidFinishLaunching(_ notification:Notification){
@@ -38,13 +41,14 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let edit=NSMenuItem();let editMenu=NSMenu(title:"Edit");edit.submenu=editMenu;menu.addItem(edit)
         for (title,selector,key) in [("Undo","undo:","z"),("Cut","cut:","x"),("Copy","copy:","c"),("Paste","paste:","v"),("Select All","selectAll:","a")] {editMenu.addItem(withTitle:title,action:Selector(selector),keyEquivalent:key)}
         for entry in appMenu.items where entry.action != #selector(NSApplication.terminate(_:)){entry.target=self}
+        let computer=NSMenuItem();computerBar=NSMenu(title:"Computer");computerBar.delegate=self;computer.submenu=computerBar;menu.addItem(computer)
         NSApp.mainMenu=menu
         let visible=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:1440,height:900)
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:min(1380,visible.width*0.94),height:min(900,visible.height*0.94)),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
         window.title="Fino";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.toolbarStyle = .unifiedCompact
         window.appearance=NSAppearance(named:.darkAqua);window.backgroundColor = .black
         window.minSize=NSSize(width:850,height:600);window.center();window.isReleasedWhenClosed=false
-        mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer"]);mode.selectItem(at:1);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
+        mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer","Fino Browser"]);mode.selectItem(at:UserDefaults.standard.object(forKey:"FinoEnvironment") as? Int ?? 2);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
         control=NSButton(title:"Connect",target:self,action:#selector(toggleControl));control.bezelStyle = .rounded
         status=NSTextField(labelWithString:"Not connected");status.font = .systemFont(ofSize:11);status.textColor = .secondaryLabelColor;status.lineBreakMode = .byTruncatingTail
         let toolbar=NSToolbar(identifier:"FinoWorkspaceToolbar");toolbar.delegate=self;toolbar.displayMode = .iconOnly;toolbar.allowsUserCustomization=false;window.toolbar=toolbar
@@ -56,9 +60,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         web.autoresizingMask=[.width,.height];split.addArrangedSubview(web)
         panel=NSView(frame:NSRect(x:0,y:0,width:500,height:800));panel.userInterfaceLayoutDirection = .leftToRight;panel.autoresizingMask=[.height];panel.wantsLayer=true;panel.layer?.backgroundColor=NSColor(red:0.045,green:0.055,blue:0.075,alpha:1).cgColor;split.addArrangedSubview(panel);panel.isHidden=true
         buildPanel()
+        // A quiet spinner until the workspace has drawn, instead of a blank black window.
+        let spin=NSProgressIndicator();spin.style = .spinning;spin.controlSize = .regular;spin.translatesAutoresizingMaskIntoConstraints=false;spin.startAnimation(nil);root.addSubview(spin,positioned:.above,relativeTo:split);loadingSpinner=spin
+        NSLayoutConstraint.activate([spin.centerXAnchor.constraint(equalTo:web.centerXAnchor),spin.centerYAnchor.constraint(equalTo:root.centerYAnchor)])
         NSLayoutConstraint.activate([split.topAnchor.constraint(equalTo:root.topAnchor),split.leadingAnchor.constraint(equalTo:root.leadingAnchor),split.trailingAnchor.constraint(equalTo:root.trailingAnchor),split.bottomAnchor.constraint(equalTo:root.bottomAnchor)])
         window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
-        web.load(URLRequest(url:workspace));if selfTest { Task { await testBrowser() } }
+        web.load(URLRequest(url:workspace));if mode.indexOfSelectedItem==2 && !selfTest {DispatchQueue.main.async{[weak self] in self?.ensureBrowser()}};if selfTest { Task { await testBrowser() } }
         if UserDefaults.standard.bool(forKey:"FinoConnectAfterRestart"){UserDefaults.standard.removeObject(forKey:"FinoConnectAfterRestart");DispatchQueue.main.asyncAfter(deadline:.now()+1.5){[weak self] in self?.toggleControl()}}
         Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task { @MainActor in if let e=self?.expires,e<Date(){self?.stopControl()} }}
     }
@@ -66,21 +73,23 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func applicationWillTerminate(_ notification:Notification){stopControl()}
     @objc func reload(){web.reload()}
     @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
-    @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
+    @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";setAgentFrame();mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
     @objc func toggleControl(){
         if mode.indexOfSelectedItem==0{showWorkspace();return}
         if socket != nil {stopControl();return}
-        if !ComputerSetup.ready {showComputerSetup();return}
-        let alert=NSAlert();alert.messageText="Allow Fino to control this computer?"
-        alert.informativeText="Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
+        let inBrowser=mode.indexOfSelectedItem==2
+        if !inBrowser && !ComputerSetup.ready {showComputerSetup();return}
+        if inBrowser {ensureBrowser()}
+        let alert=NSAlert();alert.messageText=inBrowser ? "Let your bot use the Fino Browser?":"Allow Fino to control this computer?"
+        alert.informativeText=inBrowser ? "Your bot works only inside the browser panel on the right, not the rest of your Mac. Sign in to sites there yourself; the bot will not type passwords. Only bots responding to your direct messages can act, for 30 minutes. Press Stop or ⌘. to disconnect.":"Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
         alert.addButton(withTitle:"Allow this session");alert.addButton(withTitle:"Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else{return}
-        guard ComputerSetup.ready else{showComputerSetup();return}
+        guard inBrowser || ComputerSetup.ready else{showComputerSetup();return}
         web.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in DispatchQueue.main.async {
             guard let self else{return}
             let valid=cookies.filter{cookie in let domain=cookie.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."));return domain==workspace.host && (cookie.expiresDate ?? .distantFuture)>Date()}
             guard valid.contains(where:{$0.name=="grokbot_session"}) else{self.status.stringValue="Sign in to Fino first";self.login();return}
-            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme=workspace.scheme=="http" ? "ws":"wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:"mac")]
+            var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme=workspace.scheme=="http" ? "ws":"wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:inBrowser ? "browser":"mac")]
             var req=URLRequest(url:parts.url!);req.setValue(valid.map{"\($0.name)=\($0.value)"}.joined(separator:"; "),forHTTPHeaderField:"Cookie");req.setValue(workspace.absoluteString,forHTTPHeaderField:"Origin")
             self.connectionSession=URLSession(configuration:.ephemeral);let ws=self.connectionSession!.webSocketTask(with:req);self.socket=ws;self.control.title="Stop";self.status.stringValue="Connecting…";self.emitDesktopState();ws.resume();self.receive(ws)
         }}
@@ -92,34 +101,72 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         case .success(let message):
             let data:Data;switch message{case .data(let d):data=d;case .string(let s):data=Data(s.utf8);@unknown default:return}
             if let obj=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any] {
-                if obj["type"] as? String=="connected" {self.connected=true;self.expires=Date(timeIntervalSince1970:(obj["expires"] as? Double ?? 0)/1000);self.status.stringValue="Connected · Local";self.emitDesktopState()}
+                if obj["type"] as? String=="connected" {self.connected=true;self.expires=Date(timeIntervalSince1970:(obj["expires"] as? Double ?? 0)/1000);self.status.stringValue=self.mode.indexOfSelectedItem==2 ? "Connected · Fino Browser":"Connected · Local";self.setAgentFrame();self.emitDesktopState()}
                 else if self.connected,obj["id"] is String {self.queue.append(obj);self.drain()}
             };self.receive(ws)
         }
     }}}
-    func drain(){guard !running,!queue.isEmpty else{return};running=true;let message=queue.removeFirst();let ws=socket;currentDeadline=Date(timeIntervalSince1970:(message["deadline"] as? Double ?? 0)/1000)
+    func drain(){guard !running,!queue.isEmpty else{return};running=true;setAgentFrame();let message=queue.removeFirst();let ws=socket;currentDeadline=Date(timeIntervalSince1970:(message["deadline"] as? Double ?? 0)/1000)
         actionTask=Task { @MainActor in
             var reply:[String:Any] = ["id":message["id"] ?? ""]
             do{guard let ws,self.socket===ws,self.connected,let e=self.expires,e>Date() else{throw failure("Local control is off")};reply["result"]=try await perform(message["action"] as? String ?? "",message["args"] as? [String:Any] ?? [:])}
             catch{reply["error"]=error.localizedDescription}
             if let ws,self.socket===ws {try? await ws.send(.string(jsonString(reply)))}
-            self.running=false;self.drain()
+            self.running=false;self.setAgentFrame();self.drain()
         }
     }
-    func toolbarAllowedItemIdentifiers(_ toolbar:NSToolbar)->[NSToolbarItem.Identifier]{[.init("environment"),.init("status"),.flexibleSpace,.init("control"),.init("workspace")]}
+    func toolbarAllowedItemIdentifiers(_ toolbar:NSToolbar)->[NSToolbarItem.Identifier]{[.flexibleSpace,.init("computer"),.init("workspace")]}
     func toolbarDefaultItemIdentifiers(_ toolbar:NSToolbar)->[NSToolbarItem.Identifier]{toolbarAllowedItemIdentifiers(toolbar)}
     func toolbar(_ toolbar:NSToolbar,itemForItemIdentifier identifier:NSToolbarItem.Identifier,willBeInsertedIntoToolbar flag:Bool)->NSToolbarItem?{
         let item=NSToolbarItem(itemIdentifier:identifier)
         switch identifier.rawValue {
-        case "environment":let label=NSTextField(labelWithString:"Environment");label.font = .systemFont(ofSize:11,weight:.medium);label.textColor = .secondaryLabelColor;let row=NSStackView(views:[label,mode]);row.spacing=9;mode.widthAnchor.constraint(equalToConstant:155).isActive=true;item.view=row;item.label="Environment"
-        case "status":status.widthAnchor.constraint(equalToConstant:130).isActive=true;item.view=status;item.label="Connection"
-        case "control":item.view=control;item.label="Control"
-        case "workspace":let button=NSButton(image:NSImage(systemSymbolName:"sidebar.right",accessibilityDescription:"Show workspace")!,target:self,action:#selector(toggleWorkspace));button.bezelStyle = .rounded;button.toolTip="Show or hide the workspace on the right";button.setAccessibilityLabel("Toggle workspace panel");item.view=button;item.label="Workspace"
+        case "computer":
+            computerPill=NSButton(title:"",target:self,action:#selector(showComputerMenu(_:)));computerPill.bezelStyle = .texturedRounded;computerPill.isBordered=true;computerPill.imagePosition = .imageLeading;computerPill.imageHugsTitle=true;computerPill.font = .systemFont(ofSize:12,weight:.medium);computerPill.setAccessibilityLabel("Where your bots work");computerPill.toolTip="Where your bots work, and whether they are connected"
+            item.view=computerPill;item.label="Computer";refreshPill()
+        case "workspace":let button=NSButton(image:NSImage(systemSymbolName:"sidebar.right",accessibilityDescription:"Show workspace")!,target:self,action:#selector(toggleWorkspace));button.bezelStyle = .texturedRounded;button.toolTip="Show or hide the workspace on the right";button.setAccessibilityLabel("Toggle workspace panel");item.view=button;item.label="Workspace"
         default:return nil
         };return item
     }
     func splitView(_ splitView:NSSplitView,constrainMinCoordinate proposedMinimumPosition:CGFloat,ofSubviewAt dividerIndex:Int)->CGFloat{650}
     func splitView(_ splitView:NSSplitView,constrainMaxCoordinate proposedMaximumPosition:CGFloat,ofSubviewAt dividerIndex:Int)->CGFloat{splitView.bounds.width-360}
+    static let environments:[(title:String,symbol:String)]=[("Cloud computer","cloud"),("This Mac","laptopcomputer"),("Fino Browser","globe")]
+    /// Toolbar pill: icon + where bots work, with a green dot while connected.
+    func refreshPill(){
+        guard let pill=computerPill,let mode else{return}
+        let env=FinoApp.environments[max(0,min(2,mode.indexOfSelectedItem))]
+        let on=connected || mode.indexOfSelectedItem==0
+        let busy=socket != nil && !connected
+        let title=NSMutableAttributedString(string:"  ")
+        let dot=NSAttributedString(string:"●  ",attributes:[.foregroundColor:busy ? NSColor.systemOrange:(on ? NSColor.systemGreen:NSColor.tertiaryLabelColor),.font:NSFont.systemFont(ofSize:8)])
+        title.append(dot)
+        title.append(NSAttributedString(string:env.title,attributes:[.foregroundColor:NSColor.labelColor,.font:NSFont.systemFont(ofSize:12,weight:.medium)]))
+        title.append(NSAttributedString(string:"  ⌄",attributes:[.foregroundColor:NSColor.secondaryLabelColor,.font:NSFont.systemFont(ofSize:11)]))
+        pill.attributedTitle=title
+        pill.image=NSImage(systemSymbolName:env.symbol,accessibilityDescription:nil)?.withSymbolConfiguration(.init(pointSize:12,weight:.medium))
+        pill.contentTintColor = .secondaryLabelColor
+        pill.setAccessibilityValue("\(env.title), \(on ? "connected":"not connected")")
+    }
+    func computerMenu()->NSMenu{
+        let menu=NSMenu(title:"Computer");menu.autoenablesItems=false
+        let head=NSMenuItem(title:"Where your bots work",action:nil,keyEquivalent:"");head.isEnabled=false;menu.addItem(head)
+        for (i,env) in FinoApp.environments.enumerated(){
+            let item=NSMenuItem(title:env.title,action:#selector(pickEnvironment(_:)),keyEquivalent:"");item.tag=i;item.target=self
+            item.image=NSImage(systemSymbolName:env.symbol,accessibilityDescription:nil);item.state=mode.indexOfSelectedItem==i ? .on:.off
+            item.toolTip=["Fino's own Linux computer in the cloud.","Your bots use this Mac. Needs two macOS permissions.","A private browser in the panel on the right."][i]
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        if mode.indexOfSelectedItem != 0 {
+            let connect=NSMenuItem(title:socket != nil ? "Disconnect":"Connect…",action:#selector(toggleControl),keyEquivalent:"");connect.target=self;menu.addItem(connect)
+            let state=NSMenuItem(title:status.stringValue,action:nil,keyEquivalent:"");state.isEnabled=false;menu.addItem(state)
+            menu.addItem(.separator())
+        }
+        let panelItem=NSMenuItem(title:panel.isHidden ? "Show panel":"Hide panel",action:#selector(toggleWorkspace),keyEquivalent:"");panelItem.target=self;menu.addItem(panelItem)
+        return menu
+    }
+    func menuNeedsUpdate(_ menu:NSMenu){guard menu===computerBar else{return};menu.removeAllItems();for item in computerMenu().items{item.menu?.removeItem(item);menu.addItem(item)}}
+    @objc func showComputerMenu(_ sender:NSButton){computerMenu().popUp(positioning:nil,at:NSPoint(x:0,y:sender.bounds.height+4),in:sender)}
+    @objc func pickEnvironment(_ sender:NSMenuItem){mode.selectItem(at:sender.tag);environmentChanged()}
     func buildPanel(){
         let header=NSStackView();header.orientation = .horizontal;header.spacing=8;header.translatesAutoresizingMaskIntoConstraints=false
         paneTitle=NSTextField(labelWithString:"Workspace");paneTitle.font = .systemFont(ofSize:12,weight:.semibold)
@@ -131,7 +178,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         address=NSTextField();address.placeholderString="Enter a URL";address.font = .systemFont(ofSize:11);address.bezelStyle = .roundedBezel;address.target=self;address.action=#selector(browserNavigate);address.setAccessibilityLabel("Browser address");browserControls.addArrangedSubview(address)
         panelContent=NSView();panelContent.translatesAutoresizingMaskIntoConstraints=false
         macPreview=NSImageView();macPreview.imageScaling = .scaleProportionallyUpOrDown;macPreview.frame=panelContent.bounds;macPreview.autoresizingMask=[.width,.height];panelContent.addSubview(macPreview)
-        placeholder=NSTextField(wrappingLabelWithString:"Connect This Computer above to preview the main display.");placeholder.textColor = .secondaryLabelColor;placeholder.alignment = .center;placeholder.translatesAutoresizingMaskIntoConstraints=false;panelContent.addSubview(placeholder)
+        placeholder=NSTextField(wrappingLabelWithString:"Choose This Mac and press Connect in the menu at the top right to see your screen here.");placeholder.textColor = .secondaryLabelColor;placeholder.alignment = .center;placeholder.translatesAutoresizingMaskIntoConstraints=false;panelContent.addSubview(placeholder)
         [header,browserControls!,panelContent!].forEach{panel.addSubview($0)}
         NSLayoutConstraint.activate([header.topAnchor.constraint(equalTo:panel.topAnchor,constant:10),header.leadingAnchor.constraint(equalTo:panel.leadingAnchor,constant:14),header.trailingAnchor.constraint(equalTo:panel.trailingAnchor,constant:-12),header.heightAnchor.constraint(equalToConstant:26),browserControls.topAnchor.constraint(equalTo:header.bottomAnchor,constant:6),browserControls.leadingAnchor.constraint(equalTo:panel.leadingAnchor,constant:12),browserControls.trailingAnchor.constraint(equalTo:panel.trailingAnchor,constant:-12),browserControls.heightAnchor.constraint(equalToConstant:28),address.widthAnchor.constraint(greaterThanOrEqualToConstant:120),panelContent.topAnchor.constraint(equalTo:browserControls.bottomAnchor,constant:8),panelContent.leadingAnchor.constraint(equalTo:panel.leadingAnchor),panelContent.trailingAnchor.constraint(equalTo:panel.trailingAnchor),panelContent.bottomAnchor.constraint(equalTo:panel.bottomAnchor),placeholder.centerXAnchor.constraint(equalTo:panelContent.centerXAnchor),placeholder.centerYAnchor.constraint(equalTo:panelContent.centerYAnchor),placeholder.widthAnchor.constraint(lessThanOrEqualToConstant:260)])
     }
@@ -147,8 +194,9 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let s=ComputerSetup();setup=s
         s.show(over:window){[weak self] in self?.setup=nil;self?.status.stringValue="Ready to connect";self?.toggleControl()}
     }
-    @objc func environmentChanged(){stopControl();showWorkspace();emitDesktopState()}
+    @objc func environmentChanged(){UserDefaults.standard.set(mode.indexOfSelectedItem,forKey:"FinoEnvironment");stopControl();showWorkspace();emitDesktopState()}
     func showWorkspace(){
+        if mode.indexOfSelectedItem==2 {ensureBrowser();return}
         showPanel();browser?.isHidden=true;browserControls.isHidden=true
         if mode.indexOfSelectedItem==0 {
             paneTitle.stringValue="Cloud computer · Linux";macPreview.isHidden=true;placeholder.isHidden=true
@@ -159,21 +207,49 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     }
     func suspendServerPreview(){if serverView?.url?.scheme=="https"{serverView?.loadHTMLString("<html><body style='background:#0c0f15'></body></html>",baseURL:nil)}}
     func ensureBrowser(){
-        suspendServerPreview();showPanel();paneTitle.stringValue="Local Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
-        if browser==nil{let config=WKWebViewConfiguration();config.websiteDataStore=WKWebsiteDataStore(forIdentifier:UUID(uuidString:"0FB17465-9FA6-46CF-A98F-60EA1BFEB651")!);browser=WKWebView(frame:panelContent.bounds,configuration:config);browser.autoresizingMask=[.width,.height];browser.navigationDelegate=self;browser.uiDelegate=self;panelContent.addSubview(browser);browser.loadHTMLString("<html><body style='font:15px -apple-system;padding:36px;background:#10151e;color:#e7edf8'><h2>Local Browser</h2><p>Browse here, or connect above to let your agent work in this panel.</p></body></html>",baseURL:nil)}
-        browser.isHidden=false;emitDesktopState()
+        suspendServerPreview();showPanel();paneTitle.stringValue="Fino Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
+        if browser==nil{let config=WKWebViewConfiguration();config.websiteDataStore=WKWebsiteDataStore(forIdentifier:UUID(uuidString:"0FB17465-9FA6-46CF-A98F-60EA1BFEB651")!);browser=WKWebView(frame:panelContent.bounds,configuration:config);browser.autoresizingMask=[.width,.height];browser.navigationDelegate=self;browser.uiDelegate=self;panelContent.addSubview(browser);browser.loadHTMLString("<html><body style='font:15px -apple-system;padding:36px;background:#10151e;color:#e7edf8'><h2>Fino Browser</h2><p>Sign in to sites here (LinkedIn, Indeed, email…) once. Then choose Connect from the menu at the top right and ask your bot to work in this panel. An orange frame shows while your bot is in control.</p></body></html>",baseURL:nil)}
+        browser.isHidden=false;setAgentFrame();emitDesktopState()
+    }
+    /// Orange frame around the browser panel while a bot is connected to it; brighter while it is acting.
+    func setAgentFrame(){
+        guard let layer=panel?.layer else{return}
+        let on=connected && mode?.indexOfSelectedItem==2
+        layer.borderColor=NSColor.systemOrange.withAlphaComponent(running ? 1:0.55).cgColor;layer.borderWidth=on ? (running ? 4:2):0
+        if paneTitle != nil && mode?.indexOfSelectedItem==2 {paneTitle.stringValue=on ? (running ? "Fino Browser · Your bot is working…":"Fino Browser · Bot connected"):"Fino Browser"}
+    }
+    func showCursor(at x:Double,_ y:Double,click:Bool)async{
+        guard let browser,let host=browser.superview else{return}
+        if cursor==nil{let v=NSImageView(image:NSCursor.arrow.image);v.frame=NSRect(x:host.bounds.midX,y:host.bounds.midY,width:22,height:28);v.wantsLayer=true;v.layer?.shadowOpacity=0.5;v.layer?.shadowRadius=2;host.addSubview(v,positioned:.above,relativeTo:browser);cursor=v}
+        guard let cursor else{return};cursor.isHidden=false
+        let tip=NSPoint(x:browser.frame.minX+x,y:browser.frame.maxY-y)
+        await withCheckedContinuation{(done:CheckedContinuation<Void,Never>) in NSAnimationContext.runAnimationGroup({ctx in ctx.duration=0.45;ctx.timingFunction=CAMediaTimingFunction(name:.easeInEaseOut);cursor.animator().setFrameOrigin(NSPoint(x:tip.x-3,y:tip.y-cursor.frame.height+3))},completionHandler:{done.resume()})}
+        guard click else{return}
+        let ring=NSView(frame:NSRect(x:tip.x-14,y:tip.y-14,width:28,height:28));ring.wantsLayer=true;ring.layer?.cornerRadius=14;ring.layer?.borderWidth=3;ring.layer?.borderColor=NSColor.systemOrange.cgColor;host.addSubview(ring,positioned:.below,relativeTo:cursor)
+        NSAnimationContext.runAnimationGroup({ctx in ctx.duration=0.5;ring.animator().alphaValue=0},completionHandler:{ring.removeFromSuperview()})
+        try? await Task.sleep(nanoseconds:150_000_000)
     }
     @objc func browserBack(){browser?.goBack()}
     @objc func browserForward(){browser?.goForward()}
     @objc func browserReload(){browser?.reload()}
     @objc func browserNavigate(){let raw=address.stringValue;let value=raw.contains("://") ? raw:"https://"+raw;Task {do{try await browserAction("open_browser",["url":value])}catch{address.toolTip=error.localizedDescription}}}
-    func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":"mac","connected":connected,"panelOpen":!panel.isHidden,"permissions":ComputerSetup.ready];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
+    func emitDesktopState(){refreshPill();guard web != nil else{return};let value:[String:Any]=["environment":["server","mac","browser"][max(0,mode.indexOfSelectedItem)],"connected":connected,"panelOpen":!panel.isHidden,"permissions":ComputerSetup.ready];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage){
         guard message.frameInfo.isMainFrame,message.frameInfo.securityOrigin.host==workspace.host,(message.frameInfo.securityOrigin.protocol=="https" || workspace.host=="localhost"),let body=message.body as? [String:Any] else{return}
-        if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()};if action=="setupComputer"{if ComputerSetup.ready && socket != nil {emitDesktopState()} else {toggleControl()}}}
+        if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()};if action=="connect" && socket==nil {toggleControl()};if action=="setupComputer"{if ComputerSetup.ready && socket != nil {emitDesktopState()} else {toggleControl()}}}
         if message.webView===serverView,body["action"] as? String=="close"{hideWorkspace()}
     }
-    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState()}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
+    /// If the workspace can't be reached (offline, server restarting), show a calm note and keep retrying.
+    var retryTimer:Timer?
+    var loadingSpinner:NSProgressIndicator?
+    func webView(_ webView:WKWebView,didFailProvisionalNavigation navigation:WKNavigation!,withError error:Error){workspaceUnreachable(webView,error)}
+    func webView(_ webView:WKWebView,didFail navigation:WKNavigation!,withError error:Error){workspaceUnreachable(webView,error)}
+    func workspaceUnreachable(_ webView:WKWebView,_ error:Error){
+        guard webView===web,(error as NSError).code != NSURLErrorCancelled,retryTimer==nil else{return}
+        web.loadHTMLString("<html><body style='margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#8e8e93;font:14px -apple-system'><div style='text-align:center'><div style='color:#f5f5f7;font-size:17px;font-weight:600;margin-bottom:6px'>Connecting to Fino…</div>Trying again in a moment.</div></body></html>",baseURL:nil)
+        retryTimer=Timer.scheduledTimer(withTimeInterval:2,repeats:false){[weak self] _ in Task { @MainActor in guard let self else{return};self.retryTimer=nil;self.web.load(URLRequest(url:workspace)) }}
+    }
+    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState();if web.url?.host==workspace.host{DispatchQueue.main.asyncAfter(deadline:.now()+0.6){[weak self] in self?.loadingSpinner?.removeFromSuperview();self?.loadingSpinner=nil}}}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
     func evaluate(_ script:String)async throws->Any?{try await withCheckedThrowingContinuation{continuation in browser.evaluateJavaScript(script){value,error in if let error{continuation.resume(throwing:error)}else{continuation.resume(returning:value)}}}}
     func browserSnapshot()async throws->[String:Any]{
         let image:NSImage=try await withCheckedThrowingContinuation{continuation in let config=WKSnapshotConfiguration();config.afterScreenUpdates=true;browser.takeSnapshot(with:config){image,error in if let image{continuation.resume(returning:image)}else{continuation.resume(throwing:error ?? failure("Browser screenshot failed"))}}}
@@ -210,8 +286,8 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
             address.stringValue=url.absoluteString;browser.load(URLRequest(url:url));try await Task.sleep(nanoseconds:350_000_000);let end=Date().addingTimeInterval(20);while browser.isLoading && Date()<end {try await Task.sleep(nanoseconds:200_000_000)}
         }else if action=="computer_click" {
             guard a["button"] as? String != "right",a["button"] as? String != "middle" else{throw failure("Browser mode supports left clicks; use Mac mode for context menus")}
-            let x=a["x"] as? Double ?? -1,y=a["y"] as? Double ?? -1;try browserPoint(x,y)
-            let script="(()=>{const e=document.elementFromPoint(\(x),\(y));if(!e)throw Error('No element at that position');e.focus();e.click();\((a["double"] as? Bool == true) ? "e.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));":"")return true})()"
+            let x=a["x"] as? Double ?? -1,y=a["y"] as? Double ?? -1;try browserPoint(x,y);await showCursor(at:x,y,click:true)
+            let script="(()=>{const e=document.elementFromPoint(\(x),\(y));if(!e)throw Error('No element at that position');const o={bubbles:true,cancelable:true,composed:true,clientX:\(x),clientY:\(y),button:0,view:window};for(const t of ['pointerover','pointerenter','mouseover','pointerdown','mousedown'])e.dispatchEvent(t.startsWith('pointer')?new PointerEvent(t,{...o,pointerId:1,pointerType:'mouse',isPrimary:true}):new MouseEvent(t,o));e.focus();for(const t of ['pointerup','mouseup'])e.dispatchEvent(t.startsWith('pointer')?new PointerEvent(t,{...o,pointerId:1,pointerType:'mouse',isPrimary:true}):new MouseEvent(t,o));e.click();\((a["double"] as? Bool == true) ? "e.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));":"")return true})()"
             _=try await evaluate(script)
         }else if action=="computer_type" {
             let text=a["text"] as? String ?? "";guard text.count<=10000 else{throw failure("Text too long")}
@@ -271,8 +347,8 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func webView(_ webView:WKWebView,runJavaScriptConfirmPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping(Bool)->Void){completionHandler(false)}
     func testBrowser()async{
         do{
-            guard mode.itemTitles == ["Cloud","This Computer"],mode.indexOfSelectedItem==1 else{throw failure("Environment selector must default to This Computer with two choices")}
-            mode.selectItem(at:1);control.title="Connect";ensureBrowser();browser.loadHTMLString("<html><body style='font:24px -apple-system;padding:32px;background:#101723;color:white'><h1>Fino local browser test</h1><input id='q' style='font:24px;width:400px;height:48px'><button style='font:24px' onclick=\"document.getElementById('result').textContent=document.getElementById('q').value\">Show result</button><p id='result'></p></body></html>",baseURL:nil)
+            guard mode.itemTitles == ["Cloud","This Computer","Fino Browser"] else{throw failure("Environment selector must default to This Computer with three choices")}
+            mode.selectItem(at:2);control.title="Connect";ensureBrowser();browser.loadHTMLString("<html><body style='font:24px -apple-system;padding:32px;background:#101723;color:white'><h1>Fino local browser test</h1><input id='q' style='font:24px;width:400px;height:48px'><button style='font:24px' onclick=\"document.getElementById('result').textContent=document.getElementById('q').value\">Show result</button><p id='result'></p></body></html>",baseURL:nil)
             try await Task.sleep(nanoseconds:2_000_000_000)
             let bounds=try await evaluate("JSON.stringify((()=>{const r=document.querySelector('input').getBoundingClientRect();return {x:r.x+10,y:r.y+10}})())") as! String;let p=try JSONSerialization.jsonObject(with:Data(bounds.utf8)) as! [String:Any]
             try await browserAction("computer_click",p);try await browserAction("computer_type",["text":"Fino browser control works ✓"])

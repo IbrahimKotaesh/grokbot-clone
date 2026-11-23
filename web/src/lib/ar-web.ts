@@ -476,4 +476,8 @@ export const arWeb: Record<string, string> = {
   "Resize bot list": "غيّر عرض قائمة البوتات",
   "Resize computer panel": "غيّر عرض لوحة الكمبيوتر",
   "Drag to resize · double-click to reset": "اسحب لتغيّر العرض · كبستين لترجّعه",
+  "Your bots work in the Fino Browser.": "بوتاتك عم يشتغلوا بمتصفّح Fino.",
+  "Your bots work on this Mac.": "بوتاتك عم يشتغلوا على هالماك.",
+  "Connect to send": "اربط لتبعت",
+  "Connect first: press Connect to send, or pick Cloud computer in the menu at the top right.": "اربط أول: اكبس «اربط لتبعت»، أو اختار كمبيوتر السحابة من القائمة فوق عاليمين.",
 };
