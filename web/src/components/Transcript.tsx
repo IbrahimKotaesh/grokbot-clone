@@ -9,7 +9,6 @@ import { useStore } from '../store';
 import { ActivityLine } from './ActivityLine';
 import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
-import { useSmoothText } from '../lib/smooth-text';
 import { Markdown } from './Markdown';
 import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
@@ -26,6 +25,7 @@ const GROUP_GAP = 5 * 60 * 1000;
 /** Turns rows into render items: date dividers, grouped bubbles, collapsed tool-call steps, cards, events. */
 function buildItems(rows: Row[]): Item[] {
   const items: Item[] = [];
+  // A reply being written stays hidden: the activity line counts the seconds, then the whole reply appears at once.
   let prevTs = 0;
   for (const row of visibleTranscriptRows(rows)) {
     if(row.body.type==='message'&&row.body.role==='assistant'&&!row.body.images?.length&&!row.body.files?.length&&(!row.body.text||isSilentPlaceholder(row.body.text)))continue;
@@ -41,6 +41,7 @@ function buildItems(rows: Row[]): Item[] {
     }
     if (b.type === 'message') {
       if (!b.text && !b.streaming && !b.images?.length && !b.files?.length) continue;
+      if (b.streaming && b.role === 'assistant') continue;
       const side = b.role === 'user' && (!b.from || b.from.kind === 'voice') ? 'right' : 'left';
       const sender = b.from ? `${b.from.kind}:${b.from.id}` : b.role;
       const lastRow = last?.kind === 'group' ? last.rows[last.rows.length - 1] : null;
@@ -62,16 +63,15 @@ function cornerClass(i: number, n: number) {
   return ' is-mid';
 }
 
-const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left' | 'right'; pos: string }) {
+const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean }) {
   const b = row.body as MessageBody;
-  const shown = useSmoothText(b.text, !!b.streaming, side === 'left' && Date.now()-row.createdAt < 5000);
+  const shown = b.text;
   return (
     <div className={`bubble-wrap is-${side}`}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
-      {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
+      {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}${fresh ? ' is-fresh' : ''}`}>
         {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
-        {b.streaming&&<span className="bubble__streaming" aria-label={t("Writing")}/>}
         {b.citations && b.citations.length > 0 && (
           <div className="bubble__cites">
             {b.citations.slice(0, 6).map((c, i) => {
@@ -147,7 +147,10 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
   const waiting = !running && (!!live?.awaiting || live?.activity?.kind === 'waiting_for_you');
   const last = rows[rows.length - 1];
   const streamingNow = last?.body.type === 'message' && last.body.role === 'assistant' && !!last.body.streaming;
-  const showActivity = (running && !streamingNow) || waiting;
+  const showActivity = running || streamingNow || waiting;
+  // Replies that were written while this chat was open get a soft entrance; old history just sits there.
+  const writing = useRef(new Set<number>());
+  for (const r of rows) if (r.body.type === 'message' && r.body.role === 'assistant' && r.body.streaming) writing.current.add(r.seq);
 
   // Jump to bottom when switching bots.
   useLayoutEffect(() => {
@@ -201,13 +204,13 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
                 <div key={it.key} className={`group is-${it.side}`}>
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} /></Fragment>
+                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(r.seq)} /></Fragment>
                   ))}
                 </div>
               );
           }
         })}
-        {showActivity && live && <ActivityLine bot={bot} live={live} rows={rows} />}
+        {showActivity && live && <ActivityLine bot={bot} live={live} rows={rows} writing={streamingNow} />}
       </div>
     </div>
       {showJump && (

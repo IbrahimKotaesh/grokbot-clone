@@ -371,6 +371,7 @@ export const arWeb: Record<string, string> = {
   "Thinking it through": "يفكّر في الأمر",
   "Mulling it over": "يقلّب الفكرة",
   "Putting it together": "يجمع الأفكار",
+  "Writing the reply": "عم يكتب الرد",
   "Getting it done": "ينجز المهمة",
   "Making progress": "يتقدّم",
   "Handling it": "يتولّى الأمر",
