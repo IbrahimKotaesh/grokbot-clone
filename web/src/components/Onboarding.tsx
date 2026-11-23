@@ -111,11 +111,11 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? t('ChatGPT sign-in is unavailable right now.'));
       setLogin({ url: d.url, code: d.code, id: d.loginId }); setChatgpt('waiting');
-      void navigator.clipboard?.writeText(d.code).catch(() => {});
+      void navigator.clipboard?.writeText(d.code.replace(/-/g, '')).catch(() => {});
       popup.current = signInWindow(d.url);
       timer.current = setInterval(async () => {
         const s = await fetch(`/api/credentials/chatgpt/status/${d.loginId}`, { credentials: 'include' }).then((x) => x.json()).catch(() => null);
-        if (s?.state === 'connected') { clearInterval(timer.current); setChatgpt('connected'); setLogin(null); useAllBots('codex'); onReady(); setJustConnected(true); }
+        if (s?.state === 'connected') { clearInterval(timer.current); setChatgpt('connected'); setLogin(null); useAllBots('codex'); onReady(); setJustConnected(true); try { popup.current?.close(); } catch { /* already closed */ } }
         else if (s?.state === 'failed' || s?.state === 'expired') { clearInterval(timer.current); setChatgpt('error'); setError(s.error ?? t('Sign-in didn’t finish. Try again.')); }
       }, 2500);
     } catch (e) { setChatgpt('error'); setError((e as Error).message); }
@@ -142,6 +142,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? t('Claude sign-in didn’t finish. Try again.'));
       setClaude('connected'); setClaudeLogin(null); setClaudeCode(''); useAllBots('claude'); onReady(); setJustConnected(true);
+      try { popup.current?.close(); } catch { /* already closed */ }
     } catch (err) { setClaude('idle'); setClaudeLogin(null); setClaudeCode(''); setError((err as Error).message); }
     finally { sending.current = false; }
   };
@@ -176,7 +177,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
         {(['orange', 'watermelon', 'olive', 'fig'] as const).map((f, i) => <span key={f} style={{ '--i': i } as CSSProperties}><img src={`/characters/fruits/${f}.webp`} alt="" /></span>)}
       </div>
       <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
-      <p>{required ? t('Your bots think with your own AI subscription: ChatGPT or Claude. Connect one and your team is ready.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
+      <p>{required ? t('Pick how your bots think: your ChatGPT, your Claude, or Fino’s own models.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
       <div className="onb__options">
         <div className={`onb__option${chatgpt === 'connected' ? ' is-done' : ''}`}>
           <ProviderLogo provider="codex" />
@@ -190,7 +191,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
                   <li>{t('Press')} <b>{t('Continue')}</b>, {t('then')} <b>{t('Allow')}</b></li>
                   <li>{t('That’s it. Fino connects by itself.')}</li>
                 </ol>
-                <span className="onb__minor"><a href={login.url} target="_blank" rel="noreferrer noopener" onClick={(e) => { e.preventDefault(); void navigator.clipboard?.writeText(login.code).catch(() => {}); popup.current = signInWindow(login.url); }}>{t('Open ChatGPT again')}</a></span>
+                <span className="onb__minor"><a href={login.url} target="_blank" rel="noreferrer noopener" onClick={(e) => { e.preventDefault(); void navigator.clipboard?.writeText(login.code.replace(/-/g, '')).catch(() => {}); popup.current = signInWindow(login.url); }}>{t('Open ChatGPT again')}</a></span>
               </div>
             )}
           </div>
@@ -208,10 +209,10 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
               <div className="onb__paste">
                 <ol className="onb__how">
                   <li>{t('On Claude, press')} <b>{t('Authorize')}</b></li>
-                  <li>{t('Press')} <b>{t('Copy Code')}</b> {t('(ignore “paste into Claude Code”)')}</li>
-                  <li>{t('Come back and press the button below')}</li>
+                  <li>{t('Press')} <b>{t('Copy Code')}</b></li>
+                  <li><b>{t('Close the Claude window.')}</b> {t('Fino connects by itself.')}</li>
                 </ol>
-                <button type="button" className="onb__primary onb__wide" disabled={claude === 'checking'} onClick={() => void connectCopied()}>{claude === 'checking' ? t('Connecting…') : t('Connect with the copied code')}</button>
+                <button type="button" className="onb__primary onb__wide" disabled={claude === 'checking'} onClick={() => void connectCopied()}>{claude === 'checking' ? t('Connecting…') : t('I copied the code, connect')}</button>
                 <span className="onb__minor"><a href={claudeLogin.url} target="_blank" rel="noreferrer noopener" onClick={(e) => { e.preventDefault(); popup.current = signInWindow(claudeLogin.url); }}>{t('Open Claude again')}</a> · <button type="button" className="onb__link" onClick={() => setTypeIt((v) => !v)}>{t('Paste it myself')}</button></span>
                 {typeIt && (
                   <form onSubmit={finishClaude}>
@@ -231,16 +232,16 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
           <div className={`onb__option${included ? ' is-done' : ''}`}>
             <span className="onb__icon"><Sparkles size={18} /></span>
             <div className="onb__option-text">
-              <strong>{t('No subscription? Use Fino’s included models')}</strong>
-              <small>{t('DeepSeek, Qwen and GLM, part of your plan. Nothing to sign in to.')}</small>
+              <strong>{t('Use Fino’s models')}</strong>
+              <small>{t('Nothing to sign in to. DeepSeek, Qwen and GLM, included in your plan.')}</small>
             </div>
             {included ? <span className="onb__check"><Check size={16} /></span>
-              : <button type="button" className="onb__small" onClick={() => { useAllBots('openrouter'); setIncluded(true); onReady(); }}>{t('Use these')}</button>}
+              : <button type="button" className="onb__small" onClick={() => { useAllBots('openrouter'); setIncluded(true); onReady(); setJustConnected(true); }}>{t('Start')}</button>}
           </div>
         )}
       </div>
       {error && <div className="onb__error" role="alert">{error}</div>}
-      <Nav onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Connect ChatGPT or Claude to start') : last ? t('Start') : undefined} />
+      <Nav onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Pick one to start') : last ? t('Start') : undefined} />
     </section>
   );
 }

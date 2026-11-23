@@ -27,10 +27,11 @@ export function loopClient(userId: string, provider: LoopProvider, model?: strin
   const own = apiKeyFor(userId, provider);
   // Only xAI has a server-wide fallback key (it also powers voice).
   // xAI and OpenRouter can fall back to the server's own key; Fino then pays (and routes OpenRouter cheaply).
-  // On a public server, Fino-paid keys are for the owner and paying plans; free customers bring their own.
-  const serverPays = usesServerResources(userId) || planOf(userId).id !== 'free';
-  const hosted = !own && serverPays && provider === 'openrouter' && !!hostedKey();
-  const key = own ?? (serverPays && provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null) ?? (hosted ? hostedKey() : null);
+  // Fino's own models are open to every account, inside each plan's monthly cap (hosted-models.ts).
+  // The server's xAI key stays with the owner and paying plans.
+  const xaiAllowed = usesServerResources(userId) || planOf(userId).id !== 'free';
+  const hosted = !own && provider === 'openrouter' && !!hostedKey();
+  const key = own ?? (xaiAllowed && provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null) ?? (hosted ? hostedKey() : null);
   if (!key) throw new Error(`Add your ${NAMES[provider]} API key in Account → AI models to use this bot.`);
   const id = `${provider}:${key.slice(-12)}`;
   let client = cache.get(id);

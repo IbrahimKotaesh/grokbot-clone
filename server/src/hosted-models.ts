@@ -1,7 +1,6 @@
 // Fino's own OpenRouter models: the server pays, so computer work is routed cheap-first and every plan has
 // a monthly cost cap. Users who add their own OpenRouter key pay for themselves and are never routed.
 import { db } from './db.js';
-import { usesServerResources } from './lib/owner.js';
 import { planOf, type PlanId } from './plans.js';
 
 /** The server's OpenRouter key, or null when Fino doesn't host models on this server. */
@@ -101,7 +100,7 @@ export function hostedSummary(userId: string) {
   const plan = planOf(userId).id;
   const pct = (spent: number, cap: number | null) => (cap === null ? null : cap === 0 ? (spent > 0 ? 100 : 0) : Math.min(100, Math.round((spent / cap) * 100)));
   return {
-    available: !!hostedKey() && (usesServerResources(userId) || plan !== 'free'),
+    available: !!hostedKey(),
     plan,
     models: HOSTED_MODELS.map((m) => ({ id: m.id, name: m.name, note: m.note, tier: m.tier, allowed: modelAllowed(plan, m.id) })),
     // Percent of the month's included AI used, not dollars: the app shows it as a simple meter.

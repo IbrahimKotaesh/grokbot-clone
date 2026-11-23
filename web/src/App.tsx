@@ -32,17 +32,18 @@ function Shell() {
   const navButton = useRef<HTMLButtonElement>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => !onboardingDone());
   const [needsAI, setNeedsAI] = useState(false);
+  const [aiChecked, setAiChecked] = useState(false);
   const bots = useStore((s) => s.bots);
   // A customer on a public server whose bots have no AI yet gets setup again, until they connect one.
   useEffect(() => {
     if (!bots.length) return;
-    if (bots.some((b) => b.agentProvider === 'openrouter')) { setNeedsAI(false); return; }
+    if (bots.some((b) => b.agentProvider === 'openrouter')) { setNeedsAI(false); setAiChecked(true); return; }
     fetch('/api/credentials', { credentials: 'include' }).then((r) => r.json())
       .then((r: { credentials: { connected: boolean }[]; sharedLogin: boolean }) => {
         const missing = !r.sharedLogin && !r.credentials.some((c) => c.connected);
         setNeedsAI(missing);
         if (missing) setShowOnboarding(true);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setAiChecked(true));
   }, [bots.length]);
   const view = useConfigUI((s) => s.view);
   const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
@@ -128,8 +129,8 @@ function Shell() {
       {modal === 'apps' && <ConnectAppsModal />}
       {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
-      {showOnboarding && <Onboarding requireAI={needsAI} onClose={() => { setShowOnboarding(false); setNeedsAI(false); }} />}
-      {!showOnboarding && !isMacDesktop() && <MacOffer />}
+      {showOnboarding && aiChecked && <Onboarding requireAI={needsAI} onClose={() => { setShowOnboarding(false); setNeedsAI(false); }} />}
+      {!showOnboarding && aiChecked && !isMacDesktop() && <MacOffer />}
     </div>
   );
 }
