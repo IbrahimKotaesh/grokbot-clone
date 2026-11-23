@@ -34,6 +34,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         NSApp.setActivationPolicy(.regular)
         let menu=NSMenu(),appMenu=NSMenu();let item=NSMenuItem();item.submenu=appMenu;menu.addItem(item)
         appMenu.addItem(withTitle:"About Fino",action:#selector(about),keyEquivalent:"")
+        appMenu.addItem(withTitle:"Check for Updates…",action:#selector(checkForUpdates),keyEquivalent:"")
         appMenu.addItem(withTitle:"Sign in…",action:#selector(login),keyEquivalent:"")
         appMenu.addItem(withTitle:"Reload",action:#selector(reload),keyEquivalent:"r")
         appMenu.addItem(withTitle:"Stop local control",action:#selector(stopControl),keyEquivalent:".")
@@ -65,12 +66,14 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         NSLayoutConstraint.activate([spin.centerXAnchor.constraint(equalTo:web.centerXAnchor),spin.centerYAnchor.constraint(equalTo:root.centerYAnchor)])
         NSLayoutConstraint.activate([split.topAnchor.constraint(equalTo:root.topAnchor),split.leadingAnchor.constraint(equalTo:root.leadingAnchor),split.trailingAnchor.constraint(equalTo:root.trailingAnchor),split.bottomAnchor.constraint(equalTo:root.bottomAnchor)])
         window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
+        if !selfTest {Updater.shared.start(window:window)}
         web.load(URLRequest(url:workspace));if mode.indexOfSelectedItem==2 && !selfTest {DispatchQueue.main.async{[weak self] in self?.ensureBrowser()}};if selfTest { Task { await testBrowser() } }
         if UserDefaults.standard.bool(forKey:"FinoConnectAfterRestart"){UserDefaults.standard.removeObject(forKey:"FinoConnectAfterRestart");DispatchQueue.main.asyncAfter(deadline:.now()+1.5){[weak self] in self?.toggleControl()}}
         Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task { @MainActor in if let e=self?.expires,e<Date(){self?.stopControl();DispatchQueue.main.asyncAfter(deadline:.now()+1){self?.autoConnect()}} }}
     }
+    @objc func checkForUpdates(){Updater.shared.check(userAsked:true)}
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool{true}
-    func applicationWillTerminate(_ notification:Notification){stopControl()}
+    func applicationWillTerminate(_ notification:Notification){stopControl();Updater.shared.install(relaunch:false)}
     @objc func reload(){web.reload()}
     @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
     @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";setAgentFrame();mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
@@ -448,4 +451,86 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
 }
 @main enum FinoMain {
  @MainActor static func main(){let app=NSApplication.shared;let delegate=FinoApp();app.delegate=delegate;withExtendedLifetime(delegate){app.run()}}
+}
+
+/// Keeps Fino up to date by itself: checks the server's download, fetches a newer build in the background,
+/// checks it is signed by the same Apple team, and swaps it in on restart (or when the app quits).
+@MainActor final class Updater: NSObject {
+    static let shared=Updater()
+    /// Only builds signed by this Apple team are installed.
+    let requirement="anchor apple generic and identifier \"com.ibkopixels.fino.mac\" and certificate leaf[subject.OU] = \"345F6K6X7N\""
+    var staged:URL?
+    var checking=false
+    var timer:Timer?
+    weak var window:NSWindow?
+    var installedBuild:Int{Int(Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "0") ?? 0}
+
+    func start(window:NSWindow){
+        self.window=window
+        DispatchQueue.main.asyncAfter(deadline:.now()+20){[weak self] in self?.check(userAsked:false)}
+        timer=Timer.scheduledTimer(withTimeInterval:6*3600,repeats:true){[weak self] _ in Task { @MainActor in self?.check(userAsked:false) }}
+    }
+
+    func check(userAsked:Bool){
+        guard !checking else{return}
+        if let staged {offerRestart(staged);return}
+        checking=true
+        Task {
+            defer{checking=false}
+            do{
+                let info=workspace.appendingPathComponent("api/download/mac/info")
+                let (data,_)=try await URLSession.shared.data(from:info)
+                let obj=(try JSONSerialization.jsonObject(with:data)) as? [String:Any] ?? [:]
+                let latest=Int(obj["build"] as? String ?? "") ?? 0
+                guard latest>installedBuild else{if userAsked{tell("Fino is up to date","You have the latest version (build \(installedBuild)).")};return}
+                let app=try await download()
+                staged=app
+                offerRestart(app)
+            }catch{if userAsked{tell("Couldn't check for updates",error.localizedDescription)}}
+        }
+    }
+
+    /// Download the zip, unpack it next to it, and accept it only if Apple's signature check passes.
+    func download()async throws->URL{
+        let (zip,_)=try await URLSession.shared.download(from:workspace.appendingPathComponent("api/download/mac"))
+        let dir=FileManager.default.temporaryDirectory.appendingPathComponent("FinoUpdate-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at:dir,withIntermediateDirectories:true)
+        let unzip=Process();unzip.executableURL=URL(fileURLWithPath:"/usr/bin/ditto");unzip.arguments=["-x","-k",zip.path,dir.path]
+        try unzip.run();unzip.waitUntilExit()
+        guard unzip.terminationStatus==0 else{throw failure("The update could not be unpacked")}
+        let app=dir.appendingPathComponent("Fino.app")
+        var code:SecStaticCode?,req:SecRequirement?
+        guard SecStaticCodeCreateWithPath(app as CFURL,[],&code)==errSecSuccess,let code,
+              SecRequirementCreateWithString(requirement as CFString,[],&req)==errSecSuccess,let req,
+              SecStaticCodeCheckValidity(code,SecCSFlags(rawValue:kSecCSCheckAllArchitectures|kSecCSStrictValidate),req)==errSecSuccess
+        else{throw failure("The update is not signed by Fino, so it was not installed")}
+        return app
+    }
+
+    func offerRestart(_ app:URL){
+        guard let window,window.attachedSheet==nil else{return}
+        let alert=NSAlert();alert.messageText="A new version of Fino is ready"
+        alert.informativeText="Restart to use it now. Your chats and bots stay as they are. If you choose Later, it installs when you quit Fino."
+        alert.addButton(withTitle:"Restart now");alert.addButton(withTitle:"Later")
+        alert.beginSheetModal(for:window){[weak self] r in if r == .alertFirstButtonReturn {self?.install(relaunch:true)}}
+    }
+
+    /// Replace the running app's bundle with the staged one; optionally open the new one.
+    func install(relaunch:Bool){
+        guard let staged else{return}
+        let current=Bundle.main.bundleURL
+        do{
+            _=try FileManager.default.replaceItemAt(current,withItemAt:staged,backupItemName:"Fino-previous.app",options:[])
+            self.staged=nil
+            if relaunch {
+                let p=Process();p.executableURL=URL(fileURLWithPath:"/bin/sh");p.arguments=["-c","sleep 1; /usr/bin/open \"$0\"",current.path];try? p.run()
+                NSApp.terminate(nil)
+            }
+        }catch{tell("Couldn't install the update","\(error.localizedDescription). You can download Fino again from the website.")}
+    }
+
+    func tell(_ title:String,_ text:String){
+        guard let window else{return}
+        let a=NSAlert();a.messageText=title;a.informativeText=text;a.beginSheetModal(for:window,completionHandler:nil)
+    }
 }
