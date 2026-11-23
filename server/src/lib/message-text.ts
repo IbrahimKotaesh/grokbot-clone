@@ -11,5 +11,5 @@ export function visibleTranscriptRows(rows:Row[]):Row[]{
   const useful=batch.some(({body:b})=>b.type==='message'&&b.role==='assistant'&&(Boolean(b.text.trim())&&!isSilentPlaceholder(b.text)||!!b.images?.length||!!b.files?.length)||b.type==='card'||b.type==='notice'||b.type==='tool-call'&&b.status==='error');
   if(!routine||!quiet||useful)result.push(...batch);batch=[];
  };
- for(const row of rows){if(row.body.type==='event'&&row.body.event==='routine-run'||row.body.type==='message'&&row.body.role==='user')flush();batch.push(row);}flush();return result;
+ for(const row of rows){if(row.body.replaced)continue;if(row.body.type==='event'&&row.body.event==='routine-run'||row.body.type==='message'&&row.body.role==='user')flush();batch.push(row);}flush();return result;
 }

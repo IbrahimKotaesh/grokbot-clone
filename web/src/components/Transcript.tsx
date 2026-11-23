@@ -10,6 +10,7 @@ import { ActivityLine } from './ActivityLine';
 import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
 import { Markdown } from './Markdown';
+import { api } from '../lib/api';
 import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
 
@@ -66,7 +67,7 @@ function cornerClass(i: number, n: number) {
 
 const SERVER_CAPTIONS = new Set(['Computer · final screenshot']);
 
-const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean }) {
+const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean; onRetry?: () => void }) {
   const b = row.body as MessageBody;
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
@@ -89,10 +90,20 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side:
       <div className="bubble__meta">
         <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
         {side === 'left' && !b.streaming && b.text.trim() && <CopyButton text={b.text} />}
+        {onRetry && <RetryButton onRetry={onRetry} />}
       </div>
     </div>
   );
 });
+
+/** Ask for a new answer to the same message; the old reply is set aside. */
+function RetryButton({ onRetry }: { onRetry: () => void }) {
+  return (
+    <button type="button" className="bubble__copy bubble__retry" onClick={onRetry} aria-label={t('Try again')} title={t('Try again')}>
+      <Icon name="refresh" size={13} />
+    </button>
+  );
+}
 
 /** Copy a reply's text; shows "Copied" for a moment. */
 function CopyButton({ text }: { text: string }) {
@@ -170,11 +181,27 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
 
   const running = !!live?.isRunning;
   const waiting = !running && (!!live?.awaiting || live?.activity?.kind === 'waiting_for_you');
-  const last = rows[rows.length - 1];
+  // A reply set aside by "Try again" no longer counts as the latest one.
+  const shownRows = useMemo(() => rows.filter((r) => !r.body.replaced), [rows]);
+  const last = shownRows[shownRows.length - 1];
   const streamingNow = last?.body.type === 'message' && last.body.role === 'assistant' && !!last.body.streaming;
   // Once the reply is on screen, the text itself shows progress; the status line steps aside until tools run again.
   const replyShowing = last?.body.type === 'message' && last.body.role === 'assistant' && !last.body.streaming && !!last.body.text.trim();
   const showActivity = (running || streamingNow || waiting) && (waiting || !replyShowing);
+  // "Try again" sits on the bot's last reply to something the person typed, once the bot is done.
+  const retrySeq = useMemo(() => {
+    if (running || waiting) return undefined;
+    const shown = shownRows.filter((r) => r.body.type === 'message');
+    const lastReply = shown[shown.length - 1];
+    if (!lastReply || lastReply.body.type !== 'message' || lastReply.body.role !== 'assistant' || lastReply.body.from || !lastReply.body.text.trim()) return undefined;
+    const asked = [...shown].reverse().find((r) => r.body.type === 'message' && r.body.role === 'user');
+    return asked && asked.body.type === 'message' && !asked.body.from ? lastReply.seq : undefined;
+  }, [shownRows, running, waiting]);
+  const [retryError, setRetryError] = useState('');
+  const retry = () => {
+    setRetryError(''); stick.current = true;
+    api.regenerate(bot.id, rows[rows.length - 1]?.generation).catch((e) => setRetryError((e as Error).message));
+  };
   // Replies that were written while this chat was open get a soft entrance; old history just sits there.
   const writing = useRef(new Set<string>());
   for (const r of rows) if (r.body.type === 'message' && r.body.role === 'assistant' && r.body.streaming) writing.current.add(`${bot.id}:${r.seq}`);
@@ -248,13 +275,14 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
                 <div key={it.key} className={`group is-${it.side}`}>
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} /></Fragment>
+                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} /></Fragment>
                   ))}
                 </div>
               );
           }
         })}
-        {showActivity && live && <ActivityLine bot={bot} live={live} rows={rows} writing={streamingNow} />}
+        {retryError && <div className="notice is-error" role="alert">{t(retryError)}</div>}
+        {showActivity && live && <ActivityLine bot={bot} live={live} rows={shownRows} writing={streamingNow} />}
       </div>
     </div>
       {showJump && (

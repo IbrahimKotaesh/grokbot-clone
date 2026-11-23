@@ -517,4 +517,7 @@ export const arWeb: Record<string, string> = {
   "Restarting…": "عم يعيد التشغيل…",
   "Couldn't restart": "ما قدر يعيد التشغيل",
   "Restarting a computer": "عم يعيد تشغيل كمبيوتر",
+  "Try again": "جرّب مرة تانية",
+  "Wait for the bot to finish first.": "استنى البوت يخلّص أول.",
+  "There is no reply to try again.": "ما في رد لتجربه مرة تانية.",
 };

@@ -39,6 +39,7 @@ export const api = {
   chats:(id:string)=>req<{chats:BotChat[]}>('GET',`/bots/${id}/chats`),
   createChat:(id:string,title?:string)=>req<{chat:BotChat}>('POST',`/bots/${id}/chats`,{title}),
   renameChat:(id:string,generation:number,title:string)=>req<{chat:BotChat}>('PATCH',`/bots/${id}/chats/${generation}`,{title}),
+  regenerate: (id: string, generation?: number) => req<{ ok: true }>('POST', `/bots/${id}/regenerate`, { generation, ...executionEnvironment() }),
   interrupt: (id: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/interrupt`,{generation}),
   fresh: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/fresh`),
 

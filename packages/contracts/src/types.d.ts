@@ -114,7 +114,10 @@ export interface Row {
 export type RowKind = "message" | "tool-call" | "card" | "event" | "notice" | "plan";
 
 export type RowBody =
-  MessageBody | ToolCallBody | CardBody | EventBody | NoticeBody | PlanBody;
+  (MessageBody | ToolCallBody | CardBody | EventBody | NoticeBody | PlanBody) & {
+    /** Set on the rows of a reply the person asked to regenerate: kept on record, no longer shown. */
+    replaced?: boolean;
+  };
 
 /** A live checklist the bot keeps up to date while it works through a multi-step request. */
 export interface PlanBody {

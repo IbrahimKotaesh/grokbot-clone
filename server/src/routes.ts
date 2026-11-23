@@ -25,7 +25,7 @@ import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
 import { createSession, destroySession, requireUser, userFromRequest, userFromCookieHeader, type AuthVars } from './lib/auth.js';
 import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
-import { enqueue, interrupt, resolveApproval } from './agent/loop.js';
+import { enqueue, interrupt, isBotBusy, resolveApproval } from './agent/loop.js';
 import { computerState, ensureComputer, refreshComputer, restartBotComputer, suspendComputer } from './computer.js';
 import { orgo } from './orgo.js';
 import { catalog, connectedToolkits, deleteConnection, disconnect, googleProfile, startConnect, startGoogleLogin, toolkitInfo } from './composio.js';
@@ -312,6 +312,37 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
   if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
   else enqueue(b.id, { type: 'user',generation,desktopTarget, text:prompt,imageIds,fileIds });
   return c.json({ row });
+});
+
+// Try the last reply again: the old reply is set aside (kept, not shown) and the bot answers the same message anew.
+api.post('/bots/:id/regenerate', async (c) => {
+  const user = c.get('user');
+  const b = ownBot(user.id, c.req.param('id'));
+  if (!b || b.kind === 'room') return c.json({ error: 'not found' }, 404);
+  const input = await c.req.json().catch(() => ({}));
+  const generation = input.generation ?? b.generation;
+  if (!validChat(b.id, generation)) return c.json({ error: 'Chat not found.' }, 404);
+  if (getLive(b.id).isRunning || isBotBusy(b.id)) return c.json({ error: 'Wait for the bot to finish first.' }, 409);
+  let desktopTarget: DesktopTarget | null;
+  try { desktopTarget = resolveDesktopTarget(user.id, input.desktopEnvironment); } catch (e) { return c.json({ error: (e as Error).message }, 409); }
+  const result = inChat(b.id, generation, () => {
+    const rows = listRows(b.id, { limit: 300 }).filter((r) => !r.body.replaced);
+    let i = rows.length - 1;
+    while (i >= 0 && !(rows[i].body.type === 'message' && (rows[i].body as any).role === 'user')) i--;
+    const asked = rows[i];
+    const after = rows.slice(i + 1);
+    if (!asked || (asked.body as any).from || !after.some((r) => r.body.type === 'message' && (r.body as any).role === 'assistant')) return null;
+    for (const r of after) updateRow(b.id, r.seq, { ...r.body, replaced: true });
+    return asked.body as any;
+  });
+  if (!result) return c.json({ error: 'There is no reply to try again.' }, 400);
+  const text = result.text || (result.files?.length ? 'Read and summarize the attached documents.' : 'Describe the attached photo.');
+  enqueue(b.id, {
+    type: 'user', generation, desktopTarget,
+    text: `${text}\n\n[The person asked you to try again: write a new, better reply to this same message. Don't mention this note.]`,
+    imageIds: (result.images ?? []).map((x: any) => x.id), fileIds: (result.files ?? []).map((x: any) => x.id),
+  });
+  return c.json({ ok: true });
 });
 
 api.post('/bots/:id/interrupt', async (c) => {

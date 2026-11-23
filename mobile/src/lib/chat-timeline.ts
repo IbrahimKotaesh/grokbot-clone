@@ -4,6 +4,7 @@ export type ChatItem = { key: string; row: Row } | { key: string; work: Row[] };
 export function chatTimeline(rows: Row[]): ChatItem[] {
   const items: ChatItem[] = [];
   for (const row of rows) {
+    if ((row.body as { replaced?: boolean }).replaced) continue; // a reply the person asked to try again
     if (row.body.type === "tool-call" && row.body.name === "update_plan") continue;
     const key = `${row.generation}:${row.seq}`;
     if (["tool-call", "event", "notice"].includes(row.body.type)) {
