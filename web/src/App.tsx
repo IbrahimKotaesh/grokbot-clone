@@ -20,6 +20,8 @@ import { useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
 import { Landing, MacOffer } from './components/Landing';
+import { ResizeHandle, restoreColumnWidths } from './components/ResizeHandle';
+restoreColumnWidths();
 
 function Shell() {
   const detailsOpen = useStore((s) => s.detailsOpen);
@@ -123,7 +125,9 @@ function Shell() {
       </div>
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
+      {!collapsed && <ResizeHandle edge="sidebar" />}
       {view === 'tasks' ? <TasksView /> : <ChatView />}
+      {showPanel && view === 'chat' && <ResizeHandle edge="panel" />}
       {showPanel && view === 'chat' && <ComputerPanel />}
       {modal === 'create' && <CreateBotModal />}
       {modal === 'group' && <CreateGroupModal />}

@@ -95,7 +95,7 @@ export function Sidebar() {
           <div className="pinned"><BotConversations bot={primary} collapsed={collapsed}>
             <button type="button" className={`pinned__tile${selectedBotId === primary.id ? ' is-selected' : ''}`} onClick={() => selectBot(primary.id)} title={displayName(primary)}>
               <span className="pinned__avatar">
-                <BotAvatarFor bot={primary} size={collapsed ? 44 : 88} star />
+                <BotAvatarFor bot={primary} size={collapsed ? 44 : 88} />
                 {live[primary.id]?.isRunning && <span className="status-dot is-working pinned__dot" />}
               </span>
               {!collapsed && <span className="pinned__label">{displayName(primary)}</span>}

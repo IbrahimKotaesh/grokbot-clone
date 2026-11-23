@@ -4,15 +4,16 @@ import { suspendComputer } from './computer.js';
 import { isBotBusy } from './agent/loop.js';
 
 /**
- * Computer hibernation: suspend a user's Orgo box when no bot turn is running and no
- * viewer WebSocket is connected for GROKBOT_IDLE_SUSPEND_MIN minutes (default 20).
+ * Computer hibernation: suspend a user's computer when no bot turn has run for
+ * GROKBOT_IDLE_SUSPEND_MIN minutes (default 10). Watching the live screen doesn't keep it
+ * awake (the side panel is almost always open); opening it only restarts the countdown.
  * The next computer tool call wakes it again through ensureComputer().
  */
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 
 export const idleConfig = {
-  idleMin: num(process.env.GROKBOT_IDLE_SUSPEND_MIN, 20),
+  idleMin: num(process.env.GROKBOT_IDLE_SUSPEND_MIN, 10),
   sweepSec: num(process.env.GROKBOT_IDLE_SWEEP_SEC, 60),
   /** Log decisions but never call suspend (for test servers sharing a real VM). */
   dryRun: process.env.GROKBOT_IDLE_DRY_RUN === '1',
@@ -62,12 +63,11 @@ export function createIdleWatcher(deps: IdleDeps, opts: { idleMs: number; dryRun
   const inFlight = new Set<string>();
 
   function decide(userId: string): IdleDecision {
-    const turns = deps.anyTurnRunning(userId);
-    const v = deps.viewers(userId);
-    if (turns || v > 0) {
+    // Only work keeps the computer awake; an open viewer alone does not.
+    if (deps.anyTurnRunning(userId)) {
       busyAt.set(userId, deps.now());
       announced.delete(userId);
-      return { action: 'busy', reason: turns ? 'turn running' : `${v} viewer(s)` };
+      return { action: 'busy', reason: 'turn running' };
     }
     const last = Math.max(busyAt.get(userId) ?? startedAt, lastBusy.get(userId) ?? 0, deps.lastActivity(userId));
     const idleMs = deps.now() - last;
@@ -125,6 +125,6 @@ export function startIdleWatcher() {
   );
   const timer = setInterval(() => { watcher.sweep().catch((e) => console.warn('[idle] sweep failed', e)); }, idleConfig.sweepSec * 1000);
   timer.unref?.();
-  console.log(`[idle] hibernation after ${idleConfig.idleMin} min without turns or viewers${idleConfig.dryRun ? ' (dry run)' : ''}`);
+  console.log(`[idle] hibernation after ${idleConfig.idleMin} min after the last bot turn (watching does not count)${idleConfig.dryRun ? ' (dry run)' : ''}`);
   return { watcher, stop: () => clearInterval(timer) };
 }

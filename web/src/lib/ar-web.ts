@@ -473,4 +473,7 @@ export const arWeb: Record<string, string> = {
   "Your {plan} plan has no room for more bots. Upgrade anytime to add them.": "باقة {plan} تبعك ما فيها مكان لبوتات زيادة. فيك ترقّي بأي وقت لتضيفهم.",
   "Your {plan} plan includes 1 bot besides Quinn. Upgrade anytime for more.": "باقة {plan} تبعك فيها بوت واحد غير Quinn. فيك ترقّي بأي وقت لتاخد أكتر.",
   "Your {plan} plan includes {n} bots besides Quinn. Upgrade anytime for more.": "باقة {plan} تبعك فيها {n} بوتات غير Quinn. فيك ترقّي بأي وقت لتاخد أكتر.",
+  "Resize bot list": "غيّر عرض قائمة البوتات",
+  "Resize computer panel": "غيّر عرض لوحة الكمبيوتر",
+  "Drag to resize · double-click to reset": "اسحب لتغيّر العرض · كبستين لترجّعه",
 };

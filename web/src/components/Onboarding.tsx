@@ -3,7 +3,7 @@ import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { APP_NAMES, JOBS, appsFor } from '../../../packages/contracts/src/jobs';
 import { api, openPopup } from '../lib/api';
 import type { AvatarColor } from '@shared/types';
-import { Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { configApi } from '../lib/configApi';
 import { isMacDesktop, useDesktopState } from '../lib/desktop';
@@ -72,7 +72,7 @@ function Nav({ onBack, onNext, nextLabel, disabled }: { onBack?: () => void; onN
   return (
     <div className="onb__nav">
       {onBack ? <button type="button" className="onb__ghost" onClick={onBack}>{t('Back')}</button> : <span />}
-      <button type="button" className="onb__primary" onClick={onNext} disabled={disabled}>{nextLabel ?? t('Continue')}</button>
+      <button type="button" className="onb__primary" onClick={onNext} disabled={disabled}>{nextLabel ?? t('Continue')}{!disabled && <ArrowRight size={17} strokeWidth={2.4} aria-hidden />}</button>
     </div>
   );
 }

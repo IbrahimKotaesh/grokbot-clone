@@ -46,11 +46,6 @@ export function Avatar({
     <View style={{ width: size, height: size }}>
       {/* The character itself wears the bot's color, so there is no tinted circle behind it. */}
       <SvgXml xml={xml} width={size} height={size} />
-      {primary && (
-        <View style={[styles.badge, { top: -2, right: -2, backgroundColor: p.amber }]}>
-          <Ionicons name="star" size={9} color="#000" />
-        </View>
-      )}
       {!!status && (
         <Animated.View
           style={{

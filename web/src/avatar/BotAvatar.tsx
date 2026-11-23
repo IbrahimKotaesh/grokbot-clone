@@ -36,5 +36,5 @@ export function BotAvatar({ shape, color, size, star, ring, className, title }: 
 }
 
 export function BotAvatarFor({ bot, size, star, className }: { bot: Pick<Bot, 'avatarShape' | 'avatarColor' | 'name'> & { isPrimary?: boolean }; size: number; star?: boolean; className?: string }) {
-  return <BotAvatar shape={bot.avatarShape} color={bot.avatarColor} size={size} star={star ?? bot.isPrimary} className={className} title={bot.name} />;
+  return <BotAvatar shape={bot.avatarShape} color={bot.avatarColor} size={size} star={star ?? false} className={className} title={bot.name} />;
 }
