@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Download, Eye, Hand, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { CLAY, characterDataUri, type CharacterKind } from '../../../packages/contracts/src/characters';
+import { CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
+import { JOBS } from '../../../packages/contracts/src/jobs';
 import '../styles/landing.css';
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
@@ -27,16 +28,6 @@ const TEAM: Bot[] = [
 const QUINN = TEAM[1];
 // A bright sky blue so the mark stands out on the blue header.
 const MARK = characterDataUri('accountant', '#5f9dff');
-/** The jobs shown on the landing page, one per character. */
-const JOBS: Record<CharacterKind, [string, string]> = {
-  accountant: ['Head of Finance', 'Budgets, reports and the monthly close'],
-  architect: ['Accounts Payable', 'Checks invoices and lines up payments'],
-  chef: ['Cashier', 'Tracks every sale and balances the till'],
-  medic: ['HR Assistant', 'Hiring, leave requests and onboarding'],
-  florist: ['Travel Planner', 'Flights, hotels and the full itinerary'],
-  engineer: ['Data Engineer', 'Pipelines, dashboards and clean data'],
-};
-const JOB_ORDER: CharacterKind[] = ['accountant', 'architect', 'chef', 'medic', 'florist', 'engineer'];
 const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
@@ -338,10 +329,10 @@ function Looks() {
         <h2 className="lp-h2" data-reveal>Hire a whole team. Each one has a job.</h2>
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>They work around the clock, while you sleep or do something else. Pick a job, then paint them any color you like.</p>
         <ul className="lp-looks__row" aria-label="Bot characters">
-          {JOB_ORDER.map((k, i) => (
-            <li key={k} data-reveal style={{ '--i': 2 + i, '--bob': `${i * -0.7}s` } as CSSProperties}>
-              <span className="lp-looks__fig"><img src={characterDataUri(k, color)} alt="" width={120} height={120} draggable={false} /></span>
-              <b>{JOBS[k][0]}</b><small>{JOBS[k][1]}</small>
+          {JOBS.map((j, i) => (
+            <li key={j.id} data-reveal style={{ '--i': 2 + i, '--bob': `${i * -0.7}s` } as CSSProperties}>
+              <span className="lp-looks__fig"><img src={characterDataUri(j.character, color)} alt="" width={120} height={120} draggable={false} /></span>
+              <b>{j.title}</b><small>{j.blurb}</small>
             </li>
           ))}
         </ul>

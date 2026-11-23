@@ -32,7 +32,7 @@ export const api = {
   logout: async () => {await disableDevicePush().catch(()=>{});return req<{ok:true}>('POST','/auth/logout');},
 
   bots: () => req<{ bots: Bot[]; live: LiveState[] }>('GET', '/bots'),
-  createBot: (b: Pick<Bot, 'name' | 'avatarShape' | 'avatarColor' | 'mode'>) => req<{ bot: Bot }>('POST', '/bots', b),
+  createBot: (b: Pick<Bot, 'name' | 'avatarShape' | 'avatarColor' | 'mode'> & Partial<Pick<Bot, 'label' | 'description' | 'instructions'>>) => req<{ bot: Bot }>('POST', '/bots', b),
   markRead: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/read`),
   rows: (id: string,generation?:number) => req<{ generation: number; rows: Row[] }>('GET', `/bots/${id}/rows${generation===undefined?'':'?generation='+generation}`),
   send: (id: string, text: string, images?: {name:string;dataUrl:string}[], files?: {name:string;dataUrl:string}[],generation?:number) => req<{ row: Row }>('POST', `/bots/${id}/messages`, { text,generation,...executionEnvironment(), ...(images?.length ? {images} : {}), ...(files?.length ? {files} : {}) }),

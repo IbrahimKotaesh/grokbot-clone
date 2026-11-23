@@ -314,3 +314,18 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .chat .bubble.is-user .md a { color: #fff; text-decoration: underline; }
 .chat .bubble.is-user .md code { background: #ffffff2e; color: #fff; }
 .chat .bubble.is-user .bubble__time { color: #ffffffb3; }
+
+/* Setup: pick your team */
+.onb__jobs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.onb__job { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px 12px; border-radius: 16px; border: 1.5px solid var(--p-line); background: var(--p-bg); color: var(--p-text); font: inherit; text-align: center; cursor: pointer; transition: border-color .15s ease, background-color .15s ease, transform .15s ease; }
+.onb__job:hover:not(:disabled) { border-color: var(--p-line-strong); }
+.onb__job:active:not(:disabled) { transform: scale(.97); }
+.onb__job.is-on { border-color: var(--chat-blue); background: color-mix(in srgb, var(--chat-blue) 9%, var(--p-bg)); }
+.onb__job:disabled { cursor: default; }
+.onb__job img { width: 64px; height: 64px; margin-bottom: 2px; }
+.onb__job strong { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.onb__job small { font-size: 12px; line-height: 1.35; color: var(--p-muted); }
+.onb__job > .onb__check { position: absolute; top: 8px; inset-inline-end: 8px; width: 20px; height: 20px; background: var(--chat-blue); color: #fff; }
+@media (max-width: 480px) { .onb__jobs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.onb__job.is-dim { opacity: .55; }
+.onb__room { margin: 10px 0 0; text-align: center; }

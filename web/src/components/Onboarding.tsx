@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { characterDataUri } from '../../../packages/contracts/src/characters';
+import { APP_NAMES, JOBS, appsFor } from '../../../packages/contracts/src/jobs';
+import { api, openPopup } from '../lib/api';
+import type { AvatarColor } from '@shared/types';
 import { Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { configApi } from '../lib/configApi';
@@ -12,17 +15,18 @@ const DONE_KEY = 'fino.onboarded';
 export const onboardingDone = () => { try { return localStorage.getItem(DONE_KEY) === '1'; } catch { return true; } };
 const markDone = () => { try { localStorage.setItem(DONE_KEY, '1'); } catch { /* private window */ } };
 
-type Step = 'brain' | 'computer';
+type Step = 'brain' | 'team' | 'apps' | 'computer';
 
 /**
- * First-run setup on the web and in the Mac app: one screen to connect the AI that powers the bots
- * (your ChatGPT or Claude subscription), then straight into Fino. The Mac app also asks to use this
- * computer. Apps are connected later from Connect apps. It shows once per device.
+ * First-run setup on the web and in the Mac app: connect the AI that powers the bots, pick the jobs
+ * you want done (Fino creates those bots), connect the apps they need, and in the Mac app let Fino
+ * use this computer. It shows once per device.
  */
 export function Onboarding({ onClose, requireAI = false }: { onClose: () => void; requireAI?: boolean }) {
   const mac = isMacDesktop();
-  // One screen: connect your AI and you're in. The Mac app adds its computer permissions after it.
-  const steps: Step[] = mac ? ['brain', 'computer'] : ['brain'];
+  const steps: Step[] = mac ? ['brain', 'team', 'apps', 'computer'] : ['brain', 'team', 'apps'];
+  // The jobs picked on the team step decide which apps the next step suggests.
+  const [jobs, setJobs] = useState<string[]>([]);
   const [step, setStep] = useState<Step>('brain');
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
   const [closing, setClosing] = useState(false);
@@ -52,7 +56,9 @@ export function Onboarding({ onClose, requireAI = false }: { onClose: () => void
         <div className="onb__viewport" style={{ height }}>
           <div ref={inner}>
             <div key={step} className={`onb__stage onb__stage--${dir}`}>
-              {step === 'brain' && <BrainStep onNext={next} required={requireAI} ready={aiReady} onReady={() => setAiConnected(true)} last={steps.length === 1} />}
+              {step === 'brain' && <BrainStep onNext={next} required={requireAI} ready={aiReady} onReady={() => setAiConnected(true)} last={false} />}
+              {step === 'team' && <TeamStep onNext={(ids) => { setJobs(ids); next(); }} onBack={back} />}
+              {step === 'apps' && <AppsStep jobs={jobs} onNext={next} onBack={back} last={index === steps.length - 1} />}
               {step === 'computer' && <ComputerStep onNext={next} onBack={back} />}
             </div>
           </div>
@@ -243,6 +249,129 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       </div>
       {error && <div className="onb__error" role="alert">{error}</div>}
       <Nav onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Pick one to start') : last ? t('Start') : undefined} />
+    </section>
+  );
+}
+
+/** Step 2: what should your team do? Each picked job becomes a ready-made bot that Quinn can hand work to. */
+function TeamStep({ onNext, onBack }: { onNext: (jobs: string[]) => void; onBack: () => void }) {
+  const bots = useStore((s) => s.bots);
+  const has = (title: string) => bots.some((b) => b.kind !== 'room' && b.label?.trim().toLowerCase() === title.toLowerCase());
+  const [picked, setPicked] = useState<string[]>([]);
+  // How many more bots the plan allows besides Quinn (null = no limit), so we never offer more than fit.
+  const [room, setRoom] = useState<number | null | undefined>(undefined);
+  const [planName, setPlanName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    fetch('/api/billing', { credentials: 'include' }).then((r) => r.json())
+      .then((b: { plan: string; plans: { id: string; name: string; bots: number | null }[]; usage: { bots: number } }) => {
+        const plan = b.plans.find((p) => p.id === b.plan);
+        const left = plan?.bots == null ? null : Math.max(0, plan.bots - b.usage.bots);
+        setRoom(left); setPlanName(plan?.name ?? '');
+        const suggested = JOBS.filter((j) => j.suggested && !has(j.title)).map((j) => j.id);
+        setPicked(left == null ? suggested : suggested.slice(0, left));
+      })
+      .catch(() => { setRoom(null); setPicked(JOBS.filter((j) => j.suggested && !has(j.title)).map((j) => j.id)); });
+  }, []);
+  const full = room != null && picked.length >= room;
+  const toggle = (id: string) => {
+    setError('');
+    if (picked.includes(id)) { setPicked((p) => p.filter((x) => x !== id)); return; }
+    if (full) { setError(roomNote()); return; }
+    setPicked((p) => [...p, id]);
+  };
+  const roomNote = () => room === 0
+    ? t('Your {plan} plan has no room for more bots. Upgrade anytime to add them.').replace('{plan}', planName)
+    : (room === 1 ? t('Your {plan} plan includes 1 bot besides Quinn. Upgrade anytime for more.') : t('Your {plan} plan includes {n} bots besides Quinn. Upgrade anytime for more.').replace('{n}', String(room))).replace('{plan}', planName);
+
+  const hire = async () => {
+    const chosen = JOBS.filter((j) => picked.includes(j.id) && !has(j.title));
+    if (!chosen.length || stuck) { onNext(picked); return; }
+    setBusy(true); setError('');
+    // New bots think with the same AI as Quinn, which the first step just set up.
+    const primary = useStore.getState().bots.find((b) => b.isPrimary);
+    for (const j of chosen) {
+      try {
+        let { bot } = await api.createBot({ name: j.name, label: j.title, description: j.blurb, instructions: j.instructions, avatarShape: j.character, avatarColor: j.color as AvatarColor, mode: 'personal' });
+        if (primary?.agentProvider && primary.agentProvider !== bot.agentProvider) ({ bot } = await configApi.updateBot(bot.id, { agentProvider: primary.agentProvider, model: primary.model ?? '' }));
+        useStore.setState((st) => ({ bots: st.bots.some((b) => b.id === bot.id) ? st.bots : [...st.bots, bot] }));
+      } catch (e) {
+        // Stay here so the message is seen; the button then just continues.
+        setBusy(false); setStuck(true); setError((e as Error).message); return;
+      }
+    }
+    setBusy(false);
+    onNext(picked);
+  };
+
+  const count = JOBS.filter((j) => picked.includes(j.id) && !has(j.title)).length;
+  return (
+    <section className="onb__step">
+      <h1>{t('What should your team do?')}</h1>
+      <p>{t('Pick the jobs you want help with. Each one becomes a bot with its own browser and memory, working while you sleep or do something else. Quinn, your Chief of Staff, hands them work.')}</p>
+      <div className="onb__jobs" role="group" aria-label={t('Jobs')}>
+        {JOBS.map((j) => {
+          const hired = has(j.title);
+          const on = hired || picked.includes(j.id);
+          return (
+            <button key={j.id} type="button" className={`onb__job${on ? ' is-on' : ''}${!on && full ? ' is-dim' : ''}`} aria-pressed={on} disabled={hired || busy || room === undefined} onClick={() => toggle(j.id)}>
+              {on && <span className="onb__check"><Check size={13} /></span>}
+              <img src={characterDataUri(j.character, j.color)} alt="" width={64} height={64} />
+              <strong>{t(j.title)}</strong>
+              <small>{hired ? t('On your team') : t(j.blurb)}</small>
+            </button>
+          );
+        })}
+      </div>
+      {room != null && !error && <p className="onb__minor onb__room">{roomNote()}</p>}
+      {error && <div className="onb__error" role="alert">{error}</div>}
+      <Nav onBack={onBack} onNext={() => void hire()} disabled={busy || room === undefined}
+        nextLabel={busy ? t('Adding your team…') : stuck ? t('Continue') : count ? (count === 1 ? t('Add 1 bot') : t('Add {n} bots').replace('{n}', String(count))) : t('Skip for now')} />
+    </section>
+  );
+}
+
+/** Step 3: connect the apps the picked jobs need. Optional: bots work without them and you can connect later. */
+function AppsStep({ jobs, onNext, onBack, last }: { jobs: string[]; onNext: () => void; onBack: () => void; last: boolean }) {
+  const slugs = appsFor(jobs);
+  const [connected, setConnected] = useState<string[] | null>(null);
+  const [configured, setConfigured] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(() => { api.apps().then((r) => { setConnected(r.connected); setConfigured(r.configured !== false); }).catch(() => setConnected([])); }, []);
+  // Ticks appear by themselves once a sign-in in the other window finishes.
+  useEffect(() => { load(); const id = setInterval(load, 4000); return () => clearInterval(id); }, [load]);
+
+  const connect = async (slug: string) => {
+    setBusy(slug);
+    const popup = openPopup('about:blank');
+    try { const { redirectUrl } = await api.connect(slug); if (popup) popup.location.href = redirectUrl; else window.open(redirectUrl, '_blank'); }
+    catch { popup?.close(); }
+    finally { setBusy(null); }
+  };
+  const done = slugs.filter((s) => connected?.includes(s)).length;
+
+  return (
+    <section className="onb__step">
+      <h1>{t('Connect their apps')}</h1>
+      <p>{t('These are the apps your new team works in. Connect what you use; bots ask before they send, pay or delete anything. You can skip this and connect later.')}</p>
+      {!configured ? <div className="onb__error">{t('App connections need setup on this server.')}</div> : (
+        <div className="onb__apps">
+          {slugs.map((slug) => {
+            const on = connected?.includes(slug);
+            return (
+              <button key={slug} type="button" className={`onb__app${on ? ' is-done' : ''}`} disabled={on || busy === slug} onClick={() => void connect(slug)}>
+                <img src={`https://logos.composio.dev/api/${slug}`} alt="" width={24} height={24} />
+                <span>{APP_NAMES[slug] ?? slug}</span>
+                {on ? <span className="onb__check"><Check size={14} /></span> : busy === slug ? <LoaderCircle size={14} className="dictation__spinner" /> : <small>{t('Connect')}</small>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <button type="button" className="onb__link" onClick={() => useStore.getState().setModal('apps')}>{t('See all apps')}</button>
+      <Nav onBack={onBack} onNext={onNext} nextLabel={done ? (last ? t('Start') : t('Continue')) : t('Skip for now')} />
     </section>
   );
 }
