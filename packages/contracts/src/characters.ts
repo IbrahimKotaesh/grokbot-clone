@@ -68,7 +68,7 @@ function face(lx: number, rx: number, y: number, smileY: number, animate: boolea
 function defs(id: string, base: string) {
   return `<defs>
 <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(base, '#ffffff', 0.22)}"/><stop offset="0.55" stop-color="${base}"/><stop offset="1" stop-color="${mix(base, '#000000', 0.16)}"/></linearGradient>
-<linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(base, '#000000', 0.08)}"/><stop offset="1" stop-color="${mix(base, '#000000', 0.3)}"/></linearGradient>
+<linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(base, '#000000', 0.16)}"/><stop offset="1" stop-color="${mix(base, '#000000', 0.32)}"/></linearGradient>
 <radialGradient id="${id}s" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
 <radialGradient id="${id}g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000000" stop-opacity="0.18"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></radialGradient>
 <linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e6e0d6"/></linearGradient>
@@ -79,7 +79,7 @@ const ground = (id: string) => `<ellipse cx="100" cy="182" rx="66" ry="9" fill="
 const shine = (id: string, x: number, y: number, rx: number, ry: number) =>
   `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="url(#${id}s)"/>`;
 
-function body(kind: CharacterKind, id: string, base: string, animate: boolean, plain: boolean): string {
+function body(kind: CharacterKind, id: string, base: string, animate: boolean): string {
   const fill = `url(#${id}b)`;
   const edge = mix(base, '#000000', 0.22);
   const rim = `stroke="${edge}" stroke-opacity="0.35" stroke-width="1.5"`;
@@ -88,11 +88,10 @@ function body(kind: CharacterKind, id: string, base: string, animate: boolean, p
       return `${ground(id)}
 <rect x="30" y="52" width="140" height="124" rx="36" fill="${fill}" ${rim}/>
 ${shine(id, 70, 78, 36, 18)}
-<path d="M46 80 C42 54 70 40 102 42 C118 24 150 18 160 32 C168 44 158 58 140 56 C126 66 92 66 66 74 C56 77 48 82 46 80 Z" fill="url(#${id}h)"/>
+<path d="M40 82 C36 56 62 42 96 44 C110 28 142 22 158 34 C168 43 162 58 146 58 C128 68 84 68 40 82 Z" fill="url(#${id}h)"/>
 <g fill="none" stroke="${INK}" stroke-width="4"><rect x="46" y="94" width="46" height="34" rx="11"/><rect x="108" y="94" width="46" height="34" rx="11"/><path d="M92 106 Q100 100 108 106"/></g>
 ${face(69, 131, 111, 138, animate, 0, 137)}
-${plain ? '' : `<rect x="126" y="140" width="32" height="30" rx="7" fill="url(#${id}w)" stroke="#d8d1c6" stroke-width="1"/>
-<g fill="#5f5853"><rect x="132" y="146" width="8" height="7" rx="2"/><rect x="144" y="146" width="8" height="7" rx="2"/><rect x="132" y="157" width="8" height="7" rx="2"/><rect x="144" y="157" width="8" height="7" rx="2"/></g>`}`;
+`;
     case 'chef':
       return `${ground(id)}
 <path d="M24 168 C20 112 56 76 100 76 C144 76 180 112 176 168 C175 178 168 180 158 180 L42 180 C32 180 25 178 24 168 Z" fill="${fill}" ${rim}/>
@@ -132,19 +131,19 @@ ${face(80, 120, 128, 146, animate, 3.5)}`;
 }
 
 /** The character as an SVG document. `animate` adds a blink (browsers only; native ignores it). */
-export function characterSvg(kind: CharacterKind, color: string, animate = true, plain = false): string {
+export function characterSvg(kind: CharacterKind, color: string, animate = true): string {
   const base = CLAY[color] ?? (color?.startsWith?.('#') ? color : CLAY.cyan);
   const id = `c${kind.slice(0, 3)}${base.slice(1)}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${defs(id, base)}${body(kind, id, base, animate, plain)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${defs(id, base)}${body(kind, id, base, animate)}</svg>`;
 }
 
 const cache = new Map<string, string>();
-/** Data URI for an <img>. `plain` drops the small badge (the accountant's calculator), as in the logo. Cached, since rosters show the same few bots many times. */
-export function characterDataUri(shape: string, color: string, animate = true, plain = false): string {
-  const key = `${shape}|${color}|${animate}|${plain}`;
+/** Data URI for an <img>. Cached, since rosters show the same few bots many times. */
+export function characterDataUri(shape: string, color: string, animate = true): string {
+  const key = `${shape}|${color}|${animate}`;
   let uri = cache.get(key);
   if (!uri) {
-    uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(characterSvg(characterKind(shape), color, animate, plain));
+    uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(characterSvg(characterKind(shape), color, animate));
     cache.set(key, uri);
   }
   return uri;
