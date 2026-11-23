@@ -67,13 +67,26 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
         web.load(URLRequest(url:workspace));if mode.indexOfSelectedItem==2 && !selfTest {DispatchQueue.main.async{[weak self] in self?.ensureBrowser()}};if selfTest { Task { await testBrowser() } }
         if UserDefaults.standard.bool(forKey:"FinoConnectAfterRestart"){UserDefaults.standard.removeObject(forKey:"FinoConnectAfterRestart");DispatchQueue.main.asyncAfter(deadline:.now()+1.5){[weak self] in self?.toggleControl()}}
-        Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task { @MainActor in if let e=self?.expires,e<Date(){self?.stopControl()} }}
+        Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task { @MainActor in if let e=self?.expires,e<Date(){self?.stopControl();DispatchQueue.main.asyncAfter(deadline:.now()+1){self?.autoConnect()}} }}
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool{true}
     func applicationWillTerminate(_ notification:Notification){stopControl()}
     @objc func reload(){web.reload()}
     @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
     @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";setAgentFrame();mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
+    /// "Always allow on this Mac", remembered per place (browser / this Mac).
+    func consentKey()->String{"FinoAlwaysAllow.\(mode.indexOfSelectedItem)"}
+    var alwaysAllowed:Bool{UserDefaults.standard.bool(forKey:consentKey())}
+    /// Connect by itself when the person already said yes: at launch, after switching place, and when a session runs out.
+    func autoConnect(){
+        guard socket==nil,mode.indexOfSelectedItem != 0,alwaysAllowed else{return}
+        if mode.indexOfSelectedItem==1 && !ComputerSetup.ready {return}
+        // Only when signed in; otherwise wait quietly instead of popping up a sign-in window.
+        web.configuration.websiteDataStore.httpCookieStore.getAllCookies{[weak self] cookies in DispatchQueue.main.async{
+            guard let self,self.socket==nil else{return}
+            if cookies.contains(where:{$0.name=="grokbot_session" && $0.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."))==workspace.host && ($0.expiresDate ?? .distantFuture)>Date()}){self.toggleControl()}
+        }}
+    }
     @objc func toggleControl(){
         if mode.indexOfSelectedItem==0{showWorkspace();return}
         if socket != nil {stopControl();return}
@@ -82,8 +95,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         if inBrowser {ensureBrowser()}
         let alert=NSAlert();alert.messageText=inBrowser ? "Let your bot use the Fino Browser?":"Allow Fino to control this computer?"
         alert.informativeText=inBrowser ? "Your bot works only inside the browser panel on the right, not the rest of your Mac. Sign in to sites there yourself; the bot will not type passwords. Only bots responding to your direct messages can act, for 30 minutes. Press Stop or ⌘. to disconnect.":"Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
-        alert.addButton(withTitle:"Allow this session");alert.addButton(withTitle:"Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else{return}
+        if !alwaysAllowed {
+            alert.addButton(withTitle:"Allow");alert.addButton(withTitle:"Cancel")
+            alert.showsSuppressionButton=true;alert.suppressionButton?.title="Always allow on this Mac (connects by itself)";alert.suppressionButton?.state = .on
+            guard alert.runModal() == .alertFirstButtonReturn else{return}
+            if alert.suppressionButton?.state == .on {UserDefaults.standard.set(true,forKey:consentKey())}
+        }
         guard inBrowser || ComputerSetup.ready else{showComputerSetup();return}
         web.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in DispatchQueue.main.async {
             guard let self else{return}
@@ -194,7 +211,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let s=ComputerSetup();setup=s
         s.show(over:window){[weak self] in self?.setup=nil;self?.status.stringValue="Ready to connect";self?.toggleControl()}
     }
-    @objc func environmentChanged(){UserDefaults.standard.set(mode.indexOfSelectedItem,forKey:"FinoEnvironment");stopControl();showWorkspace();emitDesktopState()}
+    @objc func environmentChanged(){UserDefaults.standard.set(mode.indexOfSelectedItem,forKey:"FinoEnvironment");stopControl();showWorkspace();emitDesktopState();DispatchQueue.main.asyncAfter(deadline:.now()+0.3){[weak self] in self?.autoConnect()}}
     func showWorkspace(){
         if mode.indexOfSelectedItem==2 {ensureBrowser();return}
         showPanel();browser?.isHidden=true;browserControls.isHidden=true
@@ -249,7 +266,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         web.loadHTMLString("<html><body style='margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#8e8e93;font:14px -apple-system'><div style='text-align:center'><div style='color:#f5f5f7;font-size:17px;font-weight:600;margin-bottom:6px'>Connecting to Fino…</div>Trying again in a moment.</div></body></html>",baseURL:nil)
         retryTimer=Timer.scheduledTimer(withTimeInterval:2,repeats:false){[weak self] _ in Task { @MainActor in guard let self else{return};self.retryTimer=nil;self.web.load(URLRequest(url:workspace)) }}
     }
-    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState();if web.url?.host==workspace.host{DispatchQueue.main.asyncAfter(deadline:.now()+0.6){[weak self] in self?.loadingSpinner?.removeFromSuperview();self?.loadingSpinner=nil}}}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
+    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState();if web.url?.host==workspace.host{DispatchQueue.main.asyncAfter(deadline:.now()+0.6){[weak self] in self?.loadingSpinner?.removeFromSuperview();self?.loadingSpinner=nil;self?.autoConnect()}}}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
     func evaluate(_ script:String)async throws->Any?{try await withCheckedThrowingContinuation{continuation in browser.evaluateJavaScript(script){value,error in if let error{continuation.resume(throwing:error)}else{continuation.resume(returning:value)}}}}
     func browserSnapshot()async throws->[String:Any]{
         let image:NSImage=try await withCheckedThrowingContinuation{continuation in let config=WKSnapshotConfiguration();config.afterScreenUpdates=true;browser.takeSnapshot(with:config){image,error in if let image{continuation.resume(returning:image)}else{continuation.resume(throwing:error ?? failure("Browser screenshot failed"))}}}

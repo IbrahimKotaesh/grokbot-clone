@@ -16,8 +16,9 @@ export const desktopForTrigger=(userId:string,type:string)=>type==='user'?active
 export function resolveDesktopTarget(userId:string,environment?:unknown):DesktopTarget|null{
  if(environment==='server')return null;
  if(environment!==undefined&&!['browser','mac'].includes(String(environment)))throw Error('Invalid execution environment.');
+ // Not connected (or connected to the other place): the task still runs, on the cloud computer.
  const target=activeDesktop(userId);
- if(environment!==undefined&&(!target||target.mode!==environment))throw Error('Connect the selected local environment in Fino before sending this task.');
+ if(environment!==undefined&&(!target||target.mode!==environment))return null;
  return target;
 }
 export function validateDesktopAction(name:string,a:any){
