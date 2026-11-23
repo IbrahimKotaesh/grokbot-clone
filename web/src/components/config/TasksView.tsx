@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Bot, Task } from '@shared/types';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
 import { configApi } from '../../lib/configApi';
+import { api } from '../../lib/api';
 import { relativeShort } from '../../lib/time';
 import { useConfigUI, useVersion } from '../../configStore';
 import { useStore } from '../../store';
@@ -59,6 +60,30 @@ function sortTasks(list: Task[]) {
   return [...list].sort((a, b) => rank[a.state] - rank[b.state] || b.updatedAt - a.updatedAt);
 }
 
+/** "Your team saved you about N hours this week", with what it's based on. */
+function WeekSaved() {
+  const v = useVersion('tasks');
+  const [stats, setStats] = useState<{ steps: number; replies: number; tasksDone: number; minutes: number } | null>(null);
+  const [how, setHow] = useState(false);
+  useEffect(() => { let alive = true; api.weekStats().then((r) => { if (alive) setStats(r); }).catch(() => {}); return () => { alive = false; }; }, [v]);
+  if (!stats || stats.minutes < 5) return null;
+  const hours = stats.minutes / 60;
+  const amount = hours >= 1 ? tr('{n} hours', { n: hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10 }) : tr('{n} minutes', { n: Math.round(stats.minutes / 5) * 5 });
+  return (
+    <section className="week-saved" aria-label={tr('This week')}>
+      <div className="week-saved__label">{tr('This week')}</div>
+      <div className="week-saved__big">{tr('Your team saved you about {amount}', { amount })}</div>
+      <div className="week-saved__facts">
+        <span><b>{stats.steps}</b> {tr(stats.steps === 1 ? 'step of work' : 'steps of work')}</span>
+        <span><b>{stats.replies}</b> {tr(stats.replies === 1 ? 'reply' : 'replies')}</span>
+        <span><b>{stats.tasksDone}</b> {tr(stats.tasksDone === 1 ? 'task done' : 'tasks done')}</span>
+        <button type="button" className="link-btn" onClick={() => setHow(!how)} aria-expanded={how}>{tr('How is this counted?')}</button>
+      </div>
+      {how && <p className="week-saved__how">{tr('An estimate from the last 7 days: each step a bot took for you (a search, a page read, an email, a click on its computer) counts as about 2 minutes of your time, and each reply as about 1 minute.')}</p>}
+    </section>
+  );
+}
+
 /** Full Tasks view in the main column (sidebar → Tasks). */
 export function TasksView() {
   const bots = useStore((s) => s.bots);
@@ -80,6 +105,7 @@ export function TasksView() {
       </header>
       <div className="tasks-view__scroll">
         <div className="tasks-view__inner">
+          <WeekSaved />
           {tasks === null ? <div className="cfg-empty">{t("Loading…")}</div> : shown.length === 0 ? (
             <div className="tasks-empty">
               <Glyph name="tasks" size={28} opacity={0.35} />

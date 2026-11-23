@@ -40,6 +40,7 @@ export const api = {
   createChat:(id:string,title?:string)=>req<{chat:BotChat}>('POST',`/bots/${id}/chats`,{title}),
   renameChat:(id:string,generation:number,title:string)=>req<{chat:BotChat}>('PATCH',`/bots/${id}/chats/${generation}`,{title}),
   search: (q: string) => req<{ results: { botId: string; generation: number; seq: number; createdAt: number; role: 'user' | 'assistant'; from: string | null; chat: string | null; snippet: string }[] }>('GET', `/search?q=${encodeURIComponent(q)}`),
+  weekStats: () => req<{ steps: number; replies: number; tasksDone: number; minutes: number }>('GET', '/stats/week'),
   morningBrief: () => req<{ available: boolean; enabled: boolean; hour: number }>('GET', '/morning-brief'),
   setMorningBrief: (enabled: boolean, hour: number) => req<{ enabled: boolean; hour: number }>('PUT', '/morning-brief', { enabled, hour, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   regenerate: (id: string, generation?: number) => req<{ ok: true }>('POST', `/bots/${id}/regenerate`, { generation, ...executionEnvironment() }),

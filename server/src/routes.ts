@@ -430,6 +430,28 @@ api.get('/search', (c) => {
   return c.json({ results });
 });
 
+// ---------- this week's work ----------
+// What the bots actually did in the last 7 days, and a plain estimate of the time it saved:
+// each step (a search, a page read, an email, a click on the computer) ≈ 2 minutes of a person's work,
+// each reply ≈ 1 minute. Internal bookkeeping steps don't count.
+const QUIET_STEPS = new Set(['update_plan', 'stay_silent', 'remember', 'recall', 'update_memory', 'team_updates', 'search_conversation', 'list_routines', 'list_event_triggers', 'list_subagents']);
+api.get('/stats/week', (c) => {
+  const userId = c.get('user').id;
+  const since = now() - 7 * 24 * 3600 * 1000;
+  const counts = db.prepare(`SELECT r.kind AS kind, json_extract(r.body,'$.name') AS name, count(*) AS n FROM rows r JOIN bots b ON b.id=r.bot_id
+    WHERE b.user_id=? AND r.created_at>=? AND (
+      (r.kind='tool-call' AND json_extract(r.body,'$.status')='done') OR
+      (r.kind='message' AND json_extract(r.body,'$.role')='assistant' AND coalesce(json_extract(r.body,'$.replaced'),0)=0 AND length(coalesce(json_extract(r.body,'$.text'),''))>0))
+    GROUP BY r.kind, name`).all(userId, since) as { kind: string; name: string | null; n: number }[];
+  let steps = 0, replies = 0;
+  for (const r of counts) {
+    if (r.kind === 'message') replies += r.n;
+    else if (!QUIET_STEPS.has(r.name ?? '')) steps += r.n;
+  }
+  const done = (db.prepare("SELECT count(*) AS n FROM tasks t JOIN bots b ON b.id=t.bot_id WHERE b.user_id=? AND t.state='done' AND t.updated_at>=?").get(userId, since) as any).n as number;
+  return c.json({ steps, replies, tasksDone: done, minutes: steps * 2 + replies });
+});
+
 // ---------- morning brief ----------
 // A daily note from the Chief of Staff: what each teammate did since yesterday and what waits for the person.
 // It is an ordinary routine on the primary bot, so it also shows (and can be paused) in that bot's routines.

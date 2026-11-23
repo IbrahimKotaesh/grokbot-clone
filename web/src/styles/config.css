@@ -216,3 +216,12 @@
 .toggle.is-on .toggle__knob { background: var(--bot-on-action, #FFFFFF); }
 .cfg-select { appearance: none; -webkit-appearance: none; font: inherit; font-size: 13.5px; color: var(--p-text); background: var(--p-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--p-line); border-radius: 10px; padding: 7px 30px 7px 12px; cursor: pointer; }
 [dir='rtl'] .cfg-select { background-position: left 10px center; padding: 7px 12px 7px 30px; }
+
+/* Tasks: what the team did this week. */
+.week-saved { margin: 0 0 20px; padding: 18px 20px; border-radius: 18px; background: linear-gradient(135deg, color-mix(in srgb, var(--p-blue) 16%, var(--p-surface)), var(--p-surface)); border: 1px solid color-mix(in srgb, var(--p-blue) 22%, var(--p-line)); animation: rise .4s cubic-bezier(.22,1,.36,1) both; }
+.week-saved__label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--p-blue); }
+.week-saved__big { margin-top: 4px; font-size: 22px; line-height: 28px; font-weight: 600; color: var(--p-text); }
+.week-saved__facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--p-muted); }
+.week-saved__facts b { color: var(--p-text); font-weight: 600; }
+.week-saved__facts .link-btn { font-size: 13px; margin-inline-start: auto; }
+.week-saved__how { margin: 10px 0 0; font-size: 13px; line-height: 19px; color: var(--p-muted); }
