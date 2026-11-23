@@ -79,7 +79,7 @@ const ground = (id: string) => `<ellipse cx="100" cy="182" rx="66" ry="9" fill="
 const shine = (id: string, x: number, y: number, rx: number, ry: number) =>
   `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="url(#${id}s)"/>`;
 
-function body(kind: CharacterKind, id: string, base: string, animate: boolean): string {
+function body(kind: CharacterKind, id: string, base: string, animate: boolean, plain: boolean): string {
   const fill = `url(#${id}b)`;
   const edge = mix(base, '#000000', 0.22);
   const rim = `stroke="${edge}" stroke-opacity="0.35" stroke-width="1.5"`;
@@ -91,8 +91,8 @@ ${shine(id, 70, 78, 36, 18)}
 <path d="M46 80 C42 54 70 40 102 42 C118 24 150 18 160 32 C168 44 158 58 140 56 C126 66 92 66 66 74 C56 77 48 82 46 80 Z" fill="url(#${id}h)"/>
 <g fill="none" stroke="${INK}" stroke-width="4"><rect x="46" y="94" width="46" height="34" rx="11"/><rect x="108" y="94" width="46" height="34" rx="11"/><path d="M92 106 Q100 100 108 106"/></g>
 ${face(69, 131, 111, 138, animate, 0, 137)}
-<rect x="126" y="140" width="32" height="30" rx="7" fill="url(#${id}w)" stroke="#d8d1c6" stroke-width="1"/>
-<g fill="#5f5853"><rect x="132" y="146" width="8" height="7" rx="2"/><rect x="144" y="146" width="8" height="7" rx="2"/><rect x="132" y="157" width="8" height="7" rx="2"/><rect x="144" y="157" width="8" height="7" rx="2"/></g>`;
+${plain ? '' : `<rect x="126" y="140" width="32" height="30" rx="7" fill="url(#${id}w)" stroke="#d8d1c6" stroke-width="1"/>
+<g fill="#5f5853"><rect x="132" y="146" width="8" height="7" rx="2"/><rect x="144" y="146" width="8" height="7" rx="2"/><rect x="132" y="157" width="8" height="7" rx="2"/><rect x="144" y="157" width="8" height="7" rx="2"/></g>`}`;
     case 'chef':
       return `${ground(id)}
 <path d="M24 168 C20 112 56 76 100 76 C144 76 180 112 176 168 C175 178 168 180 158 180 L42 180 C32 180 25 178 24 168 Z" fill="${fill}" ${rim}/>
@@ -132,19 +132,19 @@ ${face(80, 120, 128, 146, animate, 3.5)}`;
 }
 
 /** The character as an SVG document. `animate` adds a blink (browsers only; native ignores it). */
-export function characterSvg(kind: CharacterKind, color: string, animate = true): string {
+export function characterSvg(kind: CharacterKind, color: string, animate = true, plain = false): string {
   const base = CLAY[color] ?? (color?.startsWith?.('#') ? color : CLAY.cyan);
   const id = `c${kind.slice(0, 3)}${base.slice(1)}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${defs(id, base)}${body(kind, id, base, animate)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${defs(id, base)}${body(kind, id, base, animate, plain)}</svg>`;
 }
 
 const cache = new Map<string, string>();
-/** Data URI for an <img>. Cached, since rosters show the same few bots many times. */
-export function characterDataUri(shape: string, color: string, animate = true): string {
-  const key = `${shape}|${color}|${animate}`;
+/** Data URI for an <img>. `plain` drops the small badge (the accountant's calculator), as in the logo. Cached, since rosters show the same few bots many times. */
+export function characterDataUri(shape: string, color: string, animate = true, plain = false): string {
+  const key = `${shape}|${color}|${animate}|${plain}`;
   let uri = cache.get(key);
   if (!uri) {
-    uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(characterSvg(characterKind(shape), color, animate));
+    uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(characterSvg(characterKind(shape), color, animate, plain));
     cache.set(key, uri);
   }
   return uri;

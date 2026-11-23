@@ -26,7 +26,7 @@ const TEAM: Bot[] = [
 ];
 const QUINN = TEAM[1];
 // A bright sky blue so the mark stands out on the blue header.
-const MARK = characterDataUri('accountant', '#5f9dff');
+const MARK = characterDataUri('accountant', '#5f9dff', true, true);
 const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
