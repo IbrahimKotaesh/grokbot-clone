@@ -25,7 +25,8 @@ const TEAM: Bot[] = [
   { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
-const MARK = characterDataUri('accountant', 'cyan');
+// A bright sky blue so the mark stands out on the blue header.
+const MARK = characterDataUri('accountant', '#5f9dff');
 const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];

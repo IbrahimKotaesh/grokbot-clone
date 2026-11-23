@@ -53,14 +53,15 @@ function isDark(hex: string): boolean {
 }
 
 /** Eyes with a shine, and a small smile. Blinks when animated. */
-function face(lx: number, rx: number, y: number, smileY: number, animate: boolean, delay: number) {
+function face(lx: number, rx: number, y: number, smileY: number, animate: boolean, delay: number, cheekY = y + 17) {
   const blink = animate
     ? `<animate attributeName="ry" values="9;9;1;9" keyTimes="0;0.93;0.965;1" dur="4.6s" begin="${delay}s" repeatCount="indefinite"/>`
     : '';
   const eye = (x: number) =>
     `<ellipse cx="${x}" cy="${y}" rx="8.5" ry="9" fill="${INK}">${blink}</ellipse><circle cx="${x + 2.6}" cy="${y - 3.2}" r="2.6" fill="#fff"/>`;
   const cx = (lx + rx) / 2;
-  return `${eye(lx)}${eye(rx)}<path d="M${cx - 7} ${smileY} Q${cx} ${smileY + 7} ${cx + 7} ${smileY}" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`;
+  const cheek = (x: number) => `<ellipse cx="${x}" cy="${cheekY}" rx="8" ry="4.5" fill="#ff6f8a" fill-opacity="0.32"/>`;
+  return `${cheek(lx - 6)}${cheek(rx + 6)}${eye(lx)}${eye(rx)}<path d="M${cx - 7} ${smileY} Q${cx} ${smileY + 7} ${cx + 7} ${smileY}" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`;
 }
 
 /** Shared gradients: top light, body color, darker base, and a soft shine. */
@@ -89,7 +90,7 @@ function body(kind: CharacterKind, id: string, base: string, animate: boolean): 
 ${shine(id, 70, 78, 36, 18)}
 <path d="M46 80 C42 54 70 40 102 42 C118 24 150 18 160 32 C168 44 158 58 140 56 C126 66 92 66 66 74 C56 77 48 82 46 80 Z" fill="url(#${id}h)"/>
 <g fill="none" stroke="${INK}" stroke-width="4"><rect x="46" y="94" width="46" height="34" rx="11"/><rect x="108" y="94" width="46" height="34" rx="11"/><path d="M92 106 Q100 100 108 106"/></g>
-${face(69, 131, 111, 138, animate, 0)}
+${face(69, 131, 111, 138, animate, 0, 137)}
 <rect x="126" y="140" width="32" height="30" rx="7" fill="url(#${id}w)" stroke="#d8d1c6" stroke-width="1"/>
 <g fill="#5f5853"><rect x="132" y="146" width="8" height="7" rx="2"/><rect x="144" y="146" width="8" height="7" rx="2"/><rect x="132" y="157" width="8" height="7" rx="2"/><rect x="144" y="157" width="8" height="7" rx="2"/></g>`;
     case 'chef':

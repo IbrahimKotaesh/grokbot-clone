@@ -59,7 +59,11 @@
 .lp-open { position: relative; min-height: max(100svh, 780px); padding: 0 clamp(16px, 4.4vw, 64px); background: var(--lp-blue); color: var(--lp-on-blue); display: flex; flex-direction: column; }
 .lp-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; }
 .lp-mark { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
-.lp-mark img { border-radius: 12px; background: #fff; object-fit: cover; }
+.lp-mark img { width: 60px; height: 60px; margin: -10px -6px -8px -8px; object-fit: contain; filter: drop-shadow(0 0 1.5px #ffffffb0) drop-shadow(0 6px 10px #0b1f5c66); transform-origin: 50% 90%; animation: lp-mark 3.8s ease-in-out infinite; }
+.lp-mark:hover img { animation: lp-mark-hop .6s var(--lp-ease); }
+@keyframes lp-mark { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-2px) scale(1.03, .97); } }
+@keyframes lp-mark-hop { 40% { transform: translateY(-6px) rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { .lp-mark img { animation: none; } }
 .lp-nav__links { display: flex; align-items: center; gap: clamp(12px, 2.4vw, 30px); font-size: 15px; font-weight: 500; }
 .lp-nav__links > a:not(.lp-pill) { text-decoration: none; opacity: .88; }
 .lp-nav__links > a:not(.lp-pill):hover, .lp-nav__signin:hover { opacity: 1; text-decoration: underline; text-underline-offset: 5px; }
@@ -202,7 +206,7 @@
 .lp-foot__in { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .lp-foot nav { display: flex; gap: 22px; }
 .lp-foot a { text-decoration: none; } .lp-foot a:hover { color: var(--lp-ink); text-decoration: underline; text-underline-offset: 4px; }
-.lp-mark--small { font-size: 16px; color: var(--lp-ink); } .lp-mark--small img { border-radius: 7px; }
+.lp-mark--small { font-size: 16px; color: var(--lp-ink); } .lp-mark--small img { width: 30px; height: 30px; filter: none; }
 
 /* ---- sign-in form (landing panel and the sign-in screen) ---- */
 .auth { display: flex; flex-direction: column; width: 100%; text-align: left; }
