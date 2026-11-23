@@ -298,3 +298,7 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .onb__paste a { color: var(--p-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .onb__paste > div { display: flex; gap: 8px; }
 .onb__paste input { flex: 1; min-width: 0; height: 34px; font-size: 13px; }
+.onb__team--small { height: 78px; margin: 2px 0 4px; justify-content: flex-start; }
+.onb__team--small span { width: 54px; }
+.onb__team--small span:nth-child(2) { width: 68px; }
+.onb__step .onb__team--small + h1 { margin-top: 2px; }
