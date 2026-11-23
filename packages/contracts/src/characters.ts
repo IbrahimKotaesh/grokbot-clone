@@ -88,7 +88,10 @@ function body(kind: CharacterKind, id: string, base: string, animate: boolean): 
       return `${ground(id)}
 <rect x="30" y="52" width="140" height="124" rx="36" fill="${fill}" ${rim}/>
 ${shine(id, 70, 78, 36, 18)}
-<path d="M34 86 C32 56 62 38 100 38 C138 38 168 56 166 86 C152 74 128 68 100 68 C72 68 48 74 34 86 Z" fill="url(#${id}h)"/>
+<ellipse cx="100" cy="58" rx="54" ry="10" fill="#2e2a33"/>
+<path d="M66 58 C66 32 80 20 100 20 C120 20 134 32 134 58 Z" fill="#3a3540"/>
+<rect x="66" y="46" width="68" height="9" fill="#c99a52"/>
+<path d="M78 40 C80 30 88 25 96 24" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="4" stroke-linecap="round"/>
 <g fill="none" stroke="${INK}" stroke-width="4"><rect x="46" y="94" width="46" height="34" rx="11"/><rect x="108" y="94" width="46" height="34" rx="11"/><path d="M92 106 Q100 100 108 106"/></g>
 ${face(69, 131, 111, 138, animate, 0, 137)}
 `;
