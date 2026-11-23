@@ -1,7 +1,7 @@
 // Fino on the web and the Mac app speaks the same languages as the phone app.
 // English text is the key, so a missing translation simply shows the English.
-// The phone's dictionary is shared; web-only words live in ar-web.ts.
-import { ar as phone } from '../../../mobile/src/lib/ar';
+// The shared dictionary is packages/contracts/src/ar.ts; web-only words live in ar-web.ts.
+import { ar as phone } from '../../../packages/contracts/src/ar';
 import { arWeb } from './ar-web';
 
 export type LangChoice = 'system' | 'en' | 'ar';
