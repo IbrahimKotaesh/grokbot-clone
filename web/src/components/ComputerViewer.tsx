@@ -25,7 +25,8 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
   const [wakeError, setWakeError] = useState('');
   const running = computer?.status === 'running';
   // While the bot is mid-task the screen gets a red frame, so it's clear who is driving.
-  const botWorking = useStore((s) => (bot ? !!s.live[bot.id]?.isRunning : false));
+  // Only while it actually drives the computer, not while it's just thinking or writing.
+  const botWorking = useStore((s) => { const l = bot ? s.live[bot.id] : undefined; return !!l?.isRunning && ['on_its_computer', 'browsing_web', 'reading_web'].includes(l.activity?.kind ?? ''); });
   // The bot's mouse: the server sends where it points; we draw an arrow there that glides between spots.
   const point = useStore((s) => (bot ? s.pointer[bot.id] : undefined));
   const [pointerPos, setPointerPos] = useState<{ left: number; top: number } | null>(null);
