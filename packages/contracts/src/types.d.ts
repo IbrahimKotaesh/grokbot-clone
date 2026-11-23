@@ -31,7 +31,13 @@ export type AvatarShape =
   | "watermelon"
   | "orange"
   | "olive"
-  | "fig";
+  | "fig"
+  | "accountant"
+  | "chef"
+  | "medic"
+  | "architect"
+  | "engineer"
+  | "florist";
 
 export type AvatarColor =
   | "black"

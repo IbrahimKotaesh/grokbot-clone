@@ -1,6 +1,5 @@
 // Ready-made bots: used by first-launch onboarding and the Marketplace.
 // Each template becomes a real bot (POST /bots) plus its skills (POST /bots/:id/skills).
-import type { Fruit } from "../theme";
 
 export interface SkillTemplate {
   name: string;
@@ -15,7 +14,7 @@ export interface BotTemplate {
   tagline: string;
   description: string;
   category: CategoryId;
-  shape: Fruit;
+  shape: string;
   color: string;
   icon: string;
   instructions: string;

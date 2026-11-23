@@ -1,12 +1,12 @@
 import { t } from '../../lib/i18n';
 import { useCallback, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot } from '@shared/types';
-import { FRUIT_COLORS, characterKind } from '../../avatar/FinoCharacter';
 import { BotAvatar, PICKER_SHAPES } from '../../avatar/BotAvatar';
 import { api } from '../../lib/api';
-import { COLOR_ORDER, palette } from '../../lib/colors';
+import { COLOR_ORDER } from '../../lib/colors';
 import { useStore } from '../../store';
 import { Icon } from '../Icon';
+import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { Modal } from './Modal';
 
 const ROWS = [PICKER_SHAPES];
@@ -15,8 +15,8 @@ const COLOR_ROWS = [COLOR_ORDER.slice(0, 6), COLOR_ORDER.slice(6)];
 export function CreateBotModal() {
   const setModal = useStore((s) => s.setModal);
   const [name, setName] = useState('');
-  const [shape, setShape] = useState<AvatarShape>('watermelon');
-  const [color, setColor] = useState<AvatarColor>('red');
+  const [shape, setShape] = useState<AvatarShape>('accountant');
+  const [color, setColor] = useState<AvatarColor>('cyan');
   const [mode, setMode] = useState<Bot['mode']>('personal');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function CreateBotModal() {
             {ROWS.map((row, i) => (
               <div key={i} className="shape-grid__row">
                 {row.map((s) => (
-                  <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => {setShape(s);setColor(FRUIT_COLORS[characterKind(s)]);}}>
+                  <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={t(CHARACTER_LABELS[characterKind(s)])} title={t(CHARACTER_LABELS[characterKind(s)])} className="shape-cell" onClick={() => setShape(s)}>
                     <BotAvatar shape={s} color={color} size={36} ring={shape === s} />
                   </button>
                 ))}
@@ -71,7 +71,7 @@ export function CreateBotModal() {
               <div key={i} className="swatches__row">
                 {row.map((c) => (
                   <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className="swatch-cell" onClick={() => setColor(c)}>
-                    <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: palette(c).fill }} />
+                    <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: CLAY[c] }} />
                   </button>
                 ))}
               </div>

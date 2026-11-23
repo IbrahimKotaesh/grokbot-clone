@@ -1,4 +1,5 @@
 import { t } from '../lib/i18n';
+import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -34,7 +35,7 @@ export function SignIn({ initial = 'signin' }: { initial?: 'signin' | 'signup' }
       <div className="signin__chrome"><TrafficLights /></div>
       <div className="signin__card">
         <div className="signin__hero">
-          <img className="signin__mascot" src="/characters/fino-brand-blue.png" alt="Fino, your AI companion" />
+          <img className="signin__mascot" src={characterDataUri('accountant', 'cyan')} alt="Fino, your AI companion" />
         </div>
         <h1 className="signin__title">Fino</h1>
         <p className="signin__sub">{t("A little company. A lot done. Your AI team, tools and ideas in one place.")}</p>

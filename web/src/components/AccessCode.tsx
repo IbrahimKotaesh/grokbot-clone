@@ -1,4 +1,5 @@
 import { t } from '../lib/i18n';
+import { characterDataUri } from '../../../packages/contracts/src/characters';
 import {useEffect,useState,type FormEvent} from 'react';
 import {LockKeyhole,ShieldCheck} from 'lucide-react';
 import {useStore} from '../store';
@@ -6,7 +7,7 @@ async function accessRequest(path:string,body:unknown){const r=await fetch('/api
 export function AccessCodeGate(){
  const [code,setCode]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError('');try{await accessRequest('unlock',{code});setCode('');await useStore.getState().checkAuth();}catch(e){setCode('');setError((e as Error).message);}finally{setBusy(false);}};
- return <main className="access-screen"><form className="access-card" onSubmit={submit}><div className="access-symbol"><img src="/characters/fino-brand-blue.png" alt="Fino" width={64} height={64}/></div><h1>{t("Your private workspace")}</h1><p>{t("Enter your access code to open Fino.")}</p><label htmlFor="access-code">{t("Access code")}</label><input id="access-code" type="password" inputMode="numeric" autoComplete="current-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} aria-describedby={error?'access-error':undefined}/>{error&&<p id="access-error" role="alert" className="notification-error">{error}</p>}<button className="btn btn--primary" disabled={busy||code.length<6}>{busy?'Unlocking…':t("Unlock workspace")}</button><small><ShieldCheck size={14}/> {t("Private workspace access")}</small></form></main>;
+ return <main className="access-screen"><form className="access-card" onSubmit={submit}><div className="access-symbol"><img src={characterDataUri('accountant', 'cyan')} alt="Fino" width={64} height={64}/></div><h1>{t("Your private workspace")}</h1><p>{t("Enter your access code to open Fino.")}</p><label htmlFor="access-code">{t("Access code")}</label><input id="access-code" type="password" inputMode="numeric" autoComplete="current-password" pattern="[0-9]{6,12}" minLength={6} maxLength={12} required value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} aria-describedby={error?'access-error':undefined}/>{error&&<p id="access-error" role="alert" className="notification-error">{error}</p>}<button className="btn btn--primary" disabled={busy||code.length<6}>{busy?'Unlocking…':t("Unlock workspace")}</button><small><ShieldCheck size={14}/> {t("Private workspace access")}</small></form></main>;
 }
 export function AccessCodeSettings(){
  const [configured,setConfigured]=useState(false),[code,setCode]=useState(''),[confirm,setConfirm]=useState(''),[current,setCurrent]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');

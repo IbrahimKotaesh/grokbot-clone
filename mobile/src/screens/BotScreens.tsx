@@ -41,7 +41,7 @@ function usePop(trigger: unknown) {
   return v;
 }
 
-function CharacterPicker({ value, onChange, size = 58 }: { value: Fruit; onChange: (f: Fruit) => void; size?: number }) {
+function CharacterPicker({ value, onChange, size = 42, color }: { value: Fruit; onChange: (f: Fruit) => void; size?: number; color?: string }) {
   return (
     <View style={[s.row, { justifyContent: "space-between" }]}>
       {fruits.map((f) => {
@@ -58,7 +58,7 @@ function CharacterPicker({ value, onChange, size = 58 }: { value: Fruit; onChang
             }}
             style={{ padding: 4, borderRadius: size, borderWidth: 2, borderColor: on ? p.text : "transparent" }}
           >
-            <Avatar shape={f} size={size} />
+            <Avatar shape={f} size={size} color={color} />
           </Pressable>
         );
       })}
@@ -68,7 +68,7 @@ function CharacterPicker({ value, onChange, size = 58 }: { value: Fruit; onChang
 
 export function CreateBotScreen({ done }: { done: () => void }) {
   const [name, setName] = useState(""),
-    [shape, setShape] = useState<Fruit>("orange"),
+    [shape, setShape] = useState<Fruit>("accountant"),
     [role, setRole] = useState<string | null>(null),
     [instructions, setInstructions] = useState(""),
     [busy, setBusy] = useState(false),
@@ -423,7 +423,7 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
   const [name, setName] = useState(bot?.name ?? ""),
     [label, setLabel] = useState(shownLabel),
     [instructions, setInstructions] = useState(bot?.instructions ?? ""),
-    [shape, setShape] = useState<Fruit>(fruitFor(bot?.avatarShape ?? "watermelon")),
+    [shape, setShape] = useState<Fruit>(fruitFor(bot?.avatarShape ?? "accountant")),
     [color, setColor] = useState(bot?.avatarColor ?? "blue"),
     [bundle, setBundle] = useState<Bundle | null>(null),
     [section, setSection] = useState<"memory" | "routines" | "tasks" | "skills" | null>(null),
@@ -484,11 +484,9 @@ export function BotSettingsScreen({ done, openModel }: { done: () => void; openM
             <Text style={[s.label, { paddingHorizontal: space.xs }]}>{t("Character")}</Text>
             <CharacterPicker
               value={shape}
-              size={52}
-              onChange={(f) => {
-                setShape(f);
-                setColor(fruitColor[f]);
-              }}
+              size={42}
+              color={color}
+              onChange={setShape}
             />
           </View>
           <View style={{ gap: space.sm }}>

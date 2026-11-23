@@ -1,3 +1,4 @@
+import { CHARACTER_KINDS, characterKind, type CharacterKind } from "../../packages/contracts/src/characters";
 // Fino design tokens. Near-black canvas, neutral greys, white primary actions.
 // Every screen reads colour, type, spacing and motion from here — no ad-hoc values.
 
@@ -123,33 +124,19 @@ export const chatColors: Record<string, string> = {
   magenta: "#f472b6",
   gray: "#a1a1aa",
 };
-export type Fruit = "watermelon" | "orange" | "olive" | "fig";
-export const fruits: Fruit[] = ["watermelon", "orange", "olive", "fig"];
-export const fruitColor = {
-  watermelon: "red",
-  orange: "orange",
-  olive: "green",
-  fig: "violet",
-} as const;
-export const fruitAssets = {
-  watermelon: require("../assets/fruits/watermelon.webp"),
-  orange: require("../assets/fruits/orange.webp"),
-  olive: require("../assets/fruits/olive.webp"),
-  fig: require("../assets/fruits/fig.webp"),
+// Bot characters (accountant, chef, medic…) drawn in packages/contracts/src/characters.ts and painted
+// in the bot's color. The old "fruit" names stay as aliases so screens and saved bots keep working.
+export type Fruit = CharacterKind;
+export const fruits: Fruit[] = CHARACTER_KINDS;
+/** Starting color for each character when a bot is created without one. */
+export const fruitColor: Record<Fruit, string> = {
+  accountant: "cyan",
+  chef: "blue",
+  medic: "red",
+  architect: "violet",
+  engineer: "yellow",
+  florist: "magenta",
 };
-export function fruitFor(shape: string): Fruit {
-  if (fruits.includes(shape as Fruit)) return shape as Fruit;
-  if (
-    ["arch", "tablet", "capsule", "cylinder", "bean", "teardrop"].includes(
-      shape,
-    )
-  )
-    return "orange";
-  if (["ghost", "cloud", "dome", "flower", "star", "sparkle"].includes(shape))
-    return "olive";
-  if (["dino", "leaf", "clover", "house", "shield"].includes(shape))
-    return "fig";
-  return "watermelon";
-}
+export const fruitFor = (shape: string): Fruit => characterKind(shape);
 export const accentFor = (color?: string) =>
   chatColors[color ?? ""] ?? chatColors.blue;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Download, Eye, Hand, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
+import { CHARACTER_KINDS, CHARACTER_LABELS, CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
 import '../styles/landing.css';
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
@@ -18,12 +19,14 @@ export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => 
 type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
 // An example team. Every new account starts with Quinn; people add the others themselves.
 const TEAM: Bot[] = [
-  { id: 'nour', name: 'Nour', role: 'Research', img: '/characters/fruits/orange.webp', reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'quinn', name: 'Quinn', role: 'Chief of Staff', img: '/characters/fruits/watermelon.webp', reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
-  { id: 'kai', name: 'Kai', role: 'Inbox', img: '/characters/fruits/olive.webp', reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
-  { id: 'sol', name: 'Sol', role: 'Planner', img: '/characters/fruits/fig.webp', reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
+  { id: 'nour', name: 'Nour', role: 'Research', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
+  { id: 'quinn', name: 'Quinn', role: 'Chief of Staff', img: characterDataUri('accountant', 'cyan'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'red'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
+  { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
+const MARK = characterDataUri('accountant', 'cyan');
+const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
 
@@ -56,7 +59,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
     <div className="lp" ref={root}>
       <section className="lp-open">
         <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Fino">
-          <a className="lp-mark" href="/welcome"><img src="/characters/fino-brand-blue.png" alt="" width={36} height={36} /><span>Fino</span></a>
+          <a className="lp-mark" href="/welcome"><img src={MARK} alt="" width={36} height={36} /><span>Fino</span></a>
           <div className="lp-nav__links">
             <a href="#demo">See it work</a>
             <a href="#mac">Mac app</a>
@@ -93,6 +96,8 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
       </section>
 
       <Demo />
+
+      <Looks />
 
       <section className="lp-apps">
         <div className="lp-wrap lp-apps__in">
@@ -133,7 +138,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot__in">
-          <span className="lp-mark lp-mark--small"><img src="/characters/fino-brand-blue.png" alt="" width={24} height={24} /> Fino</span>
+          <span className="lp-mark lp-mark--small"><img src={MARK} alt="" width={24} height={24} /> Fino</span>
           <nav aria-label="Legal"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/support.html">Support</a></nav>
         </div>
       </footer>
@@ -222,7 +227,7 @@ function Demo() {
       </div>
       <div className={`lp-desk${fade ? ' is-fading' : ''}`} data-reveal style={{ '--i': 2 } as CSSProperties} aria-label="Demo: a bot searching a jobs site in its browser">
         <div className="lp-desk__chat">
-          <div className="lp-desk__head"><img src="/characters/fruits/orange.webp" alt="" width={28} height={28} /> Nour <span>Research</span></div>
+          <div className="lp-desk__head"><img src={TEAM[0].img} alt="" width={28} height={28} /> Nour <span>Research</span></div>
           <div className="lp-msgs">
             {msgs.map((m) => <p key={m.id} className={m.who === 'me' ? 'lp-msg lp-msg--me' : m.who === 'bot' ? 'lp-msg' : 'lp-step'}>{m.text}</p>)}
             {thinking && <p className="lp-msg lp-typing" aria-label="Nour is typing"><i /><i /><i /></p>}
@@ -300,10 +305,34 @@ export function MacOffer() {
   const close = () => { store.drop(OFFER_MAC); setShow(false); };
   return (
     <aside className="mac-offer" role="status">
-      <img src="/characters/fino-brand-blue.png" alt="" width={44} height={44} />
+      <img src={MARK} alt="" width={44} height={44} />
       <div><b>Get Fino for Mac</b><span>Your bot gets its own browser beside your chat.</span></div>
       <a className="mac-offer__dl" href="/api/download/mac" download onClick={close}><Download size={16} aria-hidden /> Download</a>
       <button type="button" className="mac-offer__x" onClick={close} aria-label="Not now"><X size={16} /></button>
     </aside>
+  );
+}
+
+/** Every job comes in every color: pick a swatch and the whole team repaints, like in the app. */
+function Looks() {
+  const [color, setColor] = useState<string>('cyan');
+  return (
+    <section className="lp-looks">
+      <div className="lp-wrap">
+        <h2 className="lp-h2" data-reveal>A job for each bot. A color for each one.</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Pick who they are, then paint them any color you like. Change it anytime inside Fino.</p>
+        <ul className="lp-looks__row" aria-label="Bot characters">
+          {CHARACTER_KINDS.map((k, i) => (
+            <li key={k} data-reveal style={{ '--i': 2 + i, '--bob': `${i * -0.7}s` } as CSSProperties}>
+              <span className="lp-looks__fig"><img src={characterDataUri(k, color)} alt="" width={120} height={120} draggable={false} /></span>
+              <span>{CHARACTER_LABELS[k]}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="lp-looks__swatches" role="radiogroup" aria-label="Color" data-reveal style={{ '--i': 8 } as CSSProperties}>
+          {LOOK_COLORS.map((c) => <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} style={{ background: CLAY[c] }} onClick={() => setColor(c)} />)}
+        </div>
+      </div>
+    </section>
   );
 }

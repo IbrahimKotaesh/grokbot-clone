@@ -277,3 +277,17 @@
   .signin__hero { margin-bottom: 8px; }
   .signin__card { padding-top: 22px !important; padding-bottom: 22px !important; }
 }
+
+/* Characters × colors */
+.lp-looks { padding: clamp(70px, 9vw, 120px) 0; text-align: center; }
+.lp-looks .lp-copy { margin-inline: auto; }
+.lp-looks__row { list-style: none; margin: 40px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.lp-looks__row li { display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+.lp-looks__fig { display: block; width: min(120px, 100%); animation: lp-bob 4.6s ease-in-out infinite; animation-delay: var(--bob); }
+.lp-looks__fig img { display: block; width: 100%; height: auto; transition: filter .3s ease; }
+.lp-looks__swatches { margin-top: 30px; display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.lp-looks__swatches button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: inset 0 -3px 0 #0002; transition: transform .15s ease; }
+.lp-looks__swatches button:hover { transform: scale(1.1); }
+.lp-looks__swatches button[aria-checked=true] { outline: 3px solid currentColor; outline-offset: 3px; }
+@media (max-width: 720px) { .lp-looks__row { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 26px; } }
+@media (prefers-reduced-motion: reduce) { .lp-looks__fig { animation: none; } }

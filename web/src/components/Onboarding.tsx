@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { configApi } from '../lib/configApi';
@@ -174,7 +175,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
   return (
     <section className="onb__step">
       <div className="onb__team onb__team--small" aria-hidden="true">
-        {(['orange', 'watermelon', 'olive', 'fig'] as const).map((f, i) => <span key={f} style={{ '--i': i } as CSSProperties}><img src={`/characters/fruits/${f}.webp`} alt="" /></span>)}
+        {([['architect', 'violet'], ['accountant', 'cyan'], ['medic', 'red'], ['florist', 'magenta']] as const).map(([k, c], i) => <span key={k} style={{ '--i': i } as CSSProperties}><img src={characterDataUri(k, c)} alt="" /></span>)}
       </div>
       <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
       <p>{required ? t('Pick how your bots think: your ChatGPT, your Claude, or Fino’s own models.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>

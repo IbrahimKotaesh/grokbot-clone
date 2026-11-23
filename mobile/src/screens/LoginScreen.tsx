@@ -52,7 +52,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space.xl }}>
           <FadeIn>
             <View style={{ flexDirection: "row" }}>
-              {fruits.map((f, i) => (
+              {fruits.slice(0, 4).map((f, i) => (
                 <Animated.View
                   key={f}
                   style={{

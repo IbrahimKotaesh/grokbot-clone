@@ -14,9 +14,11 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Image } from "expo-image";
+import { SvgXml } from "react-native-svg";
+import { characterSvg } from "../../../packages/contracts/src/characters";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { palette as p, fruitAssets, fruitFor, type, space, radius, accentFor, onThemeChange } from "../theme";
+import { palette as p, fruitColor, fruitFor, type, space, radius, accentFor, onThemeChange } from "../theme";
 import { PressableScale, useLoop } from "./motion";
 import { mirror } from "../lib/i18n";
 
@@ -37,30 +39,13 @@ export function Avatar({
   color?: string;
 }) {
   const pulse = useLoop(1600, status === "working");
+  const kind = fruitFor(shape);
+  const xml = React.useMemo(() => characterSvg(kind, color ?? fruitColor[kind], false), [kind, color]);
   const dot = Math.max(10, size * 0.22);
   return (
     <View style={{ width: size, height: size }}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          // The chosen color tints the circle behind the fruit, with a thin ring of the same color.
-          backgroundColor: color ? `${accentFor(color)}2e` : p.raised,
-          borderWidth: color ? Math.max(1.5, size * 0.03) : 0,
-          borderColor: color ? `${accentFor(color)}99` : "transparent",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        <Image
-          source={fruitAssets[fruitFor(shape)]}
-          style={{ width: size * 0.78, height: size * 0.78 }}
-          contentFit="contain"
-          transition={120}
-        />
-      </View>
+      {/* The character itself wears the bot's color, so there is no tinted circle behind it. */}
+      <SvgXml xml={xml} width={size} height={size} />
       {primary && (
         <View style={[styles.badge, { top: -2, right: -2, backgroundColor: p.amber }]}>
           <Ionicons name="star" size={9} color="#000" />

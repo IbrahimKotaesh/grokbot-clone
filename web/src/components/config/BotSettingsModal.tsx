@@ -1,10 +1,10 @@
 import { t } from '../../lib/i18n';
+import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { BrainPicker } from './BrainPicker';
-import {characterKind, FRUIT_COLORS} from '../../avatar/FinoCharacter';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot, Memory, Routine, Skill } from '@shared/types';
 import { BotAvatar, BotAvatarFor, PICKER_SHAPES } from '../../avatar/BotAvatar';
-import { COLOR_ORDER, botVars, palette } from '../../lib/colors';
+import { COLOR_ORDER, botVars } from '../../lib/colors';
 import { configApi, type BotSettingsBundle } from '../../lib/configApi';
 import { useConfigUI, useVersion, type BotSettingsTab } from '../../configStore';
 import { useStore } from '../../store';
@@ -243,7 +243,7 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
         {SHAPE_ROWS.map((row, i) => (
           <div key={i} className="shape-grid__row">
             {row.map((s) => (
-              <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={s} className="shape-cell" onClick={() => {onShape(s);onColor(FRUIT_COLORS[characterKind(s)]);}}>
+              <button key={s} type="button" role="radio" aria-checked={shape === s} aria-label={t(CHARACTER_LABELS[characterKind(s)])} title={t(CHARACTER_LABELS[characterKind(s)])} className="shape-cell" onClick={() => onShape(s)}>
                 <BotAvatar shape={s} color={color} size={34} ring={shape === s} />{shape===s&&<span className="look-check"><Icon name="check" size={11}/></span>}
               </button>
             ))}
@@ -254,7 +254,7 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
         <div className="swatches__row">
           {COLOR_ORDER.map((c) => (
             <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className="swatch-cell" onClick={() => onColor(c)}>
-              <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: palette(c).fill }} />{color===c&&<span className="look-check"><Icon name="check" size={11}/></span>}
+              <span className={`swatch${color === c ? ' is-selected' : ''}`} style={{ background: CLAY[c] }} />{color===c&&<span className="look-check"><Icon name="check" size={11}/></span>}
             </button>
           ))}
         </div>

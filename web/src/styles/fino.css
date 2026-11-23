@@ -98,6 +98,14 @@ button, a { touch-action: manipulation; }
   }
   @keyframes fino-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
   .fino-avatar>.fino-character { transform-origin: 50% 80%; }
+  /* Idle breathing: a slow squash from the feet, each character a little out of step. */
+  @keyframes fino-breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.025,.975); } }
+  .fino-character img { transform-origin: 50% 92%; animation: fino-breathe 3.6s ease-in-out infinite; }
+  .fino-character[data-character=chef] img { animation-delay: -.6s; }
+  .fino-character[data-character=medic] img { animation-delay: -1.2s; }
+  .fino-character[data-character=architect] img { animation-delay: -1.8s; }
+  .fino-character[data-character=engineer] img { animation-delay: -2.4s; }
+  .fino-character[data-character=florist] img { animation-delay: -3s; }
   .bot-row:has(.is-working) .fino-avatar>.fino-character, .pinned__avatar:has(.is-working) .fino-avatar>.fino-character { animation: fino-working 1.8s ease-in-out infinite; }
   @media(hover:hover){.fino-avatar:hover>.fino-character { animation: fino-working .7s ease-in-out 1; }}
   .bot-row, .pinned__tile, .app-row, .icon-btn, .app-row__connect { transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
