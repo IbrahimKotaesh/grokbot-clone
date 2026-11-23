@@ -136,7 +136,7 @@ function MorningBriefSettings() {
 
 function ThemeTile({ value, label, current, onPick }: { value: Theme; label: string; current: Theme; onPick: (t: Theme) => void }) {
   return (
-    <button type="button" role="radio" aria-checked={current === value} className={`theme-tile${current === value ? ' is-active' : ''}`} onClick={() => onPick(value)}>
+    <button type="button" role="radio" aria-label={label} aria-checked={current === value} className={`theme-tile${current === value ? ' is-active' : ''}`} onClick={() => onPick(value)}>
       <span className={`theme-tile__art is-${value}`} aria-hidden>
         <span className="theme-tile__side" />
         <span className="theme-tile__pane"><i /><i /><b /></span>
@@ -174,7 +174,12 @@ function GeneralSection() {
 
 // ---------------------------------------------------------------------------
 
-const screenLabel = (id: string) => (id === 'default' ? t("Main screen") : `Screen ${Number(id.replace('screen-', '')) - 98 || id}`);
+// Cloud computers number extra screens from 99, Fino's own server from 1; either way the main screen is "1".
+const screenLabel = (id: string) => {
+  if (id === 'default') return t("Main screen");
+  const n = Number(id.replace('screen-', ''));
+  return Number.isFinite(n) ? t('Screen {n}', { n: n >= 99 ? n - 97 : n + 1 }) : id;
+};
 
 function ComputerSection() {
   const computer = useStore((s) => s.computer);
@@ -204,9 +209,9 @@ function ComputerSection() {
           <div className="cfg-row">
             <span className={`computer-status-dot is-${running ? 'on' : transitioning ? 'busy' : 'off'}`} aria-hidden />
             <div className="cfg-row__text">
-              <div className="cfg-row__title">Bots’ computer · {computerStatusText(computer ?? null)}</div>
+              <div className="cfg-row__title">{t('Bots’ computer')} · {computerStatusText(computer ?? null)}</div>
               <div className="cfg-row__sub">
-                {details ? `Goes to sleep after ${details.hibernation.idleMinutes} idle minutes when nobody is watching. Starts again on its own once a Bot has work.` : 'Checking…'}
+                {details ? t('Goes to sleep after {n} idle minutes when nobody is watching. Starts again on its own once a Bot has work.', { n: details.hibernation.idleMinutes }) : t('Checking…')}
               </div>
             </div>
             {running || status === 'suspending' ? (
@@ -232,16 +237,16 @@ function ComputerSection() {
                 {bot ? <BotAvatarFor bot={bot} size={28} /> : <span className="cfg-row__ph" />}
                 <div className="cfg-row__text">
                   <div className="cfg-row__title">{bot?.name ?? t("Removed Bot")}</div>
-                  <div className="cfg-row__sub">{screenLabel(s.screenId)} · used {relativeShort(s.lastUsedAt) === 'now' ? 'just now' : `${relativeShort(s.lastUsedAt)}${/^\d/.test(relativeShort(s.lastUsedAt)) ? ' ago' : ''}`}</div>
+                  <div className="cfg-row__sub">{screenLabel(s.screenId)} · {relativeShort(s.lastUsedAt) === 'now' ? t('used just now') : /^\d/.test(relativeShort(s.lastUsedAt)) ? t('used {time} ago', { time: relativeShort(s.lastUsedAt) }) : t('used {time}', { time: t(relativeShort(s.lastUsedAt)) })}</div>
                 </div>
                 <ConfirmButton
                   className="cfg-btn cfg-btn--secondary"
-                  confirmLabel="Reset screen"
+                  confirmLabel={t('Reset screen')}
                   disabled={!running}
                   title={running ? t("Closes everything open on this screen") : t("Wake the computer first")}
                   onConfirm={async () => { try { await configApi.resetScreen(s.botId); setNote(null); load(); } catch (e) { setNote((e as Error).message); } }}
                 >
-                  Reset
+                  {t('Reset')}
                 </ConfirmButton>
               </div>
             );
@@ -324,7 +329,7 @@ function AppsSection() {
         <div className="cfg-card">
           <div className="cfg-row">
             <div className="cfg-row__text">
-              <div className="cfg-row__title">{apps === null ? 'Checking…' : apps.length ? `${apps.length} app${apps.length === 1 ? '' : 's'} connected` : t("No apps connected yet")}</div>
+              <div className="cfg-row__title">{apps === null ? t('Checking…') : apps.length ? (apps.length === 1 ? t('1 app connected') : t('{n} apps connected', { n: apps.length })) : t("No apps connected yet")}</div>
               <div className="cfg-row__sub">{t("Bots ask before doing anything that changes data in an app.")}</div>
             </div>
             <button type="button" className="cfg-btn cfg-btn--primary" onClick={openApps}>{apps?.length ? t("Manage apps") : t("Connect apps")}</button>

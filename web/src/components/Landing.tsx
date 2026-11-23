@@ -74,7 +74,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
         <div className="lp-open__body">
           <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>Give your</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>AI team a job.</span></span></h1>
-          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own browser. They read your email, pay the bills, plan your trips and click through websites for you, while you sleep or get on with something else.</p>
+          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own browser. They read your email, line up the bills for your OK, plan your trips and click through websites for you, while you sleep or get on with something else.</p>
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
             <label htmlFor="lp-task" className="lp-sr">What should your team do?</label>

@@ -1,4 +1,4 @@
-import { t } from '../../lib/i18n';
+import { lang, t } from '../../lib/i18n';
 import {useCallback,useEffect,useState} from 'react';
 import {Bell,BellRing,Check,ExternalLink} from 'lucide-react';
 import {pushRequest,pushSupport,currentPush,enableDevicePush,disableDevicePush,type AlertItem} from '../../lib/push';
@@ -21,10 +21,19 @@ export function NotificationsSection(){
  {enabled&&<div className="notification-preferences"><label><input type="checkbox" checked={!!device?.previews} disabled={busy} onChange={e=>preference('previews',e.target.checked)}/><span>{t("Show message content")}<small>{t("Read the message directly in the notification, including on your lock screen. Your device may shorten long text.")}</small></span></label></div>}
  {error&&<p role="alert" className="notification-error">{error}</p>}{message&&<p role="status">{message}</p>}</section>
  <section className="notification-history-section"><div className="notification-history__head"><h2><Bell size={18}/>{t("Recent alerts")}<span className="notification-count">{items.length}</span></h2><button type="button" className="link-btn" disabled={busy||!items.some(i=>!i.readAt)} onClick={()=>void run(async()=>{await pushRequest('/notifications/read','POST',{});})}><Check size={14}/> {t("Mark all read")}</button></div>
- {!items.length?<div className="notification-empty"><span><Bell size={26}/></span><h3>{t("You’re all caught up")}</h3><p>{t("Alerts you request from your bots will appear here.")}</p></div>:<div className="notification-history">{items.map(item=><button type="button" className={`notification-item${item.readAt?'':' is-unread'}`} key={item.id} onClick={()=>void run(()=>open(item))}><span className="notification-item__icon"><Bell size={17}/></span><span className="notification-item__content"><strong>{item.title}</strong><p dir="auto">{item.body}</p><time dateTime={new Date(item.createdAt).toISOString()}>{new Date(item.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</time></span>{item.botId&&<ExternalLink size={14}/>}</button>)}</div>}</section></>;
+ {!items.length?<div className="notification-empty"><span><Bell size={26}/></span><h3>{t("You’re all caught up")}</h3><p>{t("Alerts you request from your bots will appear here.")}</p></div>:<div className="notification-history">{items.map(item=><button type="button" className={`notification-item${item.readAt?'':' is-unread'}`} key={item.id} onClick={()=>void run(()=>open(item))}><span className="notification-item__icon"><Bell size={17}/></span><span className="notification-item__content"><strong dir="auto">{alertTitle(item.title)}</strong><p dir="auto">{t(item.body)}</p><time dateTime={new Date(item.createdAt).toISOString()}>{new Date(item.createdAt).toLocaleString(lang === 'ar' ? 'ar' : 'en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</time></span>{item.botId&&<ExternalLink size={14}/>}</button>)}</div>}</section></>;
 }
 export function NotificationBell(){
  const [unread,setUnread]=useState(0);
  useEffect(()=>{const refresh=()=>void pushRequest<{unread:number}>('/notifications').then(r=>setUnread(r.unread)).catch(()=>{});refresh();const listener=(e:Event)=>{if((e as CustomEvent).detail?.type==='notifications')refresh();};window.addEventListener('grokbot:event',listener);return()=>window.removeEventListener('grokbot:event',listener);},[]);
  return <button type="button" className="icon-btn icon-btn--bordered notification-bell" title={t("Notifications")} aria-label={`Notifications${unread?`, ${unread} unread`:''}`} onClick={()=>useConfigUI.getState().openAppSettings('notifications')}><Bell size={18}/>{unread>0&&<span>{unread>99?'99+':unread}</span>}</button>;
+}
+
+/** Alert titles are stored in English by the server; show them in the reader's language. */
+function alertTitle(title: string) {
+  const attention = /^(.+) needs your attention$/.exec(title);
+  if (attention) return t('{name} needs your attention', { name: attention[1] });
+  const update = /^New update from (.+)$/.exec(title);
+  if (update) return t('New update from {name}', { name: update[1] });
+  return t(title);
 }

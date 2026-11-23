@@ -154,9 +154,36 @@ export async function screenFor(userId: string, botId: string): Promise<{ comput
       db.prepare('DELETE FROM screens WHERE bot_id=?').run(botId);
     }
   }
+  // Two bots asking at once must not pick the same free screen: hand screens out one at a time.
+  const lease = leaseLock.then(() => leaseScreen(userId, botId, computerId));
+  leaseLock = lease.then(() => {}, () => {});
+  return lease;
+}
+
+/** Screens are handed out one at a time (see screenFor). */
+let leaseLock: Promise<void> = Promise.resolve();
+
+// Repair screens that two bots were given at the same time before leases were serialized:
+// the most recently used bot keeps it, the other gets a screen of its own next time it needs one.
+{
+  const shared = env.computerProvider === 'local';
+  const dupes = db.prepare(`SELECT s.bot_id FROM screens s WHERE EXISTS (SELECT 1 FROM screens o WHERE o.screen_id=s.screen_id ${shared ? '' : 'AND o.user_id=s.user_id'} AND o.bot_id<>s.bot_id AND (o.last_used_at>s.last_used_at OR (o.last_used_at=s.last_used_at AND o.bot_id>s.bot_id)))`).all() as { bot_id: string }[];
+  for (const d of dupes) db.prepare('DELETE FROM screens WHERE bot_id=?').run(d.bot_id);
+  if (dupes.length) console.log(`[computer] freed ${dupes.length} double-booked screen lease(s)`);
+}
+
+async function leaseScreen(userId: string, botId: string, computerId: string): Promise<{ computerId: string; screenId: string }> {
+  // Another call may have leased this bot a screen while this one waited.
+  const already = db.prepare('SELECT screen_id FROM screens WHERE bot_id=?').get(botId) as any;
+  if (already) return { computerId, screenId: already.screen_id };
   // Primary bot uses the box's default screen.
   const bot = db.prepare('SELECT is_primary FROM bots WHERE id=?').get(botId) as any;
-  const leased = db.prepare('SELECT bot_id, screen_id, last_used_at FROM screens WHERE user_id=? ORDER BY last_used_at ASC').all(userId) as any[];
+  // On Fino's own server every account shares ONE machine with four screens, so a screen in use by
+  // anyone is taken; with a computer per account (cloud) only that account's screens count.
+  const shared = env.computerProvider === 'local';
+  const leased = (shared
+    ? db.prepare('SELECT bot_id, screen_id, last_used_at FROM screens ORDER BY last_used_at ASC').all()
+    : db.prepare('SELECT bot_id, screen_id, last_used_at FROM screens WHERE user_id=? ORDER BY last_used_at ASC').all(userId)) as any[];
   const taken = new Set(leased.map((l) => l.screen_id));
   let screenId: string | null = null;
   if (bot?.is_primary && !taken.has('default')) screenId = 'default';
@@ -171,7 +198,7 @@ export async function screenFor(userId: string, botId: string): Promise<{ comput
       const victim = leased.find((l) => !getLive(l.bot_id).isRunning && l.screen_id !== 'default') ?? leased.find((l) => l.screen_id !== 'default') ?? leased[0];
       db.prepare('DELETE FROM screens WHERE bot_id=?').run(victim.bot_id);
       screenId = victim.screen_id;
-      try { await orgo.bash(computerId, screenId!, `pkill -f "user-data-dir=/root/grokbot/profiles/${victim.bot_id}" || true`, 20); } catch { /* best effort */ }
+      try { await orgo.bash(computerId, screenId!, `pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${victim.bot_id}" || true`, 20); } catch { /* best effort */ }
     }
   }
   db.prepare('INSERT OR REPLACE INTO screens(bot_id,user_id,screen_id,last_used_at) VALUES (?,?,?,?)').run(botId, userId, screenId, now());

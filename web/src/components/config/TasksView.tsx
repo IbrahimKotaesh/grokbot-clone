@@ -19,7 +19,7 @@ const isStalled = (task: Task) => task.state === 'working' && Date.now() - task.
 
 function when(t: Task): string {
   const r = relativeShort(t.updatedAt);
-  const ago = r === 'now' ? tr('just now') : r === 'Yesterday' ? tr('yesterday') : tr('{time} ago', { time: r });
+  const ago = r === 'now' ? tr('just now') : r === tr('Yesterday') ? tr('yesterday') : tr('{time} ago', { time: r });
   if (isStalled(t)) return tr('No update for {time}', { time: r });
   return t.state === 'done' ? tr('Completed {time}', { time: ago }) : t.state === 'needs_input' ? tr('Asked {time}', { time: ago }) : tr('Updated {time}', { time: ago });
 }

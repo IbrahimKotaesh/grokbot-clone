@@ -81,7 +81,7 @@ export function LibraryTab({ bot }: { bot: Bot }) {
                   <span className="lib-row__icon"><Glyph name={f.isDir ? 'folder' : 'doc'} size={16} opacity={0.6} /></span>
                   <span className="panel-row__text">
                     <span className="panel-row__title">{f.name}</span>
-                    <span className="panel-row__meta">{f.isDir ? t("Folder") : formatBytes(f.size)} · {relativeShort(f.modifiedAt) === 'now' ? 'just now' : relativeShort(f.modifiedAt)}</span>
+                    <span className="panel-row__meta">{f.isDir ? t("Folder") : formatBytes(f.size)} · {relativeShort(f.modifiedAt) === 'now' ? t('just now') : relativeShort(f.modifiedAt)}</span>
                   </span>
                 </button>
                 {f.isDir ? <Icon name="chev_right" size={12} opacity={0.5} /> : (
