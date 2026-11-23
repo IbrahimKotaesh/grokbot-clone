@@ -110,10 +110,31 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side:
           </div>
         )}
       </div>:null}
-      <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
+      <div className="bubble__meta">
+        <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
+        {side === 'left' && !b.streaming && b.text.trim() && <CopyButton text={b.text} />}
+      </div>
     </div>
   );
 });
+
+/** Copy a reply's text; shows "Copied" for a moment. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    const ok = () => { setDone(true); setTimeout(() => setDone(false), 1500); };
+    try { await navigator.clipboard.writeText(text); ok(); return; } catch { /* some windows (embedded views, the Mac app) refuse; fall back */ }
+    const area = document.createElement('textarea');
+    area.value = text; area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(area); area.select();
+    try { if (document.execCommand('copy')) ok(); } finally { area.remove(); }
+  };
+  return (
+    <button type="button" className={`bubble__copy${done ? ' is-done' : ''}`} onClick={() => void copy()} aria-label={done ? t('Copied') : t('Copy reply')} title={done ? t('Copied') : t('Copy reply')}>
+      <Icon name={done ? 'check' : 'copy'} size={13} />{done && <span>{t('Copied')}</span>}
+    </button>
+  );
+}
 
 function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
   const bot = useStore((s) => (from.kind === 'bot' ? s.bots.find((b) => b.id === from.id) : undefined));

@@ -343,9 +343,9 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .composer__toolbar .composer__right { flex: none; }
 .composer__toolbar .composer__setting-anchor { flex-shrink: 1; min-width: 0; }
 .composer__toolbar .composer__setting { min-width: 0; max-width: 100%; }
-.composer__toolbar .composer__setting > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.composer__toolbar .composer__setting > span:not(.provider-logo) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @container (max-width: 440px) { .composer__permissions .composer__setting > span { display: none; } .composer__permissions .composer__setting { padding-inline: 8px; gap: 4px; } }
-@container (max-width: 330px) { .composer__model-picker .composer__setting > span { display: none; } }
+@container (max-width: 330px) { .composer__model-picker .composer__setting > span:not(.provider-logo) { display: none; } }
 
 /* Drag handles between the columns (wide screens only). */
 .col-resize { display: none; }
@@ -394,3 +394,15 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .other-screen__name > span:not(.fino-avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .other-screen__name em { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; flex: none; }
 .viewer--panel .viewer__screen canvas { margin: 0 auto auto !important; }
+/* The model button never collapses: it keeps its logo; only its name hides when space is tight. */
+.composer__toolbar .composer__model-picker { flex-shrink: 0; }
+.composer__toolbar .composer__setting > .provider-logo, .composer__toolbar .composer__setting > svg { flex: none; }
+
+/* Copy a bot reply: a quiet button beside the time, clearer on hover. */
+.bubble-wrap.is-left { position: relative; }
+.bubble__copy { display: inline-flex; align-items: center; gap: 4px; height: 24px; margin-inline-end: 6px; padding: 0 6px; border: 0; border-radius: 7px; background: transparent; color: var(--p-faint); font: inherit; font-size: 12px; cursor: pointer; opacity: .7; transition: opacity .15s ease, background-color .15s ease, color .15s ease; vertical-align: middle; }
+.bubble__copy:hover { opacity: 1; color: var(--p-text); background: var(--p-raised); }
+.bubble__copy.is-done { opacity: 1; color: var(--p-green); }
+@media (hover: hover) { .bubble__copy { opacity: 0; } .bubble-wrap:hover .bubble__copy, .bubble__copy:focus-visible, .bubble__copy.is-done { opacity: 1; } }
+.bubble__meta { display: flex; align-items: center; gap: 2px; }
+.bubble-wrap.is-right .bubble__meta { justify-content: flex-end; }

@@ -171,20 +171,24 @@ export function ConnectAppsModal() {
       <div className="apps-modal__head">
         <div className="apps-modal__titlerow">
           <span className="apps-modal__title">{t("Connect Apps")}</span>
-          <button type="button" className={`apps-modal__connected${view.kind === 'connected' ? ' is-active' : ''}`} onClick={() => setView(view.kind === 'connected' ? { kind: 'all' } : { kind: 'connected' })}>
+          {data && <button type="button" className={`apps-modal__connected${view.kind === 'connected' ? ' is-active' : ''}`} onClick={() => setView(view.kind === 'connected' ? { kind: 'all' } : { kind: 'connected' })}>
             {connectedApps.length > 0 && (
               <span className="apps-modal__connected-logos">
                 {connectedApps.slice(0, 4).map((a) => a.logo ? <img key={a.slug} src={a.logo} alt="" /> : null)}
               </span>
             )}
-            <span>{connectedCount} connected</span>
+            <span>{t('{n} connected', { n: String(connectedCount) })}</span>
             <Icon name="chev_right" size={12} opacity={0.56} />
-          </button>
+          </button>}
         </div>
         <p className="apps-modal__intro">{t("Connect the accounts your assistants can work with.")}</p>
-        <div className="apps-modal__quicklinks" aria-label={t("Popular connections")}>
-          {['GitHub', t("Slack"), t("Gmail")].map(name => <button key={name} type="button" className="cat-pill" onClick={() => { setView({ kind: 'all' }); setSearch(name); }}>{name}<Icon name="plus" size={14} /></button>)}
-        </div>
+        {/* Popular apps you haven't connected yet; hidden until we know what's connected. */}
+        {data && (() => {
+          const popular = [['github', 'GitHub'], ['slack', t('Slack')], ['gmail', t('Gmail')], ['googlecalendar', t('Google Calendar')], ['googledrive', t('Google Drive')]].filter(([slug]) => !data.connected.includes(slug)).slice(0, 3);
+          return popular.length ? <div className="apps-modal__quicklinks" aria-label={t("Popular connections")}>
+            {popular.map(([slug, name]) => <button key={slug} type="button" className="cat-pill" onClick={() => { setView({ kind: 'all' }); setSearch(name); }}>{name}<Icon name="plus" size={14} /></button>)}
+          </div> : null;
+        })()}
         <div className="apps-modal__controls">
           <div className="apps-modal__searchrow">
             <label className="pill-input">

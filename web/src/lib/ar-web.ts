@@ -486,4 +486,8 @@ export const arWeb: Record<string, string> = {
   "Other bots’ computers": "كمبيوترات باقي البوتات",
   "Show {name}’s computer": "اعرض كمبيوتر {name}",
   "Working": "عم يشتغل",
+  "{n} connected": "{n} مربوطين",
+  "Google Calendar": "تقويم Google",
+  "Google Drive": "Google Drive",
+  "Copy reply": "انسخ الرد",
 };
