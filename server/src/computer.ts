@@ -3,7 +3,7 @@ import { db, now } from './db.js';
 import { env } from './env.js';
 import { hub } from './lib/hub.js';
 import { orgo, OrgoError } from './orgo.js';
-import { prepareLocalDesktop } from './local-computer.js';
+import { prepareLocalDesktop, restartLocalScreen } from './local-computer.js';
 import { getLive } from './store.js';
 import type { ComputerState } from './types.js';
 
@@ -179,6 +179,18 @@ export async function screenFor(userId: string, botId: string): Promise<{ comput
   else if (screenId !== 'default') await prepareScreen(computerId, screenId!);
   hub.emit(userId, { type: 'computer', state: computerState(userId) });
   return { computerId, screenId: screenId! };
+}
+
+/** Restart a frozen bot's screen (its browser and desktop), leaving the other bots' screens alone. */
+export async function restartBotComputer(userId: string, botId: string): Promise<void> {
+  const { computerId, screenId } = await screenFor(userId, botId);
+  if (env.computerProvider === 'local') await restartLocalScreen(screenId, botId);
+  else {
+    await orgo.bash(computerId, screenId, `pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${botId}" || true; rm -f /root/grokbot/profiles/${botId}/Singleton*`, 30).catch(() => {});
+    if (screenId !== 'default') await prepareScreen(computerId, screenId);
+  }
+  db.prepare('UPDATE screens SET last_used_at=? WHERE bot_id=?').run(now(), botId);
+  hub.emit(userId, { type: 'computer', state: computerState(userId) });
 }
 
 /** Orgo's extra screens start as a bare X display (black); give them the normal desktop and wallpaper. */

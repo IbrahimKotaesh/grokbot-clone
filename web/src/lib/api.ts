@@ -51,6 +51,7 @@ export const api = {
 
   computer: () => req<{ computer: ComputerState }>('GET', '/computer'),
   ensureComputer: () => req<{ computer: ComputerState }>('POST', '/computer/ensure'),
+  restartBotComputer: (botId: string) => req<{ ok: boolean }>('POST', `/bots/${botId}/computer/restart`),
 
   apps: (search = '', category = '') => req<AppsResponse>('GET', `/apps?search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`),
   connect: (slug: string, botId?: string, seq?: number,generation?:number) => req<{ redirectUrl: string }>('POST', `/apps/${slug}/connect`, { botId, seq,generation }),

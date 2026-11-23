@@ -26,7 +26,7 @@ import { hub } from './lib/hub.js';
 import { createSession, destroySession, requireUser, userFromRequest, userFromCookieHeader, type AuthVars } from './lib/auth.js';
 import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
 import { enqueue, interrupt, resolveApproval } from './agent/loop.js';
-import { computerState, ensureComputer, refreshComputer, suspendComputer } from './computer.js';
+import { computerState, ensureComputer, refreshComputer, restartBotComputer, suspendComputer } from './computer.js';
 import { orgo } from './orgo.js';
 import { catalog, connectedToolkits, deleteConnection, disconnect, googleProfile, startConnect, startGoogleLogin, toolkitInfo } from './composio.js';
 import { runRoutine, scheduleRoutine, unscheduleRoutine } from './routines.js';
@@ -435,6 +435,21 @@ api.post('/computer/ensure', async (c) => {
 api.post('/computer/suspend', async (c) => {
   await suspendComputer(c.get('user').id);
   return c.json({ computer: computerState(c.get('user').id) });
+});
+
+// Restart one bot's screen when it froze (its browser and desktop). Other bots keep working.
+api.post('/bots/:id/computer/restart', async (c) => {
+  const user = c.get('user');
+  const b = ownBot(user.id, c.req.param('id'));
+  if (!b || b.kind === 'room') return c.json({ error: 'not found' }, 404);
+  try {
+    await restartBotComputer(user.id, b.id);
+    return c.json({ ok: true });
+  } catch (e) {
+    if (e instanceof PlanLimitError) return c.json({ error: e.message, code: 'plan_limit', feature: e.feature }, 402);
+    console.warn('[computer] restart failed', (e as Error).message);
+    return c.json({ error: 'The computer could not restart. Please try again.' }, 503);
+  }
 });
 
 // Which of my bots have their own screen on the computer (for the small screens under the main one).

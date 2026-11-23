@@ -512,4 +512,9 @@ export const arWeb: Record<string, string> = {
   "This browser can’t show notifications.": "هالمتصفّح ما بيعرض إشعارات.",
   "Get a notification when a bot finishes while Fino is in the background.": "خلّي يوصلك إشعار لما يخلّص بوت وFino مش قدامك.",
   "A short chime when a bot finishes while Fino is in the background.": "رنّة قصيرة لما يخلّص بوت وFino مش قدامك.",
+  "Restart computer": "إعادة تشغيل الكمبيوتر",
+  "Restart now?": "إعادة التشغيل الآن؟",
+  "Restarting…": "عم يعيد التشغيل…",
+  "Couldn't restart": "ما قدر يعيد التشغيل",
+  "Restarting a computer": "عم يعيد تشغيل كمبيوتر",
 };

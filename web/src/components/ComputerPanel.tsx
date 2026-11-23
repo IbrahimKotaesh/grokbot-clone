@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
 import { t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
@@ -15,7 +17,24 @@ export function ComputerPanel() {
   const bot = useSelectedBot();
   const computer = useStore((s) => s.computer);
   const set = useStore((s) => s.set);
+  const [restart, setRestart] = useState<'idle' | 'confirm' | 'busy' | 'failed'>('idle');
+  const [fresh, setFresh] = useState(0);
+  useEffect(() => { setRestart('idle'); }, [bot?.id]);
+  // A second click within a few seconds confirms; the question fades back on its own.
+  useEffect(() => {
+    if (restart !== 'confirm' && restart !== 'failed') return;
+    const timer = setTimeout(() => setRestart('idle'), restart === 'failed' ? 5000 : 6000);
+    return () => clearTimeout(timer);
+  }, [restart]);
   if (!bot || bot.kind === 'room') return null;
+  const doRestart = async () => {
+    if (restart === 'busy') return;
+    if (restart !== 'confirm') { setRestart('confirm'); return; }
+    setRestart('busy');
+    try { await api.restartBotComputer(bot.id); setRestart('idle'); setFresh((n) => n + 1); }
+    catch { setRestart('failed'); }
+  };
+  const restartLabel = restart === 'confirm' ? t('Restart now?') : restart === 'busy' ? t('Restarting…') : restart === 'failed' ? t("Couldn't restart") : t('Restart computer');
   const running = computer?.status === 'running';
   // Isolate the name so an Arabic name doesn't flip the English title around it.
   const title = t("{name}'s computer", { name: `\u2068${bot.name.trim()}\u2069` });
@@ -26,12 +45,18 @@ export function ComputerPanel() {
         <BotAvatarFor bot={bot} size={22} />
         <span className="computer-panel__title">{title}</span>
         <span className={`computer-panel__status${running ? ' is-on' : busy ? ' is-busy' : ''}`}><i />{computerStatusText(computer)}</span>
+        {running && (
+          <button type="button" className={`computer-panel__restart is-${restart}`} onClick={() => void doRestart()} disabled={restart === 'busy'} aria-label={restartLabel} title={restartLabel}>
+            <Icon name="refresh" size={15} opacity={0.7} />
+            {restart !== 'idle' && <span>{restartLabel}</span>}
+          </button>
+        )}
         <button type="button" className="icon-btn computer-panel__hide" onClick={() => set({ detailsOpen: false })} aria-label={t("Hide computer")} title={t("Hide computer")}>
           <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />
         </button>
       </header>
       <div className="computer-panel__screen">
-        <ComputerViewer key={bot.id} panel />
+        <ComputerViewer key={`${bot.id}:${fresh}`} panel />
       </div>
       <OtherScreens current={bot.id} />
     </aside>

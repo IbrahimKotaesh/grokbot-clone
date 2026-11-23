@@ -14,7 +14,7 @@ import { db, now } from '../db.js';
 import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
-import { screenFor } from '../computer.js';
+import { restartBotComputer, screenFor } from '../computer.js';
 import { appendRow, updateRow, getBotRow, listRoutines, toRoutine, describeCron } from '../store.js';
 import { readPage } from './read-page.js';
 import { composioTools, executeComposio, executeComposio as runAppTool, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
@@ -682,6 +682,20 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
       if (ctx.depth >= 3) return { output: 'Too many hops between bots; answer the user directly instead.' };
       ctx.enqueueBotMessage(ctx.botId, target.id, String(a.message), ctx.depth + 1);
       return { output: `Sent to ${target.name}. Their reply will come back to you as a message.`, summary: `Messaged ${target.name}` };
+    },
+  },
+  {
+    name: 'restart_bot_computer',
+    description: "Restart a teammate's computer screen (or your own) when it is frozen, black, unresponsive or its browser crashed. Closes that bot's browser and restarts only its screen; other bots keep working. Then tell that bot (send_to_bot) to continue its task if it was in the middle of one.",
+    parameters: obj({ bot_name: { type: 'string', description: 'Name of the bot whose computer to restart' } }, ['bot_name']),
+    activity: 'running_commands',
+    label: 'Restarting a computer',
+    impl: async (a, ctx) => {
+      const target = botByName(ctx.userId, a.bot_name);
+      if (!target) return { output: `No bot named "${a.bot_name}". Team: ${(db.prepare('SELECT name FROM bots WHERE user_id=?').all(ctx.userId) as any[]).map((b) => b.name).join(', ')}` };
+      if (target.kind === 'room') return { output: `"${target.name}" is a group chat and has no computer.` };
+      await restartBotComputer(ctx.userId, target.id);
+      return { output: `Restarted ${target.name}'s computer. Its screen is fresh, with an empty browser.`, summary: `Restarted ${target.name}'s computer` };
     },
   },
   {

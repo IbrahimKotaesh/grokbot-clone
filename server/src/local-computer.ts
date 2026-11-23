@@ -110,6 +110,25 @@ export const localComputer = {
 };
 export const localVncUrl = (screen: string) => `ws://127.0.0.1:${vncBase + display(screen)}`;
 
+/**
+ * Restart one bot's screen from scratch: close its browser, stop that display's desktop, viewer relay and X server,
+ * then start them again. Other bots' screens are untouched. Patterns use [x] so pkill never matches this script itself.
+ */
+export async function restartLocalScreen(screen: string, botId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(botId)) throw new Error('Invalid bot id');
+  const n = display(screen);
+  // x11vnc blocks SIGTERM, so whatever is still alive after a short grace period is killed outright.
+  await localShell(`pats=('[u]ser-data-dir=/root/grokbot/profiles/${botId}' '[f]ino-${n} ' '^[x]11vnc -display :${n} ' '^/usr/bin/python3 /usr/bin/[w]ebsockify ${wsBind}:${6080+n} ' '^[X]vfb :${n} ')
+    for p in "\${pats[@]}"; do pkill -f "$p" || true; done
+    for i in $(seq 1 20); do alive=0; for p in "\${pats[@]}"; do pgrep -f "$p" >/dev/null && alive=1; done; [ $alive = 0 ] && break; sleep 0.1; done
+    for p in "\${pats[@]}"; do pkill -9 -f "$p" || true; done
+    sleep 0.3
+    rm -f /tmp/grokbot-screen-${n}.started /tmp/grokbot-relay-${n}.v3 /tmp/.X${n}-lock /tmp/.X11-unix/X${n} /root/grokbot/profiles/${botId}/Singleton*
+    exit 0`, screen, 30);
+  await startScreen(n);
+  await prepareLocalDesktop(screen, botId);
+}
+
 /** Restore a usable desktop and the assistant's persistent browser profile. */
 const desktopStarts = new Map<string, Promise<void>>();
 export async function prepareLocalDesktop(screen: string, botId: string) {
