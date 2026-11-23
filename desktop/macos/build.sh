@@ -10,7 +10,7 @@ swiftc -O -parse-as-library -swift-version 5 -target arm64-apple-macosx14.0 "$ro
 cat > "$out/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>
 <key>CFBundleDevelopmentRegion</key><string>en</string><key>CFBundleLocalizations</key><array><string>en</string></array><key>CFBundleIdentifier</key><string>com.ibkopixels.fino.mac</string><key>CFBundleName</key><string>Fino</string><key>CFBundleDisplayName</key><string>Fino</string><key>CFBundleExecutable</key><string>Fino</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>1.0</string><key>CFBundleVersion</key><string>BUILD_NUMBER</string><key>LSMinimumSystemVersion</key><string>14.0</string><key>NSHighResolutionCapable</key><true/>
-<key>FinoWorkspaceURL</key><string>https://grokbot.89-167-54-211.sslip.io</string>
+<key>FinoWorkspaceURL</key><string>https://finobots.com</string>
 <key>NSCameraUsageDescription</key><string>Attach a photo to your Fino conversation.</string><key>NSMicrophoneUsageDescription</key><string>Record a message for transcription in Fino.</string>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Fino authentication</string><key>CFBundleURLSchemes</key><array><string>fino</string></array></dict></array>
 </dict></plist>

@@ -1,3 +1,4 @@
+import { allowedOrigin } from './lib/origin.js';
 import { revenueCatWebhook } from './billing.js';
 import {attachDesktopDevices} from './desktop-device.js';
 import {accessGate} from './lib/access-code.js';
@@ -35,7 +36,7 @@ const app = new Hono();
 app.use('/api/*', async (c, next) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
     const origin = c.req.header('origin');
-    if (origin && origin !== new URL(env.appUrl).origin) return c.json({ error: 'Invalid request origin' }, 403);
+    if (origin && !allowedOrigin(origin)) return c.json({ error: 'Invalid request origin' }, 403);
   }
   c.header('Cache-Control', 'no-store');
   await next();

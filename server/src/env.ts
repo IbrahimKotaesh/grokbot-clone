@@ -14,6 +14,8 @@ export const env = {
   codexModel: process.env.CODEX_MODEL || undefined,
   port: Number(process.env.PORT ?? 8787),
   appUrl: process.env.APP_URL ?? 'http://localhost:5173',
+  /** Other web addresses that may call the API, e.g. the old address while installed apps move (comma-separated). */
+  extraOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean).map((u) => { try { return new URL(u).origin; } catch { return ''; } }).filter(Boolean),
   /** Public URL of this server, used for OAuth callbacks. */
   serverUrl: process.env.SERVER_URL ?? `http://localhost:${process.env.PORT ?? 8787}`,
   xaiKey: process.env.XAI_API_KEY || 'disabled',

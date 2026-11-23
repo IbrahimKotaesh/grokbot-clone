@@ -43,15 +43,15 @@ Fino is free to start. Upgrade for more bots and computer use:
 
 Subscriptions renew monthly through your Apple ID until cancelled. Manage or cancel anytime in your App Store settings at least 24 hours before renewal.
 
-Terms of Use: https://grokbot.89-167-54-211.sslip.io/terms.html
-Privacy Policy: https://grokbot.89-167-54-211.sslip.io/privacy.html
+Terms of Use: https://finobots.com/terms.html
+Privacy Policy: https://finobots.com/privacy.html
 
 **What's new (1.0):** The first release of Fino.
 
 **URLs**
-- Support URL: https://grokbot.89-167-54-211.sslip.io/support.html
+- Support URL: https://finobots.com/support.html
 - Marketing URL: (optional)
-- Privacy Policy URL: https://grokbot.89-167-54-211.sslip.io/privacy.html
+- Privacy Policy URL: https://finobots.com/privacy.html
 
 ---
 
@@ -94,8 +94,8 @@ Privacy Policy: https://grokbot.89-167-54-211.sslip.io/privacy.html
 
 تتجدّد الاشتراكات شهريًا عبر Apple ID حتى تلغيها. يمكنك الإدارة أو الإلغاء في أي وقت من إعدادات App Store قبل 24 ساعة على الأقل من موعد التجديد.
 
-شروط الاستخدام: https://grokbot.89-167-54-211.sslip.io/terms.html
-سياسة الخصوصية: https://grokbot.89-167-54-211.sslip.io/privacy.html
+شروط الاستخدام: https://finobots.com/terms.html
+سياسة الخصوصية: https://finobots.com/privacy.html
 
 **ما الجديد (1.0):** الإصدار الأول من فينو.
 

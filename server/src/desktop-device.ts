@@ -1,3 +1,4 @@
+import { allowedOrigin } from './lib/origin.js';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {randomUUID} from 'node:crypto';
 import type {Server} from 'node:http';
@@ -46,7 +47,7 @@ export function attachDesktopDevices(server:Server){
  server.on('upgrade',(req,socket,head)=>{
   const url=new URL(req.url??'/','http://localhost');if(url.pathname!=='/api/desktop/connect')return;
   const user=userFromCookieHeader(req.headers.cookie),mode=url.searchParams.get('mode');
-  if(!user||req.headers.origin!==new URL(env.appUrl).origin||!['browser','mac'].includes(mode??'')||activeDesktop(user.id)){socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');socket.destroy();return;}
+  if(!user||!allowedOrigin(req.headers.origin)||!['browser','mac'].includes(mode??'')||activeDesktop(user.id)){socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');socket.destroy();return;}
   wss.handleUpgrade(req,socket,head,ws=>{
    const d:Device={id:randomUUID(),userId:user.id,mode:mode as 'browser'|'mac',name:'Fino Mac',expires:Date.now()+30*60_000,socket:ws};devices.set(user.id,d);
    ws.send(JSON.stringify({type:'connected',mode:d.mode,expires:d.expires}));

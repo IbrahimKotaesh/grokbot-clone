@@ -11,7 +11,7 @@ private let workspace: URL = {
         return URL(string: "http://127.0.0.1:8791/?qa=\(UUID().uuidString)")!
     }
     #endif
-    return URL(string: "https://grokbot.89-167-54-211.sslip.io")!
+    return URL(string: "https://finobots.com")!
 }()
 
 struct WorkspaceView: UIViewRepresentable {

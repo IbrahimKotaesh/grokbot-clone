@@ -5,7 +5,7 @@ import { fetch as nativeFetch } from "expo/fetch";
 import { createClient } from "../../../packages/client/src";
 import { t } from "./i18n";
 const server =
-  process.env.EXPO_PUBLIC_API_URL ?? "https://grokbot.89-167-54-211.sslip.io";
+  process.env.EXPO_PUBLIC_API_URL ?? "https://finobots.com";
 const key = "fino.native.session.v1." + new URL(server).hostname;
 let session = "",
   access = "";

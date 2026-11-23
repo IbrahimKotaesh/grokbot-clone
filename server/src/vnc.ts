@@ -1,3 +1,4 @@
+import { allowedOrigin } from './lib/origin.js';
 import type { IncomingMessage, Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { env } from './env.js';
@@ -127,7 +128,7 @@ export function attachVncRelay(server: Server) {
     const url = new URL(req.url ?? '/', 'http://x');
     const m = url.pathname.match(/^\/api\/bots\/([^/]+)\/screen$/);
     if (!m) return; // not ours
-    if (req.headers.origin && req.headers.origin !== new URL(env.appUrl).origin) {
+    if (req.headers.origin && !allowedOrigin(req.headers.origin)) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return;
     }
     const user = userFromCookieHeader(req.headers.cookie);

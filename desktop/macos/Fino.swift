@@ -6,7 +6,7 @@ import ScreenCaptureKit
 import ApplicationServices
 
 // For local testing: `defaults write com.ibkopixels.fino.mac FinoWorkspaceURL http://localhost:5173` (delete the key to go back).
-let workspace = URL(string: UserDefaults.standard.string(forKey: "FinoWorkspaceURL") ?? Bundle.main.object(forInfoDictionaryKey: "FinoWorkspaceURL") as? String ?? "https://grokbot.89-167-54-211.sslip.io")!
+let workspace = URL(string: UserDefaults.standard.string(forKey: "FinoWorkspaceURL") ?? Bundle.main.object(forInfoDictionaryKey: "FinoWorkspaceURL") as? String ?? "https://finobots.com")!
 func jsonString(_ value: Any) -> String { String(data: try! JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), encoding: .utf8)! }
 func failure(_ message: String) -> NSError { NSError(domain: "Fino", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
