@@ -39,3 +39,14 @@ export function t(text: string, vars?: Record<string, string | number>) {
   if (vars) for (const k in vars) out = out.split(`{${k}}`).join(String(vars[k]));
   return out;
 }
+
+// Arabic plural forms: [one, two, 3–10, 11+].
+const arPlural: Record<string, [string, string, string, string]> = {
+  '{n} step': ['خطوة واحدة', 'خطوتان', '{n} خطوات', '{n} خطوة'],
+};
+/** Singular/plural pick: plural(3, "{n} step", "{n} steps"). Arabic has its own forms. */
+export function plural(count: number, one: string, many: string) {
+  const forms = isArabic ? arPlural[one] : undefined;
+  if (forms) return (count === 1 ? forms[0] : count === 2 ? forms[1] : count <= 10 ? forms[2] : forms[3]).split('{n}').join(String(count));
+  return t(count === 1 ? one : many, { n: count });
+}

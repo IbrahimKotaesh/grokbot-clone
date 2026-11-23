@@ -1,0 +1,166 @@
+/*
+ * The phone app's look on the web and Mac app. Same tokens as mobile/src/theme.ts:
+ * a pure black (or warm off-white) canvas, neutral greys, white (or ink) primary actions.
+ * Bot colors only tint avatars. Your messages sit in a grey bubble; replies are plain text.
+ * Loaded last so it wins over the older layers.
+ */
+
+:root {
+  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Tajawal", "IBM Plex Sans", system-ui, sans-serif;
+
+  /* light — mobile `light` palette */
+  --p-bg: #f7f7f5;
+  --p-surface: #ffffff;
+  --p-raised: #ececea;
+  --p-elevated: #e2e2df;
+  --p-line: #e2e2de;
+  --p-line-strong: #cfcfca;
+  --p-text: #141416;
+  --p-muted: #6b6b70;
+  --p-faint: #a3a3a8;
+  --p-primary: #141416;
+  --p-on-primary: #ffffff;
+  --p-blue: #2f6fe0;
+  --p-red: #e5484d;
+  --p-green: #1f9d6a;
+  --p-amber: #d99a00;
+}
+:root[data-theme='dark'] {
+  /* dark — mobile `dark` palette */
+  --p-bg: #000000;
+  --p-surface: #0f0f10;
+  --p-raised: #1b1b1d;
+  --p-elevated: #262629;
+  --p-line: #232326;
+  --p-line-strong: #323236;
+  --p-text: #f5f5f7;
+  --p-muted: #8e8e93;
+  --p-faint: #5c5c61;
+  --p-primary: #f5f5f7;
+  --p-on-primary: #000000;
+  --p-blue: #7aa7ff;
+  --p-red: #ff5c5c;
+  --p-green: #3ddc97;
+  --p-amber: #ffc04d;
+}
+
+/* Map the web's tokens onto the phone palette (both themes). */
+:root, :root[data-theme='dark'] {
+  --color-bg-chrome: var(--p-bg);
+  --color-bg-sidebar: var(--p-bg);
+  --color-bg-pane: var(--p-surface);
+  --color-bg-elevated: var(--p-surface);
+  --color-bg-elevated-hover: var(--p-raised);
+  --color-bg-active: var(--p-raised);
+  --color-bg-active-solid: var(--p-raised);
+  --color-bg-tertiary: var(--p-raised);
+  --color-bg-hover: color-mix(in srgb, var(--p-text) 6%, transparent);
+  --color-bg-secondary-hover: color-mix(in srgb, var(--p-text) 9%, transparent);
+  --color-bg-secondary-active: color-mix(in srgb, var(--p-text) 16%, transparent);
+  --color-bg-subtle: color-mix(in srgb, var(--p-text) 3%, transparent);
+  --color-text-primary: var(--p-text);
+  --color-ink: var(--p-text);
+  --color-text-secondary: var(--p-muted);
+  --color-text-tertiary: var(--p-muted);
+  --color-text-quaternary: var(--p-faint);
+  --color-icon-secondary: var(--p-muted);
+  --color-border-secondary: var(--p-line-strong);
+  --color-border-tertiary: var(--p-line);
+  --color-border-primary: var(--p-line-strong);
+  --color-border-focus: var(--p-blue);
+  --color-primary: var(--p-primary);
+  --color-bg-primary-hover: color-mix(in srgb, var(--p-primary) 85%, var(--p-bg));
+  --color-bg-primary-disabled: var(--p-raised);
+  --color-on-primary: var(--p-on-primary);
+  --color-accent: var(--p-text);
+  --color-bubble-user: var(--p-raised);
+  --color-bubble-agent: transparent;
+  --color-success: var(--p-green);
+  --color-warn: var(--p-amber);
+  --color-danger: var(--p-red);
+  --shadow-pill: none;
+  --shadow-composer: none;
+  --shadow-card: none;
+  --shadow-popover: 0 12px 32px #00000033, 0 0 0 1px var(--p-line);
+  --bubble-ring: none;
+  --bot-action: var(--p-primary);
+  --bot-action-hover: var(--color-bg-primary-hover);
+  --bot-on-action: var(--p-on-primary);
+}
+
+body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+
+/* ---------- chat: grey bubble for you, plain text for the bot ---------- */
+.chat, .transcript, .chat__body { background: var(--p-bg); }
+.chat .bubble.is-user {
+  background: var(--p-raised) !important;
+  color: var(--p-text) !important;
+  border: 0;
+  border-radius: 20px;
+  padding: 10px 15px;
+  box-shadow: none;
+}
+.chat .bubble.is-user.is-first, .chat .bubble.is-user.is-mid, .chat .bubble.is-user.is-last { border-radius: 20px; }
+.chat .bubble.is-agent {
+  background: transparent !important;
+  color: var(--p-text) !important;
+  border: 0 !important;
+  box-shadow: none;
+  padding: 2px 0;
+  max-width: 720px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.chat .group.is-left .bubble-wrap { width: 100%; }
+.chat .bubble .md a { color: var(--p-blue); text-decoration: none; }
+.chat .bubble .md a:hover { text-decoration: underline; }
+.chat .bubble .md code { background: var(--p-raised); border-radius: 6px; padding: 1px 5px; }
+.chat .bubble .md pre { background: var(--p-surface); border: 1px solid var(--p-line); border-radius: 14px; }
+.chat .bubble .md blockquote { border-inline-start: 3px solid var(--p-line-strong); color: var(--p-muted); opacity: 1; }
+.chat .bubble .md table, .md-table { border-color: var(--p-line); }
+.bubble__time, .divider { color: var(--p-faint); }
+.transcript__col { max-width: 760px; }
+
+/* ---------- header ---------- */
+.chat__header { background: var(--p-bg); border-bottom: 1px solid var(--p-line); }
+
+/* ---------- composer: a raised rounded box like the phone ---------- */
+.composer-shell {
+  background: var(--p-surface);
+  border: 1px solid var(--p-line);
+  border-radius: 26px;
+  box-shadow: none;
+}
+.composer__input { color: var(--p-text); font-size: 16px; }
+.composer__input::placeholder { color: var(--p-faint); }
+.composer__cta { background: var(--p-primary); color: var(--p-on-primary); border-radius: 50%; }
+.composer__cta:disabled { background: var(--p-raised); color: var(--p-faint); opacity: 1; }
+.composer__setting { background: var(--p-raised); border: 0; border-radius: 999px; color: var(--p-text); }
+.composer__btn { border-radius: 50%; }
+
+/* ---------- sidebar ---------- */
+.sidebar { background: var(--p-bg); border-inline-end: 1px solid var(--p-line); }
+.sidebar:not(.is-collapsed) .pinned__tile { background: var(--p-surface); border: 1px solid var(--p-line); }
+.sidebar .bot-row:hover, .bot-conversations__item:hover { background: var(--color-bg-hover); }
+.sidebar .bot-row.is-selected, .sidebar .bot-row[aria-current='true'], .sidebar .pinned__tile.is-selected { background: var(--p-raised); }
+.sidebar .bot-row__preview { color: var(--p-muted); opacity: 1; }
+.sidebar__team-label { color: var(--p-muted); text-transform: none; letter-spacing: 0; }
+
+/* ---------- panels, cards, menus ---------- */
+.details { background: var(--p-bg); border-inline-start: 1px solid var(--p-line); }
+.menu, .bot-chat-menu { background: var(--p-elevated); border: 1px solid var(--p-line-strong); }
+.card, .plan-card, .cfg-card, .chat-chart { background: var(--p-surface); border: 1px solid var(--p-line); box-shadow: none; }
+.btn--primary, .cfg-btn--primary { background: var(--p-primary); color: var(--p-on-primary); border: 0; }
+.btn--secondary, .cfg-btn--secondary { background: var(--p-raised); color: var(--p-text); border: 0; }
+.toggle.is-on { background: var(--p-green); }
+.toggle.is-on .toggle__knob { background: #ffffff; }
+
+/* Settings and modals sit on the same canvas. */
+.app-settings, .cfg-modal, .modal { background: var(--p-bg); }
+.app-settings__nav { background: var(--p-bg); border-inline-end: 1px solid var(--p-line); }
+
+/* Tables fit the reply width (wrapping text) and only scroll when they truly can't fit. */
+.chat .md-table table { width: 100%; min-width: 0; }
+.chat .md-table th, .chat .md-table td { min-width: 72px; max-width: none; padding: 9px 12px; }
+.chat .md-table td:last-child:not(:first-child), .chat .md-table th:last-child:not(:first-child) { min-width: 72px; }
+.chat .md-table th { color: var(--p-muted); font-weight: 600; font-size: 13px; }

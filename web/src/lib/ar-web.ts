@@ -69,6 +69,7 @@ export const arWeb: Record<string, string> = {
   'Current code': 'الرمز الحالي',
   'Danger zone': 'منطقة الخطر',
   'Dark blue': 'أزرق داكن',
+  Dark: 'داكن',
   Delete: 'حذف',
   Design: 'التصميم',
   'Disable on this device': 'إيقاف على هذا الجهاز',

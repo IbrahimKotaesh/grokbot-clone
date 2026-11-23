@@ -1,4 +1,4 @@
-import { t } from '../lib/i18n';
+import { plural, t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -106,7 +106,7 @@ function Steps({ rows }: { rows: Row[] }) {
   return (
     <details className="steps">
       <summary className="steps__toggle">
-        {active ? stepTitle(active) : `${n} ${n===1?'step':'steps'}`}
+        {active ? t(stepTitle(active)) : plural(n, '{n} step', '{n} steps')}
         {active&&<span className="steps__working" aria-label={t("Working")}/>}
         <Icon name="chev_down" size={10} opacity={0.66} className="steps__chev" />
       </summary>

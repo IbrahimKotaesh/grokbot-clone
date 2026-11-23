@@ -12,6 +12,7 @@ import './styles/modals.css';
 import './styles/viewer.css';
 import './styles/voice.css';
 import './styles/fino.css';
+import './styles/phone-look.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

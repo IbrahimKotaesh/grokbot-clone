@@ -17,13 +17,13 @@ export function BrainPicker({ provider, model, onChange }: { provider: Provider;
   );
   return (
     <div className="brain-list" role="radiogroup" aria-label={t("Brain")}>
-      {hosted?.available && <div className="brain-list__head">{t("Included in your plan")}</div>}
+      <div className="brain-list__head">{t('Your own subscription')}</div>
+      {row('codex', provider === 'codex', <ProviderLogo provider="codex" />, 'ChatGPT', t('Your ChatGPT subscription'), () => onChange('codex', ''))}
+      {row('claude', provider === 'claude', <ProviderLogo provider="claude" />, 'Claude Code', t('Your Claude subscription'), () => onChange('claude', ''))}
+      {hosted?.available && <div className="brain-list__head">{t('Included in your plan')}</div>}
       {hosted?.available && hosted.models.map((m) =>
         row(m.id, provider === 'openrouter' && (model || DEFAULT_MODEL) === m.id, <ModelLogo model={m.id} dim={!m.allowed} />, m.name,
           m.allowed ? t(m.note) : t('Included in {name} · upgrade in the Fino app', { name: tierName(m.tier) }), () => { if (m.allowed) onChange('openrouter', m.id); }, !m.allowed))}
-      {hosted?.available && <div className="brain-list__head">{t("Your own subscription")}</div>}
-      {row('codex', provider === 'codex', <ProviderLogo provider="codex" />, 'ChatGPT', t("Your ChatGPT subscription"), () => onChange('codex', ''))}
-      {row('claude', provider === 'claude', <ProviderLogo provider="claude" />, t("Claude Code"), t("Your Claude subscription"), () => onChange('claude', ''))}
     </div>
   );
 }

@@ -26,7 +26,7 @@ interface ConfigUI {
 
 const LS_THEME = 'grokbot.theme';
 const readTheme = (): Theme => {
-  try { const t = localStorage.getItem(LS_THEME); return t === 'light' || t === 'dark' || t === 'system' ? t : 'dark'; } catch { return 'dark'; }
+  try { const t = localStorage.getItem(LS_THEME); return t === 'light' || t === 'dark' || t === 'system' ? t : 'system'; } catch { return 'system'; }
 };
 
 const darkQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;

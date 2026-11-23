@@ -96,7 +96,7 @@ function GeneralSection() {
         <div className="theme-tiles" role="radiogroup" aria-label={t("Theme")}>
           <ThemeTile value="system" label={t("System")} current={theme} onPick={setTheme} />
           <ThemeTile value="light" label={t("Light")} current={theme} onPick={setTheme} />
-          <ThemeTile value="dark" label={t("Dark blue")} current={theme} onPick={setTheme} />
+          <ThemeTile value="dark" label={t("Dark")} current={theme} onPick={setTheme} />
         </div>
         <div className="cfg-field__hint">{t("Your choice is saved on this device and used each time you open Fino. System follows your device’s appearance.")}</div>
       </section>
