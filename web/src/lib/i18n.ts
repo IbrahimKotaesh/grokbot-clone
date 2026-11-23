@@ -10,9 +10,9 @@ const KEY = 'fino.lang';
 export function langChoice(): LangChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'en' || v === 'ar' ? v : 'system';
+    return v === 'ar' || v === 'system' ? v : 'en';
   } catch {
-    return 'system';
+    return 'en';
   }
 }
 
@@ -24,6 +24,7 @@ export function setLangChoice(v: LangChoice) {
 
 const browserLang = () => (typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? 'en' : 'en').slice(0, 2).toLowerCase();
 const choice = langChoice();
+// English unless the user picks Arabic (or picks "System" on an Arabic device) in Settings > General.
 export const lang: 'ar' | 'en' = choice === 'system' ? (browserLang() === 'ar' ? 'ar' : 'en') : choice;
 export const isArabic = lang === 'ar';
 const dict: Record<string, string> = isArabic ? { ...phone, ...arWeb } : {};
