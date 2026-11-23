@@ -405,4 +405,6 @@ export const arWeb: Record<string, string> = {
   "No microphone was found on this device.": "لم يُعثر على ميكروفون في هذا الجهاز.",
   "Transcribing…": "جارٍ التحويل إلى نص…",
   "Bot's screen": "شاشة البوت",
+  "Hide chats": "إخفاء المحادثات",
+  "Show chats": "إظهار المحادثات",
 };
