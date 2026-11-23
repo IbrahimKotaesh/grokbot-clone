@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { APP_NAMES, JOBS, appsFor } from '../../../packages/contracts/src/jobs';
-import { api, openPopup } from '../lib/api';
+import { api, connectApp } from '../lib/api';
 import type { AvatarColor } from '@shared/types';
 import { ArrowRight, Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -345,9 +345,8 @@ function AppsStep({ jobs, onNext, onBack, last }: { jobs: string[]; onNext: () =
 
   const connect = async (slug: string) => {
     setBusy(slug);
-    const popup = openPopup('about:blank');
-    try { const { redirectUrl } = await api.connect(slug); if (popup) popup.location.href = redirectUrl; else window.open(redirectUrl, '_blank'); }
-    catch { popup?.close(); }
+    try { await connectApp(slug); }
+    catch { /* the app list shows it as not connected */ }
     finally { setBusy(null); }
   };
   const done = slugs.filter((s) => connected?.includes(s)).length;

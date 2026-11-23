@@ -2,7 +2,7 @@ import { t } from '../../lib/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Toolkit } from '@shared/types';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
-import { api, openPopup, type AppsResponse } from '../../lib/api';
+import { api, connectApp, type AppsResponse } from '../../lib/api';
 import { useStore } from '../../store';
 import { Icon } from '../Icon';
 import { Menu } from '../Menu';
@@ -29,13 +29,10 @@ function AppRow({ app, onChanged }: { app: Toolkit; onChanged: () => void }) {
 
   const connect = async () => {
     setState('busy'); setError(null);
-    const popup = openPopup('about:blank');
     try {
-      const { redirectUrl } = await api.connect(app.slug);
-      if (popup) popup.location.href = redirectUrl; else window.open(redirectUrl, '_blank');
+      await connectApp(app.slug);
       setState('waiting');
     } catch (e) {
-      popup?.close();
       setError((e as Error).message || t("Couldn’t start the connection"));
       setState('idle');
     }

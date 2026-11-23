@@ -1,4 +1,4 @@
-import {executionEnvironment} from './desktop';
+import {executionEnvironment, isMacDesktop} from './desktop';
 import {disableDevicePush} from './push';
 import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
 
@@ -66,6 +66,26 @@ export const api = {
   setRoomMembers: (id: string, botIds: string[]) => req<{ ok: true; members: string[] }>('PUT', `/rooms/${id}/members`, { botIds }),
   createRoom: (name: string, botIds: string[]) => req<{ id: string }>('POST', '/rooms', { name, botIds }),
 };
+
+/**
+ * Open an app's sign-in (Google Calendar, Gmail…) to connect it. In a browser the window opens straight at
+ * Fino's own /connect/go address, which redirects to the sign-in page: no blank window that has to be
+ * filled in after a request (Safari can leave that one empty). The Mac app opens links in the default
+ * browser, where you're not signed in to Fino, so there it asks the server first and opens the sign-in page itself.
+ */
+export async function connectApp(slug: string, ctx: { botId?: string; seq?: number; generation?: number } = {}) {
+  if (!isMacDesktop()) {
+    const q = new URLSearchParams();
+    if (ctx.botId) q.set('bot', ctx.botId);
+    if (ctx.seq) q.set('seq', String(ctx.seq));
+    if (ctx.generation !== undefined) q.set('generation', String(ctx.generation));
+    const popup = openPopup(`/api/apps/${encodeURIComponent(slug)}/connect/go${q.toString() ? `?${q}` : ''}`);
+    if (popup) return;
+  }
+  // Mac app, or the browser blocked the window: get the sign-in address and open it.
+  const { redirectUrl } = await api.connect(slug, ctx.botId, ctx.seq, ctx.generation);
+  window.open(redirectUrl, '_blank');
+}
 
 /** Open a Composio redirect in a centered popup. */
 export function openPopup(url: string) {

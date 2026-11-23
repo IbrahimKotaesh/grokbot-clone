@@ -1,7 +1,7 @@
 import { t } from '../../lib/i18n';
 import { useEffect, useState } from 'react';
 import type { CardBody, Row } from '@shared/types';
-import { api, openPopup } from '../../lib/api';
+import { api, connectApp } from '../../lib/api';
 import { useStore } from '../../store';
 import { Icon } from '../Icon';
 import { ToolkitLogo } from '../ToolkitLogo';
@@ -120,12 +120,8 @@ export function ConnectCard({ row, body }: { row: Row; body: Card<'connect'> }) 
   useEffect(() => { setWaiting(false); }, [connectionsVersion, body.status]);
 
   const connect = () => run('connect', async () => {
-    const popup = openPopup('about:blank');
-    try {
-      const { redirectUrl } = await api.connect(body.toolkit, row.botId, row.seq,row.generation);
-      if (popup) popup.location.href = redirectUrl; else window.open(redirectUrl, '_blank');
-      setWaiting(true);
-    } catch (e) { popup?.close(); throw e; }
+    await connectApp(body.toolkit, { botId: row.botId, seq: row.seq, generation: row.generation });
+    setWaiting(true);
   });
 
   return (

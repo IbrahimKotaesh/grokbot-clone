@@ -2,7 +2,7 @@ import { t } from '../lib/i18n';
 import { useEffect, useState } from 'react';
 import type { Bot, ComputerState, Routine } from '@shared/types';
 import { BotAvatarFor } from '../avatar/BotAvatar';
-import { api, openPopup } from '../lib/api';
+import { api, connectApp } from '../lib/api';
 import { botVars } from '../lib/colors';
 import { displayName, useSelectedBot, useStore } from '../store';
 import { Icon } from './Icon';
@@ -122,8 +122,7 @@ export function DetailsPanel() {
   if (!bot) return null;
 
   const addSlack = async () => {
-    const popup = openPopup('about:blank');
-    try { const { redirectUrl } = await api.connect('slack'); if (popup) popup.location.href = redirectUrl; } catch { popup?.close(); }
+    try { await connectApp('slack'); } catch { /* shown as not connected */ }
   };
 
   return (

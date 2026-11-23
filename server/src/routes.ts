@@ -604,18 +604,44 @@ api.get('/apps', async (c) => {
   return c.json({ configured: env.composioKey !== 'disabled', apps: items.slice(0, Number(c.req.query('limit') ?? 120)), connected: [...connected], connectedApps, categories, total: items.length });
 });
 
+/** Start connecting an app for this user; the callback returns to the chat card that asked, if any. */
+async function beginConnect(userId: string, slug: string, o: { botId?: string; seq?: number; generation?: number; native?: boolean }) {
+  const cb = new URL(`${env.serverUrl}/api/apps/callback`);
+  cb.searchParams.set('slug', slug);
+  if (o.native) cb.searchParams.set('native_ticket', issueConnectionTicket(userId, slug));
+  if (o.botId) cb.searchParams.set('bot', o.botId);
+  if (o.seq) cb.searchParams.set('seq', String(o.seq));
+  if (o.generation !== undefined) {
+    if (!o.botId || !ownBot(userId, o.botId) || !validChat(o.botId, o.generation)) throw Object.assign(new Error('Chat not found.'), { status: 404 });
+    cb.searchParams.set('generation', String(o.generation));
+  }
+  return startConnect(userId, slug, cb.toString());
+}
+
 api.post('/apps/:slug/connect', async (c) => {
   const user = c.get('user');
   const slug = c.req.param('slug');
   const { botId, seq,generation,native } = await c.req.json<{ botId?: string; seq?: number;generation?:number;native?:boolean }>().catch(() => ({} as any));
-  const cb = new URL(`${env.serverUrl}/api/apps/callback`);
-  cb.searchParams.set('slug', slug);
-  if(native)cb.searchParams.set('native_ticket',issueConnectionTicket(user.id,slug));
-  if (botId) cb.searchParams.set('bot', botId);
-  if (seq) cb.searchParams.set('seq', String(seq));
-  if(generation!==undefined){if(!botId||!ownBot(user.id,botId)||!validChat(botId,generation))return c.json({error:'Chat not found.'},404);cb.searchParams.set('generation',String(generation));}
-  const r = await startConnect(user.id, slug, cb.toString());
-  return c.json(r);
+  try { return c.json(await beginConnect(user.id, slug, { botId, seq, generation, native })); }
+  catch (e: any) { if (e?.status === 404) return c.json({ error: e.message }, 404); throw e; }
+});
+
+// The web app opens its connect window straight at this address (no blank window filled in later, which
+// Safari can leave empty), and the server sends it on to the app's sign-in page or shows what went wrong.
+api.get('/apps/:slug/connect/go', async (c) => {
+  // Only from Fino's own pages: another site must not start connections for a signed-in user.
+  const site = c.req.header('sec-fetch-site');
+  if (site && site !== 'same-origin' && site !== 'none') return c.text('Open this from Fino.', 403);
+  const user = c.get('user');
+  const slug = c.req.param('slug');
+  const num = (v?: string) => (v === undefined || v === '' ? undefined : Number(v));
+  try {
+    const r = await beginConnect(user.id, slug, { botId: c.req.query('bot') || undefined, seq: num(c.req.query('seq')), generation: num(c.req.query('generation')) });
+    return c.redirect(r.redirectUrl, 302);
+  } catch (e: any) {
+    const msg = String(e?.message ?? 'Something went wrong.').replace(/[<>&"]/g, '');
+    return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fino</title><body style="font-family:-apple-system,system-ui,sans-serif;padding:40px 24px;text-align:center;color:#1f1e1d;background:#faf9f5"><h2 style="font-weight:600">Couldn’t start the connection</h2><p style="color:#6f6d66">${msg}</p><p><button onclick="window.close()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#2f6fe0;color:#fff">Close</button></p></body>`, e?.status === 404 ? 404 : 502);
+  }
 });
 
 api.get('/apps/callback', async (c) => {
