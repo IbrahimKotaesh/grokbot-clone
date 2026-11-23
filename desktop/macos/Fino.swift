@@ -24,6 +24,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     var actionTask:Task<Void,Never>?
     var expires:Date?,queue:[[String:Any]]=[],running=false,connected=false
     var currentDeadline=Date.distantFuture
+    var setup:ComputerSetup?
     var screenSize=CGSize(width:1280,height:800)
     let selfTest=CommandLine.arguments.contains("--self-test")
     func applicationDidFinishLaunching(_ notification:Notification){
@@ -41,7 +42,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let visible=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:1440,height:900)
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:min(1380,visible.width*0.94),height:min(900,visible.height*0.94)),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
         window.title="Fino";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.toolbarStyle = .unifiedCompact
-        window.appearance=NSAppearance(named:.darkAqua);window.backgroundColor=NSColor(red:0.045,green:0.055,blue:0.075,alpha:1)
+        window.appearance=NSAppearance(named:.darkAqua);window.backgroundColor = .black
         window.minSize=NSSize(width:850,height:600);window.center();window.isReleasedWhenClosed=false
         mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer"]);mode.selectItem(at:1);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
         control=NSButton(title:"Connect",target:self,action:#selector(toggleControl));control.bezelStyle = .rounded
@@ -58,6 +59,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         NSLayoutConstraint.activate([split.topAnchor.constraint(equalTo:root.topAnchor),split.leadingAnchor.constraint(equalTo:root.leadingAnchor),split.trailingAnchor.constraint(equalTo:root.trailingAnchor),split.bottomAnchor.constraint(equalTo:root.bottomAnchor)])
         window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
         web.load(URLRequest(url:workspace));if selfTest { Task { await testBrowser() } }
+        if UserDefaults.standard.bool(forKey:"FinoConnectAfterRestart"){UserDefaults.standard.removeObject(forKey:"FinoConnectAfterRestart");DispatchQueue.main.asyncAfter(deadline:.now()+1.5){[weak self] in self?.toggleControl()}}
         Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task { @MainActor in if let e=self?.expires,e<Date(){self?.stopControl()} }}
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool{true}
@@ -68,16 +70,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func toggleControl(){
         if mode.indexOfSelectedItem==0{showWorkspace();return}
         if socket != nil {stopControl();return}
+        if !ComputerSetup.ready {showComputerSetup();return}
         let alert=NSAlert();alert.messageText="Allow Fino to control this computer?"
         alert.informativeText="Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
         alert.addButton(withTitle:"Allow this session");alert.addButton(withTitle:"Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else{return}
-        do {
-            let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
-            let accessibility=AXIsProcessTrustedWithOptions(options),capture=CGPreflightScreenCaptureAccess()
-            if !capture {_ = CGRequestScreenCaptureAccess()}
-            guard accessibility && capture else {status.stringValue="Enable Accessibility + Screen Recording in macOS Settings, then try again.";return}
-        }
+        guard ComputerSetup.ready else{showComputerSetup();return}
         web.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in DispatchQueue.main.async {
             guard let self else{return}
             let valid=cookies.filter{cookie in let domain=cookie.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."));return domain==workspace.host && (cookie.expiresDate ?? .distantFuture)>Date()}
@@ -144,6 +142,11 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     }
     @objc func hideWorkspace(){suspendServerPreview();panel.isHidden=true;window.minSize=NSSize(width:850,height:600);split.adjustSubviews();emitDesktopState()}
     @objc func toggleWorkspace(){if panel.isHidden{showWorkspace()}else{hideWorkspace()}}
+    func showComputerSetup(){
+        mode.selectItem(at:1);status.stringValue="Allow Fino to use this Mac"
+        let s=ComputerSetup();setup=s
+        s.show(over:window){[weak self] in self?.setup=nil;self?.status.stringValue="Ready to connect";self?.toggleControl()}
+    }
     @objc func environmentChanged(){stopControl();showWorkspace();emitDesktopState()}
     func showWorkspace(){
         showPanel();browser?.isHidden=true;browserControls.isHidden=true
@@ -164,10 +167,10 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func browserForward(){browser?.goForward()}
     @objc func browserReload(){browser?.reload()}
     @objc func browserNavigate(){let raw=address.stringValue;let value=raw.contains("://") ? raw:"https://"+raw;Task {do{try await browserAction("open_browser",["url":value])}catch{address.toolTip=error.localizedDescription}}}
-    func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":"mac","connected":connected,"panelOpen":!panel.isHidden];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
+    func emitDesktopState(){guard web != nil else{return};let value:[String:Any]=["environment":mode.indexOfSelectedItem==0 ? "server":"mac","connected":connected,"panelOpen":!panel.isHidden,"permissions":ComputerSetup.ready];web.evaluateJavaScript("window.__finoDesktopState=\(jsonString(value));window.dispatchEvent(new Event('fino-desktop-state'));",completionHandler:nil)}
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage){
         guard message.frameInfo.isMainFrame,message.frameInfo.securityOrigin.host==workspace.host,(message.frameInfo.securityOrigin.protocol=="https" || workspace.host=="localhost"),let body=message.body as? [String:Any] else{return}
-        if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()}}
+        if message.webView===web,let action=body["action"] as? String {if let bot=body["botId"] as? String,bot.range(of:"^[A-Za-z0-9_-]{1,100}$",options:.regularExpression) != nil{selectedBotID=bot};if action=="showComputer"{showWorkspace()};if action=="setupComputer"{if ComputerSetup.ready && socket != nil {emitDesktopState()} else {toggleControl()}}}
         if message.webView===serverView,body["action"] as? String=="close"{hideWorkspace()}
     }
     func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState()}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
@@ -280,6 +283,75 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
             try Data(jsonString(["ok":true,"twoEnvironments":true,"thisComputerDefault":true,"browserClick":true,"browserType":true,"screenshot":true,"macControlEnabled":false,"dockedBrowser":true,"mainPaneWidth":Int(web.bounds.width),"workspacePaneWidth":Int(browser.bounds.width)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));mode.selectItem(at:1);stopControl();hideWorkspace();emitDesktopState()
         }catch{try? Data(jsonString(["ok":false,"error":error.localizedDescription]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));status.stringValue="Self-test: \(error.localizedDescription)";try? Data(jsonString(["split":NSStringFromRect(split.frame),"panel":NSStringFromRect(panel.frame),"content":NSStringFromRect(panelContent.frame),"browser":NSStringFromRect(browser.frame),"window":NSStringFromRect(window.frame)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-layout-debug.json"))}
     }
+}
+
+/// "Let Fino use this Mac": walks through the two macOS permissions with live status, opens the exact
+/// Settings page for each, and restarts Fino when Screen Recording needs it. Connects by itself when ready.
+@MainActor final class ComputerSetup: NSObject {
+    static var accessibility: Bool { AXIsProcessTrusted() }
+    static var screen: Bool { CGPreflightScreenCaptureAccess() }
+    static var ready: Bool { accessibility && screen }
+    let sheet = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 470, height: 360), styleMask: [.titled], backing: .buffered, defer: false)
+    let axMark = NSTextField(labelWithString: ""), srMark = NSTextField(labelWithString: "")
+    let axButton = NSButton(), srButton = NSButton(), restart = NSButton()
+    var timer: Timer?, onReady: () -> Void = {}
+    weak var parent: NSWindow?
+
+    func show(over window: NSWindow, onReady: @escaping () -> Void) {
+        self.onReady = onReady; parent = window
+        let title = NSTextField(labelWithString: "Let Fino use this Mac"); title.font = .boldSystemFont(ofSize: 18)
+        let intro = NSTextField(wrappingLabelWithString: "Your bots can open apps, browse in Chrome and type for you on this Mac. macOS asks you to allow two things, once:")
+        intro.textColor = .secondaryLabelColor
+        func row(_ mark: NSTextField, _ name: String, _ detail: String, _ button: NSButton, _ action: Selector) -> NSView {
+            mark.font = .systemFont(ofSize: 18); mark.alignment = .center; mark.widthAnchor.constraint(equalToConstant: 24).isActive = true
+            let n = NSTextField(labelWithString: name); n.font = .boldSystemFont(ofSize: 13)
+            let d = NSTextField(wrappingLabelWithString: detail); d.textColor = .secondaryLabelColor; d.font = .systemFont(ofSize: 12)
+            let text = NSStackView(views: [n, d]); text.orientation = .vertical; text.alignment = .leading; text.spacing = 2
+            button.title = "Open Settings"; button.bezelStyle = .rounded; button.target = self; button.action = action
+            let line = NSStackView(views: [mark, text, button]); line.orientation = .horizontal; line.alignment = .centerY; line.spacing = 10
+            text.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            return line
+        }
+        let ax = row(axMark, "1. Accessibility", "To click and type for you.", axButton, #selector(openAccessibility))
+        let sr = row(srMark, "2. Screen Recording", "To see the screen while it works.", srButton, #selector(openScreen))
+        let tip = NSTextField(wrappingLabelWithString: "Tip: if Fino is already in the list but still not allowed, select it, press − to remove it, then turn it on again. Older test copies of Fino keep the old switch.")
+        tip.font = .systemFont(ofSize: 11); tip.textColor = .tertiaryLabelColor
+        restart.title = "Restart Fino"; restart.bezelStyle = .rounded; restart.target = self; restart.action = #selector(restartFino); restart.isHidden = true
+        restart.keyEquivalent = "\r"
+        let cancel = NSButton(title: "Not now", target: self, action: #selector(close)); cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
+        let buttons = NSStackView(views: [NSView(), cancel, restart]); buttons.orientation = .horizontal; buttons.spacing = 8
+        let stack = NSStackView(views: [title, intro, ax, sr, tip, buttons]); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 14
+        stack.edgeInsets = NSEdgeInsets(top: 22, left: 24, bottom: 18, right: 24); stack.translatesAutoresizingMaskIntoConstraints = false
+        for v in [intro, ax, sr, tip, buttons] { v.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -48).isActive = true }
+        let content = NSView(); content.addSubview(stack); sheet.contentView = content
+        NSLayoutConstraint.activate([stack.topAnchor.constraint(equalTo: content.topAnchor), stack.leadingAnchor.constraint(equalTo: content.leadingAnchor), stack.trailingAnchor.constraint(equalTo: content.trailingAnchor), stack.bottomAnchor.constraint(equalTo: content.bottomAnchor)])
+        refresh()
+        window.beginSheet(sheet)
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.refresh() } }
+    }
+    func refresh() {
+        let ax = ComputerSetup.accessibility, sr = ComputerSetup.screen
+        axMark.stringValue = ax ? "✅" : "○"; srMark.stringValue = sr ? "✅" : "○"
+        axButton.isHidden = ax; srButton.isHidden = sr
+        if ax && sr { finish() }
+    }
+    @objc func openAccessibility() {
+        _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+    @objc func openScreen() {
+        _ = CGRequestScreenCaptureAccess()
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+        // macOS only applies Screen Recording after a restart of the app.
+        restart.isHidden = false
+    }
+    @objc func restartFino() {
+        UserDefaults.standard.set(true, forKey: "FinoConnectAfterRestart")
+        let config = NSWorkspace.OpenConfiguration(); config.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, _ in DispatchQueue.main.async { NSApp.terminate(nil) } }
+    }
+    @objc func close() { timer?.invalidate(); timer = nil; parent?.endSheet(sheet) }
+    func finish() { close(); onReady() }
 }
 @main enum FinoMain {
  @MainActor static func main(){let app=NSApplication.shared;let delegate=FinoApp();app.delegate=delegate;withExtendedLifetime(delegate){app.run()}}

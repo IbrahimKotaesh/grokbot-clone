@@ -21,5 +21,8 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$iconset" -o "$out/Contents/Resources/Fino.icns"
 /usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string Fino.icns' "$out/Contents/Info.plist"
-codesign --force --sign - "$out"
+# Sign with the developer certificate when there is one, so macOS keeps the Accessibility and Screen
+# Recording permissions across rebuilds (an ad-hoc signature looks like a new app every time).
+identity=$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development|Developer ID Application/{print $2; exit}')
+codesign --force --sign "${identity:--}" "$out"
 printf '%s\n' "$out"

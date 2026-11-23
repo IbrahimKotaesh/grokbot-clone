@@ -2,7 +2,7 @@ import { t } from './lib/i18n';
 import {isMacDesktop,openDesktopComputer,notifyDesktopContext} from './lib/desktop';
 import {AccessCodeGate} from './components/AccessCode';
 import {BotAvatarFor} from './avatar/BotAvatar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { startEvents } from './lib/events';
 import { useStore } from './store';
 import { ChatView } from './components/ChatView';
@@ -18,6 +18,7 @@ import { ConfigLayer } from './components/config/ConfigLayer';
 import { TasksView } from './components/config/TasksView';
 import { useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
+import { Onboarding, onboardingDone } from './components/Onboarding';
 
 function Shell() {
   const detailsOpen = useStore((s) => s.detailsOpen);
@@ -28,6 +29,7 @@ function Shell() {
   const hasBot = useStore((s) => !!s.selectedBotId);
   const navOpen = useStore((s) => s.mobileNavOpen);
   const navButton = useRef<HTMLButtonElement>(null);
+  const [showOnboarding, setShowOnboarding] = useState(() => !onboardingDone());
   const view = useConfigUI((s) => s.view);
   const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
   useEffect(()=>notifyDesktopContext(selectedBot?.id),[selectedBot?.id]);
@@ -112,6 +114,7 @@ function Shell() {
       {modal === 'apps' && <ConnectAppsModal />}
       {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
+      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
     </div>
   );
 }
