@@ -1,9 +1,7 @@
 // Automatic model fallback. When a bot's model stops answering because of usage limits, the same message
 // is retried on the user's next connected model, and the exhausted one is skipped for a while.
 import { db, now } from '../db.js';
-import { env } from '../env.js';
 import { sharedLoginAllowed } from '../credentials.js';
-import { hostedKey } from '../hosted-models.js';
 
 const COOLDOWN = 60 * 60_000;
 const exhausted = new Map<string, number>(); // `${userId}:${provider}` → until
@@ -31,16 +29,21 @@ export function isExhausted(userId: string, provider: string) {
   return true;
 }
 
-/** Models this user can actually run right now, in preference order. Claude Code needs its own sign-in, so it is never a fallback. */
+/**
+ * Models this user can fall back to, in preference order: only their own subscriptions and keys.
+ * Fino-paid models (included OpenRouter models, the server's xAI key) are never a silent fallback,
+ * so a bot on ChatGPT or Claude never starts spending Fino's money without the user picking it.
+ * Claude Code needs its own sign-in, so it is never a fallback.
+ */
 export function availableProviders(userId: string): string[] {
   const keys = new Set((db.prepare('SELECT provider FROM user_credentials WHERE user_id=?').all(userId) as { provider: string }[]).map((r) => r.provider));
   const shared = sharedLoginAllowed();
   const list: string[] = [];
   if (keys.has('chatgpt') || keys.has('openai') || shared) list.push('codex');
   if (keys.has('anthropic') || shared) list.push('claude');
-  if (keys.has('openrouter') || hostedKey()) list.push('openrouter');
+  if (keys.has('openrouter')) list.push('openrouter');
   if (keys.has('groq')) list.push('groq');
-  if (keys.has('xai') || env.xaiKey !== 'disabled') list.push('xai');
+  if (keys.has('xai')) list.push('xai');
   return list;
 }
 
