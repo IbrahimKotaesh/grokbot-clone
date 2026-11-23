@@ -178,3 +178,19 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .computer-hero__badge .status-dot:not(.is-working):not(.is-attention) { background: #8e8e93; }
 .computer-hero__bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; font-size: 13px; }
 .computer-hero__title { color: var(--p-text); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Live computer mini-window at the top of the chat (when the side panel is closed). */
+.computer-pip { position: absolute; z-index: 6; top: 70px; inset-inline-end: 16px; width: 232px; aspect-ratio: 16 / 10; padding: 0; border: 1px solid var(--p-line-strong); border-radius: 14px; background: #000; overflow: hidden; cursor: pointer; box-shadow: 0 10px 30px #00000059; }
+.computer-pip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.computer-pip:hover { border-color: var(--p-muted); }
+@media (max-width: 900px) { .computer-pip { top: 10px; width: 150px; border-radius: 12px; } .computer-pip .computer-hero__badge { font-size: 10px; padding: 2px 7px; inset-inline-start: 5px; bottom: 5px; } }
+
+/*
+ * Arabic: keep the chat laid out like every chat app — your messages on the right, the bot's on the
+ * left — and let each message's text run in its own direction (Arabic right-to-left, English left-to-right).
+ */
+[dir='rtl'] .transcript__col, [dir='rtl'] .transcript__col .group, [dir='rtl'] .transcript__col .bubble-wrap { direction: ltr; }
+[dir='rtl'] .transcript__col .bubble, [dir='rtl'] .transcript__col .plan-card, [dir='rtl'] .transcript__col .steps,
+[dir='rtl'] .transcript__col .card, [dir='rtl'] .transcript__col .system-event, [dir='rtl'] .transcript__col .notice,
+[dir='rtl'] .transcript__col .divider, [dir='rtl'] .transcript__col .activity-line, [dir='rtl'] .transcript__col .empty-chat { direction: rtl; }
+.chat .bubble.is-user .bubble__plain, .chat .bubble .md { unicode-bidi: plaintext; text-align: start; }

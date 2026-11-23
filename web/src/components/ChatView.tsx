@@ -5,6 +5,7 @@ import { botVars } from '../lib/colors';
 import { sortedRows, transcriptKey,useSelectedBot, useStore } from '../store';
 import { useConfigUI } from '../configStore';
 import { Composer } from './Composer';
+import { ComputerPip } from './ComputerPip';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
 import { Transcript } from './Transcript';
@@ -64,6 +65,7 @@ export function ChatView() {
           <button type="button" className="share-btn" onClick={() => flash(t("Sharing isn’t available in Fino yet"))}>{t("Share")}</button>
         </div>
       </header>
+      {!detailsOpen && bot.kind !== 'room' && <ComputerPip bot={bot} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
   );

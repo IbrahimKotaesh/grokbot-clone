@@ -28,6 +28,6 @@ export function DictationButton({onText,onError,onBusy,disabled}:{onText:(text:s
   };
   return <span className="dictation">
     <button type="button" className={`composer__btn${phase==='recording'?' is-recording':''}`} disabled={disabled&&phase==='idle'||phase==='permission'||phase==='transcribing'} aria-label={phase==='recording'?t("Stop recording and transcribe"):t("Record voice")} title={phase==='recording'?t("Stop and transcribe"):t("Record voice")} onClick={()=>phase==='recording'?recording.current?.stop():void start()}>{phase==='recording'?<Square size={16}/>:phase==='transcribing'?<LoaderCircle size={18} className="dictation__spinner"/>:<Mic size={18}/>}</button>
-    {phase!=='idle'&&<span className="dictation__status" role="status"><span>{phase==='permission'?t("Allow microphone access…"):phase==='transcribing'?'Transcribing…':`Recording · 0:${String(seconds).padStart(2,'0')}`}</span>{phase==='recording'&&<button type="button" onClick={()=>recording.current?.stop()}>{t("Done")}</button>}<button type="button" onClick={cancel} aria-label={t("Cancel recording")}><X size={15}/></button></span>}
+    {phase!=='idle'&&<span className="dictation__status" role="status"><span>{phase==='permission'?t("Allow microphone access…"):phase==='transcribing'?t('Transcribing…'):`Recording · 0:${String(seconds).padStart(2,'0')}`}</span>{phase==='recording'&&<button type="button" onClick={()=>recording.current?.stop()}>{t("Done")}</button>}<button type="button" onClick={cancel} aria-label={t("Cancel recording")}><X size={15}/></button></span>}
   </span>;
 }

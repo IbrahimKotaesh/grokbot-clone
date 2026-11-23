@@ -52,13 +52,9 @@ function RoutineRow({ r }: { r: Routine }) {
   );
 }
 
-function ComputerCard({ bot }: { bot: Bot }) {
-  const computer = useStore((s) => s.computer);
-  const set = useStore((s) => s.set);
+/** The bot's latest screen as an object URL, refreshed every 2.5 s while the computer is awake. 204 = no screen yet. */
+export function useLiveShot(botId: string, running: boolean) {
   const [shot, setShot] = useState<string | null>(null);
-  const running = computer?.status === 'running';
-
-  // Refresh the thumbnail every ~4s while visible and awake. 204 = no screen yet.
   useEffect(() => {
     setShot(null);
     if (!running) return;
@@ -67,7 +63,7 @@ function ComputerCard({ bot }: { bot: Bot }) {
     const load = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const res = await fetch(`/api/bots/${bot.id}/screenshot`, { credentials: 'include', cache: 'no-store' });
+        const res = await fetch(`/api/bots/${botId}/screenshot`, { credentials: 'include', cache: 'no-store' });
         if (!alive) return;
         if (res.status === 204) { setShot(null); return; }
         if (res.status === 200) {
@@ -83,7 +79,16 @@ function ComputerCard({ bot }: { bot: Bot }) {
     load();
     const timer = setInterval(load, 2500);
     return () => { alive = false; clearInterval(timer); if (url) URL.revokeObjectURL(url); };
-  }, [bot.id, running]);
+  }, [botId, running]);
+
+  return shot;
+}
+
+function ComputerCard({ bot }: { bot: Bot }) {
+  const computer = useStore((s) => s.computer);
+  const set = useStore((s) => s.set);
+  const running = computer?.status === 'running';
+  const shot = useLiveShot(bot.id, running);
 
   const busy = computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
   return (

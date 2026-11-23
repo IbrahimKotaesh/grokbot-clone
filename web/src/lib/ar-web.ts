@@ -398,4 +398,11 @@ export const arWeb: Record<string, string> = {
   "Making a note of it": "يدوّن ملاحظة",
   "Today": "اليوم",
   "Yesterday": "أمس",
+  "Recording is unavailable in this browser. Use Safari or Chrome over HTTPS.": "التسجيل غير متاح في هذا المتصفح. استخدم Safari أو Chrome.",
+  "Recording is too large. Please record a shorter message.": "التسجيل طويل جداً. سجّل رسالة أقصر.",
+  "The microphone stopped unexpectedly. Please try again.": "توقف الميكروفون فجأة. حاول مجدداً.",
+  "The microphone is blocked in this window. Click the lock icon next to the address and allow the microphone, or open Fino in Chrome, Safari or the Fino Mac app.": "الميكروفون محجوب في هذه النافذة. اضغط على أيقونة القفل بجانب العنوان واسمح بالميكروفون، أو افتح Fino في Chrome أو Safari أو تطبيق Fino للماك.",
+  "No microphone was found on this device.": "لم يُعثر على ميكروفون في هذا الجهاز.",
+  "Transcribing…": "جارٍ التحويل إلى نص…",
+  "Bot's screen": "شاشة البوت",
 };
