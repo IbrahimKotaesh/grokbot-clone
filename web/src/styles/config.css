@@ -214,3 +214,5 @@
 
 /* knob contrasts with the "on" track (matters for black bots in dark mode) */
 .toggle.is-on .toggle__knob { background: var(--bot-on-action, #FFFFFF); }
+.cfg-select { appearance: none; -webkit-appearance: none; font: inherit; font-size: 13.5px; color: var(--p-text); background: var(--p-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--p-line); border-radius: 10px; padding: 7px 30px 7px 12px; cursor: pointer; }
+[dir='rtl'] .cfg-select { background-position: left 10px center; padding: 7px 12px 7px 30px; }

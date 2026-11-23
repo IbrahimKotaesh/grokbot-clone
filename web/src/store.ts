@@ -23,6 +23,8 @@ interface State {
   transcripts: Record<string, Transcript>;
   chats:Record<string,BotChat[]>;
   selectedChats:Record<string,number>;
+  /** A message to scroll to and flash once its chat is open (from search). */
+  focusRow?: { botId: string; generation: number; seq: number } | null;
   routines: Record<string, Routine[]>;
   computer: ComputerState | null;
   /** Bumped on every `connections` event so open views can refetch. */

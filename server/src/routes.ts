@@ -408,6 +408,68 @@ api.patch('/routines/:id', async (c) => {
   return c.json({ routine: next });
 });
 
+// ---------- search across every chat ----------
+// Finds words in anything the person or their bots wrote, in every chat, newest first.
+api.get('/search', (c) => {
+  const userId = c.get('user').id;
+  const q = String(c.req.query('q') ?? '').trim().slice(0, 100);
+  if (q.length < 2) return c.json({ results: [] });
+  const like = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+  const rows = db.prepare(`SELECT r.bot_id, r.generation, r.seq, r.created_at, json_extract(r.body,'$.role') AS role, json_extract(r.body,'$.text') AS text, json_extract(r.body,'$.from.name') AS from_name, ch.title AS chat
+    FROM rows r JOIN bots b ON b.id=r.bot_id LEFT JOIN bot_chats ch ON ch.bot_id=r.bot_id AND ch.generation=r.generation
+    WHERE b.user_id=? AND r.kind='message' AND json_extract(r.body,'$.text') LIKE ? ESCAPE '\\' AND coalesce(json_extract(r.body,'$.replaced'),0)=0
+    ORDER BY r.created_at DESC LIMIT 40`).all(userId, like) as any[];
+  const lower = q.toLowerCase();
+  const results = rows.map((r) => {
+    const text = String(r.text ?? '').replace(/\s+/g, ' ');
+    const at = Math.max(0, text.toLowerCase().indexOf(lower));
+    const start = Math.max(0, at - 50);
+    const snippet = (start ? '…' : '') + text.slice(start, at + q.length + 90) + (at + q.length + 90 < text.length ? '…' : '');
+    return { botId: r.bot_id, generation: r.generation, seq: r.seq, createdAt: r.created_at, role: r.role, from: r.from_name ?? null, chat: r.chat ?? null, snippet };
+  });
+  return c.json({ results });
+});
+
+// ---------- morning brief ----------
+// A daily note from the Chief of Staff: what each teammate did since yesterday and what waits for the person.
+// It is an ordinary routine on the primary bot, so it also shows (and can be paused) in that bot's routines.
+const BRIEF_NAME = 'Morning brief';
+const BRIEF_PROMPT = 'Write my morning brief. Call team_updates once with an empty query to see what every teammate did and found recently (one call covers the whole team; only look again for something specific), and check your own recent work. Reply with a short brief in three parts: Done, In progress, Waiting for you (decisions, approvals or replies I owe). One line per item, name the bot. If nothing happened, say so in one line. Never mention tools or limits. Write in the language I usually write to you in. Do not start new work.';
+const primaryBot = (userId: string) => db.prepare("SELECT id FROM bots WHERE user_id=? AND is_primary=1 AND coalesce(kind,'agent')!='room'").get(userId) as { id: string } | undefined;
+const briefRoutine = (botId: string) => db.prepare('SELECT * FROM routines WHERE bot_id=? AND name=?').get(botId, BRIEF_NAME) as any;
+
+api.get('/morning-brief', (c) => {
+  const p = primaryBot(c.get('user').id);
+  const r = p && briefRoutine(p.id);
+  const hour = r ? Number(String(r.schedule).split(' ')[1]) : 8;
+  return c.json({ available: !!p, enabled: !!r?.enabled, hour: Number.isInteger(hour) ? hour : 8 });
+});
+
+api.put('/morning-brief', async (c) => {
+  const userId = c.get('user').id;
+  const p = primaryBot(userId);
+  if (!p) return c.json({ error: 'not found' }, 404);
+  const input = await c.req.json().catch(() => ({}));
+  const hour = Math.min(23, Math.max(0, Math.round(Number(input.hour ?? 8)) || 0));
+  let timezone = typeof input.timezone === 'string' ? input.timezone : 'UTC';
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }); } catch { timezone = 'UTC'; }
+  const schedule = `0 ${hour} * * *`;
+  let r = briefRoutine(p.id);
+  if (r) {
+    db.prepare('UPDATE routines SET schedule=?, timezone=?, enabled=?, prompt=? WHERE id=?').run(schedule, timezone, input.enabled ? 1 : 0, BRIEF_PROMPT, r.id);
+  } else if (input.enabled) {
+    const id = newId('rt');
+    db.prepare('INSERT INTO routines(id,bot_id,name,prompt,schedule,timezone,enabled,created_at) VALUES (?,?,?,?,?,?,1,?)').run(id, p.id, BRIEF_NAME, BRIEF_PROMPT, schedule, timezone, now());
+    r = { id };
+  }
+  if (r) {
+    const next = toRoutine(db.prepare('SELECT * FROM routines WHERE id=?').get(r.id));
+    next.enabled ? scheduleRoutine(next) : unscheduleRoutine(next.id);
+    hub.emit(userId, { type: 'routines', botId: p.id });
+  }
+  return c.json({ enabled: !!input.enabled, hour });
+});
+
 api.post('/routines/:id/run', (c) => {
   const r = db.prepare('SELECT r.* FROM routines r JOIN bots b ON b.id=r.bot_id WHERE r.id=? AND b.user_id=?').get(c.req.param('id'), c.get('user').id) as any;
   if (!r) return c.json({ error: 'not found' }, 404);

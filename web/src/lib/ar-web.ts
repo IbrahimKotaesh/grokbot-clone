@@ -544,4 +544,12 @@ export const arWeb: Record<string, string> = {
   "What can you do for me?": "شو بتقدر تعملّي؟",
   "Research a topic and summarize it": "ابحث عن موضوع ولخّصلي ياه",
   "Help me write an email": "ساعدني اكتب إيميل",
+  "Morning brief": "ملخّص الصبح",
+  "Daily brief from {name}": "ملخّص يومي من {name}",
+  "Every morning: what your team finished, what is in progress and what waits for you.": "كل صبح: شو خلّص فريقك، شو عم يشتغل عليه، وشو ناطر منك.",
+  "Time": "الوقت",
+  "Messages": "الرسائل",
+  "Nothing matches “{q}”": "ما في شي بيطابق “{q}”",
+  "Searching…": "عم دوّر…",
+  "Search bots and messages": "دوّر على بوت أو رسالة",
 };

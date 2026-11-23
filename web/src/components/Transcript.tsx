@@ -73,7 +73,7 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry }: { row: R
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
   return (
-    <div className={`bubble-wrap is-${side}`}>
+    <div className={`bubble-wrap is-${side}`} data-seq={row.seq}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
       {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}${fresh ? ' is-fresh' : ''}`}>
         {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
@@ -234,6 +234,19 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     return () => {observer.disconnect();cancelAnimationFrame(frame);};
     // Re-attach once the history has loaded, so the column exists to be watched.
   }, [bot.id, loaded]);
+
+  // Opened from search: bring that message into view and flash it once.
+  const focus = useStore((s) => s.focusRow);
+  useLayoutEffect(() => {
+    if (!focus || focus.botId !== bot.id || !rows.some((r) => r.seq === focus.seq && r.generation === focus.generation)) return;
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-seq="${focus.seq}"]`);
+    if (!el) return;
+    stick.current = false;
+    el.scrollIntoView({ block: 'center' });
+    el.classList.remove('is-found'); void el.offsetWidth; el.classList.add('is-found');
+    positioned.current = true;
+    useStore.getState().set({ focusRow: null });
+  }, [focus, rows, bot.id]);
 
   // Sending a message always brings you to the bottom, where the reply will appear.
   const lastSeq = last?.seq;

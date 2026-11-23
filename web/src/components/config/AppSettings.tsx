@@ -14,7 +14,8 @@ import { ToolkitLogo } from '../ToolkitLogo';
 import { Glyph } from './glyphs';
 import { ConfirmButton, Segmented, Switch } from './ui';
 import { chime, finishSoundOn, setFinishSound } from '../../lib/finishNotices';
-import { langChoice, setLangChoice, t } from '../../lib/i18n';
+import { api } from '../../lib/api';
+import { lang, langChoice, setLangChoice, t } from '../../lib/i18n';
 
 const SECTIONS: { id: AppSection; label: string }[] = [
   { id: 'general', label: t("General") },
@@ -94,6 +95,43 @@ function FinishSettings() {
   );
 }
 
+/** A short daily note from the Chief of Staff about what the team did and what waits for you. */
+function MorningBriefSettings() {
+  const chief = useStore((s) => s.bots.find((b) => b.isPrimary && b.kind !== 'room'));
+  const [state, setState] = useState<{ enabled: boolean; hour: number } | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => { api.morningBrief().then((r) => r.available && setState({ enabled: r.enabled, hour: r.hour })).catch(() => {}); }, []);
+  if (!state || !chief) return null;
+  const save = (next: { enabled: boolean; hour: number }) => {
+    const prev = state; setState(next); setError('');
+    api.setMorningBrief(next.enabled, next.hour).catch((e) => { setState(prev); setError((e as Error).message); });
+  };
+  const label = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(lang === 'ar' ? 'ar' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+  return (
+    <section className="cfg-section">
+      <div className="cfg-section__label">{t('Morning brief')}</div>
+      <div className="cfg-card">
+        <div className="cfg-row">
+          <div className="cfg-row__text">
+            <div className="cfg-row__title">{t('Daily brief from {name}', { name: chief.name })}</div>
+            <div className="cfg-row__sub">{t('Every morning: what your team finished, what is in progress and what waits for you.')}</div>
+          </div>
+          <Switch on={state.enabled} label={t('Morning brief')} onChange={() => save({ ...state, enabled: !state.enabled })} />
+        </div>
+        {state.enabled && (
+          <div className="cfg-row">
+            <div className="cfg-row__text"><div className="cfg-row__title">{t('Time')}</div></div>
+            <select className="cfg-select" value={state.hour} aria-label={t('Time')} onChange={(e) => save({ ...state, hour: Number(e.target.value) })}>
+              {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{label(h)}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      {error && <div className="cfg-field__hint" role="alert">{error}</div>}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 function ThemeTile({ value, label, current, onPick }: { value: Theme; label: string; current: Theme; onPick: (t: Theme) => void }) {
@@ -128,6 +166,7 @@ function GeneralSection() {
         <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('System') }, { value: 'en', label: t("English") }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
         <div className="cfg-field__hint">{t('Your choice is saved on this device. System follows your browser’s language.')}</div>
       </section>
+      <MorningBriefSettings />
       <FinishSettings />
     </>
   );

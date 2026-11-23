@@ -232,3 +232,7 @@
 @keyframes reply-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .activity-line__time { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .bubble.is-fresh { animation: none; } }
+
+/* A message opened from search flashes once. */
+.bubble-wrap.is-found .bubble { animation: found-flash 1.8s ease-out; }
+@keyframes found-flash { 0%, 30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-blue, #2f6fe0) 55%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
