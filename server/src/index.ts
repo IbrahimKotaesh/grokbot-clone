@@ -53,6 +53,13 @@ app.route('/api', configApi);
 // Serve the built web app in production.
 const webDist = path.resolve(new URL('.', import.meta.url).pathname, '../../web/dist');
 if (fs.existsSync(webDist)) {
+  // Built files have a content hash in their name, so they never change: cache them for good.
+  // Everything else (the page itself, icons, sw.js) is checked on every load, so a deploy shows up at once.
+  app.use('/*', async (c, next) => {
+    await next();
+    if (c.req.path.startsWith('/api/') || c.res.headers.has('Cache-Control')) return;
+    c.res.headers.set('Cache-Control', c.req.path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache');
+  });
   app.use('/*', serveStatic({ root: path.relative(process.cwd(), webDist) }));
   app.get('*', (c) => c.html(fs.readFileSync(path.join(webDist, 'index.html'), 'utf8')));
 }
