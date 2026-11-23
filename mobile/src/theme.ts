@@ -138,5 +138,7 @@ export const fruitColor: Record<Fruit, string> = {
   florist: "magenta",
 };
 export const fruitFor = (shape: string): Fruit => characterKind(shape);
+/** Your own chat bubbles: one Messenger-style blue in light and dark. */
+export const CHAT_BLUE = "#1877F2";
 export const accentFor = (color?: string) =>
   chatColors[color ?? ""] ?? chatColors.blue;

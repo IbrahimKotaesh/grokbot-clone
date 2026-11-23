@@ -1,11 +1,12 @@
 /*
  * The phone app's look on the web and Mac app. Same tokens as mobile/src/theme.ts:
  * a pure black (or warm off-white) canvas, neutral greys, white (or ink) primary actions.
- * Bot colors only tint avatars. Your messages sit in a grey bubble; replies are plain text.
+ * Bot colors only tint avatars. Your messages sit in a blue bubble; replies are plain text.
  * Loaded last so it wins over the older layers.
  */
 
 :root {
+  --chat-blue: #1877f2;
   --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Tajawal", "IBM Plex Sans", system-ui, sans-serif;
 
   /* light — mobile `light` palette */
@@ -90,11 +91,11 @@
 
 body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
 
-/* ---------- chat: grey bubble for you, plain text for the bot ---------- */
+/* ---------- chat: blue bubble for you (Messenger-style), plain text for the bot ---------- */
 .chat, .transcript, .chat__body { background: var(--p-bg); }
 .chat .bubble.is-user {
-  background: var(--p-raised) !important;
-  color: var(--p-text) !important;
+  background: var(--chat-blue) !important;
+  color: #fff !important;
   border: 0;
   border-radius: 20px;
   padding: 10px 15px;
@@ -308,3 +309,8 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .onb__team--small span { width: 54px; }
 .onb__team--small span:nth-child(2) { width: 68px; }
 .onb__step .onb__team--small + h1 { margin-top: 2px; }
+
+/* Links and code inside your blue bubble stay readable. */
+.chat .bubble.is-user .md a { color: #fff; text-decoration: underline; }
+.chat .bubble.is-user .md code { background: #ffffff2e; color: #fff; }
+.chat .bubble.is-user .bubble__time { color: #ffffffb3; }

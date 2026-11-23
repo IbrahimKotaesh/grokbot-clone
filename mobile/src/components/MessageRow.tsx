@@ -10,7 +10,7 @@ import type { Row, Bot } from "../../../packages/contracts/src/types";
 import { Button, IconButton, styles as s } from "./UI";
 import { FadeIn } from "./motion";
 import { client, authHeaders, connectApp } from "../lib/session";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, CHAT_BLUE } from "../theme";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { fetch as nativeFetch } from "expo/fetch";
@@ -285,7 +285,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
           style={{
             maxWidth: user ? "84%" : "100%",
             alignSelf: user ? "flex-end" : "stretch",
-            backgroundColor: user && hasBody ? p.raised : "transparent",
+            backgroundColor: user && hasBody ? CHAT_BLUE : "transparent",
             borderRadius: 22,
             borderBottomRightRadius: user ? 6 : 22,
             paddingHorizontal: user && hasBody ? space.lg : 2,
@@ -296,7 +296,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
           {!!text && (
             <Markdown
               style={{
-                body: { color: p.text, fontSize: user ? 16 : 16.5, lineHeight: user ? 23 : 26, writingDirection: rtl(text) ? "rtl" : "auto" },
+                body: { color: user ? "#fff" : p.text, fontSize: user ? 16 : 16.5, lineHeight: user ? 23 : 26, writingDirection: rtl(text) ? "rtl" : "auto" },
                 paragraph: { marginTop: 0, marginBottom: user ? 0 : 10 },
                 textgroup: { width: "100%", writingDirection: rtl(text) ? "rtl" : "auto", textAlign: rtl(text) ? "right" : "left" },
                 heading1: { fontSize: 24, lineHeight: 31, fontWeight: "700", color: p.text, marginBottom: 8 },
@@ -305,7 +305,7 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
                 strong: { fontWeight: "700" },
                 bullet_list_icon: { color: p.muted },
                 ordered_list_icon: { color: p.muted },
-                link: { color: p.blue, textDecorationLine: "none" },
+                link: { color: user ? "#fff" : p.blue, textDecorationLine: user ? "underline" : "none" },
                 code_inline: { backgroundColor: p.raised, color: p.text, fontFamily: "Menlo", fontSize: 14, borderRadius: 6, paddingHorizontal: 4 },
                 fence: { backgroundColor: p.surface, color: p.text, borderColor: p.line },
                 hr: { backgroundColor: p.line },
