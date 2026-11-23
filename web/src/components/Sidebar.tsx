@@ -2,7 +2,7 @@ import { t } from '../lib/i18n';
 import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { useConfigUI } from '../configStore';
 import { TasksIsland } from './config/TasksView';
 import type { Bot } from '@shared/types';
@@ -67,7 +67,18 @@ export function Sidebar() {
   const logout = async () => { await api.logout().catch(() => {}); location.reload(); };
 
   const primary = bots.find((b) => b.isPrimary);
-  const others = bots.filter((b) => !b.isPrimary).sort((a,b)=>(a.sortOrder??Infinity)-(b.sortOrder??Infinity)||b.lastActivityAt-a.lastActivityAt);
+  // A bot with a reply you haven't read rises to the top, newest first, like a messaging app.
+  // The one you open stays up there while you read it; after that it goes back to its usual place.
+  const keepUp = useRef(new Set<string>());
+  for (const b of bots) if (b.unread > 0 && !b.isPrimary) keepUp.current.add(b.id);
+  for (const id of [...keepUp.current]) {
+    const b = bots.find((x) => x.id === id);
+    if (!b || (b.unread === 0 && id !== storeSelectedBotId)) keepUp.current.delete(id);
+  }
+  const byOrder = (a: Bot, b: Bot) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) || b.lastActivityAt - a.lastActivityAt;
+  const rest = bots.filter((b) => !b.isPrimary);
+  const fresh = rest.filter((b) => keepUp.current.has(b.id)).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const others = [...fresh, ...rest.filter((b) => !keepUp.current.has(b.id)).sort(byOrder)];
 
   return (
     <aside id="workspace-sidebar" aria-label={t("Conversations")} className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
