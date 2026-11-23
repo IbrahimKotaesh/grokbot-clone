@@ -1,0 +1,9 @@
+[Unit]
+Description=Check the disk every hour and clean up when it passes 80%
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

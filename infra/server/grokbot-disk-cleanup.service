@@ -1,0 +1,6 @@
+[Unit]
+Description=Free disk space safely when the disk is getting full (logs, caches, old backups)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/grokbot-disk-cleanup 80

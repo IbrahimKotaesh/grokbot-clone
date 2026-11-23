@@ -1,0 +1,67 @@
+#!/bin/bash
+# Keep the server's disk from filling up, without touching anything that matters.
+#
+#   grokbot-disk-cleanup [limit%]     (default 80; FORCE=1 cleans even below the limit)
+#
+# Always: trims the system logs to 500 MB / 30 days (cheap, safe).
+# Only when the disk is at or above the limit:
+#   - Fino database backups: keeps the newest 10, plus the newest one of each of the last 30 days.
+#   - Fino code releases: keeps the running one and the one before it (the updater normally does this too).
+#   - Caches that rebuild themselves: npm, apt, Docker *build* cache (never images, containers or volumes).
+# Never touches: the live database (/var/lib/grokbot), bot files and browser profiles, the desktop volume,
+# Docker images/containers, or anything belonging to other projects on this server.
+# Runs hourly from grokbot-disk-cleanup.timer and before every update.
+set -uo pipefail
+limit="${1:-80}"
+used() { df --output=pcent / | tail -1 | tr -dc 0-9; }
+before="$(used)"
+
+journalctl --vacuum-size=500M --vacuum-time=30d >/dev/null 2>&1 || true
+
+if [ "${FORCE:-0}" != 1 ] && [ "$(used)" -lt "$limit" ]; then
+  [ "$before" -ge "$limit" ] && echo "Disk ${before}% -> $(used)% (logs trimmed)"
+  exit 0
+fi
+
+# 1. Database backups: newest 10 + one per day for 30 days.
+if [ -d /var/backups/grokbot ]; then
+  python3 - <<'PY'
+import datetime, os, re
+d = "/var/backups/grokbot"
+files = sorted((f for f in os.listdir(d) if re.fullmatch(r"database-\d{8}T\d{6}Z\.db", f)), reverse=True)
+keep = set(files[:10])
+cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).strftime("%Y%m%d")
+seen = set()
+for f in files:  # newest first, so the first one seen for a day is that day's newest
+    day = f[9:17]
+    if day >= cutoff and day not in seen:
+        seen.add(day); keep.add(f)
+removed = [f for f in files if f not in keep]
+for f in removed:
+    os.remove(os.path.join(d, f))
+print(f"Database backups: kept {len(keep)}, removed {len(removed)}")
+PY
+fi
+
+# 2. Code releases: the running one and the newest other one.
+root=/opt/grokbot
+if [ -d "$root/releases" ]; then
+  current="$(readlink -f "$root/current" 2>/dev/null || true)"
+  kept_other=""
+  while read -r path; do
+    [[ "$(basename "$path")" =~ ^[0-9a-f]{40}$ ]] || continue
+    [ "$path" = "$current" ] && continue
+    if [ -z "$kept_other" ]; then kept_other="$path"; continue; fi
+    chown -Rh grokbot:grokbot "$path"
+    runuser -u grokbot -- git -C "$root/repository" worktree remove --force "$path" 2>/dev/null || runuser -u grokbot -- rm -rf -- "$path"
+    echo "Removed old release $(basename "$path")"
+  done < <(find "$root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
+  runuser -u grokbot -- git -C "$root/repository" worktree prune 2>/dev/null || true
+fi
+
+# 3. Caches that rebuild themselves.
+rm -rf /var/lib/grokbot/.npm/_cacache /root/.npm/_cacache
+apt-get clean 2>/dev/null || true
+docker builder prune -f >/dev/null 2>&1 || true
+
+echo "Disk ${before}% -> $(used)%"

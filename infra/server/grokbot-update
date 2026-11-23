@@ -10,6 +10,8 @@ revision="$(runuser -u grokbot -- git -C "$repo" rev-parse origin/main)"
 previous="$(readlink -f "$root/current" 2>/dev/null || true)"
 release="$root/releases/$revision"
 if [ "$previous" = "$release" ]; then exit 0; fi
+# A full disk makes the install fail halfway; make room first (safe items only, see that script).
+/usr/local/sbin/grokbot-disk-cleanup 85 || true
 if [ ! -f "$release/.grokbot-built" ]; then
   if [ ! -d "$release" ]; then runuser -u grokbot -- git -C "$repo" worktree add --detach "$release" "$revision"; fi
   if ! runuser -u grokbot -- bash -c 'cd "$1" && npm ci --no-audit --no-fund && npm run typecheck && npm run build' bash "$release"; then

@@ -62,3 +62,12 @@ The composer switches ChatGPT/Claude for the current assistant. Switching is
 blocked during a running turn. Device dictation uses browser speech recognition
 when available, with keyboard dictation as the fallback; no audio is sent to the
 Fino server. The device/browser controls recognition availability and language.
+
+## Disk cleanup
+
+`grokbot-disk-cleanup` (to `/usr/local/sbin`) with its `.service` and `.timer` keeps the disk from filling up,
+which otherwise makes updates fail halfway ("no space left on device"). Every hour it trims the system logs, and
+when the disk is at 80% or more it also thins Fino's database backups (newest 10 + one per day for 30 days),
+removes Fino code releases older than the previous one, and clears caches that rebuild themselves (npm, apt,
+Docker build cache). It never touches the live database, bot files, Docker images/volumes or other projects.
+`grokbot-update` runs it first (at 85%). Run it by hand with `FORCE=1 grokbot-disk-cleanup`.
