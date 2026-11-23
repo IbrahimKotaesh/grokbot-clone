@@ -1,3 +1,4 @@
+import { usesServerResources } from './lib/owner.js';
 // Bring-your-own model access. Each user connects their own AI account so their bots run on it:
 //   • ChatGPT: "Sign in with ChatGPT" through the Codex CLI's device-code login, kept in a
 //     per-user CODEX_HOME. Fino never sees the password or the OAuth tokens.
@@ -62,8 +63,9 @@ export function codexHomeIfConnected(userId: string): string | null {
   const row = db.prepare("SELECT 1 FROM user_credentials WHERE user_id=? AND provider IN ('chatgpt','openai')").get(userId);
   return row ? codexHomeFor(userId) : null;
 }
-/** Production deployments set SHARED_MODEL_LOGIN=0 so users must connect their own model. */
-export const sharedLoginAllowed = () => process.env.SHARED_MODEL_LOGIN !== '0';
+/** Whether this user may run on the server's own ChatGPT/Claude login. SHARED_MODEL_LOGIN=0 turns it off for everyone;
+ *  on a public server only the owner gets it, so customers always use their own account. */
+export const sharedLoginAllowed = (userId: string) => process.env.SHARED_MODEL_LOGIN !== '0' && usesServerResources(userId);
 
 function runCodex(userId: string, args: string[], stdin?: string): Promise<{ code: number; out: string }> {
   const home = codexHomeFor(userId);
@@ -147,7 +149,7 @@ credentialsApi.get('/', (c) => {
       const r = rows.find((x) => x.provider === p);
       return { provider: p, connected: !!r, hint: r?.hint ?? '', connectedAt: r?.created_at ?? null };
     }),
-    sharedLogin: sharedLoginAllowed(),
+    sharedLogin: sharedLoginAllowed(userId),
   });
 });
 

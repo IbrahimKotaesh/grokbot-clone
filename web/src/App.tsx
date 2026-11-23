@@ -19,6 +19,7 @@ import { TasksView } from './components/config/TasksView';
 import { useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
+import { Landing, MacOffer } from './components/Landing';
 
 function Shell() {
   const detailsOpen = useStore((s) => s.detailsOpen);
@@ -30,6 +31,19 @@ function Shell() {
   const navOpen = useStore((s) => s.mobileNavOpen);
   const navButton = useRef<HTMLButtonElement>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => !onboardingDone());
+  const [needsAI, setNeedsAI] = useState(false);
+  const bots = useStore((s) => s.bots);
+  // A customer on a public server whose bots have no AI yet gets setup again, until they connect one.
+  useEffect(() => {
+    if (!bots.length) return;
+    if (bots.some((b) => b.agentProvider === 'openrouter')) { setNeedsAI(false); return; }
+    fetch('/api/credentials', { credentials: 'include' }).then((r) => r.json())
+      .then((r: { credentials: { connected: boolean }[]; sharedLogin: boolean }) => {
+        const missing = !r.sharedLogin && !r.credentials.some((c) => c.connected);
+        setNeedsAI(missing);
+        if (missing) setShowOnboarding(true);
+      }).catch(() => {});
+  }, [bots.length]);
   const view = useConfigUI((s) => s.view);
   const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
   useEffect(()=>notifyDesktopContext(selectedBot?.id),[selectedBot?.id]);
@@ -114,7 +128,8 @@ function Shell() {
       {modal === 'apps' && <ConnectAppsModal />}
       {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
-      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+      {showOnboarding && <Onboarding requireAI={needsAI} onClose={() => { setShowOnboarding(false); setNeedsAI(false); }} />}
+      {!showOnboarding && !isMacDesktop() && <MacOffer />}
     </div>
   );
 }
@@ -123,8 +138,20 @@ export function App() {
   const authChecked = useStore((s) => s.authChecked);
   const accessLocked=useStore(s=>s.accessLocked);
   const user = useStore((s) => s.user);
+  // The public landing page greets web visitors; the Mac app keeps its own sign-in screen.
+  // A sign-in error from Google, or a password-reset link, opens the sign-in screen directly.
+  const [signingIn, setSigningIn] = useState(() => (p => p.has('login') || p.has('reset'))(new URLSearchParams(location.search)));
+  const [signInMode, setSignInMode] = useState<'signin' | 'signup'>('signin');
   useEffect(() => { useStore.getState().checkAuth(); }, []);
   if (!authChecked) return <div className="boot" />;
-  if(accessLocked)return <AccessCodeGate/>;
-  return user ? <Shell /> : <SignIn />;
+  const web = !isMacDesktop();
+  // /welcome shows the landing page to signed-in people too (its buttons then open the workspace).
+  if (web && user && location.pathname === '/welcome') return <Landing signedIn onSignIn={() => {}} />;
+  if (user) return <Shell />;
+  if (web && !signingIn) return <Landing signedIn={false} onSignIn={(mode) => {
+    history.replaceState(null, '', '/');
+    setSignInMode(mode);
+    setSigningIn(true);
+  }} />;
+  return accessLocked ? <AccessCodeGate/> : <SignIn initial={signInMode} />;
 }

@@ -9,7 +9,7 @@ const scrypt=promisify(scryptCallback);
 const cookieName='fino_access';
 const filename=()=>process.env.FINO_ACCESS_FILE??path.join(path.dirname(env.dbPath),'access-secret.json');
 interface Secret{salt:string;hash:string;key:string}
-export const accessConfigured=()=>process.env.FINO_ACCESS_REQUIRED==='1'||fs.existsSync(filename());
+export const accessConfigured=()=>!env.publicSignup&&(process.env.FINO_ACCESS_REQUIRED==='1'||fs.existsSync(filename()));
 function secret():Secret{const v=JSON.parse(fs.readFileSync(filename(),'utf8'));if(!/^[a-f0-9]{32}$/.test(v.salt)||!/^[a-f0-9]{128}$/.test(v.hash)||!/^[a-f0-9]{64}$/.test(v.key))throw Error('Invalid access configuration');return v;}
 export function accessAllowed(header:string|undefined){
  if(!accessConfigured())return true;

@@ -36,6 +36,7 @@ import { voiceApi } from './voice.js';
 import { transcriptionApi } from './transcription.js';
 import { createBot } from './bots.js';
 import type { Toolkit } from './types.js';
+import { passwordApi, emailProven } from './routes-password.js';
 
 export const api = new Hono<AuthVars>();
 
@@ -50,11 +51,13 @@ function findOrCreateUser(email: string, name?: string, preferId?: string) {
 
 // ---------- auth ----------
 
+api.route('/auth/password', passwordApi(findOrCreateUser));
+
 api.get('/auth/me', (c) => {
   const user = userFromRequest(c);
   const localAccount = env.devLogin && env.computerProvider === 'local'
     ? db.prepare('SELECT email, name FROM users ORDER BY created_at ASC LIMIT 1').get() ?? null : null;
-  return c.json({ user, devLogin: env.devLogin, googleLogin: env.composioKey !== 'disabled', localAccount });
+  return c.json({ user, devLogin: env.devLogin, googleLogin: env.composioKey !== 'disabled', passwordLogin: true, localAccount });
 });
 
 api.get('/auth/google/start', async (c) => {
@@ -90,6 +93,7 @@ api.get('/auth/google/callback', async (c) => {
     const { id, isNew } = findOrCreateUser(profile.email, profile.name, attempt.provisional_user_id);
     // Existing user: the Gmail connection made for sign-in belongs to a throwaway id; remove it.
     if (!isNew && id !== attempt.provisional_user_id) await deleteConnection(caId);
+    if (!isNew) emailProven(id);
     if (attempt.native_challenge) {
       const code = issueNativeTicket(id, attempt.native_challenge);
       return c.redirect(`fino://auth?code=${encodeURIComponent(code)}`);
@@ -139,6 +143,7 @@ api.post('/auth/apple', async (c) => {
     if (!email) return c.json({ error: 'Apple did not share an email address. Try again and choose to share or hide your email.' }, 400);
     id = findOrCreateUser(email, String(body.fullName ?? '').trim().slice(0, 80) || undefined).id;
     db.prepare('UPDATE users SET apple_sub=? WHERE id=?').run(who.sub, id);
+    if (who.email) emailProven(id);
   }
   if (env.allowedEmails.length && !env.allowedEmails.includes(String(email).toLowerCase())) return c.json({ error: 'This account is not allowed on this server.' }, 403);
   return c.json({ session: createSession(c, id) });

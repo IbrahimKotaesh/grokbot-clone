@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { TrafficLights } from './Sidebar';
+import { isMacDesktop } from '../lib/desktop';
+import { AuthPanel } from './AuthPanel';
 
-export function SignIn() {
+export function SignIn({ initial = 'signin' }: { initial?: 'signin' | 'signup' }) {
   const devLogin = useStore((s) => s.devLogin);
   const googleLogin = useStore((s) => s.googleLogin);
   const localAccount = useStore((s) => s.localAccount);
@@ -36,7 +38,7 @@ export function SignIn() {
         </div>
         <h1 className="signin__title">Fino</h1>
         <p className="signin__sub">{t("A little company. A lot done. Your AI team, tools and ideas in one place.")}</p>
-        {googleLogin && <a className="btn btn--primary signin__google" href="/api/auth/google/start">
+        {!isMacDesktop() ? <AuthPanel initial={initial} /> : googleLogin && <a className="btn btn--primary signin__google" href="/api/auth/google/start">
           <GoogleG /> Sign in with Google
         </a>}
         {devLogin && (
@@ -48,9 +50,10 @@ export function SignIn() {
           </form>
         )}
         {!googleLogin && devLogin && <p className="signin__foot">{t("Use your local account to open your Bots. Connect Gmail later from Connect apps.")}</p>}
-        {!googleLogin && !devLogin && <p role="alert" className="card__error">{t("Sign-in has not been configured. Contact the owner to finish setup.")}</p>}
-        {error && <div className="card__error signin__error">{error}</div>}
+        {!googleLogin && !devLogin && isMacDesktop() && <p role="alert" className="card__error">{t("Sign-in has not been configured. Contact the owner to finish setup.")}</p>}
+        {error && isMacDesktop() && <div className="card__error signin__error">{error}</div>}
         <p className="signin__foot">{t("Your own space to think, create and get things done.")}</p>
+        {!isMacDesktop() && <a className="signin__back" href="/">{t("Back to the Fino home page")}</a>}
       </div>
     </div>
   );

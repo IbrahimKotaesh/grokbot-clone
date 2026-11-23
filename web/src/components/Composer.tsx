@@ -1,3 +1,4 @@
+import { firstTask } from './Landing';
 import { t } from '../lib/i18n';
 import {useDesktopState} from '../lib/desktop';
 import {ProviderLogo} from './ProviderLogo';
@@ -28,7 +29,9 @@ const photoDrafts = new Map<string, Photo[]>();
 
 export function Composer({ bot, running,generation=bot.generation }: { bot: Bot; running: boolean;generation?:number }) {
   const draftKey=`${bot.id}:${generation}`;
-  const [text, setText] = useState(() => drafts.get(draftKey) ?? '');
+  const [text, setText] = useState(() => drafts.get(draftKey) ?? (bot.isPrimary ? firstTask.peek() : ''));
+  // Hand the landing-page job over once; it now lives in this draft.
+  useEffect(() => { if (bot.isPrimary) firstTask.used(); }, [bot.isPrimary]);
   const [documents,setDocuments]=useState<DocumentUpload[]>(()=>documentDrafts.get(draftKey)??[]);
   const documentRef=useRef<HTMLInputElement>(null);
   useEffect(()=>{documentDrafts.set(draftKey,documents);},[draftKey,documents]);

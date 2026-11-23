@@ -1,3 +1,5 @@
+import { usesServerResources } from '../lib/owner.js';
+import { planOf } from '../plans.js';
 // Responses-API model providers for the built-in agent loop. Codex (ChatGPT) and Claude have their own
 // runtimes; everything here speaks OpenAI's Responses API, so the loop, tools and history stay the same.
 import OpenAI from 'openai';
@@ -25,8 +27,10 @@ export function loopClient(userId: string, provider: LoopProvider, model?: strin
   const own = apiKeyFor(userId, provider);
   // Only xAI has a server-wide fallback key (it also powers voice).
   // xAI and OpenRouter can fall back to the server's own key; Fino then pays (and routes OpenRouter cheaply).
-  const hosted = !own && provider === 'openrouter' && !!hostedKey();
-  const key = own ?? (provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null) ?? (hosted ? hostedKey() : null);
+  // On a public server, Fino-paid keys are for the owner and paying plans; free customers bring their own.
+  const serverPays = usesServerResources(userId) || planOf(userId).id !== 'free';
+  const hosted = !own && serverPays && provider === 'openrouter' && !!hostedKey();
+  const key = own ?? (serverPays && provider === 'xai' && env.xaiKey !== 'disabled' ? env.xaiKey : null) ?? (hosted ? hostedKey() : null);
   if (!key) throw new Error(`Add your ${NAMES[provider]} API key in Account → AI models to use this bot.`);
   const id = `${provider}:${key.slice(-12)}`;
   let client = cache.get(id);

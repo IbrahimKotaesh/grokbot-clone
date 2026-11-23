@@ -37,7 +37,7 @@ export function isExhausted(userId: string, provider: string) {
  */
 export function availableProviders(userId: string): string[] {
   const keys = new Set((db.prepare('SELECT provider FROM user_credentials WHERE user_id=?').all(userId) as { provider: string }[]).map((r) => r.provider));
-  const shared = sharedLoginAllowed();
+  const shared = sharedLoginAllowed(userId);
   const list: string[] = [];
   if (keys.has('chatgpt') || keys.has('openai') || shared) list.push('codex');
   if (keys.has('anthropic') || shared) list.push('claude');

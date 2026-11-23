@@ -36,7 +36,7 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
   // A user's own Anthropic API key wins; otherwise the server's Claude login (local, single-owner setups).
   const userKey = apiKeyFor(bot.user_id, 'anthropic');
   if (!userKey) {
-    if (!sharedLoginAllowed()) throw new Error('Add your Anthropic API key in Account → AI models to use Claude.');
+    if (!sharedLoginAllowed(bot.user_id)) throw new Error('Add your Anthropic API key in Account → AI models to use Claude.');
     if (!await claudeLoginStatus()) throw new Error('Sign in with your Claude subscription first: claude auth login');
   }
   if (signal.aborted) throw new Error('Stopped.');

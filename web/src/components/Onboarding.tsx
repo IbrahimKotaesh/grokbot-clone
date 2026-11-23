@@ -30,7 +30,7 @@ type Step = 'welcome' | 'brain' | 'apps' | 'computer' | 'done';
  * subscription, or Fino's included models), connect everyday apps, and on the Mac let Fino use this
  * computer. Every step can be skipped; it shows once per device.
  */
-export function Onboarding({ onClose }: { onClose: () => void }) {
+export function Onboarding({ onClose, requireAI = false }: { onClose: () => void; requireAI?: boolean }) {
   const mac = isMacDesktop();
   const steps: Step[] = mac ? ['welcome', 'brain', 'apps', 'computer', 'done'] : ['welcome', 'brain', 'apps', 'done'];
   const [step, setStep] = useState<Step>('welcome');
@@ -39,13 +39,16 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
   const back = () => setStep(steps[Math.max(0, index - 1)]);
   const finish = () => { markDone(); onClose(); };
   const primary = useStore((s) => s.bots.find((b) => b.isPrimary));
+  // On a public server a new customer's bots need their own AI, so setup can't be skipped until one is connected.
+  const [aiConnected, setAiConnected] = useState(false);
+  const aiReady = !requireAI || aiConnected;
 
   return (
     <div className="onb" role="dialog" aria-modal="true" aria-label={t('Set up Fino')}>
       <div className="onb__card">
         <div className="onb__top">
           <div className="onb__dots" aria-hidden="true">{steps.map((s, i) => <i key={s} className={i <= index ? 'is-on' : ''} />)}</div>
-          {step !== 'done' && <button type="button" className="onb__skip" onClick={finish}>{t('Skip setup')}</button>}
+          {step !== 'done' && aiReady && <button type="button" className="onb__skip" onClick={finish}>{t('Skip setup')}</button>}
         </div>
 
         {step === 'welcome' && (
@@ -57,7 +60,7 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
           </section>
         )}
 
-        {step === 'brain' && <BrainStep onNext={next} onBack={back} />}
+        {step === 'brain' && <BrainStep onNext={next} onBack={back} required={requireAI} ready={aiReady} onReady={() => setAiConnected(true)} />}
         {step === 'apps' && <AppsStep onNext={next} onBack={back} />}
         {step === 'computer' && <ComputerStep onNext={next} onBack={back} />}
 
@@ -84,7 +87,7 @@ function Nav({ onBack, onNext, nextLabel, disabled }: { onBack: () => void; onNe
 }
 
 /** Step 2: your own ChatGPT subscription (signed in with a one-time code), or Fino's included models. */
-function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+function BrainStep({ onNext, onBack, required, ready, onReady }: { onNext: () => void; onBack: () => void; required: boolean; ready: boolean; onReady: () => void }) {
   const hosted = useHostedModels();
   const bots = useStore((s) => s.bots);
   const [chatgpt, setChatgpt] = useState<'unknown' | 'connected' | 'idle' | 'waiting' | 'error'>('unknown');
@@ -96,7 +99,7 @@ function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void 
   useEffect(() => {
     fetch('/api/credentials', { credentials: 'include' }).then((r) => r.json())
       .then((r: { credentials: { provider: string; connected: boolean }[]; sharedLogin: boolean }) =>
-        setChatgpt(r.sharedLogin || r.credentials.some((c) => c.connected && (c.provider === 'chatgpt' || c.provider === 'openai')) ? 'connected' : 'idle'))
+        { const ok = r.sharedLogin || r.credentials.some((c) => c.connected && (c.provider === 'chatgpt' || c.provider === 'openai')); setChatgpt(ok ? 'connected' : 'idle'); if (ok) onReady(); })
       .catch(() => setChatgpt('idle'));
     return () => clearInterval(timer.current);
   }, []);
@@ -111,7 +114,7 @@ function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void 
       window.open(d.url, '_blank', 'noopener');
       timer.current = setInterval(async () => {
         const s = await fetch(`/api/credentials/chatgpt/status/${d.loginId}`, { credentials: 'include' }).then((x) => x.json()).catch(() => null);
-        if (s?.state === 'connected') { clearInterval(timer.current); setChatgpt('connected'); setLogin(null); useAllBots('codex'); }
+        if (s?.state === 'connected') { clearInterval(timer.current); setChatgpt('connected'); setLogin(null); useAllBots('codex'); onReady(); }
         else if (s?.state === 'failed' || s?.state === 'expired') { clearInterval(timer.current); setChatgpt('error'); setError(s.error ?? t('Sign-in didn’t finish. Try again.')); }
       }, 2500);
     } catch (e) { setChatgpt('error'); setError((e as Error).message); }
@@ -123,8 +126,8 @@ function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void 
 
   return (
     <section className="onb__step">
-      <h1>{t('Choose your AI')}</h1>
-      <p>{t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
+      <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
+      <p>{required ? t('Your bots think with your own ChatGPT account. Connect it once and your team is ready.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
       <div className="onb__options">
         <div className={`onb__option${chatgpt === 'connected' ? ' is-done' : ''}`}>
           <ProviderLogo provider="codex" />
@@ -144,13 +147,13 @@ function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void 
             : <button type="button" className="onb__small" disabled={chatgpt === 'unknown'} onClick={() => void startChatgpt()}>{t('Connect')}</button>}
         </div>
 
-        <div className="onb__option">
+        {!required && <div className="onb__option">
           <ProviderLogo provider="claude" />
           <div className="onb__option-text">
             <strong>{t('Use my Claude subscription')}</strong>
             <small>{t('Pick Claude Code for any bot from its model menu.')}</small>
           </div>
-        </div>
+        </div>}
 
         {hosted?.available && (
           <div className={`onb__option${included ? ' is-done' : ''}`}>
@@ -160,12 +163,12 @@ function BrainStep({ onNext, onBack }: { onNext: () => void; onBack: () => void 
               <small>{t('DeepSeek, Qwen and GLM, part of your plan. Nothing to sign in to.')}</small>
             </div>
             {included ? <span className="onb__check"><Check size={16} /></span>
-              : <button type="button" className="onb__small" onClick={() => { useAllBots('openrouter'); setIncluded(true); }}>{t('Use these')}</button>}
+              : <button type="button" className="onb__small" onClick={() => { useAllBots('openrouter'); setIncluded(true); onReady(); }}>{t('Use these')}</button>}
           </div>
         )}
       </div>
       {error && <div className="onb__error" role="alert">{error}</div>}
-      <Nav onBack={onBack} onNext={onNext} />
+      <Nav onBack={onBack} onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Connect ChatGPT to continue') : undefined} />
     </section>
   );
 }

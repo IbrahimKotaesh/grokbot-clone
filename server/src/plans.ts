@@ -1,3 +1,5 @@
+import { usesServerResources } from './lib/owner.js';
+import { env } from './env.js';
 // Subscription plans. Users bring their own AI model (ChatGPT sign-in or an API key), so plans
 // price what Fino itself provides: bots, the cloud computer and voice.
 import { db, now } from './db.js';
@@ -96,6 +98,8 @@ export class PlanLimitError extends Error {
 
 /** Throws before the computer wakes if the plan has no computer or this month's hours are used up. */
 export function assertComputerAllowed(userId: string) {
+  // The local/container desktop is one machine shared by the server's bots, so on a public server only the owner uses it.
+  if (env.computerProvider !== 'orgo' && !usesServerResources(userId)) throw new PlanLimitError('The bot computer isn’t available on your account yet. Your bots can still chat and use your connected apps.', 'computer');
   const plan = planOf(userId);
   if (!plan.computer) throw new PlanLimitError('Computer use is part of the Pro plan. Upgrade in Account → Plan to give your bots a computer.', 'computer');
   if (plan.computerHours !== null && computerMinutesThisMonth(userId) >= plan.computerHours * 60)

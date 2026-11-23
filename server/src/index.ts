@@ -2,6 +2,7 @@ import { revenueCatWebhook } from './billing.js';
 import {attachDesktopDevices} from './desktop-device.js';
 import {accessGate} from './lib/access-code.js';
 import {accessApi} from './routes-access.js';
+import {downloadApi} from './routes-download.js';
 import { initPushWorker } from './notifications.js';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -41,6 +42,8 @@ app.use('/api/*', async (c, next) => {
 });
 // The store calls this with its own secret, so it sits before the access gate and sessions.
 app.post('/api/billing/webhook', revenueCatWebhook);
+// The Mac app download is public: the landing page offers it before sign-in.
+app.route('/api/download',downloadApi);
 app.use('/api/*',accessGate);
 app.route('/api/access',accessApi);
 app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });
