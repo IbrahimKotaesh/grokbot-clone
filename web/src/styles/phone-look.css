@@ -413,3 +413,8 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
   .computer-panel > .computer-panel__screen { flex: none; aspect-ratio: 16 / 12.4; max-height: calc(100% - 150px); }
   .other-screens { border-top: 0; padding-top: 4px; }
 }
+/* Names keep their own direction (ellipsis at the end of English names), but still line up with the Arabic layout. */
+[dir='rtl'] .bot-row__name, [dir='rtl'] .bot-row__preview { text-align: right; }
+/* Tasks with no update for a day: amber "Stalled" instead of a green "Working on it". */
+.task-chip.is-stalled { background: color-mix(in srgb, var(--p-amber) 16%, transparent); color: var(--p-amber); }
+.task-row.is-stalled .task-row__ring { border-color: var(--p-amber); border-style: dashed; animation: none; }

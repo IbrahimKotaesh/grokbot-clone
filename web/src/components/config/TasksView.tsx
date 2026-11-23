@@ -1,4 +1,4 @@
-import { t } from '../../lib/i18n';
+import { t, t as tr } from '../../lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bot, Task } from '@shared/types';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
@@ -11,18 +11,22 @@ import './ui';
 
 type Filter = 'all' | 'open' | 'done';
 
-const STATE_LABEL: Record<Task['state'], string> = { working: t("Working on it"), needs_input: 'Waiting on you', done: t("Done") };
+const STATE_LABEL: Record<Task['state'], string> = { working: t("Working on it"), needs_input: t('Waiting on you'), done: t("Done") };
+/** A task still "in progress" with no update for a day has stalled; say so instead of a cheerful "Working on it". */
+const STALL_MS = 24 * 3600 * 1000;
+const isStalled = (task: Task) => task.state === 'working' && Date.now() - task.updatedAt > STALL_MS;
 
 function when(t: Task): string {
   const r = relativeShort(t.updatedAt);
-  const ago = r === 'now' ? 'just now' : r === 'Yesterday' ? 'yesterday' : `${r} ago`;
-  return t.state === 'done' ? `Completed ${ago}` : t.state === 'needs_input' ? `Asked ${ago}` : `Updated ${ago}`;
+  const ago = r === 'now' ? tr('just now') : r === 'Yesterday' ? tr('yesterday') : tr('{time} ago', { time: r });
+  if (isStalled(t)) return tr('No update for {time}', { time: r });
+  return t.state === 'done' ? tr('Completed {time}', { time: ago }) : t.state === 'needs_input' ? tr('Asked {time}', { time: ago }) : tr('Updated {time}', { time: ago });
 }
 
 function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) {
   const open = () => { if (bot) { useStore.getState().selectBot(bot.id); useConfigUI.getState().setView('chat'); } };
   return (
-    <button type="button" className={`task-row is-${t.state}`} onClick={open} disabled={!bot} title={bot ? `Open ${bot.name}` : undefined}>
+    <button type="button" className={`task-row is-${t.state}${isStalled(t) ? ' is-stalled' : ''}`} onClick={open} disabled={!bot} title={bot ? `Open ${bot.name}` : undefined}>
       <span className={`task-row__check is-${t.state}`} aria-hidden>{t.state === 'done' ? <Glyph name="check_circle" size={18} /> : <span className="task-row__ring" />}</span>
       <span className="task-row__text">
         <span className="task-row__title">{t.title}</span>
@@ -32,7 +36,9 @@ function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) 
           <span>{when(t)}</span>
         </span>
       </span>
-      <span className={`task-chip is-${t.state}`}>{STATE_LABEL[t.state]}</span>
+      {isStalled(t)
+        ? <span className="task-chip is-stalled">{tr('Stalled')}</span>
+        : <span className={`task-chip is-${t.state}`}>{STATE_LABEL[t.state]}</span>}
     </button>
   );
 }
@@ -67,7 +73,7 @@ export function TasksView() {
       <header className="tasks-view__header">
         <div className="tasks-view__title">{t("Tasks")}</div>
         <div className="segmented" role="tablist" aria-label={t("Filter tasks")}>
-          {([['open', `In progress${counts.open ? ` ${counts.open}` : ''}`], ['done', t("Done")], ['all', t("All")]] as [Filter, string][]).map(([f, label]) => (
+          {([['open', `${t('In progress')}${counts.open ? ` ${counts.open}` : ''}`], ['done', t("Done")], ['all', t("All")]] as [Filter, string][]).map(([f, label]) => (
             <button key={f} type="button" role="tab" aria-selected={filter === f} className={filter === f ? 'is-active' : ''} onClick={() => setFilter(f)}>{label}</button>
           ))}
         </div>

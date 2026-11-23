@@ -64,9 +64,12 @@ function cornerClass(i: number, n: number) {
   return ' is-mid';
 }
 
+const SERVER_CAPTIONS = new Set(['Computer · final screenshot']);
+
 const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean }) {
   const b = row.body as MessageBody;
-  const shown = b.text;
+  // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
+  const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
   return (
     <div className={`bubble-wrap is-${side}`}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}

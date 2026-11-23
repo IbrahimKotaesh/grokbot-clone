@@ -43,8 +43,8 @@ const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect
         )}
       </span>
       <span className="bot-row__text">
-        <span className="bot-row__name">{displayName(bot)}</span>
-        <span className="bot-row__preview">{previewFor(bot, running, awaiting)}</span>
+        <span className="bot-row__name" dir="auto">{displayName(bot)}</span>
+        <span className="bot-row__preview" dir="auto">{previewFor(bot, running, awaiting)}</span>
       </span>
     </button>
   );
