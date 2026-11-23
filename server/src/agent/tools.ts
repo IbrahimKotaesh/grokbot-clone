@@ -10,6 +10,7 @@ import { publishAttachment, MAX_ATTACHMENT_BYTES } from '../attachments.js';
 import { imageInputs } from '../images.js';
 import { createBot } from '../bots.js';
 import { env } from '../env.js';
+import { localComputer } from '../local-computer.js';
 import { db, now } from '../db.js';
 import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
@@ -78,10 +79,12 @@ const openPlans = new Map<string, { seq: number; at: number }>();
 /** Pages each bot read in its current burst of work: research stops at a handful of pages. */
 const pageReads = new Map<string, { n: number; at: number }>();
 const MAX_PAGES = 8;
-async function shot(ctx: ToolCtx, caption: string, always = false): Promise<ToolResult> {
+async function shot(ctx: ToolCtx, caption: string, always = false, settle: { minMs?: number; maxMs?: number; stable?: number } = { minMs: 150, maxMs: 2500 }): Promise<ToolResult> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
-  await new Promise((r) => setTimeout(r, 700));
-  const s = await orgo.screenshot(computerId, screenId);
+  // The bot's own Linux computer waits only until the screen stops changing; the cloud one keeps a short fixed pause.
+  let s;
+  if (env.computerProvider === 'local') s = await localComputer.screenshot(computerId, screenId, settle);
+  else { await new Promise((r) => setTimeout(r, 700)); s = await orgo.screenshot(computerId, screenId); }
   if(ctx.desktopProof)ctx.desktopProof.used=true;
   const mime = s.mime_type ?? 'image/png';
   const url = s.image.startsWith('data:') ? s.image : `data:${mime};base64,${s.image}`;
@@ -217,7 +220,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'update_plan',
     description:
-      'Show the user a live checklist while you work on a request that takes 3 or more steps (research, computer work, multi-part tasks). Call it before starting with every step pending except the first in_progress, then call it again each time a step finishes so exactly one step is in_progress. The same card updates in place. Keep steps short (2-6 words) and in the user\'s language. Skip it for quick questions.',
+      'Show the user a live checklist while you work on a long request (about 6 or more steps, or several parts). Call it before starting with every step pending except the first in_progress, then call it again each time a step finishes so exactly one step is in_progress. The same card updates in place. Keep steps short (2-6 words) and in the user\'s language. Skip it for quick questions.',
     parameters: obj(
       {
         title: { type: 'string', description: 'Optional short title, e.g. "Booking your flight".' },
@@ -310,19 +313,34 @@ export const TOOLS: ToolDef[] = [
     impl: async (a, ctx) => {
       pointer(ctx, a.x, a.y, 'click');
       await onScreen(ctx, (c, s) => orgo.click(c, s, { x: a.x, y: a.y, button: a.button ?? 'left', double: !!a.double }));
-      return shot(ctx, `Clicked (${a.x}, ${a.y}).`);
+      return shot(ctx, `Clicked (${a.x}, ${a.y}).`, false, { minMs: 300, maxMs: 4000, stable: 2 });
     },
   },
   {
     name: 'computer_type',
-    description: 'Type text into the focused element on your screen. Returns a fresh screenshot.',
-    parameters: obj({ text: { type: 'string' } }, ['text']),
+    description: 'Type text on your screen. To save steps, give x and y to click a field first, set clear to replace what is in it, and set press_enter to submit (e.g. a search box: click, type and Enter in ONE call). Returns a fresh screenshot.',
+    parameters: obj({
+      text: { type: 'string' },
+      x: { type: 'integer', description: 'Click here first (e.g. the search field). Optional.' },
+      y: { type: 'integer' },
+      clear: { type: 'boolean', description: 'Select all in the field and replace it. Optional.' },
+      press_enter: { type: 'boolean', description: 'Press Enter after typing. Optional.' },
+    }, ['text']),
     activity: 'on_its_computer',
     label: 'Typing',
     impl: async (a, ctx) => {
       const text = String(a.text);
+      const hasPoint = Number.isFinite(Number(a.x)) && Number.isFinite(Number(a.y)) && a.x !== undefined && a.y !== undefined;
+      if (hasPoint) {
+        pointer(ctx, a.x, a.y, 'click');
+        await onScreen(ctx, (c, s) => orgo.click(c, s, { x: Number(a.x), y: Number(a.y), button: 'left' }));
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      if (a.clear) await onScreen(ctx, (c, s) => orgo.key(c, s, 'ctrl+a'));
       for (let i = 0; i < text.length; i += 1500) await onScreen(ctx, (c, s) => orgo.type(c, s, text.slice(i, i + 1500)));
-      return shot(ctx, `Typed ${text.length} characters.`);
+      if (a.press_enter) await onScreen(ctx, (c, s) => orgo.key(c, s, 'Return'));
+      const did = [hasPoint ? `Clicked (${a.x}, ${a.y})` : '', `typed ${text.length} characters`, a.press_enter ? 'pressed Enter' : ''].filter(Boolean).join(', ');
+      return shot(ctx, `${did[0].toUpperCase()}${did.slice(1)}.`, false, a.press_enter ? { minMs: 400, maxMs: 6000, stable: 2 } : undefined);
     },
   },
   {
@@ -385,13 +403,35 @@ export const TOOLS: ToolDef[] = [
           `export DISPLAY=${display}; mkdir -p ${profile}; ` +
             `if ${chromes} >/dev/null && ! ${chromes} | grep -qF -- "--remote-debugging-port=${port}"; then ${chromes} | awk '{print $1}' | xargs -r kill; sleep 2; fi; ` +
             `${chromes} >/dev/null || rm -f ${profile}/Singleton*; ` +
+            // Remember which tabs exist, so the wait below watches the NEW tab rather than an old, already loaded one.
+            `before=$(python3 -c 'import json,urllib.request;print(" ".join(t["id"] for t in json.load(urllib.request.urlopen("http://127.0.0.1:${port}/json",timeout=1))))' 2>/dev/null); export before; ` +
             `setsid nohup ${env.computerProvider === 'local' ? 'chromium' : 'google-chrome'} --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic ` +
             `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port} --remote-allow-origins=http://127.0.0.1:${port} ` +
-            `--user-data-dir=${profile} --start-maximized '${url}' >/tmp/chrome-${ctx.botId}.log 2>&1 < /dev/null & sleep 4; echo ok`,
+            `--user-data-dir=${profile} --start-maximized '${url}' >/tmp/chrome-${ctx.botId}.log 2>&1 < /dev/null & ` +
+            // Wait for the window, not a fixed 4 seconds; the screenshot then waits for the page to settle.
+            `for i in $(seq 1 40); do xdotool search --onlyvisible --class chromium >/dev/null 2>&1 && break; sleep 0.1; done; ` +
+            // Then ask Chrome itself: the tab is ready once it has its title and icon (up to 8 s).
+            `python3 - ${port} <<'PY'
+import json, os, sys, time, urllib.request
+port, old = sys.argv[1], set(os.environ.get("before", "").split())
+start = time.time(); end = start + 8
+while time.time() < end:
+    try:
+        tabs = [t for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json", timeout=1)) if t.get("type") == "page" and t["id"] not in old]
+        t = tabs[0] if tabs else None
+        # Loaded: it has its icon, or (sites without one) a real title for a couple of seconds.
+        titled = t and t.get("title") and not t["title"].startswith(("http", "about:")) and t["title"] not in t["url"]
+        if t and not t["url"].startswith(("about:", "chrome:")) and (t.get("faviconUrl") or (titled and time.time() - start > 2)):
+            break
+    except Exception:
+        pass
+    time.sleep(0.2)
+PY
+echo ok`,
           40,
         );
       });
-      return shot(ctx, `Opened ${a.url}.`);
+      return shot(ctx, `Opened ${a.url}.`, false, { minMs: 250, maxMs: 4000, stable: 2 });
     },
   },
   {

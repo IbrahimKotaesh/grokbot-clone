@@ -86,9 +86,25 @@ export const localComputer = {
   },
   getScreen: async (_id: string, screen: string) => startScreen(display(screen)),
   deleteScreen: async (_id: string, _screen: string) => {},
-  screenshot: async (_id: string, screen?: string) => {
-    const image = await checked('f=$(mktemp --suffix=.png); scrot -o "$f" && base64 -w0 "$f"; result=$?; rm -f "$f"; exit "$result"', screen);
-    return { image: image.trim(), mime_type: 'image/png', width: 1280, height: 800 };
+  /**
+   * A JPEG of the screen (several times smaller than PNG, so each step reaches the AI faster).
+   * settle: instead of a fixed wait, take quick frames until two in a row match (the page stopped
+   * changing) or the time runs out; `minMs` is waited first so a click has time to start something.
+   */
+  screenshot: async (_id: string, screen?: string, settle?: { minMs?: number; maxMs?: number; stable?: number }) => {
+    const min = Math.max(0, Math.min(5000, settle?.minMs ?? 0)) / 1000;
+    const stable = Math.max(1, Math.min(4, settle?.stable ?? 1));
+    const tries = settle ? Math.max(1, Math.round(Math.min(8000, settle.maxMs ?? 3000) / 300)) : 0;
+    const image = await checked(`d=$(mktemp -d); sleep ${min}; prev=''; i=0; same=0
+      while :; do
+        scrot -q 72 -o "$d/s.jpg" || exit 1
+        cur=$(md5sum < "$d/s.jpg"); i=$((i+1))
+        if [ "$cur" = "$prev" ]; then same=$((same+1)); else same=0; fi
+        if [ ${tries} -eq 0 ] || [ $same -ge ${stable} ] || [ $i -gt ${tries} ]; then break; fi
+        prev=$cur; sleep 0.25
+      done
+      base64 -w0 "$d/s.jpg"; rm -rf "$d"`, screen);
+    return { image: image.trim(), mime_type: 'image/jpeg', width: 1280, height: 800 };
   },
   click: async (_id: string, screen: string | undefined, b: {x: number; y: number; button?: string; double?: boolean}) => checked(`xdotool mousemove ${Math.round(b.x)} ${Math.round(b.y)} click ${b.double ? '--repeat 2 --delay 120 ' : ''}${b.button === 'right' ? 3 : b.button === 'middle' ? 2 : 1}`, screen),
   move: async (_id: string, screen: string | undefined, b: {x: number; y: number}) => checked(`xdotool mousemove ${Math.round(b.x)} ${Math.round(b.y)}`, screen),
