@@ -341,7 +341,7 @@ export const arWeb: Record<string, string> = {
   "Thinks longer before acting. Better for tricky, multi-step work.": "يفكر أطول قبل التنفيذ. أفضل للأعمال المعقدة متعددة الخطوات.",
   "Thinks the longest. Slowest, for the hardest problems.": "يفكر أطول وقت. الأبطأ، لأصعب المشكلات.",
   "This Computer selected · Connect above to send a task": "تم اختيار هذا الكمبيوتر · اربطه من الأعلى لإرسال مهمة",
-  "This action requires approval each time, including in Autonomous mode.": "هذا الإجراء يحتاج موافقة في كل مرة، حتى في الوضع التلقائي.",
+  "This needs your OK each time. On Autonomous, the bot does it without asking.": "هذا يحتاج موافقتك كل مرة. في الوضع التلقائي، البوت ينفّذه بدون سؤال.",
   "This folder is empty.": "هذا المجلد فارغ.",
   "Transcription failed. Please try again.": "فشل التحويل إلى نص. يرجى المحاولة مجدداً.",
   "Unlock workspace": "فتح مساحة العمل",

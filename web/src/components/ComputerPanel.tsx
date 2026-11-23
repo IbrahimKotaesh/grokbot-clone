@@ -16,12 +16,14 @@ export function ComputerPanel() {
   const set = useStore((s) => s.set);
   if (!bot || bot.kind === 'room') return null;
   const running = computer?.status === 'running';
+  // Isolate the name so an Arabic name doesn't flip the English title around it.
+  const title = t("{name}'s computer", { name: `\u2068${bot.name.trim()}\u2069` });
   const busy = computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
   return (
-    <aside className="computer-panel" style={botVars(bot.avatarColor)} aria-label={t("{name}'s computer", { name: bot.name })}>
+    <aside className="computer-panel" style={botVars(bot.avatarColor)} aria-label={title}>
       <header className="computer-panel__bar">
         <BotAvatarFor bot={bot} size={22} />
-        <span className="computer-panel__title">{t("{name}'s computer", { name: bot.name })}</span>
+        <span className="computer-panel__title">{title}</span>
         <span className={`computer-panel__status${running ? ' is-on' : busy ? ' is-busy' : ''}`}><i />{computerStatusText(computer)}</span>
         <button type="button" className="icon-btn computer-panel__hide" onClick={() => set({ detailsOpen: false })} aria-label={t("Hide computer")} title={t("Hide computer")}>
           <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />

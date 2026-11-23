@@ -93,7 +93,11 @@ export const localComputer = {
   click: async (_id: string, screen: string | undefined, b: {x: number; y: number; button?: string; double?: boolean}) => checked(`xdotool mousemove ${Math.round(b.x)} ${Math.round(b.y)} click ${b.double ? '--repeat 2 --delay 120 ' : ''}${b.button === 'right' ? 3 : b.button === 'middle' ? 2 : 1}`, screen),
   move: async (_id: string, screen: string | undefined, b: {x: number; y: number}) => checked(`xdotool mousemove ${Math.round(b.x)} ${Math.round(b.y)}`, screen),
   drag: async (_id: string, screen: string | undefined, b: {start_x: number; start_y: number; end_x: number; end_y: number}) => checked(`xdotool mousemove ${Math.round(b.start_x)} ${Math.round(b.start_y)} mousedown 1 mousemove ${Math.round(b.end_x)} ${Math.round(b.end_y)} mouseup 1`, screen),
-  type: async (_id: string, screen: string | undefined, text: string) => checked(`printf '%s' ${quote(text)} | xclip -selection clipboard -loops 1 >/dev/null 2>&1; xdotool key --clearmodifiers ctrl+v`, screen),
+  // Short text is typed key by key. Long text is pasted: the clipboard owner keeps serving until replaced, because
+  // with -loops 1 Chrome's first "what formats?" request used up the only answer and the paste came out empty.
+  type: async (_id: string, screen: string | undefined, text: string) => checked(text.length <= 200 && !/[\r\n\t]/.test(text)
+    ? `xdotool type --clearmodifiers --delay 12 -- ${quote(text)}`
+    : `printf '%s' ${quote(text)} | xclip -selection clipboard -i >/dev/null 2>&1; sleep 0.2; xdotool key --clearmodifiers ctrl+v`, screen),
   key: async (_id: string, screen: string | undefined, key: string) => checked(`xdotool key --clearmodifiers ${quote(key.replace(/CTRL/gi, 'ctrl').replace(/ENTER/gi, 'Return'))}`, screen),
   scroll: async (_id: string, screen: string | undefined, b: {x: number; y: number; direction: 'up' | 'down'; amount: number}) => checked(`xdotool mousemove ${Math.round(b.x)} ${Math.round(b.y)} click --repeat ${Math.min(100,Math.max(1,Math.round(b.amount)))} --delay 60 ${b.direction === 'up' ? 4 : 5}`, screen),
   bash: (_id: string, screen: string | undefined, command: string, timeout = 120) => localShell(command, screen, timeout),

@@ -80,6 +80,13 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
     };
   }, [bot?.id, running, mode, attempt]);
 
+  // The side panel heals itself: a dropped screen reconnects a few seconds later, no button needed.
+  useEffect(() => {
+    if (!panel || !running || (conn !== 'error' && conn !== 'disconnected')) return;
+    const timer = setTimeout(() => setAttempt((n) => n + 1), 4000);
+    return () => clearTimeout(timer);
+  }, [panel, running, conn, attempt]);
+
   if (!bot) return null;
   const busy = waking || computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
 

@@ -392,6 +392,37 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'make_pdf',
+    description: 'Turn an HTML page into a PDF in your Library (CVs, letters, reports). Pass the full HTML (inline CSS, A4-friendly) and a filename ending in .pdf. It prints with the headless browser in a clean throwaway profile and always cleans up afterwards. It also sends the PDF into this conversation unless send is false, so no attach_file step is needed.',
+    parameters: obj({ filename: { type: 'string', description: 'e.g. CV-Jane-Doe-Acme.pdf' }, html: { type: 'string', description: 'Complete HTML document' }, folder: { type: 'string', description: 'Optional sub-folder inside your Library, e.g. applications/acme-controller' }, send: { type: 'boolean', description: 'Send it into the chat (default true)' }, caption: { type: 'string', description: 'Optional short message shown with it' } }, ['filename', 'html']),
+    activity: 'drafting_file',
+    label: 'Making a PDF',
+    impl: async (a, ctx) => {
+      const clean = (v: string) => v.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '').slice(0, 120);
+      const base = clean(String(a.filename).replace(/\.pdf$/i, '')) || 'document';
+      const sub = String(a.folder ?? '').split('/').map(clean).filter(Boolean).join('/');
+      const dir = `/root/grokbot/files/${ctx.botId}${sub ? `/${sub}` : ''}`;
+      const html = `${dir}/${base}.html`, out = `${dir}/${base}.pdf`;
+      const b64 = Buffer.from(String(a.html), 'utf8').toString('base64');
+      const r = await onScreen(ctx, async (c, s) => {
+        await orgo.bash(c, s, `mkdir -p '${dir}' && : > '${html}.b64'`, 30);
+        for (let i = 0; i < b64.length; i += 60000) await orgo.bash(c, s, `printf '%s' '${b64.slice(i, i + 60000)}' >> '${html}.b64'`, 30);
+        // A throwaway profile per print, killed afterwards, so no browser processes are ever left behind.
+        return orgo.bash(c, s, `base64 -d '${html}.b64' > '${html}' && rm -f '${html}.b64' '${out}'
+          b=$(command -v chromium || command -v google-chrome || command -v chromium-browser) || { echo 'No browser found'; exit 1; }
+          p=$(mktemp -d /tmp/fino-pdf-XXXXXX)
+          timeout -k 5 75 "$b" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --no-first-run --no-pdf-header-footer --user-data-dir="$p" --print-to-pdf='${out}' 'file://${html}' >/dev/null 2>&1
+          pkill -9 -f "user-data-dir=$p" 2>/dev/null; rm -rf "$p"
+          test -s '${out}' && base64 -w0 '${out}'`, 120);
+      }, false);
+      if (r.exit_code !== 0) throw new Error(`The PDF could not be made: ${(r.output ?? '').trim().slice(-300) || 'the browser did not finish'}`);
+      const pdf = Buffer.from((r.output ?? '').trim(), 'base64');
+      if (pdf.subarray(0, 5).toString() !== '%PDF-') throw new Error('The PDF could not be made: the browser produced no PDF.');
+      const attached = a.send === false ? null : publishAttachment(ctx.userId, ctx.botId, `${base}.pdf`, pdf, typeof a.caption === 'string' ? a.caption.slice(0, 2000) : '');
+      return { output: JSON.stringify({ ok: true, path: out, bytes: pdf.length, sent_to_chat: !!attached }), summary: attached ? `Made and sent ${base}.pdf` : `Made ${base}.pdf` };
+    },
+  },
+  {
     name: 'attach_file',
     description: 'Send a generated PDF or image directly into this conversation as an attachment. First create the file with shell in your own Library folder /root/grokbot/files/<your bot id>/. Then pass its absolute path. Supports PDF up to 10 MB and PNG/JPEG/WebP up to 3 MB; render SVG to PNG first. PDFs appear as open/download cards and images appear inline. Do not claim you cannot send files in chat: use this tool.',
     parameters: obj({ path: {type:'string',description:'Absolute path inside your own Library directory'}, caption: {type:'string',description:'Optional short message alongside the attachment'} },['path']),
