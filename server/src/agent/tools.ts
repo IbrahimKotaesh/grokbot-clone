@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type {DesktopTarget} from '../desktop-device.js';
 import {freshApprovalReason} from './action-safety.js';
+import { cdpPort } from './employee-rules.js';
 import {hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import {saveDurableMemory,updateDurableMemory,memoryMatches,searchConversation} from './recall.js';
 import {publishBotNotification} from '../notifications.js';
@@ -359,12 +360,19 @@ export const TOOLS: ToolDef[] = [
       await onScreen(ctx, (c, s) => {
         const display = s === 'default' ? (env.computerProvider === 'local' ? ':0' : ':99') : `:${s.replace('screen-', '')}`;
         const profile = `/root/grokbot/profiles/${ctx.botId}`;
-        // Reuse the bot's running Chrome if present (opens a new tab), else start one detached.
+        const port = cdpPort(s);
+        // Reuse the bot's running Chrome if present (opens a new tab), else start one detached. Its local debugging
+        // port lets Fino see the page under the mouse (employee rules: no payments, final steps wait for the owner);
+        // an older Chrome started without it is restarted once.
+        const chromes = `ps -eo pid=,comm=,args= | awk '$2 ~ /^chrom/' | grep -F -- "--user-data-dir=${profile}"`;
         return orgo.bash(
           c,
           s,
-          `export DISPLAY=${display}; mkdir -p ${profile}; pgrep -f "user-data-dir=${profile}" >/dev/null || rm -f ${profile}/Singleton*; ` +
+          `export DISPLAY=${display}; mkdir -p ${profile}; ` +
+            `if ${chromes} >/dev/null && ! ${chromes} | grep -qF -- "--remote-debugging-port=${port}"; then ${chromes} | awk '{print $1}' | xargs -r kill; sleep 2; fi; ` +
+            `${chromes} >/dev/null || rm -f ${profile}/Singleton*; ` +
             `setsid nohup ${env.computerProvider === 'local' ? 'chromium' : 'google-chrome'} --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic ` +
+            `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port} --remote-allow-origins=http://127.0.0.1:${port} ` +
             `--user-data-dir=${profile} --start-maximized '${url}' >/tmp/chrome-${ctx.botId}.log 2>&1 < /dev/null & sleep 4; echo ok`,
           40,
         );

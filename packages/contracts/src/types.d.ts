@@ -175,6 +175,8 @@ export type CardBody =
       args: unknown;
       policyKeys?: string[];
       requiresFreshApproval?: boolean;
+      /** An employee-rule final step: approval is needed even on Autonomous. */
+      decisive?: boolean;
       status: "pending" | "allowed" | "always" | "denied" | "expired";
     }
   | {

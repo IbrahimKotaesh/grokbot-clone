@@ -445,4 +445,5 @@ export const arWeb: Record<string, string> = {
   "Hide computer": "خبّي الكمبيوتر",
   "Asleep. It wakes up when {name} needs it.": "نايم. بيصحى لما {name} يحتاجه.",
   "New chat with {name}": "محادثة جديدة مع {name}",
+  "Final steps always wait for your OK, even on Autonomous.": "الخطوات النهائية دائماً تنتظر موافقتك، حتى في الوضع التلقائي.",
 };

@@ -5,6 +5,7 @@ import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,run
 import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
+import { employeeGuard, type Guard } from './employee-rules.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
@@ -54,6 +55,8 @@ interface PendingState {
   approvalId: string;
   depth: number;
   generation?:number;
+  /** The pending approval is an employee-rule final step: only the owner's click may resolve it. */
+  decisive?: boolean;
 }
 
 const MAX_STEPS = 60;
@@ -203,7 +206,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
           while (!ctrl.signal.aborted) {
             const ap = db.prepare('SELECT status FROM approvals WHERE id=?').get(st.approvalId) as any;
             if (ap?.status !== 'pending') break;
-            if(policyFor(userId,name,args,botId).decision==='allow'){resolveApproval(userId,st.approvalId,'allow');break;}
+            if(!st.decisive&&policyFor(userId,name,args,botId).decision==='allow'){resolveApproval(userId,st.approvalId,'allow');break;}
             await new Promise(r => setTimeout(r, 250));
           }
           if (ctrl.signal.aborted) throw new Error('Stopped.');
@@ -326,29 +329,41 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
 
     // Was this call just approved/denied?
     const ap = st.approvalId ? (db.prepare('SELECT * FROM approvals WHERE id=?').get(st.approvalId) as any) : null;
+    const answered = !!ap && ap.call_id === c.call_id;
+    // Employee rules come first and hold in every mode: money is never touched, final steps wait for the owner.
+    let guard: Guard = {};
+    if (!answered) {
+      const inner = c.name === 'connected_apps' && args?.operation === 'execute' ? appToolCall(args) : { name: c.name, args };
+      try { guard = await employeeGuard(userId, botId, inner.name, inner.args, { pageCheck: !ctx.desktopTarget }); } catch { guard = {}; }
+    }
     let decision = policyFor(userId, c.name, args, botId).decision;
-    if (ap && ap.call_id === c.call_id) {
+    if (guard.block) {
+      decision = 'block';
+    } else if (answered) {
       if (ap.status === 'pending') return true;
       decision = ap.status === 'denied' || decision === 'block' ? 'block' : 'allow';
       st.approvalId = '';
-    } else if (decision === 'ask') {
-      const pol = policyFor(userId, c.name, args, botId);
+      st.decisive = false;
+    } else if (decision === 'ask' || guard.decide) {
+      const base = policyFor(userId, c.name, args, botId);
+      const pol = guard.decide ? { ...base, safetyReason: guard.decide, requiresFreshApproval: true } : base;
       const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       // A saved grant may have arrived while toolkit metadata was loading.
-      if(policyFor(userId,c.name,args,botId).decision!=='ask')continue;
+      if(!guard.decide&&policyFor(userId,c.name,args,botId).decision!=='ask')continue;
       const botName = getBotRow(botId).name;
-      const summary = plainSummary(c.name, args, pol.title, tk?.name);
+      const summary = guard.decide && guard.title ? `Press “${guard.title}”` : plainSummary(c.name, args, pol.title, tk?.name);
       const technical = c.name === 'shell' ? String(args?.command ?? '') : describeArgs(approvalArgs);
       const card = appendRow(botId, 'card', {
         type: 'card', card: 'approval', approvalId, title: `${botName} wants to: ${summary}`,
         summary, reason: pol.safetyReason, technical,
-        detail: [summary, pol.safetyReason, technical].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
+        detail: [summary, pol.safetyReason, technical].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, decisive: !!guard.decide, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at,generation) VALUES (?,?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now(),getBotRow(botId).generation);
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
       st.approvalId = approvalId;
+      st.decisive = !!guard.decide;
       db.prepare('INSERT OR REPLACE INTO pending_turns(bot_id,state) VALUES (?,?)').run(botId, JSON.stringify(st));
       setLive(botId, { isRunning: false, activity: { kind: 'waiting_for_you', since: now() }, awaiting: { reason: humanizeSlug(pol.key), since: now() } });
       hub.emit(userId, { type: 'tasks', botId });
@@ -357,7 +372,9 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
 
     let res: ToolResult;
     if (decision === 'block') {
-      res = { output: 'The user declined this action. Do not retry it. Find another way, or tell the user what you could not do.', summary: 'Not allowed' };
+      res = guard.block
+        ? { output: `Blocked by Fino's employee rules: ${guard.block} Do not retry it or work around it in any other way.`, summary: 'Blocked: never pays' }
+        : { output: 'The user declined this action. Do not retry it. Find another way, or tell the user what you could not do.', summary: 'Not allowed' };
       updateRow(botId, c.rowSeq, { ...body, status: 'denied', summary: 'Not allowed' });
     } else {
       const act = activityFor(c.name);
@@ -373,7 +390,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         else if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
         else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
-        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
+        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','computer_click','computer_type','computer_key','computer_scroll','computer_drag','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };
