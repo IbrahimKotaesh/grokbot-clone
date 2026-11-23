@@ -221,7 +221,7 @@
 .bubble:has(.md-table) {width:100%;max-width:100%;}
 
 /* A finished reply arrives whole, with a soft rise instead of letter-by-letter typing. */
-.bubble.is-fresh { animation: reply-in .18s ease-out both; }
-@keyframes reply-in { from { opacity: 0; } to { opacity: 1; } }
+.bubble.is-fresh { animation: reply-in .45s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes reply-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .activity-line__time { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .bubble.is-fresh { animation: none; } }

@@ -406,3 +406,10 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 @media (hover: hover) { .bubble__copy { opacity: 0; } .bubble-wrap:hover .bubble__copy, .bubble__copy:focus-visible, .bubble__copy.is-done { opacity: 1; } }
 .bubble__meta { display: flex; align-items: center; gap: 2px; }
 .bubble-wrap.is-right .bubble__meta { justify-content: flex-end; }
+/* Screenshots reserve their space before they load, so the chat does not jump when they arrive. */
+.message-photos__open img { width: min(440px, 100%); aspect-ratio: 16 / 10; height: auto; object-fit: contain; background: var(--p-raised); }
+/* The main screen takes the height of its picture (16:10 plus the Watching bar), so the other bots' screens sit right under it. */
+@media (min-width: 901px) {
+  .computer-panel > .computer-panel__screen { flex: none; aspect-ratio: 16 / 12.4; max-height: calc(100% - 150px); }
+  .other-screens { border-top: 0; padding-top: 4px; }
+}

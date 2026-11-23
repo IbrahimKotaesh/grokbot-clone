@@ -1,7 +1,7 @@
 import { plural, t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
-import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
 import { BotAvatar, BotAvatarFor } from '../avatar/BotAvatar';
 import { dividerLabel, messageTimestamp } from '../lib/time';
@@ -41,8 +41,8 @@ function buildItems(rows: Row[]): Item[] {
     }
     if (b.type === 'message') {
       if (!b.text && !b.streaming && !b.images?.length && !b.files?.length) continue;
-      // Replies show while they're written (revealed smoothly); only an empty draft waits.
-      if (b.streaming && b.role === 'assistant' && !b.text.trim()) continue;
+      // The bot thinks first (the activity line counts the seconds); its reply appears whole when it's done.
+      if (b.streaming && b.role === 'assistant') continue;
       const side = b.role === 'user' && (!b.from || b.from.kind === 'voice') ? 'right' : 'left';
       const sender = b.from ? `${b.from.kind}:${b.from.id}` : b.role;
       const lastRow = last?.kind === 'group' ? last.rows[last.rows.length - 1] : null;
@@ -64,36 +64,9 @@ function cornerClass(i: number, n: number) {
   return ' is-mid';
 }
 
-/** Reveal `target` gradually: fast when far behind, gentle near the end, always ending on a whole word. */
-function useSmoothText(target: string, animate: boolean) {
-  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const [n, setN] = useState(() => (animate && !reduce ? 0 : target.length));
-  const nRef = useRef(n);
-  useEffect(() => {
-    if (!animate || reduce) { nRef.current = target.length; setN(target.length); return; }
-    let raf = 0, last = performance.now(), lastPaint = 0;
-    const step = (now: number) => {
-      const dt = Math.min(64, now - last); last = now;
-      const backlog = target.length - nRef.current;
-      if (backlog <= 0) return;
-      const perSecond = Math.max(60, backlog * 3.5);
-      let next = Math.min(target.length, nRef.current + Math.max(1, Math.round((perSecond * dt) / 1000)));
-      const space = target.slice(next).search(/\s/);
-      if (space > 0 && space < 16) next += space;
-      nRef.current = next;
-      if (now - lastPaint > 30 || next >= target.length) { lastPaint = now; setN(next); }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, animate, reduce]);
-  return target.slice(0, Math.min(n, target.length));
-}
-
 const Bubble = memo(function Bubble({ row, side, pos, fresh }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean }) {
   const b = row.body as MessageBody;
-  // Replies written while the chat is open appear word by word, at a pace that keeps up with the model.
-  const shown = useSmoothText(b.text, side === 'left' && !!fresh);
+  const shown = b.text;
   return (
     <div className={`bubble-wrap is-${side}`}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
@@ -197,18 +170,23 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
   const last = rows[rows.length - 1];
   const streamingNow = last?.body.type === 'message' && last.body.role === 'assistant' && !!last.body.streaming;
   // Once the reply is on screen, the text itself shows progress; the status line steps aside until tools run again.
-  const replyShowing = last?.body.type === 'message' && last.body.role === 'assistant' && !!last.body.text.trim();
+  const replyShowing = last?.body.type === 'message' && last.body.role === 'assistant' && !last.body.streaming && !!last.body.text.trim();
   const showActivity = (running || streamingNow || waiting) && (waiting || !replyShowing);
   // Replies that were written while this chat was open get a soft entrance; old history just sits there.
-  const writing = useRef(new Set<number>());
-  for (const r of rows) if (r.body.type === 'message' && r.body.role === 'assistant' && r.body.streaming) writing.current.add(r.seq);
+  const writing = useRef(new Set<string>());
+  for (const r of rows) if (r.body.type === 'message' && r.body.role === 'assistant' && r.body.streaming) writing.current.add(`${bot.id}:${r.seq}`);
 
-  // Jump to bottom when switching bots.
+  // Open every chat already at the bottom: position before the first paint that has messages,
+  // so switching bots never flashes the top of the history and then jumps.
+  const positioned = useRef(false);
   useLayoutEffect(() => {
-    stick.current = true;
+    if (positioned.current || !rows.length) return;
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [bot.id]);
+    if (!el) return;
+    stick.current = true;
+    el.scrollTop = el.scrollHeight;
+    positioned.current = true;
+  });
 
   // Images, smooth text and viewport changes can resize the conversation without
   // rerendering Transcript. Keep the bottom pinned only while the user is there.
@@ -267,7 +245,7 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
                 <div key={it.key} className={`group is-${it.side}`}>
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(r.seq)} /></Fragment>
+                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} /></Fragment>
                   ))}
                 </div>
               );
