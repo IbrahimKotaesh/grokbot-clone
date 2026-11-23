@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import type { Bot, LibraryFile } from '@shared/types';
 import { configApi, type LibraryListing } from '../../lib/configApi';
@@ -47,7 +48,7 @@ export function LibraryTab({ bot }: { bot: Bot }) {
           <span className="lib-crumbs">
             {crumbs.length ? (
               <>
-                <button type="button" className="link-btn link-btn--small" onClick={() => setPath('')}>Files</button>
+                <button type="button" className="link-btn link-btn--small" onClick={() => setPath('')}>{t("Files")}</button>
                 {crumbs.map((c, i) => (
                   <span key={i} className="lib-crumbs__part">
                     <Icon name="chev_right" size={8} opacity={0.5} />
@@ -55,9 +56,9 @@ export function LibraryTab({ bot }: { bot: Bot }) {
                   </span>
                 ))}
               </>
-            ) : 'Files'}
+            ) : t("Files")}
           </span>
-          <button type="button" className="link-btn link-btn--small" onClick={() => load()} disabled={loading} aria-label="Refresh files" title="Refresh">
+          <button type="button" className="link-btn link-btn--small" onClick={() => load()} disabled={loading} aria-label={t("Refresh files")} title={t("Refresh")}>
             <Icon name="refresh" size={12} opacity={0.7} style={loading ? { animation: 'cfg-spin 0.8s linear infinite' } : undefined} />
           </button>
         </div>
@@ -65,14 +66,14 @@ export function LibraryTab({ bot }: { bot: Bot }) {
           {list?.status === 'asleep' ? (
             <div className="lib-empty">
               <div>{bot.name}’s computer is asleep. Wake it to see saved files.</div>
-              <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => load(true)} disabled={loading}>{loading ? 'Waking…' : 'Wake and show files'}</button>
+              <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => load(true)} disabled={loading}>{loading ? 'Waking…' : t("Wake and show files")}</button>
             </div>
           ) : !list && loading ? (
-            <div className="panel-empty">Looking for files…</div>
+            <div className="panel-empty">{t("Looking for files…")}</div>
           ) : list?.status === 'error' ? (
             <div className="panel-empty">Couldn’t reach the computer. {list.error ? <span className="lib-err">{list.error}</span> : null}</div>
           ) : !list?.files.length ? (
-            <div className="panel-empty panel-empty--center">{path ? 'This folder is empty.' : `Files that ${bot.name} creates, like reports and notes, are kept here.`}</div>
+            <div className="panel-empty panel-empty--center">{path ? t("This folder is empty.") : `Files that ${bot.name} creates, like reports and notes, are kept here.`}</div>
           ) : (
             list.files.map((f) => (
               <div key={f.name} className={`lib-row${f.isDir ? ' is-dir' : ''}`}>
@@ -80,11 +81,11 @@ export function LibraryTab({ bot }: { bot: Bot }) {
                   <span className="lib-row__icon"><Glyph name={f.isDir ? 'folder' : 'doc'} size={16} opacity={0.6} /></span>
                   <span className="panel-row__text">
                     <span className="panel-row__title">{f.name}</span>
-                    <span className="panel-row__meta">{f.isDir ? 'Folder' : formatBytes(f.size)} · {relativeShort(f.modifiedAt) === 'now' ? 'just now' : relativeShort(f.modifiedAt)}</span>
+                    <span className="panel-row__meta">{f.isDir ? t("Folder") : formatBytes(f.size)} · {relativeShort(f.modifiedAt) === 'now' ? 'just now' : relativeShort(f.modifiedAt)}</span>
                   </span>
                 </button>
                 {f.isDir ? <Icon name="chev_right" size={12} opacity={0.5} /> : (
-                  <button type="button" className="cfg-icon-btn" onClick={() => download(f)} disabled={busyFile === f.name} aria-label={`Download ${f.name}`} title="Download">
+                  <button type="button" className="cfg-icon-btn" onClick={() => download(f)} disabled={busyFile === f.name} aria-label={`Download ${f.name}`} title={t("Download")}>
                     {busyFile === f.name ? <span className="cfg-spinner" /> : <Glyph name="download" size={14} />}
                   </button>
                 )}

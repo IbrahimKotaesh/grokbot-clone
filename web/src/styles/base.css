@@ -99,8 +99,8 @@ a { color: inherit; }
 }
 .menu.is-below { top: calc(100% + 6px); }
 .menu.is-above { bottom: calc(100% + 6px); }
-.menu.is-left { left: 0; }
-.menu.is-right { right: 0; }
+.menu.is-left { inset-inline-start: 0; }
+.menu.is-right { inset-inline-end: 0; }
 .menu.is-center { left: 50%; transform: translateX(-50%); animation: none; }
 .menu__item {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%;

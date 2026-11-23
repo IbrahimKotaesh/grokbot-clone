@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
@@ -13,7 +14,7 @@ export function MessagePhotos({images}:{images:Photo[]}){
  },[selected]);
  return <><div className="message-photos">{images.map(image=><button type="button" key={image.id} className="message-photos__open" aria-label={`Enlarge ${image.name}`} onClick={()=>setSelected(image)}><img src={image.url} alt={image.name} loading="lazy"/></button>)}</div>
  {selected&&createPortal(<dialog ref={dialog} className="photo-viewer" aria-label={`Image preview: ${selected.name}`} onClose={()=>setSelected(null)} onClick={e=>{if(e.target===e.currentTarget)setSelected(null);}}>
-  <button type="button" className="photo-viewer__close" aria-label="Close image preview" autoFocus onClick={()=>setSelected(null)}><X size={25}/></button>
+  <button type="button" className="photo-viewer__close" aria-label={t("Close image preview")} autoFocus onClick={()=>setSelected(null)}><X size={25}/></button>
   <figure><img src={selected.url} alt={selected.name}/><figcaption dir="auto">{selected.name}</figcaption></figure>
  </dialog>,document.body)}</>;
 }

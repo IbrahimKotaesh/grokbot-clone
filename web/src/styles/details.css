@@ -24,7 +24,7 @@
 .section-label--row { display: flex; align-items: center; justify-content: space-between; height: 18px; padding-right: 6px; }
 
 .panel-card { display: flex; flex-direction: column; padding: 4px; border-radius: 12px; background: var(--color-bg-pane); border: 0.5px solid var(--color-border-tertiary); }
-.panel-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; width: 100%; text-align: left; }
+.panel-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; width: 100%; text-align:start; }
 .panel-row--routine { height: 48px; }
 .panel-row--link, .panel-row--computer, .panel-row--action { cursor: pointer; }
 .panel-row--link { height: 36px; gap: 6px; }

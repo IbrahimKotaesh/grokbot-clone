@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import {useLayoutEffect,useRef,useState,type PointerEvent,type ReactNode} from 'react';
 import {GripVertical} from 'lucide-react';
 import type {Bot} from '@shared/types';
@@ -10,7 +11,7 @@ export function BotRoster({bots,collapsed,render}:{bots:Bot[];collapsed:boolean;
  },[bots.map(b=>b.id).join('|')]);
  const persist=async(ids:string[])=>{
   setSaving(true);setError('');useStore.setState(s=>({bots:s.bots.map(b=>ids.includes(b.id)?{...b,sortOrder:ids.indexOf(b.id)}:b)}));
-  try{const r=await fetch('/api/bots/reorder',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});const result=await r.json();if(!r.ok)throw Error(result.error??'Could not save the order.');useStore.setState({bots:result.bots});}
+  try{const r=await fetch('/api/bots/reorder',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});const result=await r.json();if(!r.ok)throw Error(result.error??t("Could not save the order."));useStore.setState({bots:result.bots});}
   catch(e){setError((e as Error).message);await useStore.getState().loadBots().catch(()=>{});}finally{setSaving(false);}
  };
  const move=(id:string,index:number)=>{const ids=bots.map(b=>b.id),from=ids.indexOf(id);if(from<0||index<0||index>=ids.length||from===index)return;ids.splice(from,1);ids.splice(index,0,id);void persist(ids);};

@@ -117,7 +117,7 @@
 .lib-crumbs__part { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
 .lib-row { display: flex; align-items: center; gap: 4px; padding-right: 4px; border-radius: 8px; }
 .lib-row:hover { background: var(--color-bg-hover); }
-.lib-row__main { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; padding: 6px 8px; text-align: left; }
+.lib-row__main { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; padding: 6px 8px; text-align:start; }
 .lib-row__icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--color-bg-tertiary); color: var(--color-text-primary); flex-shrink: 0; }
 .lib-row.is-dir .lib-row__icon { color: var(--bot-action, var(--color-text-primary)); }
 .lib-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 12px; text-align: center; font-size: 13px; line-height: 18px; color: var(--color-text-tertiary); }
@@ -126,7 +126,7 @@
 .task-list { display: flex; flex-direction: column; gap: 6px; }
 .task-list--compact { gap: 0; }
 .task-row {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; text-align: left;
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; text-align:start;
   border-radius: 12px; background: var(--color-bg-pane); border: 0.5px solid var(--color-border-tertiary); transition: background-color 120ms;
 }
 .task-row:hover:not(:disabled) { background: var(--color-bg-elevated-hover); }

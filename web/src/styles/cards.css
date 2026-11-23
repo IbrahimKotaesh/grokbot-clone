@@ -20,7 +20,7 @@
 .question-card__q { font-size: 15px; font-weight: 600; line-height: 22px; letter-spacing: 0.15px; color: var(--color-text-primary); }
 .question-card__hint { font-size: 14px; line-height: 20px; letter-spacing: 0.14px; color: var(--color-text-tertiary); }
 .question-card__options { display: flex; flex-direction: column; gap: 1px; padding: 8px; }
-.question-option { display: flex; align-items: flex-start; gap: 4px; padding: 8px; border-radius: 12px; width: 100%; text-align: left; }
+.question-option { display: flex; align-items: flex-start; gap: 4px; padding: 8px; border-radius: 12px; width: 100%; text-align:start; }
 .question-option:hover:not(:disabled) { background: var(--color-bg-hover); }
 .question-option__key {
   display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 8px;

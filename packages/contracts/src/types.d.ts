@@ -80,7 +80,7 @@ export interface Bot {
   kind?: "agent" | "room";
   pinned: boolean;
   permissionMode?: PermissionMode;
-  agentProvider?: "codex" | "claude";
+  agentProvider?: "codex" | "claude" | "claude-code" | "openrouter" | "xai" | "groq";
   model?: string;
   effort: "low" | "medium" | "high" | "xhigh";
   /** Voice chat settings: xAI voice id, speed multiplier (0.7–1.5), BCP-47 language or 'auto'. */

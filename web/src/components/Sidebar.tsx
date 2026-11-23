@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
@@ -29,7 +30,7 @@ export function TrafficLights() {
 function previewFor(bot: Bot, running: boolean, awaiting: string | null) {
   if (awaiting) return `Waiting for you: ${awaiting}`;
   if (running && !bot.lastPreview) return 'Working…';
-  return bot.lastPreview ?? 'No messages yet';
+  return bot.lastPreview ?? t("No messages yet");
 }
 
 const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect }: { bot: Bot; selected: boolean; running: boolean; awaiting: string | null; onSelect: (id: string) => void }) {
@@ -38,7 +39,7 @@ const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect
       <span className="bot-row__avatar">
         <BotAvatarFor bot={bot} size={52} />
         {(running || awaiting || bot.unread > 0) && (
-          <span className={`status-dot ${awaiting ? 'is-attention' : running ? 'is-working' : 'is-unread'}`} aria-label={awaiting ? 'Needs attention' : running ? 'Working' : 'Unread activity'} />
+          <span className={`status-dot ${awaiting ? 'is-attention' : running ? 'is-working' : 'is-unread'}`} aria-label={awaiting ? t("Needs attention") : running ? t("Working") : t("Unread activity")} />
         )}
       </span>
       <span className="bot-row__text">
@@ -69,20 +70,20 @@ export function Sidebar() {
   const others = bots.filter((b) => !b.isPrimary).sort((a,b)=>(a.sortOrder??Infinity)-(b.sortOrder??Infinity)||b.lastActivityAt-a.lastActivityAt);
 
   return (
-    <aside id="workspace-sidebar" aria-label="Conversations" className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
+    <aside id="workspace-sidebar" aria-label={t("Conversations")} className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar__titlebar">
         <div className="sidebar-brand"><img src="/characters/fino-brand-blue.png" alt="" /><span>Fino</span></div>
         <div className="sidebar__controls">
-          <button type="button" className="icon-btn mobile-drawer-close" aria-label="Close conversations" onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={22} /></button>
-          <button type="button" className="icon-btn icon-btn--plain" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title="Toggle sidebar (⌘B)">
+          <button type="button" className="icon-btn mobile-drawer-close" aria-label={t("Close conversations")} onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={22} /></button>
+          <button type="button" className="icon-btn icon-btn--plain" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")} title="Toggle sidebar (⌘B)">
             <Icon name="sidebar" opacity={0.66} />
           </button>
           {!collapsed && (
             <>
-              <button type="button" className="icon-btn" onClick={() => setModal('search')} aria-label="Search" title="Search (⌘K)">
+              <button type="button" className="icon-btn" onClick={() => setModal('search')} aria-label={t("Search")} title="Search (⌘K)">
                 <Icon name="search" opacity={0.66} />
               </button>
-              <button type="button" className="icon-btn" onClick={() => setModal('create')} aria-label="New Bot" title="New Bot">
+              <button type="button" className="icon-btn" onClick={() => setModal('create')} aria-label={t("New Bot")} title={t("New Bot")}>
                 <Icon name="plus" opacity={0.66} />
               </button>
             </>
@@ -103,7 +104,7 @@ export function Sidebar() {
           </BotConversations></div>
         )}
         <TasksIsland />
-        {!collapsed && others.length > 0 && <div className="sidebar__team-label">Your team</div>}
+        {!collapsed && others.length > 0 && <div className="sidebar__team-label">{t("Your team")}</div>}
         <div className="bot-list">
           <BotRoster bots={others} collapsed={collapsed} render={(b) =>
             collapsed ? (
@@ -118,8 +119,8 @@ export function Sidebar() {
             <button type="button" className="bot-list__empty" onClick={() => setModal('create')}>
               <span className="bot-list__empty-plus"><Icon name="plus" size={14} opacity={0.66} /></span>
               <span>
-                <span className="bot-row__name">Create a Bot</span>
-                <span className="bot-row__preview">Give it a job, like research or inbox triage</span>
+                <span className="bot-row__name">{t("Create a Bot")}</span>
+                <span className="bot-row__preview">{t("Give it a job, like research or inbox triage")}</span>
               </span>
             </button>
           )}
@@ -139,9 +140,9 @@ export function Sidebar() {
                 placement="above"
                 onClose={() => setAccountMenu(false)}
                 items={[
-                  { label: 'Settings', hint: '⌘,', onSelect: () => useConfigUI.getState().openAppSettings() },
-                  { label: 'Connect apps', onSelect: () => setModal('apps') },
-                  { label: 'Log out', danger: true, onSelect: logout },
+                  { label: t("Settings"), hint: '⌘,', onSelect: () => useConfigUI.getState().openAppSettings() },
+                  { label: t("Connect apps"), onSelect: () => setModal('apps') },
+                  { label: t("Log out"), danger: true, onSelect: logout },
                 ]}
               >
                 <div className="menu__header">{user?.email}</div>
@@ -150,7 +151,7 @@ export function Sidebar() {
           </div>
         )}
         <NotificationBell/>
-        <button type="button" className="icon-btn icon-btn--bordered" onClick={() => setModal('apps')} aria-label="Connect apps" title="Connect apps">
+        <button type="button" className="icon-btn icon-btn--bordered" onClick={() => setModal('apps')} aria-label={t("Connect apps")} title={t("Connect apps")}>
           <Icon name="apps" />
         </button>
       </div>

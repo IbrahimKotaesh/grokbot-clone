@@ -47,7 +47,7 @@
 .vcall__btn--end { background: var(--color-danger); width: 44px; }
 .vcall__btn--end:hover { background: #C82532; }
 .vcall__captions {
-  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; margin-top: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align:start; margin-top: 8px; padding: 8px 10px;
   border-radius: 14px; background: #FFFFFF0F; font-size: 13px; line-height: 18px; cursor: pointer;
 }
 .vcall__captions:hover { background: #FFFFFF17; }

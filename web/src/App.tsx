@@ -1,3 +1,4 @@
+import { t } from './lib/i18n';
 import {isMacDesktop,openDesktopComputer,notifyDesktopContext} from './lib/desktop';
 import {AccessCodeGate} from './components/AccessCode';
 import {BotAvatarFor} from './avatar/BotAvatar';
@@ -97,14 +98,14 @@ function Shell() {
   return (
     <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${detailsOpen && hasBot && view === 'chat' ? ' has-details' : ''}`}>
       <div className="mobile-topbar">
-        <button ref={navButton} type="button" className="icon-btn" aria-label="Open conversations" aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
-        <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:'Conversations'}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:'Conversations'}</span></button>
-        <button type="button" className="icon-btn" aria-label="Show conversation details" onClick={() => useStore.getState().set({detailsOpen:true})}><Icon name="sidebar" size={21}/></button>
+        <button ref={navButton} type="button" className="icon-btn" aria-label={t("Open conversations")} aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
+        <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>
+        <button type="button" className="icon-btn" aria-label={t("Show conversation details")} onClick={() => useStore.getState().set({detailsOpen:true})}><Icon name="sidebar" size={21}/></button>
       </div>
-      <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label="Close conversations" onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
+      <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
       {view === 'tasks' ? <TasksView /> : <ChatView />}
-      {detailsOpen && hasBot && view === 'chat' && <><button className="details-backdrop" aria-label="Close conversation details" onClick={() => useStore.getState().set({ detailsOpen: false })} /><DetailsPanel /></>}
+      {detailsOpen && hasBot && view === 'chat' && <><button className="details-backdrop" aria-label={t("Close conversation details")} onClick={() => useStore.getState().set({ detailsOpen: false })} /><DetailsPanel /></>}
       {modal === 'create' && <CreateBotModal />}
       {modal === 'group' && <CreateGroupModal />}
       {modal === 'search' && <SearchModal />}

@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useEffect, useState } from 'react';
 import type { CardBody, Row } from '@shared/types';
 import { api, openPopup } from '../../lib/api';
@@ -12,19 +13,19 @@ function useBusy() {
   const [error, setError] = useState<string | null>(null);
   const run = async (key: string, fn: () => Promise<unknown>) => {
     setBusy(key); setError(null);
-    try { await fn(); } catch (e) { setError((e as Error).message || 'Something went wrong'); } finally { setBusy(null); }
+    try { await fn(); } catch (e) { setError((e as Error).message || t("Something went wrong")); } finally { setBusy(null); }
   };
   return { busy, error, run };
 }
 
 const prettyTool = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-const KNOWN: Record<string, string> = { github: 'GitHub', gitlab: 'GitLab', hubspot: 'HubSpot', linkedin: 'LinkedIn', youtube: 'YouTube', clickup: 'ClickUp', googledocs: 'Google Docs', googledrive: 'Google Drive', googlesheets: 'Google Sheets', googlecalendar: 'Google Calendar', googletasks: 'Google Tasks', googlemeet: 'Google Meet' };
+const KNOWN: Record<string, string> = { github: t("GitHub"), gitlab: t("GitLab"), hubspot: 'HubSpot', linkedin: 'LinkedIn', youtube: t("YouTube"), clickup: 'ClickUp', googledocs: t("Google Docs"), googledrive: t("Google Drive"), googlesheets: t("Google Sheets"), googlecalendar: t("Google Calendar"), googletasks: t("Google Tasks"), googlemeet: 'Google Meet' };
 /** "googlecalendar" → "Google Calendar", "slack" → "Slack". */
 export const humanizeToolkit = (slug: string) => KNOWN[slug.toLowerCase()] ?? slug.replace(/^(google|microsoft)(?=\w)/i, '$1 ').replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 // ---------------- approval ----------------
 
-const APPROVAL_OUTCOME: Record<string, string> = { allowed: 'Allowed once', always: 'Always allowed', denied: 'Not allowed', expired: 'Expired' };
+const APPROVAL_OUTCOME: Record<string, string> = { allowed: t("Allowed once"), always: t("Always allowed"), denied: t("Not allowed"), expired: t("Expired") };
 
 export function ApprovalCard({ body }: { body: Card<'approval'> }) {
   const { busy, error, run } = useBusy();
@@ -40,15 +41,21 @@ export function ApprovalCard({ body }: { body: Card<'approval'> }) {
           <div className="card__sub">{name}</div>
         </div>
       </div>
-      {body.detail && <div className="card__body">{body.detail}</div>}
+      {body.summary ? (
+        <>
+          <div className="card__body">{body.summary}</div>
+          {body.reason && <div className="card__sub">{body.reason}</div>}
+          {(body.technical || body.detail) && <details className="card__technical"><summary>{t("Show details")}</summary><pre>{body.technical || body.detail}</pre></details>}
+        </>
+      ) : body.detail && <div className="card__body">{body.detail}</div>}
       {pending ? (
         <>
           <div className="card__actions">
-            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('deny')}>Don't allow</button>
-            {!body.requiresFreshApproval&&<button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('always')} title="Remember these actions for this account, including future requests">Always allow</button>}
-            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={() => decide('allow')}>{body.requiresFreshApproval?'Allow once':'Allow'}</button>
+            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('deny')}>{t("Don't allow")}</button>
+            {!body.requiresFreshApproval&&<button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('always')} title={t("Remember these actions for this account, including future requests")}>{t("Always allow")}</button>}
+            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={() => decide('allow')}>{body.requiresFreshApproval?t("Allow once"):t("Allow")}</button>
           </div>
-          <div className="card__sub">{body.requiresFreshApproval?'This action requires approval each time, including in Autonomous mode.':'Always allow remembers these specific actions. Other actions keep their own permissions.'}</div>
+          <div className="card__sub">{body.requiresFreshApproval?t("This action requires approval each time, including in Autonomous mode."):t("Always allow remembers these specific actions. Other actions keep their own permissions.")}</div>
           {error && <div className="card__error">{error}</div>}
         </>
       ) : (
@@ -71,7 +78,7 @@ export function QuestionCard({ row, body }: { row: Row; body: Card<'question'> }
     <div className={`card question-card${pending ? '' : ' is-resolved'}`}>
       <div className="question-card__head">
         <div className="question-card__q">{body.question}</div>
-        <div className="question-card__hint">{pending ? 'Pick an option or reply in your own words' : body.status === 'dismissed' ? 'Skipped' : 'Answered'}</div>
+        <div className="question-card__hint">{pending ? t("Pick an option or reply in your own words") : body.status === 'dismissed' ? t("Skipped") : t("Answered")}</div>
       </div>
       <div className="question-card__options">
         {body.options.map((opt, i) => {
@@ -93,7 +100,7 @@ export function QuestionCard({ row, body }: { row: Row; body: Card<'question'> }
       </div>
       {pending && (
         <div className="question-card__foot">
-          <button type="button" className="link-btn" disabled={!!busy} onClick={() => run('dismiss', () => api.dismiss(row.botId, row.seq,row.generation))}>Skip</button>
+          <button type="button" className="link-btn" disabled={!!busy} onClick={() => run('dismiss', () => api.dismiss(row.botId, row.seq,row.generation))}>{t("Skip")}</button>
         </div>
       )}
       {error && <div className="card__error">{error}</div>}
@@ -133,15 +140,15 @@ export function ConnectCard({ row, body }: { row: Row; body: Card<'connect'> }) 
       {pending ? (
         <>
           <div className="card__actions">
-            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => run('skip', () => api.dismiss(row.botId, row.seq,row.generation))}>Skip</button>
-            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={connect}>{waiting ? 'Waiting for sign-in…' : 'Connect'}</button>
+            <button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => run('skip', () => api.dismiss(row.botId, row.seq,row.generation))}>{t("Skip")}</button>
+            <button type="button" className="btn btn--primary" disabled={!!busy} onClick={connect}>{waiting ? t("Waiting for sign-in…") : t("Connect")}</button>
           </div>
           {error && <div className="card__error">{error}</div>}
         </>
       ) : (
         <div className={`card__outcome is-${body.status}`}>
           <Icon name={body.status === 'connected' ? 'check' : 'close'} size={12} opacity={0.7} />
-          {body.status === 'connected' ? `${body.toolkitName} connected` : 'Skipped'}
+          {body.status === 'connected' ? `${body.toolkitName} connected` : t("Skipped")}
         </div>
       )}
     </div>
@@ -150,7 +157,7 @@ export function ConnectCard({ row, body }: { row: Row; body: Card<'connect'> }) 
 
 // ---------------- draft (screen 02) ----------------
 
-const CHANNEL_LABEL: Record<string, string> = { email: 'Email', slack: 'Slack', message: 'Chat' };
+const CHANNEL_LABEL: Record<string, string> = { email: t("Email"), slack: t("Slack"), message: t("Chat") };
 
 export function DraftCard({ body }: { body: Card<'draft'> }) {
   const { busy, error, run } = useBusy();
@@ -164,16 +171,16 @@ export function DraftCard({ body }: { body: Card<'draft'> }) {
       <div className="draft-card__head">
         <span className="draft-card__tile"><Icon name="chat_filled" size={18} color="#FFFFFF" /></span>
         <div className="draft-card__titles">
-          <div className="draft-card__channel">{CHANNEL_LABEL[body.channel] ?? 'Message'}</div>
+          <div className="draft-card__channel">{CHANNEL_LABEL[body.channel] ?? t("Message")}</div>
           <div className="draft-card__from">{handle}</div>
         </div>
-        <button type="button" className="draft-card__copy" onClick={copy} aria-label="Copy draft" title={copied ? 'Copied' : 'Copy'}>
+        <button type="button" className="draft-card__copy" onClick={copy} aria-label={t("Copy draft")} title={copied ? t("Copied") : t("Copy")}>
           <Icon name={copied ? 'check' : 'copy'} size={12} opacity={0.66} />
         </button>
       </div>
       <div className="draft-card__content">
         <div className="draft-card__to">
-          <span className="draft-card__to-label">To</span>
+          <span className="draft-card__to-label">{t("To")}</span>
           <span className="draft-card__to-avatar">{(body.to.trim()[0] ?? '?').toUpperCase()}</span>
           <span className="draft-card__to-name">{body.to}</span>
         </div>
@@ -182,13 +189,13 @@ export function DraftCard({ body }: { body: Card<'draft'> }) {
       </div>
       {pending ? (
         <div className="draft-card__actions">
-          <button type="button" className="btn btn--secondary btn--grow" disabled={!!busy} onClick={() => run('discard', () => api.approve(body.approvalId, 'deny'))}>Discard</button>
-          <button type="button" className="btn btn--primary btn--grow" disabled={!!busy} onClick={() => run('send', () => api.approve(body.approvalId, 'allow'))}>Send</button>
+          <button type="button" className="btn btn--secondary btn--grow" disabled={!!busy} onClick={() => run('discard', () => api.approve(body.approvalId, 'deny'))}>{t("Discard")}</button>
+          <button type="button" className="btn btn--primary btn--grow" disabled={!!busy} onClick={() => run('send', () => api.approve(body.approvalId, 'allow'))}>{t("Send")}</button>
         </div>
       ) : (
         <div className={`card__outcome is-${body.status}`} style={{ padding: '0 16px 16px' }}>
           <Icon name={body.status === 'sent' ? 'check' : 'close'} size={12} opacity={0.7} />
-          {body.status === 'sent' ? 'Sent' : 'Discarded'}
+          {body.status === 'sent' ? t("Sent") : t("Discarded")}
         </div>
       )}
       {error && <div className="card__error" style={{ padding: '0 16px 12px' }}>{error}</div>}

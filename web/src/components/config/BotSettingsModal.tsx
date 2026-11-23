@@ -1,3 +1,5 @@
+import { t } from '../../lib/i18n';
+import { BrainPicker } from './BrainPicker';
 import {characterKind, FRUIT_COLORS} from '../../avatar/FinoCharacter';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot, Memory, Routine, Skill } from '@shared/types';
@@ -12,17 +14,17 @@ import { Glyph } from './glyphs';
 import { ConfirmButton, Field, Segmented, Switch, nextRunLabel, shortDate } from './ui';
 
 const EFFORTS: { value: Bot['effort']; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Max' },
+  { value: 'low', label: t("Low") },
+  { value: 'medium', label: t("Medium") },
+  { value: 'high', label: t("High") },
+  { value: 'xhigh', label: t("Max") },
 ];
 
 const EFFORT_HINT: Record<Bot['effort'], string> = {
-  low: 'Fastest replies. Good for quick lookups and chit-chat.',
-  medium: 'A good balance for most work.',
-  high: 'Thinks longer before acting. Better for tricky, multi-step work.',
-  xhigh: 'Thinks the longest. Slowest, for the hardest problems.',
+  low: t("Fastest replies. Good for quick lookups and chit-chat."),
+  medium: t("A good balance for most work."),
+  high: t("Thinks longer before acting. Better for tricky, multi-step work."),
+  xhigh: t("Thinks the longest. Slowest, for the hardest problems."),
 };
 
 export function BotSettingsModal() {
@@ -49,10 +51,10 @@ export function BotSettingsModal() {
   if (!target || !bot) return null;
 
   const tabs: { id: BotSettingsTab; label: string; count?: number }[] = [
-    { id: 'general', label: 'General' },
-    { id: 'skills', label: 'Skills', count: data?.skills.length },
-    { id: 'memories', label: 'Memories', count: data?.memories.length },
-    { id: 'routines', label: 'Routines', count: (routines ?? data?.routines)?.length },
+    { id: 'general', label: t("General") },
+    { id: 'skills', label: t("Skills"), count: data?.skills.length },
+    { id: 'memories', label: t("Memories"), count: data?.memories.length },
+    { id: 'routines', label: t("Routines"), count: (routines ?? data?.routines)?.length },
   ];
 
   return (
@@ -62,10 +64,10 @@ export function BotSettingsModal() {
           <BotAvatarFor bot={bot} size={24} />
           <span className="modal__title">{bot.name}</span>
         </div>
-        <button type="button" className="modal__close" onClick={onClose} aria-label="Close"><Icon name="close" size={14} opacity={0.68} /></button>
+        <button type="button" className="modal__close" onClick={onClose} aria-label={t("Close")}><Icon name="close" size={14} opacity={0.68} /></button>
       </div>
       <div className="bot-settings__body" style={botVars(bot.avatarColor)}>
-        <nav className="cfg-nav" aria-label="Bot settings sections">
+        <nav className="cfg-nav" aria-label={t("Bot settings sections")}>
           {tabs.map((t) => (
             <button key={t.id} type="button" className={`cfg-nav__item${target.tab === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)} aria-current={target.tab === t.id || undefined}>
               <span>{t.label}</span>
@@ -113,7 +115,7 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
       for (const k of changed) (patch as Record<string, unknown>)[k] = k === 'name' ? draft.name.trim() : draft[k];
       const { bot: next } = await configApi.updateBot(bot.id, patch);
       useStore.setState((s) => ({ bots: s.bots.map((b) => (b.id === next.id ? next : b)) }));
-      if(closeAfter)onClose();else flash('Saved');
+      if(closeAfter)onClose();else flash(t("Saved"));
     } catch (e) {
       flash((e as Error).message, 'error');
     } finally {
@@ -127,9 +129,9 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         <div className="cfg-look">
           <BotAvatar shape={draft.avatarShape} color={draft.avatarColor} size={72} />
           <div className="cfg-look__text">
-            <div className="cfg-look__name">{draft.name || 'New Bot'}</div>
+            <div className="cfg-look__name">{draft.name || t("New Bot")}</div>
             <button type="button" className="cfg-btn cfg-btn--secondary" disabled={saving||!nameOk} onClick={()=>picker?void save(true):setPicker(true)} aria-expanded={picker}>
-              {picker ? <><Icon name="check" size={14}/> {saving?'Saving…':'Done'}</> : 'Change look'}
+              {picker ? <><Icon name="check" size={14}/> {saving?'Saving…':t("Done")}</> : t("Change look")}
             </button>
           </div>
         </div>
@@ -137,72 +139,72 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
       </section>
 
       <section className="cfg-section cfg-grid">
-        <Field label="Name" htmlFor="cfg-name">
+        <Field label={t("Name")} htmlFor="cfg-name">
           <input id="cfg-name" className="text-input" value={draft.name} maxLength={60} onChange={(e) => put('name', e.target.value)} aria-invalid={!nameOk} />
         </Field>
-        <Field label="Label" htmlFor="cfg-label" hint="Shown next to the name, like “Research” or “Inbox”.">
-          <input id="cfg-label" className="text-input" value={draft.label} maxLength={60} placeholder="Add a label" onChange={(e) => put('label', e.target.value)} />
+        <Field label={t("Label")} htmlFor="cfg-label" hint="Shown next to the name, like “Research” or “Inbox”.">
+          <input id="cfg-label" className="text-input" value={draft.label} maxLength={60} placeholder={t("Add a label")} onChange={(e) => put('label', e.target.value)} />
         </Field>
       </section>
 
       <section className="cfg-section">
-        <Field label="About" htmlFor="cfg-about">
-          <textarea id="cfg-about" className="text-input cfg-textarea" rows={2} value={draft.description} maxLength={500} placeholder="What is this Bot for?" onChange={(e) => put('description', e.target.value)} />
+        <Field label={t("About")} htmlFor="cfg-about">
+          <textarea id="cfg-about" className="text-input cfg-textarea" rows={2} value={draft.description} maxLength={500} placeholder={t("What is this Bot for?")} onChange={(e) => put('description', e.target.value)} />
         </Field>
-        <Field label="Instructions" htmlFor="cfg-instructions" hint={`Standing guidance ${draft.name || 'this Bot'} always follows, like tone, priorities or things to avoid. It also learns from chat, skills and memories.`}>
+        <Field label={t("Instructions")} htmlFor="cfg-instructions" hint={`Standing guidance ${draft.name || 'this Bot'} always follows, like tone, priorities or things to avoid. It also learns from chat, skills and memories.`}>
           <textarea id="cfg-instructions" className="text-input cfg-textarea cfg-textarea--tall" rows={7} value={draft.instructions} maxLength={8000} placeholder="e.g. Keep updates to three bullets. Never email anyone outside the team without asking." onChange={(e) => put('instructions', e.target.value)} />
         </Field>
-        <Field label="AI provider" hint="Uses your signed-in subscription. Each provider keeps its own conversation context; saved memories are shared.">
-          <Segmented label="AI provider" value={draft.agentProvider ?? 'codex'} options={[{value:'codex',label:'ChatGPT / Codex'},{value:'claude',label:'Claude'}]} onChange={(v) => { put('agentProvider',v); put('model',''); }} />
+        <Field label={t("Brain")} hint={t("Included models are part of your Fino plan. Or use your own ChatGPT or Claude subscription.")}>
+          <BrainPicker provider={draft.agentProvider ?? 'codex'} model={draft.model ?? ''} onChange={(agentProvider, model) => { put('agentProvider', agentProvider); put('model', model); }} />
         </Field>
-        <Field label="Model" htmlFor="cfg-model" hint={draft.agentProvider === 'claude' ? 'Leave blank for your Claude default, or enter sonnet, opus or haiku.' : 'Leave blank to use your Codex default model.'}>
-          <input id="cfg-model" className="text-input" value={draft.model ?? ''} maxLength={100} placeholder="Account default" onChange={(e)=>put('model',e.target.value)} />
+        {draft.agentProvider !== 'openrouter' && <Field label={t("Model")} htmlFor="cfg-model" hint={draft.agentProvider === 'claude' ? t("Leave blank for your Claude default, or enter sonnet, opus or haiku.") : t("Leave blank to use your Codex default model.")}>
+          <input id="cfg-model" className="text-input" value={draft.model ?? ''} maxLength={100} placeholder={t("Account default")} onChange={(e)=>put('model',e.target.value)} />
+        </Field>}
+        <Field label={t("Thinking effort")} hint={EFFORT_HINT[draft.effort]}>
+          <Segmented label={t("Thinking effort")} value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />
         </Field>
-        <Field label="Thinking effort" hint={EFFORT_HINT[draft.effort]}>
-          <Segmented label="Thinking effort" value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />
-        </Field>
-        <Field label="Used as">
-          <Segmented label="Bot type" value={draft.mode} options={[{ value: 'personal', label: 'Personal assistant' }, { value: 'teammate', label: 'Teammate' }]} onChange={(v) => put('mode', v)} />
+        <Field label={t("Used as")}>
+          <Segmented label={t("Bot type")} value={draft.mode} options={[{ value: 'personal', label: t("Personal assistant") }, { value: 'teammate', label: t("Teammate") }]} onChange={(v) => put('mode', v)} />
         </Field>
       </section>
 
       <div className={`cfg-savebar${dirty ? ' is-dirty' : ''}`}>
-        <span className={`cfg-savebar__note${note?.tone === 'error' ? ' is-error' : ''}`} role="status">{note?.text ?? (dirty ? 'Unsaved changes' : '')}</span>
-        <button type="button" className="cfg-btn cfg-btn--secondary" disabled={!dirty || saving} onClick={() => setDraft(draftOf(bot))}>Discard</button>
-        <button type="button" className="cfg-btn cfg-btn--primary" disabled={!dirty || saving || !nameOk} onClick={()=>void save(true)}>{saving ? 'Saving…' : 'Save changes'}</button>
+        <span className={`cfg-savebar__note${note?.tone === 'error' ? ' is-error' : ''}`} role="status">{note?.text ?? (dirty ? t("Unsaved changes") : '')}</span>
+        <button type="button" className="cfg-btn cfg-btn--secondary" disabled={!dirty || saving} onClick={() => setDraft(draftOf(bot))}>{t("Discard")}</button>
+        <button type="button" className="cfg-btn cfg-btn--primary" disabled={!dirty || saving || !nameOk} onClick={()=>void save(true)}>{saving ? 'Saving…' : t("Save changes")}</button>
       </div>
 
       <section className="cfg-section">
-        <div className="cfg-section__label">Conversation</div>
+        <div className="cfg-section__label">{t("Conversation")}</div>
         <div className="cfg-card">
           <div className="cfg-row">
             <div className="cfg-row__text">
-              <div className="cfg-row__title">New conversation</div>
-              <div className="cfg-row__sub">Clears the chat. Memories, skills and routines stay.</div>
+              <div className="cfg-row__title">{t("New conversation")}</div>
+              <div className="cfg-row__sub">{t("Clears the chat. Memories, skills and routines stay.")}</div>
             </div>
-            <ConfirmButton className="cfg-btn cfg-btn--secondary" confirmLabel="Start fresh" onConfirm={async () => { await configApi.fresh(bot.id); flash('Started a new conversation'); }}>
+            <ConfirmButton className="cfg-btn cfg-btn--secondary" confirmLabel="Start fresh" onConfirm={async () => { await configApi.fresh(bot.id); flash(t("Started a new conversation")); }}>
               Start new
             </ConfirmButton>
           </div>
           {!bot.isPrimary && (
             <div className="cfg-row">
               <div className="cfg-row__text">
-                <div className="cfg-row__title">Make primary</div>
-                <div className="cfg-row__sub">Your go-to Bot. It reaches out first and keeps the others on track.</div>
+                <div className="cfg-row__title">{t("Make primary")}</div>
+                <div className="cfg-row__sub">{t("Your go-to Bot. It reaches out first and keeps the others on track.")}</div>
               </div>
-              <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => configApi.makePrimary(bot.id).then(() => flash(`${bot.name} is now your primary Bot`)).catch((e) => flash(e.message, 'error'))}>Make primary</button>
+              <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => configApi.makePrimary(bot.id).then(() => flash(`${bot.name} is now your primary Bot`)).catch((e) => flash(e.message, 'error'))}>{t("Make primary")}</button>
             </div>
           )}
         </div>
       </section>
 
       <section className="cfg-section">
-        <div className="cfg-section__label">Danger zone</div>
+        <div className="cfg-section__label">{t("Danger zone")}</div>
         <div className="cfg-card">
           <div className="cfg-row">
             <div className="cfg-row__text">
               <div className="cfg-row__title">Delete {bot.name}</div>
-              <div className="cfg-row__sub">{bot.isPrimary ? 'Make another Bot primary first.' : 'Removes its chat, memories, skills and routines for good.'}</div>
+              <div className="cfg-row__sub">{bot.isPrimary ? t("Make another Bot primary first.") : t("Removes its chat, memories, skills and routines for good.")}</div>
             </div>
             <ConfirmButton
               disabled={bot.isPrimary}
@@ -231,7 +233,7 @@ const SHAPE_ROWS = [PICKER_SHAPES];
 function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; color: AvatarColor; onShape: (s: AvatarShape) => void; onColor: (c: AvatarColor) => void }) {
   return (
     <div className="cfg-picker">
-      <div className="shape-grid" role="radiogroup" aria-label="Character shape">
+      <div className="shape-grid" role="radiogroup" aria-label={t("Character shape")}>
         {SHAPE_ROWS.map((row, i) => (
           <div key={i} className="shape-grid__row">
             {row.map((s) => (
@@ -242,7 +244,7 @@ function LookPicker({ shape, color, onShape, onColor }: { shape: AvatarShape; co
           </div>
         ))}
       </div>
-      <div className="swatches" role="radiogroup" aria-label="Chat color">
+      <div className="swatches" role="radiogroup" aria-label={t("Chat color")}>
         <div className="swatches__row">
           {COLOR_ORDER.map((c) => (
             <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className="swatch-cell" onClick={() => onColor(c)}>
@@ -263,13 +265,13 @@ function SkillsTab({ bot, skills, onChange }: { bot: Bot; skills: Skill[] | unde
     <div className="cfg-page">
       <div className="cfg-page__head">
         <div>
-          <div className="cfg-page__title">Skills</div>
+          <div className="cfg-page__title">{t("Skills")}</div>
           <div className="cfg-page__sub">Step-by-step how-tos {bot.name} follows for specific jobs. Ask for one by name in chat.</div>
         </div>
-        {editing !== 'new' && <button type="button" className="cfg-btn cfg-btn--primary" onClick={() => setEditing('new')}><Icon name="plus" size={12} /> New skill</button>}
+        {editing !== 'new' && <button type="button" className="cfg-btn cfg-btn--primary" onClick={() => setEditing('new')}><Icon name="plus" size={12} /> {t("New skill")}</button>}
       </div>
       {editing === 'new' && <SkillEditor botId={bot.id} onDone={() => { setEditing(null); onChange(); }} />}
-      {!skills ? <div className="cfg-empty">Loading…</div> : skills.length === 0 && editing !== 'new' ? (
+      {!skills ? <div className="cfg-empty">{t("Loading…")}</div> : skills.length === 0 && editing !== 'new' ? (
         <div className="cfg-empty">
           No skills yet. Write down how you like something done, like “Prep for a sales call”, and {bot.name} will follow it every time.
         </div>
@@ -285,8 +287,8 @@ function SkillsTab({ bot, skills, onChange }: { bot: Bot; skills: Skill[] | unde
                 <div className="cfg-item__sub">{s.description || s.body.split('\n')[0]}</div>
               </div>
               <div className="cfg-item__actions">
-                <button type="button" className="cfg-icon-btn" onClick={() => setEditing(s.id)} aria-label={`Edit ${s.name}`} title="Edit"><Icon name="edit" size={14} /></button>
-                <ConfirmButton className="cfg-icon-btn" title="Delete" onConfirm={async () => { await configApi.deleteSkill(s.id); onChange(); }}><Glyph name="trash" size={14} /></ConfirmButton>
+                <button type="button" className="cfg-icon-btn" onClick={() => setEditing(s.id)} aria-label={`Edit ${s.name}`} title={t("Edit")}><Icon name="edit" size={14} /></button>
+                <ConfirmButton className="cfg-icon-btn" title={t("Delete")} onConfirm={async () => { await configApi.deleteSkill(s.id); onChange(); }}><Glyph name="trash" size={14} /></ConfirmButton>
               </div>
             </div>
           ))}
@@ -314,13 +316,13 @@ function SkillEditor({ botId, skill, onDone }: { botId: string; skill?: Skill; o
   };
   return (
     <form className="cfg-editor" onSubmit={(e) => { e.preventDefault(); save(); }}>
-      <input className="text-input" placeholder="Skill name, e.g. Weekly report" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Skill name" />
-      <input className="text-input" placeholder="When to use it (optional)" value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} aria-label="Skill description" />
-      <textarea className="text-input cfg-textarea cfg-textarea--tall" rows={8} placeholder={'Write the steps to follow:\n1. …\n2. …'} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Skill steps" />
+      <input className="text-input" placeholder={t("Skill name, e.g. Weekly report")} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoFocus aria-label={t("Skill name")} />
+      <input className="text-input" placeholder={t("When to use it (optional)")} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} aria-label={t("Skill description")} />
+      <textarea className="text-input cfg-textarea cfg-textarea--tall" rows={8} placeholder={'Write the steps to follow:\n1. …\n2. …'} value={body} onChange={(e) => setBody(e.target.value)} aria-label={t("Skill steps")} />
       {error && <div className="cfg-error">{error}</div>}
       <div className="cfg-editor__actions">
-        <button type="button" className="cfg-btn cfg-btn--secondary" onClick={onDone}>Cancel</button>
-        <button type="submit" className="cfg-btn cfg-btn--primary" disabled={!can}>{busy ? 'Saving…' : skill ? 'Save skill' : 'Add skill'}</button>
+        <button type="button" className="cfg-btn cfg-btn--secondary" onClick={onDone}>{t("Cancel")}</button>
+        <button type="submit" className="cfg-btn cfg-btn--primary" disabled={!can}>{busy ? 'Saving…' : skill ? t("Save skill") : t("Add skill")}</button>
       </div>
     </form>
   );
@@ -344,16 +346,16 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
     <div className="cfg-page">
       <div className="cfg-page__head">
         <div>
-          <div className="cfg-page__title">Memories</div>
+          <div className="cfg-page__title">{t("Memories")}</div>
           <div className="cfg-page__sub">What {bot.name} remembers about you. Saved facts stay with this bot across restarts and model changes. Conversation history is stored separately.</div>
         </div>
       </div>
-      <div className="memory-add"><textarea className="text-input" rows={2} maxLength={2000} placeholder="A preference this bot should remember…" aria-label="New saved memory" value={newMemory} onChange={e=>setNewMemory(e.target.value)} dir="auto"/><button type="button" className="btn btn--primary" disabled={!newMemory.trim()||savingMemory} onClick={()=>void save()}>{savingMemory?'Saving…':editingMemory?'Update memory':'Save memory'}</button>{editingMemory&&<button type="button" className="btn btn--secondary" onClick={()=>{setEditingMemory(null);setNewMemory('');}}>Cancel editing</button>}{memoryError&&<p role="alert">{memoryError}</p>}</div>
+      <div className="memory-add"><textarea className="text-input" rows={2} maxLength={2000} placeholder={t("A preference this bot should remember…")} aria-label={t("New saved memory")} value={newMemory} onChange={e=>setNewMemory(e.target.value)} dir="auto"/><button type="button" className="btn btn--primary" disabled={!newMemory.trim()||savingMemory} onClick={()=>void save()}>{savingMemory?'Saving…':editingMemory?t("Update memory"):t("Save memory")}</button>{editingMemory&&<button type="button" className="btn btn--secondary" onClick={()=>{setEditingMemory(null);setNewMemory('');}}>{t("Cancel editing")}</button>}{memoryError&&<p role="alert">{memoryError}</p>}</div>
       {(data?.memories.length ?? 0) > 6 && (
-        <input className="text-input" placeholder="Search memories" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search memories" />
+        <input className="text-input" placeholder={t("Search memories")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Search memories")} />
       )}
-      {!data ? <div className="cfg-empty">Loading…</div> : memories.length === 0 ? (
-        <div className="cfg-empty">{q ? 'No memories match.' : `No saved memories yet. Ask ${bot.name} to remember an important preference.`}</div>
+      {!data ? <div className="cfg-empty">{t("Loading…")}</div> : memories.length === 0 ? (
+        <div className="cfg-empty">{q ? t("No memories match.") : `No saved memories yet. Ask ${bot.name} to remember an important preference.`}</div>
       ) : (
         <div className="cfg-list">
           {memories.map((m) => (
@@ -361,22 +363,22 @@ function MemoriesTab({ bot, data, onChange }: { bot: Bot; data: BotSettingsBundl
               <div className="cfg-item__text">
                 <div className="cfg-item__body" dir="auto">{m.text}</div>
                 <div className="cfg-item__meta">
-                  {m.source === 'learned' ? <span className="cfg-chip">Picked up</span> : <span className="cfg-chip cfg-chip--muted">Saved</span>}
+                  {m.source === 'learned' ? <span className="cfg-chip">{t("Picked up")}</span> : <span className="cfg-chip cfg-chip--muted">{t("Saved")}</span>}
                   <span>{shortDate(m.createdAt)}</span>
                 </div>
               </div>
               <div className="cfg-item__actions">
-                <button type="button" className="link-btn link-btn--small" aria-label="Edit memory" onClick={()=>{setEditingMemory(m.id);setNewMemory(m.text);}}>Edit</button>
-                <button type="button" className="cfg-icon-btn" onClick={() => remove(m)} aria-label="Forget this" title="Forget"><Glyph name="trash" size={14} /></button>
+                <button type="button" className="link-btn link-btn--small" aria-label={t("Edit memory")} onClick={()=>{setEditingMemory(m.id);setNewMemory(m.text);}}>{t("Edit")}</button>
+                <button type="button" className="cfg-icon-btn" onClick={() => remove(m)} aria-label={t("Forget this")} title={t("Forget")}><Glyph name="trash" size={14} /></button>
               </div>
             </div>
           ))}
         </div>
       )}
-      {data?.memory.mode==='provider'&&<div className="cfg-meter"><div className="cfg-meter__label"><span>Saved memory</span><span>{data.memory.savedMemories} facts · {data.memory.conversationMessages} messages</span></div><div className="cfg-field__hint">{data.memory.provider==='claude'?'Claude Code':'ChatGPT'} manages its working context. Fino does not receive a reliable context usage percentage. Saved memories and searchable conversation history remain on your server.</div></div>}
+      {data?.memory.mode==='provider'&&<div className="cfg-meter"><div className="cfg-meter__label"><span>{t("Saved memory")}</span><span>{data.memory.savedMemories} facts · {data.memory.conversationMessages} messages</span></div><div className="cfg-field__hint">{data.memory.provider==='claude'?t("Claude Code"):'ChatGPT'} manages its working context. Fino does not receive a reliable context usage percentage. Saved memories and searchable conversation history remain on your server.</div></div>}
       {data?.memory.mode==='app' && (
-        <div className="cfg-meter" title="Older messages are summarized automatically when this fills up.">
-          <div className="cfg-meter__label"><span>Conversation memory</span><span>{fill}% full</span></div>
+        <div className="cfg-meter" title={t("Older messages are summarized automatically when this fills up.")}>
+          <div className="cfg-meter__label"><span>{t("Conversation memory")}</span><span>{fill}% full</span></div>
           <div className="cfg-meter__track"><span style={{ width: `${Math.max(2, fill)}%` }} /></div>
           <div className="cfg-field__hint">
             When it fills up, older messages get summarized so {bot.name} can keep going.
@@ -397,12 +399,12 @@ function RoutinesTab({ bot, routines }: { bot: Bot; routines: Routine[] | undefi
     <div className="cfg-page">
       <div className="cfg-page__head">
         <div>
-          <div className="cfg-page__title">Routines</div>
+          <div className="cfg-page__title">{t("Routines")}</div>
           <div className="cfg-page__sub">Recurring jobs {bot.name} runs on a schedule. To add or change one, ask in chat.</div>
         </div>
         {flash && <span className="cfg-savebar__note" role="status">{flash}</span>}
       </div>
-      {!routines ? <div className="cfg-empty">Loading…</div> : routines.length === 0 ? (
+      {!routines ? <div className="cfg-empty">{t("Loading…")}</div> : routines.length === 0 ? (
         <div className="cfg-empty">No routines yet. Try asking {bot.name}: “every Friday at 4pm, recap my week”.</div>
       ) : (
         <div className="cfg-list">
@@ -418,21 +420,21 @@ function RoutineItem({ r, onFlash }: { r: Routine; onFlash: (t: string) => void 
   useEffect(() => setEnabled(r.enabled), [r.enabled]);
   const toggle = async (v: boolean) => {
     setEnabled(v);
-    try { await configApi.setRoutine(r.id, v); onFlash(v ? 'Resumed' : 'Paused'); } catch { setEnabled(!v); }
+    try { await configApi.setRoutine(r.id, v); onFlash(v ? t("Resumed") : t("Paused")); } catch { setEnabled(!v); }
   };
   return (
     <div className="cfg-item cfg-item--routine">
       <span className="cfg-item__icon"><Icon name="clock" size={14} /></span>
       <div className="cfg-item__text">
         <div className="cfg-item__title">{r.name}</div>
-        <div className="cfg-item__sub">{enabled ? [r.description || r.schedule, nextRunLabel(r.nextRunAt, r.timezone)].filter(Boolean).join(' · ') : 'Paused'}</div>
+        <div className="cfg-item__sub">{enabled ? [r.description || r.schedule, nextRunLabel(r.nextRunAt, r.timezone)].filter(Boolean).join(' · ') : t("Paused")}</div>
         <div className="cfg-item__prompt">{r.prompt}</div>
       </div>
       <div className="cfg-item__actions">
-        <button type="button" className="cfg-icon-btn" title="Run now" aria-label={`Run ${r.name} now`} onClick={() => configApi.runRoutine(r.id).then(() => onFlash('Running now')).catch((e) => onFlash(e.message))}>
+        <button type="button" className="cfg-icon-btn" title={t("Run now")} aria-label={`Run ${r.name} now`} onClick={() => configApi.runRoutine(r.id).then(() => onFlash(t("Running now"))).catch((e) => onFlash(e.message))}>
           <Glyph name="play" size={13} />
         </button>
-        <ConfirmButton className="cfg-icon-btn" title="Delete" onConfirm={() => configApi.deleteRoutine(r.id).then(() => onFlash('Deleted'))}><Glyph name="trash" size={14} /></ConfirmButton>
+        <ConfirmButton className="cfg-icon-btn" title={t("Delete")} onConfirm={() => configApi.deleteRoutine(r.id).then(() => onFlash(t("Deleted")))}><Glyph name="trash" size={14} /></ConfirmButton>
         <Switch on={enabled} onChange={toggle} label={`${r.name} ${enabled ? 'on' : 'paused'}`} />
       </div>
     </div>

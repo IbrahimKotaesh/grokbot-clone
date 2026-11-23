@@ -1,6 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 
-export interface MenuItem { label: string; onSelect: () => void; danger?: boolean; hint?: string; icon?: ReactNode; description?: string; selected?: boolean }
+export interface MenuItem { label: string; onSelect: () => void; danger?: boolean; hint?: string; icon?: ReactNode; description?: string; selected?: boolean; section?: string; locked?: boolean }
 
 /** Small popover menu anchored by its parent (position: relative). Closes on outside click / Escape. */
 export function Menu({ items, onClose, align = 'left', placement = 'below', children }: { items: MenuItem[]; onClose: () => void; align?: 'left' | 'right' | 'center'; placement?: 'below' | 'above'; children?: ReactNode }) {
@@ -16,10 +16,13 @@ export function Menu({ items, onClose, align = 'left', placement = 'below', chil
     <div ref={ref} className={`menu is-${align} is-${placement}`} role="menu">
       {children}
       {items.map((it) => (
-        <button key={it.label} type="button" role={it.selected===undefined?'menuitem':'menuitemradio'} aria-checked={it.selected} className={`menu__item${it.selected?' is-selected':''}${it.danger ? ' is-danger' : ''}`} onClick={() => { onClose(); it.onSelect(); }}>
+        <Fragment key={it.label}>
+        {it.section && <div className="menu__section">{it.section}</div>}
+        <button type="button" role={it.selected===undefined?'menuitem':'menuitemradio'} aria-checked={it.selected} className={`menu__item${it.selected?' is-selected':''}${it.danger ? ' is-danger' : ''}${it.locked ? ' is-locked' : ''}`} onClick={() => { onClose(); it.onSelect(); }}>
           <span className="menu__label">{it.icon}<span>{it.label}{it.description && <small>{it.description}</small>}</span></span>
           {it.hint && <span className="menu__hint">{it.hint}</span>}
         </button>
+        </Fragment>
       ))}
     </div>
   );

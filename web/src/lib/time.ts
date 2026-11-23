@@ -1,3 +1,4 @@
+import { t } from './i18n';
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 export const clock = (ts: number) => new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -16,8 +17,8 @@ export function dividerLabel(ts: number, now = Date.now()): string {
   const d = new Date(ts);
   const today = new Date(now);
   const y = new Date(now - 86_400_000);
-  if (sameDay(d, today)) return `Today ${clock(ts)}`;
-  if (sameDay(d, y)) return `Yesterday ${clock(ts)}`;
+  if (sameDay(d, today)) return `${t('Today')} ${clock(ts)}`;
+  if (sameDay(d, y)) return `${t('Yesterday')} ${clock(ts)}`;
   const opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
   if (d.getFullYear() !== today.getFullYear()) opts.year = 'numeric';
   return `${d.toLocaleDateString('en-US', opts)} ${clock(ts)}`;
@@ -37,6 +38,6 @@ export function relativeShort(ts: number, now = Date.now()): string {
   if (s < 60) return 'now';
   if (s < 3600) return `${Math.floor(s / 60)}m`;
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  if (s < 172800) return 'Yesterday';
+  if (s < 172800) return t('Yesterday');
   return `${Math.floor(s / 86400)}d`;
 }

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import type RFBType from '@novnc/novnc';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -28,7 +29,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
   const wake = async () => {
     setWaking(true); setWakeError('');
     try { const result = await api.ensureComputer(); set({computer:result.computer}); }
-    catch (e) { setWakeError((e as Error).message || 'The computer could not start. Please try again.'); }
+    catch (e) { setWakeError((e as Error).message || t("The computer could not start. Please try again.")); }
     finally { setWaking(false); }
   };
   useEffect(() => {
@@ -89,7 +90,7 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
           <span>{bot.name}'s computer</span>
           <span className="viewer__status">{computerStatusText(computer)}</span>
         </div>
-        <button type="button" className="viewer__close" onClick={close} aria-label="Close computer"><Icon name="close" color="#FFFFFF" /></button>
+        <button type="button" className="viewer__close" onClick={close} aria-label={t("Close computer")}><Icon name="close" color="#FFFFFF" /></button>
       </div>
 
       <div className="viewer__stage">
@@ -98,10 +99,10 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
             <div ref={screenRef} className={`viewer__screen${mode === 'control' ? ' is-control' : ''}`} />
             {conn !== 'connected' && (
               <div className="viewer__overlay">
-                {conn === 'connecting' ? 'Connecting to the screen…' : (
+                {conn === 'connecting' ? t("Connecting to the screen…") : (
                   <>
-                    <span>{conn === 'error' ? 'Couldn’t reach the screen.' : 'Disconnected.'}</span>
-                    <button type="button" className="btn btn--light" onClick={() => setAttempt((n) => n + 1)}>Reconnect</button>
+                    <span>{conn === 'error' ? t("Couldn’t reach the screen.") : 'Disconnected.'}</span>
+                    <button type="button" className="btn btn--light" onClick={() => setAttempt((n) => n + 1)}>{t("Reconnect")}</button>
                   </>
                 )}
               </div>
@@ -110,8 +111,8 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
         ) : (
           <div className="viewer__overlay viewer__overlay--asleep">
             <span className="viewer__sleep-face"><i /><i /></span>
-            <span>{busy ? 'Starting your computer…' : wakeError || (computer?.status === 'error' ? 'The computer is unavailable.' : 'The computer is asleep.')}</span>
-            {!busy && <button type="button" className="btn btn--light" onClick={() => void wake()}>{wakeError || computer?.status === 'error' ? 'Try again' : 'Wake computer'}</button>}
+            <span>{busy ? t("Starting your computer…") : wakeError || (computer?.status === 'error' ? t("The computer is unavailable.") : t("The computer is asleep."))}</span>
+            {!busy && <button type="button" className="btn btn--light" onClick={() => void wake()}>{wakeError || computer?.status === 'error' ? t("Try again") : t("Wake computer")}</button>}
           </div>
         )}
       </div>
@@ -120,13 +121,13 @@ export function ComputerViewer({docked=false}:{docked?:boolean}) {
         <div className={`viewer__bar${mode === 'control' ? ' is-control' : ''}`}>
           {mode === 'watch' ? (
             <>
-              <span className="viewer__bar-text"><b>Watching</b> · Take control to use the mouse and keyboard</span>
-              <button type="button" className="btn btn--light" onClick={() => setMode('control')}>Take control</button>
+              <span className="viewer__bar-text"><b>{t("Watching")}</b> {t("· Take control to use the mouse and keyboard")}</span>
+              <button type="button" className="btn btn--light" onClick={() => setMode('control')}>{t("Take control")}</button>
             </>
           ) : (
             <>
-              <span className="viewer__bar-text"><span className="viewer__live-dot" /> <b>You're in control</b></span>
-              <button type="button" className="btn btn--light" onClick={() => setMode('watch')}>I'm done</button>
+              <span className="viewer__bar-text"><span className="viewer__live-dot" /> <b>{t("You're in control")}</b></span>
+              <button type="button" className="btn btn--light" onClick={() => setMode('watch')}>{t("I'm done")}</button>
             </>
           )}
         </div>

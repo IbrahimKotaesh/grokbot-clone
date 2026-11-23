@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bot, Task } from '@shared/types';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
@@ -10,7 +11,7 @@ import './ui';
 
 type Filter = 'all' | 'open' | 'done';
 
-const STATE_LABEL: Record<Task['state'], string> = { working: 'Working on it', needs_input: 'Waiting on you', done: 'Done' };
+const STATE_LABEL: Record<Task['state'], string> = { working: t("Working on it"), needs_input: 'Waiting on you', done: t("Done") };
 
 function when(t: Task): string {
   const r = relativeShort(t.updatedAt);
@@ -64,20 +65,20 @@ export function TasksView() {
   return (
     <main className="chat tasks-view">
       <header className="tasks-view__header">
-        <div className="tasks-view__title">Tasks</div>
-        <div className="segmented" role="tablist" aria-label="Filter tasks">
-          {([['open', `In progress${counts.open ? ` ${counts.open}` : ''}`], ['done', 'Done'], ['all', 'All']] as [Filter, string][]).map(([f, label]) => (
+        <div className="tasks-view__title">{t("Tasks")}</div>
+        <div className="segmented" role="tablist" aria-label={t("Filter tasks")}>
+          {([['open', `In progress${counts.open ? ` ${counts.open}` : ''}`], ['done', t("Done")], ['all', t("All")]] as [Filter, string][]).map(([f, label]) => (
             <button key={f} type="button" role="tab" aria-selected={filter === f} className={filter === f ? 'is-active' : ''} onClick={() => setFilter(f)}>{label}</button>
           ))}
         </div>
       </header>
       <div className="tasks-view__scroll">
         <div className="tasks-view__inner">
-          {tasks === null ? <div className="cfg-empty">Loading…</div> : shown.length === 0 ? (
+          {tasks === null ? <div className="cfg-empty">{t("Loading…")}</div> : shown.length === 0 ? (
             <div className="tasks-empty">
               <Glyph name="tasks" size={28} opacity={0.35} />
-              <div className="tasks-empty__title">{filter === 'done' ? 'Nothing finished yet' : 'Nothing in progress'}</div>
-              <div className="tasks-empty__sub">Give a Bot a multi-part request and every piece gets its own row here, so progress is easy to follow.</div>
+              <div className="tasks-empty__title">{filter === 'done' ? t("Nothing finished yet") : t("Nothing in progress")}</div>
+              <div className="tasks-empty__sub">{t("Give a Bot a multi-part request and every piece gets its own row here, so progress is easy to follow.")}</div>
             </div>
           ) : (
             <div className="task-list">{shown.map((t) => <TaskRow key={t.id} t={t} bot={byId.get(t.botId)} showBot />)}</div>
@@ -94,9 +95,9 @@ export function TasksIsland() {
   const tasks = useTasks();
   const waiting = tasks?.filter((t) => t.state === 'needs_input').length ?? 0;
   return (
-    <button type="button" className={`sidebar-island${view === 'tasks' ? ' is-active' : ''}`} onClick={() => useConfigUI.getState().setView(view === 'tasks' ? 'chat' : 'tasks')} title="Tasks" aria-pressed={view === 'tasks'}>
+    <button type="button" className={`sidebar-island${view === 'tasks' ? ' is-active' : ''}`} onClick={() => useConfigUI.getState().setView(view === 'tasks' ? 'chat' : 'tasks')} title={t("Tasks")} aria-pressed={view === 'tasks'}>
       <span className="sidebar-island__icon"><Glyph name="tasks" size={18} /></span>
-      <span className="sidebar-island__label">Tasks</span>
+      <span className="sidebar-island__label">{t("Tasks")}</span>
       {waiting > 0 && <span className="sidebar-island__count" aria-label={`${waiting} waiting on you`}>{waiting}</span>}
     </button>
   );
@@ -110,10 +111,10 @@ export function BotTasks({ bot }: { bot: Bot }) {
     <div className="details__sections">
       <section>
         <div className="section-label section-label--row">
-          <span>Tasks</span>
-          <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().setView('tasks')}>See all</button>
+          <span>{t("Tasks")}</span>
+          <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().setView('tasks')}>{t("See all")}</button>
         </div>
-        {tasks === null ? <div className="panel-card"><div className="panel-empty">Loading…</div></div> : sorted.length === 0 ? (
+        {tasks === null ? <div className="panel-card"><div className="panel-empty">{t("Loading…")}</div></div> : sorted.length === 0 ? (
           <div className="panel-card"><div className="panel-empty">No tasks yet. Ask {bot.name} for a few things at once and they’ll be tracked here.</div></div>
         ) : (
           <div className="panel-card task-list task-list--compact">{sorted.map((t) => <TaskRow key={t.id} t={t} bot={bot} showBot={false} />)}</div>

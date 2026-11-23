@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Toolkit } from '@shared/types';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
@@ -10,11 +11,11 @@ import { Modal } from './Modal';
 
 /** Design pill → backend (Composio) category. */
 const PILLS: { label: string; category: string }[] = [
-  { label: 'Password Managers', category: 'security & identity tools' },
-  { label: 'Productivity', category: 'productivity' },
-  { label: 'Communication', category: 'communication' },
-  { label: 'Design', category: 'images & design' },
-  { label: 'Code', category: 'developer tools' },
+  { label: t("Password Managers"), category: 'security & identity tools' },
+  { label: t("Productivity"), category: 'productivity' },
+  { label: t("Communication"), category: 'communication' },
+  { label: t("Design"), category: 'images & design' },
+  { label: t("Code"), category: 'developer tools' },
 ];
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bAi\b/g, 'AI').replace(/\bCrm\b/g, 'CRM').replace(/\bSeo\b/g, 'SEO').replace(/\bIt\b/g, 'IT').replace(/\bHr\b/g, 'HR').replace(/\bSms\b/g, 'SMS').replace(/\bUrl\b/g, 'URL').replace(/\bOcr\b/g, 'OCR');
 const pillLabel = (cat: string) => PILLS.find((p) => p.category === cat)?.label ?? titleCase(cat);
@@ -35,7 +36,7 @@ function AppRow({ app, onChanged }: { app: Toolkit; onChanged: () => void }) {
       setState('waiting');
     } catch (e) {
       popup?.close();
-      setError((e as Error).message || 'Couldn’t start the connection');
+      setError((e as Error).message || t("Couldn’t start the connection"));
       setState('idle');
     }
   };
@@ -54,13 +55,13 @@ function AppRow({ app, onChanged }: { app: Toolkit; onChanged: () => void }) {
       </span>
       {app.connected ? (
         <button type="button" className={`app-row__connected${state === 'confirm' ? ' is-confirm' : ''}`} onClick={disconnect} onMouseLeave={() => state === 'confirm' && setState('idle')} disabled={state === 'busy'}>
-          {state === 'confirm' ? 'Disconnect?' : <><Icon name="check" size={12} opacity={0.56} /><span className="app-row__connected-label">Connected</span><span className="app-row__disconnect-label">Disconnect</span></>}
+          {state === 'confirm' ? 'Disconnect?' : <><Icon name="check" size={12} opacity={0.56} /><span className="app-row__connected-label">{t("Connected")}</span><span className="app-row__disconnect-label">{t("Disconnect")}</span></>}
         </button>
       ) : app.noAuth ? (
-        <span className="app-row__connected is-static"><Icon name="check" size={12} opacity={0.56} />Built in</span>
+        <span className="app-row__connected is-static"><Icon name="check" size={12} opacity={0.56} />{t("Built in")}</span>
       ) : (
         <button type="button" className="app-row__connect" onClick={connect} disabled={state === 'busy'}>
-          {state === 'busy' ? 'Opening…' : state === 'waiting' ? 'Waiting…' : 'Connect'}
+          {state === 'busy' ? 'Opening…' : state === 'waiting' ? 'Waiting…' : t("Connect")}
         </button>
       )}
     </div>
@@ -81,7 +82,7 @@ function Section({ title, apps, onViewAll, onChanged }: { title: string; apps: T
     <section className="apps-section">
       <div className="apps-section__head">
         <span className="apps-section__title">{title}</span>
-        {onViewAll && <button type="button" className="link-btn link-btn--small" onClick={onViewAll}>View all</button>}
+        {onViewAll && <button type="button" className="link-btn link-btn--small" onClick={onViewAll}>{t("View all")}</button>}
       </div>
       <Grid apps={apps} onChanged={onChanged} />
     </section>
@@ -143,9 +144,9 @@ export function ConnectAppsModal() {
 
   let body: React.ReactNode;
   if (error) body = <div className="apps-empty">Couldn’t load apps. {error}</div>;
-  else if (!data && loading) body = <div className="apps-empty">Loading apps…</div>;
-  else if (data?.configured === false) body = <div className="apps-empty">App connections need setup on this Mac. <a href="https://dashboard.composio.dev" target="_blank" rel="noreferrer">Open Composio</a> to enable Gmail, GitHub, Slack and other accounts.</div>;
-  else if (view.kind === 'connected') body = connectedApps.length ? <Section title="Connected" apps={connectedApps} onChanged={refresh} /> : <div className="apps-empty">No apps connected yet.</div>;
+  else if (!data && loading) body = <div className="apps-empty">{t("Loading apps…")}</div>;
+  else if (data?.configured === false) body = <div className="apps-empty">{t("App connections need setup on this Mac.")} <a href="https://dashboard.composio.dev" target="_blank" rel="noreferrer">{t("Open Composio")}</a> to enable Gmail, GitHub, Slack and other accounts.</div>;
+  else if (view.kind === 'connected') body = connectedApps.length ? <Section title={t("Connected")} apps={connectedApps} onChanged={refresh} /> : <div className="apps-empty">{t("No apps connected yet.")}</div>;
   else if (searching || view.kind === 'category') {
     body = apps.length ? (
       <Section title={searching ? `Results${activeCategory ? ` in ${pillLabel(activeCategory)}` : ''}` : pillLabel(activeCategory!)} apps={apps} onChanged={refresh} />
@@ -153,7 +154,7 @@ export function ConnectAppsModal() {
   } else {
     body = (
       <>
-        <Section title="Picked for you" apps={apps.slice(0, 6)} onChanged={refresh} />
+        <Section title={t("Picked for you")} apps={apps.slice(0, 6)} onChanged={refresh} />
         {PILLS.map((p) => {
           const list = apps.filter((a) => a.categories.includes(p.category));
           return <Section key={p.category} title={p.label} apps={list.slice(0, 4)} onViewAll={list.length > 2 ? () => setView({ kind: 'category', category: p.category }) : undefined} onChanged={refresh} />;
@@ -165,11 +166,11 @@ export function ConnectAppsModal() {
   const connectedCount = data?.connected.length ?? 0;
 
   return (
-    <Modal onClose={close} className="apps-modal" label="Connect Apps">
-      <button type="button" className="modal__close apps-modal__close" onClick={close} aria-label="Close"><Icon name="close" size={16} opacity={0.68} /></button>
+    <Modal onClose={close} className="apps-modal" label={t("Connect Apps")}>
+      <button type="button" className="modal__close apps-modal__close" onClick={close} aria-label={t("Close")}><Icon name="close" size={16} opacity={0.68} /></button>
       <div className="apps-modal__head">
         <div className="apps-modal__titlerow">
-          <span className="apps-modal__title">Connect Apps</span>
+          <span className="apps-modal__title">{t("Connect Apps")}</span>
           <button type="button" className={`apps-modal__connected${view.kind === 'connected' ? ' is-active' : ''}`} onClick={() => setView(view.kind === 'connected' ? { kind: 'all' } : { kind: 'connected' })}>
             {connectedApps.length > 0 && (
               <span className="apps-modal__connected-logos">
@@ -180,30 +181,30 @@ export function ConnectAppsModal() {
             <Icon name="chev_right" size={12} opacity={0.56} />
           </button>
         </div>
-        <p className="apps-modal__intro">Connect the accounts your assistants can work with.</p>
-        <div className="apps-modal__quicklinks" aria-label="Popular connections">
-          {['GitHub', 'Slack', 'Gmail'].map(name => <button key={name} type="button" className="cat-pill" onClick={() => { setView({ kind: 'all' }); setSearch(name); }}>{name}<Icon name="plus" size={14} /></button>)}
+        <p className="apps-modal__intro">{t("Connect the accounts your assistants can work with.")}</p>
+        <div className="apps-modal__quicklinks" aria-label={t("Popular connections")}>
+          {['GitHub', t("Slack"), t("Gmail")].map(name => <button key={name} type="button" className="cat-pill" onClick={() => { setView({ kind: 'all' }); setSearch(name); }}>{name}<Icon name="plus" size={14} /></button>)}
         </div>
         <div className="apps-modal__controls">
           <div className="apps-modal__searchrow">
             <label className="pill-input">
               <Icon name="search" size={14} opacity={0.56} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search apps and skills" aria-label="Search apps" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search apps and skills")} aria-label={t("Search apps")} />
             </label>
-            <button type="button" className="pill-chip" title="Bot templates are coming soon" disabled>
+            <button type="button" className="pill-chip" title={t("Bot templates are coming soon")} disabled>
               {primary && <BotAvatarFor bot={primary} size={22} />}
-              <span>Bot templates</span>
+              <span>{t("Bot templates")}</span>
               <Icon name="share" size={12} opacity={0.56} />
             </button>
           </div>
           <div className="cat-pills">
-            <button type="button" className={`cat-pill${view.kind === 'all' ? ' is-active' : ''}`} onClick={() => setView({ kind: 'all' })}>All</button>
+            <button type="button" className={`cat-pill${view.kind === 'all' ? ' is-active' : ''}`} onClick={() => setView({ kind: 'all' })}>{t("All")}</button>
             {PILLS.map((p) => (
               <button key={p.category} type="button" className={`cat-pill${activeCategory === p.category ? ' is-active' : ''}`} onClick={() => setView({ kind: 'category', category: p.category })}>{p.label}</button>
             ))}
             <span className="cat-pill-anchor">
               <button type="button" className={`cat-pill${moreActive ? ' is-active' : ''}`} onClick={() => setMore(!more)} aria-expanded={more}>
-                {moreActive ? pillLabel(activeCategory!) : 'More'}
+                {moreActive ? pillLabel(activeCategory!) : t("More")}
                 <Icon name="chev_down" size={10} opacity={0.66} />
               </button>
               {more && (

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
@@ -23,7 +24,7 @@ export function ChatView() {
   if (!bot) {
     return (
       <main className="chat chat--empty">
-        <div className="empty-chat"><div className="empty-chat__sub">No Bot selected.</div></div>
+        <div className="empty-chat"><div className="empty-chat__sub">{t("No Bot selected.")}</div></div>
       </main>
     );
   }
@@ -46,21 +47,21 @@ export function ChatView() {
               align="center"
               onClose={() => setMenu(false)}
               items={[
-                { label: detailsOpen ? 'Hide details' : 'Show details', hint: '⇧⌘,', onSelect: () => set({ detailsOpen: !detailsOpen }) },
-                { label: 'Open computer', onSelect: () => set({ viewerOpen: true }) },
-                { label: 'New chat', onSelect: () => useStore.getState().newChat(bot.id).then(() => flash('Started a new chat')).catch((e) => flash(e.message)) },
-                { label: 'Bot settings', onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
+                { label: detailsOpen ? t("Hide details") : t("Show details"), hint: '⇧⌘,', onSelect: () => set({ detailsOpen: !detailsOpen }) },
+                { label: t("Open computer"), onSelect: () => set({ viewerOpen: true }) },
+                { label: t("New chat"), onSelect: () => useStore.getState().newChat(bot.id).then(() => flash(t("Started a new chat"))).catch((e) => flash(e.message)) },
+                { label: t("Bot settings"), onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
               ]}
             />
           )}
         </span>
         <div className="chat__header-right">
           {!detailsOpen && (
-            <button type="button" className="icon-btn icon-btn--bordered" onClick={() => set({ detailsOpen: true })} aria-label="Show details" title="Show details">
+            <button type="button" className="icon-btn icon-btn--bordered" onClick={() => set({ detailsOpen: true })} aria-label={t("Show details")} title={t("Show details")}>
               <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />
             </button>
           )}
-          <button type="button" className="share-btn" onClick={() => flash('Sharing isn’t available in Fino yet')}>Share</button>
+          <button type="button" className="share-btn" onClick={() => flash(t("Sharing isn’t available in Fino yet"))}>{t("Share")}</button>
         </div>
       </header>
       {toast && <div className="toast" role="status">{toast}</div>}

@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useCallback, useState } from 'react';
 import { BotAvatarFor } from '../../avatar/BotAvatar';
 import { api } from '../../lib/api';
@@ -35,15 +36,15 @@ export function CreateGroupModal() {
   };
 
   return (
-    <Modal onClose={close} className="create-modal" label="New group chat">
+    <Modal onClose={close} className="create-modal" label={t("New group chat")}>
       <form onSubmit={(e) => { e.preventDefault(); create(); }}>
         <div className="modal__header">
-          <div className="modal__title">New group chat</div>
-          <button type="button" className="modal__close" onClick={close} aria-label="Close"><Icon name="close" size={14} opacity={0.68} /></button>
+          <div className="modal__title">{t("New group chat")}</div>
+          <button type="button" className="modal__close" onClick={close} aria-label={t("Close")}><Icon name="close" size={14} opacity={0.68} /></button>
         </div>
         <div className="create-modal__body" style={{ alignItems: "stretch" }}>
-          <input className="text-input create-modal__name" placeholder="Name your group" value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Group name" />
-          <div className="section-label" style={{ marginTop: 14 }}>Bots in this group</div>
+          <input className="text-input create-modal__name" placeholder={t("Name your group")} value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label={t("Group name")} />
+          <div className="section-label" style={{ marginTop: 14 }}>{t("Bots in this group")}</div>
           <div className="group-pick">
             {bots.map((b) => (
               <button key={b.id} type="button" role="checkbox" aria-checked={picked.includes(b.id)} className={`group-pick__opt${picked.includes(b.id) ? ' is-active' : ''}`} onClick={() => toggle(b.id)}>
@@ -56,8 +57,8 @@ export function CreateGroupModal() {
           {error && <div className="card__error">{error}</div>}
         </div>
         <div className="modal__footer">
-          <button type="button" className="btn btn--secondary btn--sm" onClick={close}>Cancel</button>
-          <button type="submit" className="btn btn--primary btn--sm" disabled={!canCreate}>{busy ? 'Creating…' : 'Create group'}</button>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={close}>{t("Cancel")}</button>
+          <button type="submit" className="btn btn--primary btn--sm" disabled={!canCreate}>{busy ? 'Creating…' : t("Create group")}</button>
         </div>
       </form>
     </Modal>

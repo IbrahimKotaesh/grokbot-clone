@@ -1,3 +1,4 @@
+import { t } from './lib/i18n';
 import { create } from 'zustand';
 import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, ServerEvent, User } from '@shared/types';
 import { api } from './lib/api';
@@ -222,7 +223,7 @@ export function sortedRows(t: Transcript | undefined): Row[] {
   return Object.values(t.bySeq).sort((a, b) => a.seq - b.seq);
 }
 
-export const displayName = (b: Pick<Bot, 'name' | 'label'>) => (b.label ? `${b.name} · ${b.label}` : b.name);
+export const displayName = (b: Pick<Bot, 'name' | 'label'>) => (b.label ? `${b.name} · ${t(b.label)}` : b.name);
 
 export function useSelectedBot(): Bot | undefined {
   return useStore((s) => s.bots.find((b) => b.id === s.selectedBotId));

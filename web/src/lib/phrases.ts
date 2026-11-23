@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { ActivityKind, LiveState, Row } from '@shared/types';
 
 /** textKind → phrase table from docs/research/03-ui-design.md §2.4. Arrays rotate. */
@@ -30,15 +31,15 @@ const nice = (s?: string) => !!s && !/[_]/.test(s) && !/^[a-z0-9-]+$/.test(s);
 /** Phrase for the activity line. `tick` rotates multi-phrase kinds. */
 export function activityPhrase(live: LiveState, rows: Row[], tick: number): string {
   const a = live.activity;
-  if (!a) return live.awaiting ? 'Needs your input' : 'Working on it';
+  if (!a) return t(live.awaiting ? 'Needs your input' : 'Working on it');
   const kind = a.kind as ActivityKind;
   if (kind === 'messaging_named') {
     const running = [...rows].reverse().find((r) => r.body.type === 'tool-call' && r.body.status === 'running');
     const args = running?.body.type === 'tool-call' ? (running.body.args as Record<string, unknown> | undefined) : undefined;
     const name = typeof args?.bot_name === 'string' ? args.bot_name : nice(a.detail) ? a.detail : null;
-    return name ? `Checking with ${name}` : 'Checking with another Bot';
+    return name ? t('Checking with {name}', { name }) : t('Checking with another Bot');
   }
-  if (kind === 'connecting_service') return nice(a.detail) ? `Working in ${a.detail}` : 'Working in a connected app';
+  if (kind === 'connecting_service') return nice(a.detail) ? t('Working in {name}', { name: a.detail! }) : t('Working in a connected app');
   const list = PHRASES[kind] ?? PHRASES.working;
-  return list[tick % list.length];
+  return t(list[tick % list.length]);
 }

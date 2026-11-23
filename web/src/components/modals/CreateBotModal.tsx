@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import { useCallback, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot } from '@shared/types';
 import { FRUIT_COLORS, characterKind } from '../../avatar/FinoCharacter';
@@ -38,23 +39,23 @@ export function CreateBotModal() {
   };
 
   return (
-    <Modal onClose={close} className="create-modal" label="Create New Bot">
+    <Modal onClose={close} className="create-modal" label={t("Create New Bot")}>
       <form onSubmit={(e) => { e.preventDefault(); create(); }}>
         <div className="modal__header">
-          <div className="modal__title">Create New Bot</div>
-          <button type="button" className="modal__close" onClick={close} aria-label="Close"><Icon name="close" size={14} opacity={0.68} /></button>
+          <div className="modal__title">{t("Create New Bot")}</div>
+          <button type="button" className="modal__close" onClick={close} aria-label={t("Close")}><Icon name="close" size={14} opacity={0.68} /></button>
         </div>
         <div className="create-modal__body">
           <BotAvatar shape={shape} color={color} size={96} className="create-modal__preview" />
           <input
             className="text-input create-modal__name"
-            placeholder="Give your Bot a name"
+            placeholder={t("Give your Bot a name")}
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
-            aria-label="Bot name"
+            aria-label={t("Bot name")}
           />
-          <div className="shape-grid" role="radiogroup" aria-label="Character shape">
+          <div className="shape-grid" role="radiogroup" aria-label={t("Character shape")}>
             {ROWS.map((row, i) => (
               <div key={i} className="shape-grid__row">
                 {row.map((s) => (
@@ -65,7 +66,7 @@ export function CreateBotModal() {
               </div>
             ))}
           </div>
-          <div className="swatches" role="radiogroup" aria-label="Chat color">
+          <div className="swatches" role="radiogroup" aria-label={t("Chat color")}>
             {COLOR_ROWS.map((row, i) => (
               <div key={i} className="swatches__row">
                 {row.map((c) => (
@@ -76,22 +77,22 @@ export function CreateBotModal() {
               </div>
             ))}
           </div>
-          <div className="mode-pick" role="radiogroup" aria-label="Bot type">
+          <div className="mode-pick" role="radiogroup" aria-label={t("Bot type")}>
             <button type="button" role="radio" aria-checked={mode === 'personal'} className={`mode-pick__opt${mode === 'personal' ? ' is-active' : ''}`} onClick={() => setMode('personal')}>
-              <span className="mode-pick__title">Personal assistant</span>
-              <span className="mode-pick__sub">Works for you, with your apps</span>
+              <span className="mode-pick__title">{t("Personal assistant")}</span>
+              <span className="mode-pick__sub">{t("Works for you, with your apps")}</span>
             </button>
             <button type="button" role="radio" aria-checked={mode === 'teammate'} className={`mode-pick__opt${mode === 'teammate' ? ' is-active' : ''}`} onClick={() => setMode('teammate')}>
-              <span className="mode-pick__title">Teammate</span>
-              <span className="mode-pick__sub">Works with your whole team</span>
+              <span className="mode-pick__title">{t("Teammate")}</span>
+              <span className="mode-pick__sub">{t("Works with your whole team")}</span>
             </button>
           </div>
           {error && <div className="card__error">{error}</div>}
         </div>
         <div className="modal__footer">
-          <button type="button" className="link-btn link-btn--small" style={{ marginRight: 'auto' }} onClick={() => setModal('group')}>New group chat instead</button>
-          <button type="button" className="btn btn--secondary btn--sm" onClick={close}>Cancel</button>
-          <button type="submit" className="btn btn--primary btn--sm" disabled={!canCreate}>{busy ? 'Creating…' : 'Create'}</button>
+          <button type="button" className="link-btn link-btn--small" style={{ marginRight: 'auto' }} onClick={() => setModal('group')}>{t("New group chat instead")}</button>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={close}>{t("Cancel")}</button>
+          <button type="submit" className="btn btn--primary btn--sm" disabled={!canCreate}>{busy ? 'Creating…' : t("Create")}</button>
         </div>
       </form>
     </Modal>

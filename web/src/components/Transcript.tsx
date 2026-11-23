@@ -1,3 +1,5 @@
+import { t } from '../lib/i18n';
+import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
@@ -31,7 +33,7 @@ function buildItems(rows: Row[]): Item[] {
     prevTs = row.createdAt;
     const last = items[items.length - 1];
     const b = row.body;
-    if (b.type === 'plan') continue; // live checklists are shown in the mobile app
+    if (b.type === 'tool-call' && b.name === 'update_plan') continue; // shown as the plan card
     if (b.type === 'tool-call') {
       if (last?.kind === 'steps') last.rows.push(row);
       else items.push({ kind: 'steps', key: `s${row.seq}`, rows: [row] });
@@ -67,9 +69,9 @@ const Bubble = memo(function Bubble({ row, side, pos }: { row: Row; side: 'left'
     <div className={`bubble-wrap is-${side}`}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
       {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}`}>
-        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??'File'} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title="Download">↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>Preview PDF</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
+        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
-        {b.streaming&&<span className="bubble__streaming" aria-label="Writing"/>}
+        {b.streaming&&<span className="bubble__streaming" aria-label={t("Writing")}/>}
         {b.citations && b.citations.length > 0 && (
           <div className="bubble__cites">
             {b.citations.slice(0, 6).map((c, i) => {
@@ -90,7 +92,7 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
   return (
     <div className="sender-label">
       {bot ? <BotAvatarFor bot={bot} size={16} /> : from.kind === 'routine' ? <Icon name="clock" size={12} opacity={0.56} /> : from.kind === 'voice' ? <Icon name="voice_a" size={12} opacity={0.56} /> : <BotAvatar shape="blob" color="gray" size={16} />}
-      <span>{from.kind === 'routine' ? `Routine · ${from.name}` : from.kind === 'voice' ? 'Asked on a voice call' : `From ${from.name}`}</span>
+      <span>{from.kind === 'routine' ? `Routine · ${from.name}` : from.kind === 'voice' ? t("Asked on a voice call") : `From ${from.name}`}</span>
     </div>
   );
 }
@@ -105,7 +107,7 @@ function Steps({ rows }: { rows: Row[] }) {
     <details className="steps">
       <summary className="steps__toggle">
         {active ? stepTitle(active) : `${n} ${n===1?'step':'steps'}`}
-        {active&&<span className="steps__working" aria-label="Working"/>}
+        {active&&<span className="steps__working" aria-label={t("Working")}/>}
         <Icon name="chev_down" size={10} opacity={0.66} className="steps__chev" />
       </summary>
         <ul className="steps__list">
@@ -114,8 +116,8 @@ function Steps({ rows }: { rows: Row[] }) {
               {stepDestination(c)?<img className="step__site-icon" src={stepDestination(c)!.icon} alt="" referrerPolicy="no-referrer" onError={e=>{e.currentTarget.style.visibility='hidden';}}/>:<span className="step__dot" />}
               <span className="step__label">{stepTitle(c)}</span>
               {c.summary && <span className="step__summary">{c.summary}</span>}
-              {c.status === 'error' && <span className="step__summary">Failed</span>}
-              {c.status === 'denied' && <span className="step__summary">Not allowed</span>}
+              {c.status === 'error' && <span className="step__summary">{t("Failed")}</span>}
+              {c.status === 'denied' && <span className="step__summary">{t("Not allowed")}</span>}
               {c.screenshot && <img className="step__shot" src={c.screenshot} alt="" />}
             </li>
           ))}
@@ -124,11 +126,12 @@ function Steps({ rows }: { rows: Row[] }) {
   );
 }
 
-function SystemRow({ row }: { row: Row }) {
+function SystemRow({ row, running }: { row: Row; running: boolean }) {
   const b = row.body;
   if (b.type === 'event') return <div className="system-event">{b.text}</div>;
   if (b.type === 'notice') return <div className={`notice is-${b.tone ?? 'info'}`}>{b.text}</div>;
   if (b.type === 'card') return <CardRow row={row} />;
+  if (b.type === 'plan') return <PlanCard body={b} running={running} />;
   return null;
 }
 
@@ -192,7 +195,7 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
             case 'steps':
               return <Steps key={it.key} rows={it.rows} />;
             case 'row':
-              return <SystemRow key={it.key} row={it.row} />;
+              return <SystemRow key={it.key} row={it.row} running={running} />;
             case 'group':
               return (
                 <div key={it.key} className={`group is-${it.side}`}>
@@ -208,7 +211,7 @@ export function Transcript({ bot, rows, live, loaded }: Props) {
       </div>
     </div>
       {showJump && (
-        <button type="button" className="jump-btn" onClick={jump} aria-label="Scroll to bottom">
+        <button type="button" className="jump-btn" onClick={jump} aria-label={t("Scroll to bottom")}>
           <Icon name="arrow_down" size={16} />
         </button>
       )}
@@ -221,7 +224,7 @@ function EmptyChat({ bot }: { bot: Bot }) {
     <div className="empty-chat">
       <BotAvatarFor bot={bot} size={72} />
       <div className="empty-chat__title">{bot.name}</div>
-      <div className="empty-chat__sub">{bot.description || (bot.mode === 'teammate' ? 'A Bot for the whole team. Hand it a task and it will see it through.' : 'Your personal assistant. Hand it a task and it will see it through.')}</div>
+      <div className="empty-chat__sub">{(bot.description && t(bot.description)) || (bot.mode === 'teammate' ? t("A Bot for the whole team. Hand it a task and it will see it through.") : t("Your personal assistant. Hand it a task and it will see it through."))}</div>
     </div>
   );
 }

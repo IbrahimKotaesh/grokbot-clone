@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import type { Bot } from '@shared/types';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -27,8 +28,8 @@ export function MembersCard({ room }: { room: Bot }) {
 
   return (
     <div className="panel-card members">
-      {members === null ? <div className="panel-empty">Loading…</div> : members.length === 0 ? (
-        <div className="panel-empty">No Bots in this group yet.</div>
+      {members === null ? <div className="panel-empty">{t("Loading…")}</div> : members.length === 0 ? (
+        <div className="panel-empty">{t("No Bots in this group yet.")}</div>
       ) : members.map((m) => {
         const bot = bots.find((b) => b.id === m.id);
         return (
@@ -58,7 +59,7 @@ export function MembersCard({ room }: { room: Bot }) {
               <BotAvatarFor bot={b} size={20} />
               <span className="panel-row__title" style={{ flex: 1 }}>{b.name}</span>
             </button>
-          )) : <div className="panel-empty">Every Bot is already here.</div>}
+          )) : <div className="panel-empty">{t("Every Bot is already here.")}</div>}
         </div>
       ) : (
         <button type="button" className="panel-row panel-row--action" onClick={() => setAdding(true)}>
@@ -66,7 +67,7 @@ export function MembersCard({ room }: { room: Bot }) {
         </button>
       )}
       {error && <div className="card__error">{error}</div>}
-      <div className="members__hint">@mention a Bot to ask just them; otherwise the group answers.</div>
+      <div className="members__hint">{t("@mention a Bot to ask just them; otherwise the group answers.")}</div>
     </div>
   );
 }

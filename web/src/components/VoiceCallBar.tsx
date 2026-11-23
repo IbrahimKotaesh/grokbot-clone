@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
@@ -70,13 +71,13 @@ export function VoiceCallBar() {
   const working = v.working.length > 0;
   const status =
     v.status === 'connecting' ? 'Connecting…'
-    : v.status === 'error' ? v.error ?? 'Call ended'
-    : v.speaking ? 'Speaking'
-    : v.listening ? 'Listening'
-    : working ? 'Working on it…'
+    : v.status === 'error' ? v.error ?? t("Call ended")
+    : v.speaking ? t("Speaking")
+    : v.listening ? t("Listening")
+    : working ? t("Working on it…")
     : v.thinking ? 'Thinking…'
-    : v.muted ? 'Muted'
-    : 'Listening';
+    : v.muted ? t("Muted")
+    : t("Listening");
   const lines = v.captions.filter((c) => c.text.trim());
   const last = lines.slice(-2);
   const task = working ? v.working[v.working.length - 1].request : '';
@@ -105,16 +106,16 @@ export function VoiceCallBar() {
         </div>
         <div className="vcall__actions">
           {active && (
-            <button type="button" className={`vcall__btn${v.muted ? ' is-on' : ''}`} onClick={toggleMute} aria-pressed={v.muted} aria-label={v.muted ? 'Unmute' : 'Mute'} title={v.muted ? 'Unmute' : 'Mute'}>
+            <button type="button" className={`vcall__btn${v.muted ? ' is-on' : ''}`} onClick={toggleMute} aria-pressed={v.muted} aria-label={v.muted ? t("Unmute") : t("Mute")} title={v.muted ? t("Unmute") : t("Mute")}>
               <MicGlyph off={v.muted} />
             </button>
           )}
           {active ? (
-            <button type="button" className="vcall__btn vcall__btn--end" onClick={endCall} aria-label="End call" title="End call">
+            <button type="button" className="vcall__btn vcall__btn--end" onClick={endCall} aria-label={t("End call")} title={t("End call")}>
               <HangUpGlyph />
             </button>
           ) : (
-            <button type="button" className="vcall__btn" onClick={() => useVoice.setState({ status: 'idle', botId: null, error: null })} aria-label="Dismiss">✕</button>
+            <button type="button" className="vcall__btn" onClick={() => useVoice.setState({ status: 'idle', botId: null, error: null })} aria-label={t("Dismiss")}>✕</button>
           )}
         </div>
       </div>
@@ -122,15 +123,15 @@ export function VoiceCallBar() {
         expanded ? (
           <div className="vcall__log" ref={logRef}>
             {lines.length ? lines.map((c) => (
-              <div key={c.id} className={`vcall__line is-${c.role}`}><b>{c.role === 'user' ? 'You' : bot.name}</b> {c.text}</div>
-            )) : <div className="vcall__line is-empty">Nothing said yet.</div>}
-            <button type="button" className="vcall__toggle" onClick={() => setExpanded(false)}>Hide transcript</button>
+              <div key={c.id} className={`vcall__line is-${c.role}`}><b>{c.role === 'user' ? t("You") : bot.name}</b> {c.text}</div>
+            )) : <div className="vcall__line is-empty">{t("Nothing said yet.")}</div>}
+            <button type="button" className="vcall__toggle" onClick={() => setExpanded(false)}>{t("Hide transcript")}</button>
           </div>
         ) : (
-          <button type="button" className="vcall__captions" onClick={() => setExpanded(true)} title="Show full transcript">
+          <button type="button" className="vcall__captions" onClick={() => setExpanded(true)} title={t("Show full transcript")}>
             {last.length ? last.map((c) => (
               <span key={c.id} className={`vcall__caption is-${c.role}${c.final ? '' : ' is-partial'}`}>{c.text}</span>
-            )) : <span className="vcall__caption is-empty">{v.muted ? 'You’re muted.' : `Say hi to ${bot.name}.`}</span>}
+            )) : <span className="vcall__caption is-empty">{v.muted ? t("You’re muted.") : `Say hi to ${bot.name}.`}</span>}
           </button>
         )
       )}

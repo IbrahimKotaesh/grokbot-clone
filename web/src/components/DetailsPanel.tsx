@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState } from 'react';
 import type { Bot, ComputerState, Routine } from '@shared/types';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -14,13 +15,13 @@ import { BotTasks } from './config/TasksView';
 
 export function computerStatusText(c: ComputerState | null): string {
   switch (c?.status) {
-    case 'running': return 'Awake';
-    case 'starting': case 'resuming': return 'Waking up…';
-    case 'creating': return 'Setting up…';
-    case 'suspending': return 'Going to sleep…';
-    case 'error': return 'Unreachable';
-    case 'suspended': case 'stopped': case 'absent': case undefined: return 'Asleep';
-    default: return 'Asleep';
+    case 'running': return t('Awake');
+    case 'starting': case 'resuming': return t('Waking up…');
+    case 'creating': return t('Setting up…');
+    case 'suspending': return t('Going to sleep…');
+    case 'error': return t('Unreachable');
+    case 'suspended': case 'stopped': case 'absent': case undefined: return t('Asleep');
+    default: return t('Asleep');
   }
 }
 
@@ -44,7 +45,7 @@ function RoutineRow({ r }: { r: Routine }) {
       <span className="panel-row__icon"><Icon name="clock" opacity={0.52} /></span>
       <span className="panel-row__text">
         <span className="panel-row__title">{r.name}</span>
-        <span className="panel-row__sub">{enabled ? r.description || r.schedule : 'Paused'}</span>
+        <span className="panel-row__sub">{enabled ? r.description || r.schedule : t("Paused")}</span>
       </span>
       <Toggle on={enabled} onChange={toggle} label={`${r.name} ${enabled ? 'on' : 'off'}`} />
     </div>
@@ -89,7 +90,7 @@ function ComputerCard({ bot }: { bot: Bot }) {
     <div className="panel-card">
       <div className="panel-row panel-row--computer" role="button" tabIndex={0} onClick={() => set({ viewerOpen: true })} onKeyDown={(e) => { if (e.key === 'Enter') set({ viewerOpen: true }); }}>
         <span className="panel-row__text">
-          <span className="panel-row__title">Bot's computer</span>
+          <span className="panel-row__title">{t("Bot's computer")}</span>
           <span className="panel-row__meta">{computerStatusText(computer)}{computer?.error && computer.status === 'error' ? ` · ${computer.error}` : ''}</span>
         </span>
         <span className={`computer-thumb${shot ? ' has-shot' : ''}`}>
@@ -106,7 +107,7 @@ function ComputerCard({ bot }: { bot: Bot }) {
       </div>
       {!running && !busy && (
         <button type="button" className="panel-row panel-row--action" onClick={() => api.ensureComputer().catch(() => {})}>
-          <Icon name="monitor" size={14} opacity={0.56} /> Wake computer
+          <Icon name="monitor" size={14} opacity={0.56} /> {t('Wake computer')}
         </button>
       )}
     </div>
@@ -127,12 +128,12 @@ export function DetailsPanel() {
   };
 
   return (
-    <aside className="details" style={botVars(bot.avatarColor)} aria-label="Conversation details">
+    <aside className="details" style={botVars(bot.avatarColor)} aria-label={t("Conversation details")}>
       <div className="details__top">
-        <button type="button" className="icon-btn icon-btn--bordered details__gear" onClick={() => useConfigUI.getState().openBotSettings(bot.id)} aria-label="Bot settings" title="Bot settings">
+        <button type="button" className="icon-btn icon-btn--bordered details__gear" onClick={() => useConfigUI.getState().openBotSettings(bot.id)} aria-label={t("Bot settings")} title={t("Bot settings")}>
           <Glyph name="gear" size={16} opacity={0.7} />
         </button>
-        <button type="button" className="icon-btn icon-btn--bordered" onClick={() => set({ detailsOpen: false })} aria-label="Close details">
+        <button type="button" className="icon-btn icon-btn--bordered" onClick={() => set({ detailsOpen: false })} aria-label={t("Close details")}>
           <Icon name="close" opacity={0.92} />
         </button>
       </div>
@@ -143,40 +144,40 @@ export function DetailsPanel() {
         </div>
         <div className="details__tabs">
           <div className="segmented">
-            <button type="button" className={tab === 'activity' ? 'is-active' : ''} onClick={() => setTab('activity')}>Activity</button>
-            <button type="button" className={tab === 'tasks' ? 'is-active' : ''} onClick={() => setTab('tasks')}>Tasks</button>
-            <button type="button" className={tab === 'library' ? 'is-active' : ''} onClick={() => setTab('library')}>Library</button>
+            <button type="button" className={tab === 'activity' ? 'is-active' : ''} onClick={() => setTab('activity')}>{t("Activity")}</button>
+            <button type="button" className={tab === 'tasks' ? 'is-active' : ''} onClick={() => setTab('tasks')}>{t("Tasks")}</button>
+            <button type="button" className={tab === 'library' ? 'is-active' : ''} onClick={() => setTab('library')}>{t("Library")}</button>
           </div>
         </div>
         {tab === 'activity' ? (
           <div className="details__sections">
             <section>
               <div className="section-label section-label--row">
-                <span>Upcoming</span>
-                <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().openBotSettings(bot.id, 'routines')}>Manage</button>
+                <span>{t("Upcoming")}</span>
+                <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().openBotSettings(bot.id, 'routines')}>{t("Manage")}</button>
               </div>
               <div className="panel-card">
                 {routines?.length ? routines.map((r) => <RoutineRow key={r.id} r={r} />) : (
-                  <div className="panel-empty">Nothing scheduled. Try asking in chat, for example “send me a summary every weekday at 8am”.</div>
+                  <div className="panel-empty">{t("Nothing scheduled. Try asking in chat, for example “send me a summary every weekday at 8am”.")}</div>
                 )}
               </div>
             </section>
             {bot.kind === 'room' && (
               <section>
-                <div className="section-label">Members</div>
+                <div className="section-label">{t("Members")}</div>
                 <MembersCard room={bot} />
               </section>
             )}
             {bot.kind !== 'room' && !hideSuggested && (
               <section>
                 <div className="section-label section-label--row">
-                  <span>Suggested</span>
-                  <button type="button" className="link-btn link-btn--small" onClick={() => { setHideSuggested(true); try { localStorage.setItem('grokbot.hideSuggested', '1'); } catch { /* ignore */ } }}>Hide</button>
+                  <span>{t("Suggested")}</span>
+                  <button type="button" className="link-btn link-btn--small" onClick={() => { setHideSuggested(true); try { localStorage.setItem('grokbot.hideSuggested', '1'); } catch { /* ignore */ } }}>{t("Hide")}</button>
                 </div>
                 <div className="panel-card">
                   <button type="button" className="panel-row panel-row--link" onClick={addSlack}>
                     <span className="panel-row__glyph"><ToolkitLogo name="Slack" logo="/assets/icons/slack.svg" size={16} radius={4} /></span>
-                    <span className="panel-row__title" style={{ flex: 1 }}>Add to Slack</span>
+                    <span className="panel-row__title" style={{ flex: 1 }}>{t("Add to Slack")}</span>
                     <Icon name="chev_right" size={12} opacity={0.56} />
                   </button>
                 </div>
@@ -185,7 +186,7 @@ export function DetailsPanel() {
             {bot.kind !== 'room' && (
               <>
                 <section>
-                  <div className="section-label">Computer</div>
+                  <div className="section-label">{t("Computer")}</div>
                   <ComputerCard bot={bot} />
                 </section>
               </>
