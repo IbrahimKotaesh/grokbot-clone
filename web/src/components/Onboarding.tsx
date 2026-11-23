@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Check, ExternalLink, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
+import { Check, Laptop, LoaderCircle, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { configApi } from '../lib/configApi';
 import { isMacDesktop, useDesktopState } from '../lib/desktop';
@@ -71,6 +71,13 @@ function Nav({ onBack, onNext, nextLabel, disabled }: { onBack?: () => void; onN
 }
 
 /** Step 2: your own ChatGPT subscription (signed in with a one-time code), or Fino's included models. */
+/** Sign-in pages open in a small window over Fino, so coming back is just closing it. */
+function signInWindow(url: string) {
+  const w = 520, h = 720;
+  const left = Math.max(0, window.screenX + (window.outerWidth - w) / 2), top = Math.max(0, window.screenY + (window.outerHeight - h) / 2);
+  return window.open(url, 'fino-sign-in', `popup,width=${w},height=${h},left=${left},top=${top}`);
+}
+
 function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => void; required: boolean; ready: boolean; onReady: () => void; last: boolean }) {
   const hosted = useHostedModels();
   const bots = useStore((s) => s.bots);
@@ -81,6 +88,8 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
   const [claude, setClaude] = useState<'idle' | 'starting' | 'code' | 'checking' | 'connected'>('idle');
   const [claudeLogin, setClaudeLogin] = useState<{ id: string; url: string } | null>(null);
   const [claudeCode, setClaudeCode] = useState('');
+  const [typeIt, setTypeIt] = useState(false);
+  const popup = useRef<Window | null>(null);
   // Once the customer connects, take them straight in.
   const [justConnected, setJustConnected] = useState(false);
   useEffect(() => { if (!justConnected) return; const id = setTimeout(onNext, 1100); return () => clearTimeout(id); }, [justConnected]);
@@ -103,7 +112,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       if (!r.ok) throw new Error(d.error ?? t('ChatGPT sign-in is unavailable right now.'));
       setLogin({ url: d.url, code: d.code, id: d.loginId }); setChatgpt('waiting');
       void navigator.clipboard?.writeText(d.code).catch(() => {});
-      window.open(d.url, '_blank', 'noopener');
+      popup.current = signInWindow(d.url);
       timer.current = setInterval(async () => {
         const s = await fetch(`/api/credentials/chatgpt/status/${d.loginId}`, { credentials: 'include' }).then((x) => x.json()).catch(() => null);
         if (s?.state === 'connected') { clearInterval(timer.current); setChatgpt('connected'); setLogin(null); useAllBots('codex'); onReady(); setJustConnected(true); }
@@ -120,7 +129,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? t('Claude sign-in is unavailable right now.'));
       setClaudeLogin({ id: d.loginId, url: d.url }); setClaude('code');
-      window.open(d.url, '_blank', 'noopener');
+      popup.current = signInWindow(d.url);
     } catch (e) { setClaude('idle'); setError((e as Error).message); }
   };
   const sending = useRef(false);
@@ -137,6 +146,14 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
     finally { sending.current = false; }
   };
   const finishClaude = (e: React.FormEvent) => { e.preventDefault(); void sendClaudeCode(claudeCode); };
+  // One button: reads the code Claude's Copy Code button put on the clipboard and connects.
+  const connectCopied = async () => {
+    try {
+      const v = (await navigator.clipboard.readText()).trim();
+      if (/^[\w#.~-]{20,600}$/.test(v)) { setClaudeCode(v); await sendClaudeCode(v); return; }
+      setError(t('No Claude code copied yet. On the Claude page press Authorize, then Copy Code.'));
+    } catch { setTypeIt(true); }
+  };
   // Coming back from Claude's page with the code copied connects by itself: on return we read the
   // clipboard (the browser may ask once), and ⌘V anywhere in setup works too.
   useEffect(() => {
@@ -145,7 +162,8 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
     const tryClipboard = () => { if (document.visibilityState !== 'visible') return; navigator.clipboard?.readText().then((v) => { if (looksLikeCode(v)) { setClaudeCode(v.trim()); void sendClaudeCode(v.trim()); } }).catch(() => {}); };
     const onPaste = (e: ClipboardEvent) => { const v = e.clipboardData?.getData('text') ?? ''; if (looksLikeCode(v)) { e.preventDefault(); setClaudeCode(v.trim()); void sendClaudeCode(v.trim()); } };
     window.addEventListener('focus', tryClipboard); document.addEventListener('visibilitychange', tryClipboard); window.addEventListener('paste', onPaste);
-    return () => { window.removeEventListener('focus', tryClipboard); document.removeEventListener('visibilitychange', tryClipboard); window.removeEventListener('paste', onPaste); };
+    const watch = setInterval(() => { if (popup.current?.closed) { popup.current = null; tryClipboard(); } }, 600);
+    return () => { clearInterval(watch); window.removeEventListener('focus', tryClipboard); document.removeEventListener('visibilitychange', tryClipboard); window.removeEventListener('paste', onPaste); };
   }, [claude, claudeLogin]);
 
   const useAllBots = useCallback((agentProvider: 'codex' | 'claude' | 'openrouter') => {
@@ -164,12 +182,15 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
           <ProviderLogo provider="codex" />
           <div className="onb__option-text">
             <strong>{t('Use my ChatGPT subscription')}</strong>
-            <small>{chatgpt === 'connected' ? t('Connected. Your bots use ChatGPT.') : t('Plus or Pro. Sign in once with a short code.')}</small>
+            <small>{chatgpt === 'connected' ? t('Connected. Your bots use ChatGPT.') : t('Plus or Pro. A few taps, the code is copied for you.')}</small>
             {login && (
-              <div className="onb__code">
-                <span>{t('Code copied. Paste it on the ChatGPT page:')}</span>
-                <code>{login.code}</code>
-                <a href={login.url} target="_blank" rel="noreferrer noopener">{t('Open ChatGPT')} <ExternalLink size={12} /></a>
+              <div className="onb__paste">
+                <ol className="onb__how">
+                  <li>{t('In the ChatGPT window, paste the code (it’s already copied)')} <code>{login.code}</code></li>
+                  <li>{t('Press')} <b>{t('Continue')}</b>, {t('then')} <b>{t('Allow')}</b></li>
+                  <li>{t('That’s it. Fino connects by itself.')}</li>
+                </ol>
+                <span className="onb__minor"><a href={login.url} target="_blank" rel="noreferrer noopener" onClick={(e) => { e.preventDefault(); void navigator.clipboard?.writeText(login.code).catch(() => {}); popup.current = signInWindow(login.url); }}>{t('Open ChatGPT again')}</a></span>
               </div>
             )}
           </div>
@@ -182,15 +203,23 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
           <ProviderLogo provider="claude" />
           <div className="onb__option-text">
             <strong>{t('Use my Claude subscription')}</strong>
-            <small>{claude === 'connected' ? t('Connected. Your bots use Claude.') : t('Pro or Max. Sign in on Claude, copy the code, come back.')}</small>
+            <small>{claude === 'connected' ? t('Connected. Your bots use Claude.') : t('Pro or Max. A few taps on Claude, nothing to type.')}</small>
             {claudeLogin && (
-              <form className="onb__paste" onSubmit={finishClaude}>
-                <span>{t('On Claude’s page press Copy Code, then come back here. Fino connects by itself.')} <a href={claudeLogin.url} target="_blank" rel="noreferrer noopener">{t('Open Claude')} <ExternalLink size={12} /></a></span>
-                <div>
-                  <input className="text-input" value={claudeCode} onChange={(e) => setClaudeCode(e.target.value)} placeholder={t('Paste code')} aria-label={t('Code from Claude')} autoComplete="off" spellCheck={false} />
-                  <button type="submit" className="onb__small" disabled={claude === 'checking' || claudeCode.trim().length < 10}>{claude === 'checking' ? t('Checking…') : t('Connect')}</button>
-                </div>
-              </form>
+              <div className="onb__paste">
+                <ol className="onb__how">
+                  <li>{t('On Claude, press')} <b>{t('Authorize')}</b></li>
+                  <li>{t('Press')} <b>{t('Copy Code')}</b> {t('(ignore “paste into Claude Code”)')}</li>
+                  <li>{t('Come back and press the button below')}</li>
+                </ol>
+                <button type="button" className="onb__primary onb__wide" disabled={claude === 'checking'} onClick={() => void connectCopied()}>{claude === 'checking' ? t('Connecting…') : t('Connect with the copied code')}</button>
+                <span className="onb__minor"><a href={claudeLogin.url} target="_blank" rel="noreferrer noopener" onClick={(e) => { e.preventDefault(); popup.current = signInWindow(claudeLogin.url); }}>{t('Open Claude again')}</a> · <button type="button" className="onb__link" onClick={() => setTypeIt((v) => !v)}>{t('Paste it myself')}</button></span>
+                {typeIt && (
+                  <form onSubmit={finishClaude}>
+                    <input className="text-input" value={claudeCode} onChange={(e) => setClaudeCode(e.target.value)} placeholder={t('Paste code')} aria-label={t('Code from Claude')} autoComplete="off" spellCheck={false} autoFocus />
+                    <button type="submit" className="onb__small" disabled={claude === 'checking' || claudeCode.trim().length < 10}>{t('Connect')}</button>
+                  </form>
+                )}
+              </div>
             )}
           </div>
           {claude === 'connected' ? <span className="onb__check"><Check size={16} /></span>
