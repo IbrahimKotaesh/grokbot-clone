@@ -88,10 +88,13 @@ function body(kind: CharacterKind, id: string, base: string, animate: boolean): 
       return `${ground(id)}
 <rect x="30" y="52" width="140" height="124" rx="36" fill="${fill}" ${rim}/>
 ${shine(id, 70, 78, 36, 18)}
-<ellipse cx="100" cy="58" rx="54" ry="10" fill="#2e2a33"/>
-<path d="M66 58 C66 32 80 20 100 20 C120 20 134 32 134 58 Z" fill="#3a3540"/>
-<rect x="66" y="46" width="68" height="9" fill="#c99a52"/>
-<path d="M78 40 C80 30 88 25 96 24" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="4" stroke-linecap="round"/>
+<path d="M44 54 C40 34 66 20 100 20 C134 20 160 34 156 54 Z" fill="url(#${id}w)" stroke="#ddd6cb" stroke-width="1"/>
+<path d="M60 36 C72 28 86 25 100 25" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+<rect x="54" y="50" width="92" height="13" rx="4" fill="#26304a"/>
+<path d="M62 62 Q100 54 138 62 Q130 74 100 75 Q70 74 62 62 Z" fill="#1d1f26"/>
+<path d="M76 66 Q100 62 118 65" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="100" cy="42" rx="9" ry="7" fill="#e3b04b" stroke="#c18f2c" stroke-width="1.5"/>
+<path d="M100 37.5 V46.5 M96 40 H104 M95.5 44 Q100 48.5 104.5 44" fill="none" stroke="#8a5f12" stroke-width="1.6" stroke-linecap="round"/>
 <g fill="none" stroke="${INK}" stroke-width="4"><rect x="46" y="94" width="46" height="34" rx="11"/><rect x="108" y="94" width="46" height="34" rx="11"/><path d="M92 106 Q100 100 108 106"/></g>
 ${face(69, 131, 111, 138, animate, 0, 137)}
 `;
