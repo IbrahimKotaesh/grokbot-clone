@@ -346,6 +346,8 @@ export interface Toolkit {
 /** Server-sent events on GET /api/events */
 export type ServerEvent =
   | { type: "notifications" }
+  /** Where a bot just pointed on its cloud computer (screen pixels), so viewers can draw its mouse. */
+  | { type: "pointer"; botId: string; x: number; y: number; action: "move" | "click" | "scroll" | "drag" }
   | { type: "hello"; serverTime: number }
   | { type: "rows"; botId: string; generation: number; rows: Row[] }
   | { type: "cleared"; botId: string; generation: number }

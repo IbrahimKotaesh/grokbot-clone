@@ -146,7 +146,28 @@ export function attachVncRelay(server: Server) {
   });
 }
 
+/** People currently in Take control, per user: their bots keep their hands off the computer meanwhile. */
+const controlling = new Map<string, number>();
+export const userInControl = (userId: string) => (controlling.get(userId) ?? 0) > 0;
+/** Bots that stopped because the owner took control; they carry on when the owner hands the computer back. */
+const waiting = new Map<string, Set<string>>();
+export function noteWaitingForHandback(userId: string, botId: string) {
+  const set = waiting.get(userId) ?? new Set<string>(); set.add(botId); waiting.set(userId, set);
+}
+let resume: (userId: string, botId: string) => void = () => {};
+export function onHandback(fn: (userId: string, botId: string) => void) { resume = fn; }
+
 async function relay(client: WebSocket, userId: string, botId: string, mode: 'watch' | 'control') {
+  if (mode === 'control') {
+    controlling.set(userId, (controlling.get(userId) ?? 0) + 1);
+    client.once('close', () => {
+      const n = (controlling.get(userId) ?? 1) - 1;
+      if (n > 0) { controlling.set(userId, n); return; }
+      controlling.delete(userId);
+      const bots = waiting.get(userId); waiting.delete(userId);
+      for (const id of bots ?? []) resume(userId, id);
+    });
+  }
   const fromClient = new ByteQueue();
   const fromUp = new ByteQueue();
   let upstream: WebSocket | null = null;

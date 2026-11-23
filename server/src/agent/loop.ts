@@ -1,3 +1,4 @@
+import { userInControl, noteWaitingForHandback } from '../vnc.js';
 import { availableProviders, isQuotaError, markExhausted, pickProvider, PROVIDER_NAMES } from './fallback.js';
 import { claudeCodeTurn } from './claude-code-turn.js';
 import { loopClient, LOOP_PROVIDERS, type LoopProvider } from './model-clients.js';
@@ -335,6 +336,9 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
     if (!answered) {
       const inner = c.name === 'connected_apps' && args?.operation === 'execute' ? appToolCall(args) : { name: c.name, args };
       try { guard = await employeeGuard(userId, botId, inner.name, inner.args, { pageCheck: !ctx.desktopTarget }); } catch { guard = {}; }
+      // The owner pressed Take control: stay off the shared computer until they hand it back.
+      if (!guard.block && !ctx.desktopTarget && userInControl(userId) && (c.name.startsWith('computer_') || ['open_browser', 'read_page'].includes(c.name)))
+        (noteWaitingForHandback(userId, botId), guard = { block: 'The owner has taken control of your computer right now. Do not use it. Tell them briefly what you were about to do and that you will continue when they press "I\'m done".' });
     }
     let decision = policyFor(userId, c.name, args, botId).decision;
     if (guard.block) {

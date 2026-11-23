@@ -360,3 +360,23 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
   body.is-resizing .app > .sidebar, body.is-resizing .app > .computer-panel { transition: none !important; }
   body.is-resizing iframe, body.is-resizing canvas, body.is-resizing img { pointer-events: none; }
 }
+
+/* Bot at the wheel: red frame around its screen plus a label, so it's obvious who is driving. */
+.viewer__stage.is-bot-working .viewer__screen canvas { box-shadow: 0 0 0 3px #ef4444, 0 0 0 7px color-mix(in srgb, #ef4444 22%, transparent); border-radius: 6px; }
+.viewer__working { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 7px; max-width: calc(100% - 40px); padding: 5px 11px 5px 9px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 14px -4px #ef444499; pointer-events: none; }
+.viewer__working i { width: 7px; height: 7px; border-radius: 50%; background: #fff; flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fino-rec { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .viewer__working i { animation: fino-rec 1.2s ease-in-out infinite; }
+  @keyframes fino-frame { 0%, 100% { box-shadow: 0 0 0 3px #ef4444, 0 0 0 7px color-mix(in srgb, #ef4444 22%, transparent); } 50% { box-shadow: 0 0 0 3px #ef4444, 0 0 0 9px color-mix(in srgb, #ef4444 10%, transparent); } }
+  .viewer__stage.is-bot-working .viewer__screen canvas { animation: fino-frame 1.8s ease-in-out infinite; }
+}
+/* The bot's mouse, drawn over its live screen; it glides to each spot and ripples on a click. */
+.viewer__pointer { position: absolute; left: 0; top: 0; z-index: 4; width: 0; height: 0; pointer-events: none; transition: transform .45s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 1px 2px #0008); }
+.viewer__pointer svg { position: absolute; left: -3px; top: -2px; }
+.viewer__ripple { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #ef4444; opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fino-ripple { 0% { opacity: 0; transform: scale(.3); } 40% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6); } }
+  .viewer__ripple { animation: fino-ripple .7s ease-out .45s 1 both; }
+}
+@media (prefers-reduced-motion: reduce) { .viewer__pointer { transition: none; } }

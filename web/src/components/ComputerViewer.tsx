@@ -1,5 +1,5 @@
 import { t } from '../lib/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type RFBType from '@novnc/novnc';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { api } from '../lib/api';
@@ -24,6 +24,24 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
   const [waking, setWaking] = useState(false);
   const [wakeError, setWakeError] = useState('');
   const running = computer?.status === 'running';
+  // While the bot is mid-task the screen gets a red frame, so it's clear who is driving.
+  const botWorking = useStore((s) => (bot ? !!s.live[bot.id]?.isRunning : false));
+  // The bot's mouse: the server sends where it points; we draw an arrow there that glides between spots.
+  const point = useStore((s) => (bot ? s.pointer[bot.id] : undefined));
+  const [pointerPos, setPointerPos] = useState<{ left: number; top: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const canvas = screenRef.current?.querySelector('canvas');
+      const stage = stageRef.current;
+      if (!point || !canvas || !stage || !canvas.width) { setPointerPos(null); return; }
+      const c = canvas.getBoundingClientRect(), st = stage.getBoundingClientRect();
+      setPointerPos({ left: c.left - st.left + (point.x * c.width) / canvas.width, top: c.top - st.top + (point.y * c.height) / canvas.height });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [point, conn]);
   const close = () => {if(docked)window.dispatchEvent(new CustomEvent('fino-close-computer'));else set({viewerOpen:false});};
 
   const wake = async () => {
@@ -102,10 +120,17 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
         <button type="button" className="viewer__close" onClick={close} aria-label={t("Close computer")}><Icon name="close" color="#FFFFFF" /></button>
       </div></>}
 
-      <div className="viewer__stage">
+      <div ref={stageRef} className={`viewer__stage${running && botWorking && mode === 'watch' ? ' is-bot-working' : ''}`}>
         {running ? (
           <>
             <div ref={screenRef} className={`viewer__screen${mode === 'control' ? ' is-control' : ''}`} />
+            {botWorking && mode === 'watch' && conn === 'connected' && <span className="viewer__working" role="status"><i />{t('{name} is using the computer', { name: bot.name })}</span>}
+            {mode === 'watch' && conn === 'connected' && pointerPos && point && Date.now() - point.at < 60_000 && (
+              <span className="viewer__pointer" style={{ transform: `translate(${pointerPos.left}px, ${pointerPos.top}px)` }} aria-hidden="true">
+                {point.action === 'click' && <i key={point.at} className="viewer__ripple" />}
+                <svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 2.5 L4 19 L8.6 14.8 L11.6 21.5 L14.4 20.3 L11.5 13.7 L17.8 13.4 Z" fill="#fff" stroke="#111" strokeWidth="1.4" strokeLinejoin="round" /></svg>
+              </span>
+            )}
             {conn !== 'connected' && (
               <div className="viewer__overlay">
                 {conn === 'connecting' ? t("Connecting to the screen…") : (
@@ -135,7 +160,7 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
             </>
           ) : (
             <>
-              <span className="viewer__bar-text"><span className="viewer__live-dot" /> <b>{t("You're in control")}</b></span>
+              <span className="viewer__bar-text"><span className="viewer__live-dot" /> <b>{t("You're in control")}</b>{botWorking && <> · {t('{name} waits until you’re done', { name: bot.name })}</>}</span>
               <button type="button" className="btn btn--light" onClick={() => setMode('watch')}>{t("I'm done")}</button>
             </>
           )}

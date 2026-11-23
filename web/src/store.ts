@@ -17,6 +17,8 @@ interface State {
 
   bots: Bot[];
   live: Record<string, LiveState>;
+  /** Where each bot last pointed on its cloud computer, to draw its mouse over the live screen. */
+  pointer: Record<string, { x: number; y: number; action: string; at: number }>;
   selectedBotId: string | null;
   transcripts: Record<string, Transcript>;
   chats:Record<string,BotChat[]>;
@@ -66,6 +68,7 @@ export const useStore = create<State>((set, get) => ({
   accessLocked:false,
   bots: [],
   live: {},
+  pointer: {},
   selectedBotId: lsGet(LS_SELECTED),
   transcripts: {},
   chats:{},selectedChats:savedChats(),
@@ -179,6 +182,9 @@ export const useStore = create<State>((set, get) => ({
         return;
       case 'live':
         set((st) => ({ live: { ...st.live, [ev.state.botId]: ev.state } }));
+        return;
+      case 'pointer':
+        set((st) => ({ pointer: { ...st.pointer, [ev.botId]: { x: ev.x, y: ev.y, action: ev.action, at: Date.now() } } }));
         return;
       case 'roster':
         s.loadBots().catch(console.error);

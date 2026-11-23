@@ -99,6 +99,13 @@ async function shot(ctx: ToolCtx, caption: string, always = false): Promise<Tool
 }
 
 /** visible=false for file and shell work, which leaves nothing worth a final screenshot. */
+/** Tell anyone watching where the bot is pointing, so the web app can draw its mouse gliding there. */
+function pointer(ctx: ToolCtx, x: unknown, y: unknown, action: 'move' | 'click' | 'scroll' | 'drag') {
+  if (ctx.desktopTarget) return;
+  const px = Number(x), py = Number(y);
+  if (Number.isFinite(px) && Number.isFinite(py)) hub.emit(ctx.userId, { type: 'pointer', botId: ctx.botId, x: px, y: py, action });
+}
+
 async function onScreen<T>(ctx: ToolCtx, fn: (computerId: string, screenId: string) => Promise<T>, visible = true) {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   const result=await fn(computerId, screenId);
@@ -298,6 +305,7 @@ export const TOOLS: ToolDef[] = [
     activity: 'on_its_computer',
     label: 'Clicking on screen',
     impl: async (a, ctx) => {
+      pointer(ctx, a.x, a.y, 'click');
       await onScreen(ctx, (c, s) => orgo.click(c, s, { x: a.x, y: a.y, button: a.button ?? 'left', double: !!a.double }));
       return shot(ctx, `Clicked (${a.x}, ${a.y}).`);
     },
@@ -334,6 +342,7 @@ export const TOOLS: ToolDef[] = [
     activity: 'on_its_computer',
     label: 'Scrolling',
     impl: async (a, ctx) => {
+      pointer(ctx, a.x, a.y, 'scroll');
       await onScreen(ctx, (c, s) => orgo.scroll(c, s, { x: a.x, y: a.y, direction: a.direction, amount: a.amount ?? 3 }));
       return shot(ctx, `Scrolled ${a.direction}.`);
     },
@@ -345,6 +354,8 @@ export const TOOLS: ToolDef[] = [
     activity: 'on_its_computer',
     label: 'Dragging',
     impl: async (a, ctx) => {
+      pointer(ctx, a.start_x, a.start_y, 'move');
+      setTimeout(() => pointer(ctx, a.end_x, a.end_y, 'drag'), 350);
       await onScreen(ctx, (c, s) => orgo.drag(c, s, a));
       return shot(ctx, 'Dragged.');
     },
