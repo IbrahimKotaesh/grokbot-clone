@@ -294,3 +294,7 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
   .onb, .onb *, .onb__viewport { animation: none !important; transition: none !important; }
   .onb__tick path { stroke-dashoffset: 0; }
 }
+.onb__paste { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; font-size: 12.5px; color: var(--p-muted); animation: onb-item .45s cubic-bezier(.16, 1, .3, 1) both; }
+.onb__paste a { color: var(--p-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.onb__paste > div { display: flex; gap: 8px; }
+.onb__paste input { flex: 1; min-width: 0; height: 34px; font-size: 13px; }

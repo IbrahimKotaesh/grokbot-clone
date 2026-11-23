@@ -40,7 +40,7 @@ export function availableProviders(userId: string): string[] {
   const shared = sharedLoginAllowed(userId);
   const list: string[] = [];
   if (keys.has('chatgpt') || keys.has('openai') || shared) list.push('codex');
-  if (keys.has('anthropic') || shared) list.push('claude');
+  if (keys.has('anthropic') || keys.has('claude') || shared) list.push('claude');
   if (keys.has('openrouter')) list.push('openrouter');
   if (keys.has('groq')) list.push('groq');
   if (keys.has('xai')) list.push('xai');

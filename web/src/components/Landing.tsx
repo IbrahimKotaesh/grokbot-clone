@@ -278,7 +278,7 @@ function MacBand() {
           {info?.available === false
             ? <p className="lp-mac__soon">The Mac app download is coming soon.</p>
             : <a className="lp-pill lp-pill--dark lp-mac__dl" href="/api/download/mac" download onClick={() => store.drop(OFFER_MAC)}><Download size={20} aria-hidden /> Download for Mac</a>}
-          <p className="lp-mac__fine">For macOS 14 or later on Apple silicon{size && ` · ${size}`}. Unzip, move Fino to Applications. The first time, right-click Fino and choose Open.</p>
+          <p className="lp-mac__fine">For macOS 14 or later on Apple silicon{size && ` · ${size}`}. Open the download and move Fino to Applications. If macOS says it can’t check Fino the first time, open System Settings → Privacy & Security and choose Open Anyway.</p>
         </div>
         <div className="lp-mac__window" data-reveal style={{ '--i': 2 } as CSSProperties} aria-hidden>
           <div className="lp-mac__lights"><i /><i /><i /></div>

@@ -1,4 +1,5 @@
 import { apiKeyFor, sharedLoginAllowed } from '../credentials.js';
+import { claudeHomeIfConnected } from '../claude-login.js';
 import {localDesktopTarget} from '../desktop-device.js';
 import { type SDKUserMessage, query, createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
@@ -35,8 +36,10 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
   const bot = getBotRow(botId);
   // A user's own Anthropic API key wins; otherwise the server's Claude login (local, single-owner setups).
   const userKey = apiKeyFor(bot.user_id, 'anthropic');
-  if (!userKey) {
-    if (!sharedLoginAllowed(bot.user_id)) throw new Error('Add your Anthropic API key in Account → AI models to use Claude.');
+  // A Claude subscription the user connected in Fino runs from their own Claude config folder.
+  const userHome = userKey ? null : claudeHomeIfConnected(bot.user_id);
+  if (!userKey && !userHome) {
+    if (!sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Fino and connect your ChatGPT or Claude subscription.');
     if (!await claudeLoginStatus()) throw new Error('Sign in with your Claude subscription first: claude auth login');
   }
   if (signal.aborted) throw new Error('Stopped.');
@@ -68,6 +71,7 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
   const childEnv = {...process.env};
   for (const key of ['ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','CLAUDE_CODE_USE_BEDROCK','CLAUDE_CODE_USE_VERTEX','CLAUDE_CODE_USE_FOUNDRY']) delete childEnv[key];
   if (userKey) childEnv.ANTHROPIC_API_KEY = userKey;
+  if (userHome) childEnv.CLAUDE_CONFIG_DIR = userHome;
   let seq:number|null=null, answer='', wrote=false, completed=false;
   let lastFlush=0;
   const flush = (streaming:boolean) => {

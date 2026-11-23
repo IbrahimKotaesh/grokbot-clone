@@ -294,7 +294,8 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         });
       handled = true;
     }
-    const msg = ctrl.signal.aborted ? 'Stopped.' : `Something went wrong: ${e?.message ?? e}`;
+    // "Connect your …" is a next step for the person, not a failure, so it is shown as is.
+    const msg = ctrl.signal.aborted ? 'Stopped.' : /^Connect your /.test(String(e?.message)) ? e.message : `Something went wrong: ${e?.message ?? e}`;
     if (!handled) appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {

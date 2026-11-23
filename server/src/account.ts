@@ -6,6 +6,7 @@ import type { AuthVars } from './lib/auth.js';
 import { unscheduleRoutine } from './routines.js';
 import { suspendComputer } from './computer.js';
 import { codexHomeFor } from './credentials.js';
+import { forgetClaudeLogin } from './claude-login.js';
 
 export const accountApi = new Hono<AuthVars>();
 
@@ -49,5 +50,6 @@ accountApi.delete('/', async (c) => {
   })();
   // The user's own ChatGPT/OpenAI sign-in folder.
   fs.rmSync(codexHomeFor(userId), { recursive: true, force: true });
+  forgetClaudeLogin(userId);
   return c.json({ ok: true });
 });

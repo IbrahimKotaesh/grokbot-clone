@@ -107,12 +107,16 @@ function BrainStep({ onNext, onBack, required, ready, onReady }: { onNext: () =>
   const [login, setLogin] = useState<{ url: string; code: string; id: string } | null>(null);
   const [error, setError] = useState('');
   const [included, setIncluded] = useState(false);
+  const [claude, setClaude] = useState<'idle' | 'starting' | 'code' | 'checking' | 'connected'>('idle');
+  const [claudeLogin, setClaudeLogin] = useState<{ id: string; url: string } | null>(null);
+  const [claudeCode, setClaudeCode] = useState('');
   const timer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     fetch('/api/credentials', { credentials: 'include' }).then((r) => r.json())
       .then((r: { credentials: { provider: string; connected: boolean }[]; sharedLogin: boolean }) =>
-        { const ok = r.sharedLogin || r.credentials.some((c) => c.connected && (c.provider === 'chatgpt' || c.provider === 'openai')); setChatgpt(ok ? 'connected' : 'idle'); if (ok) onReady(); })
+        { const ok = r.sharedLogin || r.credentials.some((c) => c.connected && (c.provider === 'chatgpt' || c.provider === 'openai')); setChatgpt(ok ? 'connected' : 'idle');
+          const claudeOk = r.credentials.some((c) => c.connected && c.provider === 'claude'); if (claudeOk) setClaude('connected'); if (ok || claudeOk) onReady(); })
       .catch(() => setChatgpt('idle'));
     return () => clearInterval(timer.current);
   }, []);
@@ -133,14 +137,37 @@ function BrainStep({ onNext, onBack, required, ready, onReady }: { onNext: () =>
     } catch (e) { setChatgpt('error'); setError((e as Error).message); }
   };
 
-  const useAllBots = useCallback((agentProvider: 'codex' | 'openrouter') => {
+  // Claude: open Claude's sign-in page, then paste the code it shows back here.
+  const startClaude = async () => {
+    setError(''); setClaude('starting');
+    try {
+      const r = await fetch('/api/credentials/claude/start', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? t('Claude sign-in is unavailable right now.'));
+      setClaudeLogin({ id: d.loginId, url: d.url }); setClaude('code');
+      window.open(d.url, '_blank', 'noopener');
+    } catch (e) { setClaude('idle'); setError((e as Error).message); }
+  };
+  const finishClaude = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!claudeLogin) return;
+    setError(''); setClaude('checking');
+    try {
+      const r = await fetch('/api/credentials/claude/finish', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loginId: claudeLogin.id, code: claudeCode }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? t('Claude sign-in didn’t finish. Try again.'));
+      setClaude('connected'); setClaudeLogin(null); setClaudeCode(''); useAllBots('claude'); onReady();
+    } catch (err) { setClaude('idle'); setClaudeLogin(null); setClaudeCode(''); setError((err as Error).message); }
+  };
+
+  const useAllBots = useCallback((agentProvider: 'codex' | 'claude' | 'openrouter') => {
     for (const b of bots) if (b.kind !== 'room') void configApi.updateBot(b.id, { agentProvider, model: '' }).then(({ bot }) => useStore.setState((st) => ({ bots: st.bots.map((x) => (x.id === bot.id ? bot : x)) }))).catch(() => {});
   }, [bots]);
 
   return (
     <section className="onb__step">
       <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
-      <p>{required ? t('Your bots think with your own ChatGPT account. Connect it once and your team is ready.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
+      <p>{required ? t('Your bots think with your own AI subscription: ChatGPT or Claude. Connect one and your team is ready.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
       <div className="onb__options">
         <div className={`onb__option${chatgpt === 'connected' ? ' is-done' : ''}`}>
           <ProviderLogo provider="codex" />
@@ -160,13 +187,25 @@ function BrainStep({ onNext, onBack, required, ready, onReady }: { onNext: () =>
             : <button type="button" className="onb__small" disabled={chatgpt === 'unknown'} onClick={() => void startChatgpt()}>{t('Connect')}</button>}
         </div>
 
-        {!required && <div className="onb__option">
+        <div className={`onb__option${claude === 'connected' ? ' is-done' : ''}`}>
           <ProviderLogo provider="claude" />
           <div className="onb__option-text">
             <strong>{t('Use my Claude subscription')}</strong>
-            <small>{t('Pick Claude Code for any bot from its model menu.')}</small>
+            <small>{claude === 'connected' ? t('Connected. Your bots use Claude.') : t('Pro or Max. Sign in on Claude, then paste the code here.')}</small>
+            {claudeLogin && (
+              <form className="onb__paste" onSubmit={finishClaude}>
+                <span>{t('Copy the code Claude shows you and paste it here:')} <a href={claudeLogin.url} target="_blank" rel="noreferrer noopener">{t('Open Claude')} <ExternalLink size={12} /></a></span>
+                <div>
+                  <input className="text-input" value={claudeCode} onChange={(e) => setClaudeCode(e.target.value)} placeholder={t('Paste code')} aria-label={t('Code from Claude')} autoComplete="off" spellCheck={false} />
+                  <button type="submit" className="onb__small" disabled={claude === 'checking' || claudeCode.trim().length < 10}>{claude === 'checking' ? t('Checking…') : t('Connect')}</button>
+                </div>
+              </form>
+            )}
           </div>
-        </div>}
+          {claude === 'connected' ? <span className="onb__check"><Check size={16} /></span>
+            : claude === 'starting' ? <LoaderCircle size={18} className="dictation__spinner" />
+            : !claudeLogin && <button type="button" className="onb__small" onClick={() => void startClaude()}>{t('Connect')}</button>}
+        </div>
 
         {hosted?.available && (
           <div className={`onb__option${included ? ' is-done' : ''}`}>
@@ -181,7 +220,7 @@ function BrainStep({ onNext, onBack, required, ready, onReady }: { onNext: () =>
         )}
       </div>
       {error && <div className="onb__error" role="alert">{error}</div>}
-      <Nav onBack={onBack} onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Connect ChatGPT to continue') : undefined} />
+      <Nav onBack={onBack} onNext={onNext} disabled={!ready} nextLabel={!ready ? t('Connect your AI to continue') : undefined} />
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import { usesServerResources } from './lib/owner.js';
+import { startClaudeLogin, finishClaudeLogin, forgetClaudeLogin } from './claude-login.js';
 // Bring-your-own model access. Each user connects their own AI account so their bots run on it:
 //   • ChatGPT: "Sign in with ChatGPT" through the Codex CLI's device-code login, kept in a
 //     per-user CODEX_HOME. Fino never sees the password or the OAuth tokens.
@@ -14,8 +15,8 @@ import { db, now } from './db.js';
 import { env } from './env.js';
 import type { AuthVars } from './lib/auth.js';
 
-export type Provider = 'chatgpt' | 'openai' | 'anthropic' | 'xai' | 'openrouter' | 'groq';
-const PROVIDERS: Provider[] = ['chatgpt', 'openai', 'anthropic', 'xai', 'openrouter', 'groq'];
+export type Provider = 'chatgpt' | 'claude' | 'openai' | 'anthropic' | 'xai' | 'openrouter' | 'groq';
+const PROVIDERS: Provider[] = ['chatgpt', 'claude', 'openai', 'anthropic', 'xai', 'openrouter', 'groq'];
 const KEY_NAMES: Record<string, string> = { openai: 'OpenAI', anthropic: 'Anthropic', xai: 'xAI', openrouter: 'OpenRouter', groq: 'Groq' };
 
 db.exec(`CREATE TABLE IF NOT EXISTS user_credentials (
@@ -162,6 +163,21 @@ credentialsApi.post('/chatgpt/start', async (c) => {
   }
 });
 
+// Claude subscription: start gives the Claude sign-in page; finish takes the code that page shows.
+credentialsApi.post('/claude/start', async (c) => {
+  try {
+    const l = await startClaudeLogin(c.get('user').id);
+    return c.json({ loginId: l.id, url: l.url });
+  } catch (e) {
+    return c.json({ error: (e as Error).message || 'Claude sign-in is unavailable.' }, 502);
+  }
+});
+credentialsApi.post('/claude/finish', async (c) => {
+  const body = await c.req.json<{ loginId?: string; code?: string }>().catch(() => ({} as { loginId?: string; code?: string }));
+  const r = await finishClaudeLogin(c.get('user').id, String(body.loginId ?? ''), String(body.code ?? ''));
+  return r.ok ? c.json({ ok: true }) : c.json({ error: r.error }, 400);
+});
+
 credentialsApi.get('/chatgpt/status/:id', (c) => {
   const l = logins.get(c.req.param('id'));
   if (!l || l.userId !== c.get('user').id) return c.json({ error: 'not found' }, 404);
@@ -192,5 +208,6 @@ credentialsApi.delete('/:provider', async (c) => {
   db.prepare('DELETE FROM user_credentials WHERE user_id=? AND provider=?').run(userId, provider);
   // ChatGPT and OpenAI share the user's Codex home; sign it out only when neither remains.
   if ((provider === 'chatgpt' || provider === 'openai') && !codexHomeIfConnected(userId)) await runCodex(userId, ['logout']);
+  if (provider === 'claude') forgetClaudeLogin(userId);
   return c.json({ ok: true });
 });
