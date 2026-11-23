@@ -437,6 +437,12 @@ api.post('/computer/suspend', async (c) => {
   return c.json({ computer: computerState(c.get('user').id) });
 });
 
+// Which of my bots have their own screen on the computer (for the small screens under the main one).
+api.get('/screens', (c) => {
+  const rows = db.prepare('SELECT s.bot_id AS botId FROM screens s JOIN bots b ON b.id=s.bot_id WHERE b.user_id=?').all(c.get('user').id) as { botId: string }[];
+  return c.json({ botIds: rows.map((r) => r.botId) });
+});
+
 api.get('/bots/:id/screenshot', async (c) => {
   const user = c.get('user');
   const b = ownBot(user.id, c.req.param('id'));

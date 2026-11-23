@@ -483,4 +483,7 @@ export const arWeb: Record<string, string> = {
   "Connect first: press Connect to send, or pick Cloud computer in the menu at the top right.": "اربط أول: اكبس «اربط لتبعت»، أو اختار كمبيوتر السحابة من القائمة فوق عاليمين.",
   "{name} is using the computer": "{name} عم يستعمل الكمبيوتر",
   "{name} waits until you’re done": "{name} ناطرك لتخلص",
+  "Other bots’ computers": "كمبيوترات باقي البوتات",
+  "Show {name}’s computer": "اعرض كمبيوتر {name}",
+  "Working": "عم يشتغل",
 };

@@ -26,17 +26,17 @@ export function characterKind(shape: string | null | undefined): CharacterKind {
 
 /** Clay tones for each bot color: softer than the chat accents so the figures look like matte toys. */
 export const CLAY: Record<string, string> = {
-  black: '#62646f',
-  brown: '#b07b55',
-  red: '#f2786a',
-  orange: '#f59a55',
-  yellow: '#f6c84b',
-  green: '#86b07a',
-  cyan: '#3e9f98',
-  blue: '#5476b0',
-  violet: '#b28ad9',
-  magenta: '#ef86a8',
-  gray: '#a6a6ac',
+  black: '#5a5d6b',
+  brown: '#c27c45',
+  red: '#f8624f',
+  orange: '#fb8a3a',
+  yellow: '#fcc72c',
+  green: '#68bd5f',
+  cyan: '#26ad9f',
+  blue: '#4275d6',
+  violet: '#a97aeb',
+  magenta: '#f56d9f',
+  gray: '#a3a5ae',
 };
 
 function mix(hex: string, to: string, t: number): string {

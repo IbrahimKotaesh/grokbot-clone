@@ -238,7 +238,7 @@
 .mac-offer img { border-radius: 12px; object-fit: cover; }
 .mac-offer div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--color-text-secondary); }
 .mac-offer b { font-size: 14px; color: var(--color-text-primary); }
-.mac-offer__dl { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--color-primary); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.mac-offer__dl { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--chat-blue, #1877f2); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .mac-offer__x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-tertiary); cursor: pointer; }
 .mac-offer__x:hover { background: var(--color-bg-hover); }
 
@@ -304,3 +304,4 @@
 .lp-looks__row li b { font-size: 15px; }
 .lp-looks__row li small { margin-top: -6px; font-size: 13px; font-weight: 400; line-height: 1.35; color: var(--lp-ink-soft); max-width: 15ch; }
 @media (max-width: 520px) { .lp-models > span { flex-basis: 100%; } }
+.mac-offer__dl:hover { background: color-mix(in srgb, var(--chat-blue, #1877f2) 88%, #000); }

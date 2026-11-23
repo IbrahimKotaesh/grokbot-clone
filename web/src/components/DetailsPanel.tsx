@@ -53,7 +53,7 @@ function RoutineRow({ r }: { r: Routine }) {
 }
 
 /** The bot's latest screen as an object URL, refreshed every 2.5 s while the computer is awake. 204 = no screen yet. */
-export function useLiveShot(botId: string, running: boolean) {
+export function useLiveShot(botId: string, running: boolean, every = 2500) {
   const [shot, setShot] = useState<string | null>(null);
   useEffect(() => {
     setShot(null);
@@ -77,9 +77,9 @@ export function useLiveShot(botId: string, running: boolean) {
       } catch { /* keep last frame */ }
     };
     load();
-    const timer = setInterval(load, 2500);
+    const timer = setInterval(load, every);
     return () => { alive = false; clearInterval(timer); if (url) URL.revokeObjectURL(url); };
-  }, [botId, running]);
+  }, [botId, running, every]);
 
   return shot;
 }

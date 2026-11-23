@@ -380,3 +380,17 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
   .viewer__ripple { animation: fino-ripple .7s ease-out .45s 1 both; }
 }
 @media (prefers-reduced-motion: reduce) { .viewer__pointer { transition: none; } }
+
+/* Right panel: the main screen sits higher, the other bots' screens line up underneath. */
+.viewer--panel .viewer__stage { align-items: flex-start; padding-top: 14px; }
+.other-screens { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--p-line); }
+.other-screen { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: var(--p-text); font: inherit; text-align: start; cursor: pointer; }
+.other-screen__img { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 9px; background: var(--p-raised); box-shadow: 0 0 0 1px var(--p-line); transition: box-shadow .15s ease, transform .15s ease; }
+.other-screen__img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.other-screen__img i { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--p-text) 6%, transparent), transparent); }
+.other-screen:hover .other-screen__img { box-shadow: 0 0 0 2px var(--chat-blue); transform: translateY(-1px); }
+.other-screen.is-working .other-screen__img { box-shadow: 0 0 0 2px #ef4444; }
+.other-screen__name { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 12px; color: var(--p-muted); }
+.other-screen__name > span:not(.fino-avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.other-screen__name em { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; flex: none; }
+.viewer--panel .viewer__screen canvas { margin: 0 auto auto !important; }

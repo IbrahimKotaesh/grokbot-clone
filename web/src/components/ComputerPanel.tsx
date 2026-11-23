@@ -3,6 +3,7 @@ import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
 import { useSelectedBot, useStore } from '../store';
 import { ComputerViewer } from './ComputerViewer';
+import { OtherScreens } from './OtherScreens';
 import { computerStatusText } from './DetailsPanel';
 import { Icon } from './Icon';
 
@@ -32,6 +33,7 @@ export function ComputerPanel() {
       <div className="computer-panel__screen">
         <ComputerViewer key={bot.id} panel />
       </div>
+      <OtherScreens current={bot.id} />
     </aside>
   );
 }
