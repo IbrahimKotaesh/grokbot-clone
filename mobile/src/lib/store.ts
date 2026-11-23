@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { AppState } from "react-native";
 import type {
   Bot,
   BotChat,
@@ -19,6 +20,8 @@ interface State {
   chats: Record<string, BotChat[]>;
   rows: Record<string, Row[]>;
   selected: string | null;
+  /** The bot whose chat is on screen right now (null on the team list), so its new replies count as read. */
+  chatOpen: string | null;
   generations: Record<string, number>;
   connected: boolean;
   error: string | null;
@@ -37,6 +40,7 @@ export const useWorkspace = create<State>((set, get) => ({
   chats: {},
   rows: {},
   selected: null,
+  chatOpen: null,
   generations: {},
   connected: false,
   error: null,
@@ -124,13 +128,16 @@ export const useWorkspace = create<State>((set, get) => ({
       case "live":
         set((s) => ({ live: { ...s.live, [event.state.botId]: event.state } }));
         break;
-      case "bot":
+      case "bot": {
+        // A reply to the chat you're looking at is read already.
+        const seen = event.bot.unread > 0 && get().chatOpen === event.bot.id && AppState.currentState === "active";
+        if (seen) void client.request("POST", `/bots/${event.bot.id}/read`).catch(() => {});
+        const bot = seen ? { ...event.bot, unread: 0 } : event.bot;
         set((s) => ({
-          bots: s.bots.some((b) => b.id === event.bot.id)
-            ? s.bots.map((b) => (b.id === event.bot.id ? event.bot : b))
-            : [...s.bots, event.bot],
+          bots: s.bots.some((b) => b.id === bot.id) ? s.bots.map((b) => (b.id === bot.id ? bot : b)) : [...s.bots, bot],
         }));
         break;
+      }
       case "roster":
         void client
           .bots()

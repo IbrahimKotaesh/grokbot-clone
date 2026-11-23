@@ -3,7 +3,6 @@ import { View, Text, TextInput, Pressable, Linking, Modal, ScrollView, useWindow
 import Markdown from "react-native-markdown-display";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { useReveal } from "../lib/reveal";
 import { Chart } from "./Chart";
 import { PlanCard } from "./PlanCard";
 import type { Row, Bot } from "../../../packages/contracts/src/types";
@@ -50,7 +49,7 @@ function Enter({ row, children }: { row: Row; children: React.ReactNode }) {
   );
 }
 
-function Message({ row, bot }: { row: Row; bot: Bot }) {
+function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: boolean; canRetry?: boolean }) {
   const [answer, setAnswer] = useState("");
   const [expanded, setExpanded] = useState(false),
     [details, setDetails] = useState(false),
@@ -58,11 +57,8 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
     [error, setError] = useState(""),
     [viewer, setViewer] = useState<string | null>(null);
   const body = row.body;
-  // Bot replies type out smoothly, also when one arrives already complete (it would otherwise pop in).
-  const text = useReveal(
-    body.type === "message" ? body.text : "",
-    body.type === "message" && (!!body.streaming || (body.role === "assistant" && Date.now() - row.createdAt < 8000)),
-  );
+  // Replies appear whole (with a short fade for new ones), never typed out word by word.
+  const text = body.type === "message" ? body.text : "";
   const { width, height } = useWindowDimensions();
   const act = async (path: string, data: unknown) => {
     setBusy(true);
@@ -385,6 +381,13 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
             </View>
           )}
           {!!error && <Text style={[type.footnote, { color: p.red }]}>{error}</Text>}
+          {user && !!body.reaction && (
+            <FadeIn offset={0} duration={300} style={{ position: "absolute", bottom: -14, left: -8 }}>
+              <View accessibilityLabel={t("Reacted {emoji}", { emoji: body.reaction })} style={{ minWidth: 30, height: 30, paddingHorizontal: 5, borderRadius: 15, backgroundColor: p.raised, borderWidth: 2, borderColor: p.background, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 16 }}>{body.reaction}</Text>
+              </View>
+            </FadeIn>
+          )}
         </View>
         {body.images?.map((image) => (
           <Pressable
@@ -403,7 +406,23 @@ function Message({ row, bot }: { row: Row; bot: Bot }) {
           </Pressable>
         ))}
         {(user || !body.streaming) && (
-          <Text style={[type.caption, { color: p.faint, fontWeight: "400", marginTop: 4, marginHorizontal: 4 }]}>{time(row.createdAt)}</Text>
+          <View style={[s.row, { gap: space.md, marginTop: user && body.reaction ? 14 : 4, marginHorizontal: 4 }]}>
+            <Text style={[type.caption, { color: p.faint, fontWeight: "400" }]}>{time(row.createdAt)}</Text>
+            {user && seen && !!body.seenAt && <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>{t("Seen")}</Text>}
+            {canRetry && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("Try again")}
+                hitSlop={10}
+                disabled={busy}
+                onPress={() => void act(`/bots/${bot.id}/regenerate`, { generation: row.generation })}
+                style={({ pressed }) => [s.row, { gap: 4, opacity: pressed || busy ? 0.5 : 1 }]}
+              >
+                <Ionicons name="refresh" size={13} color={p.muted} />
+                <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{t("Try again")}</Text>
+              </Pressable>
+            )}
+          </View>
         )}
         <Modal visible={!!viewer} animationType="fade" transparent onRequestClose={() => setViewer(null)}>
           <View style={{ flex: 1, backgroundColor: "#000000f2", paddingTop: 54 }}>
@@ -429,5 +448,7 @@ function Status({ label, ok }: { label: string; ok: boolean }) {
 }
 export const MessageRow = memo(
   Message,
-  (a, b) => a.row === b.row && a.bot.name === b.bot.name && a.bot.avatarShape === b.bot.avatarShape && a.bot.avatarColor === b.bot.avatarColor,
+  (a, b) =>
+    a.row === b.row && a.seen === b.seen && a.canRetry === b.canRetry &&
+    a.bot.name === b.bot.name && a.bot.avatarShape === b.bot.avatarShape && a.bot.avatarColor === b.bot.avatarColor,
 );

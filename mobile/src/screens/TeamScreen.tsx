@@ -32,7 +32,10 @@ export function TeamScreen({
   const [refreshing, setRefreshing] = useState(false),
     [error, setError] = useState<string | null>(null);
   const primary = bots.find((b) => b.isPrimary);
+  // A bot with a reply you haven't read rises to the top, newest first; after you've read it, it returns to its place.
   const team = bots.filter((b) => !b.isPrimary);
+  const fresh = team.filter((b) => b.unread > 0).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const ordered = [...fresh, ...team.filter((b) => !(b.unread > 0))];
   const working = bots.filter((b) => live[b.id]?.isRunning).length;
   const go = async (id: string, then: () => void) => {
     setError(null);
@@ -59,7 +62,7 @@ export function TeamScreen({
         }
       />
       <FlatList
-        data={team}
+        data={ordered}
         keyExtractor={(b) => b.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl + TAB_BAR_SPACE }}
@@ -194,7 +197,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
       <Avatar shape={bot.avatarShape} size={50} status={status} color={bot.avatarColor} />
       <View style={{ flex: 1, gap: 3 }}>
         <View style={s.rowBetween}>
-          <Text style={[type.headline, { color: p.text, flex: 1 }]} numberOfLines={1}>
+          <Text style={[type.headline, { color: p.text, flex: 1, fontWeight: bot.unread > 0 ? "800" : type.headline.fontWeight }]} numberOfLines={1}>
             {bot.name}
             {!!bot.label && <Text style={[type.subhead, { color: p.faint, fontWeight: "400" }]}>{`  ·  ${t(bot.label)}`}</Text>}
           </Text>
@@ -202,7 +205,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
         </View>
         <View style={[s.row, { gap: space.sm }]}>
           <Text
-            style={[type.subhead, { color: status === "working" ? p.green : p.muted, flex: 1 }]}
+            style={[type.subhead, { color: status === "working" ? p.green : bot.unread > 0 ? p.text : p.muted, fontWeight: bot.unread > 0 ? "600" : type.subhead.fontWeight, flex: 1 }]}
             numberOfLines={1}
           >
             {live?.isRunning || live?.awaiting ? statusLine(bot, live) : plainPreview(bot.lastPreview) || t("Start a conversation")}

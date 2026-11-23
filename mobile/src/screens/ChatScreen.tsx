@@ -27,13 +27,8 @@ import { palette as p, type, space } from "../theme";
 import { botStatus, statusLine, usesComputer } from "../lib/format";
 import { catalog } from "../lib/catalog";
 import { t } from "../lib/i18n";
+import { startersFor } from "../../../packages/contracts/src/jobs";
 const empty: Row[] = [];
-const suggestions = [
-  { icon: "sunny-outline", label: t("Plan my day") },
-  { icon: "search-outline", label: t("Research a topic for me") },
-  { icon: "mail-outline", label: t("Draft an email") },
-  { icon: "desktop-outline", label: t("Open a website on your computer") },
-] as const;
 
 export function ChatScreen({
   openTeam,
@@ -54,6 +49,30 @@ export function ChatScreen({
   const rows = useWorkspace((x) => (id ? (x.rows[rowKey(id, generation)] ?? empty) : empty));
   const timeline = useMemo(() => chatTimeline(rows).reverse(), [rows]);
   const live = useWorkspace((x) => (id ? x.live[id] : undefined));
+  // This chat is on screen: its new replies count as read (see the store).
+  useEffect(() => {
+    useWorkspace.setState({ chatOpen: id ?? null });
+    return () => useWorkspace.setState({ chatOpen: null });
+  }, [id]);
+  // "Seen" goes under the person's latest message; "Try again" under the bot's reply to it, once the bot is done.
+  const marks = useMemo(() => {
+    const shown = rows.filter((r) => !(r.body as { replaced?: boolean }).replaced && r.body.type === "message" && !(r.body.role === "assistant" && r.body.streaming));
+    const asked = [...shown].reverse().find((r) => r.body.type === "message" && r.body.role === "user" && !r.body.from);
+    const last = shown[shown.length - 1];
+    const reply = last && last.body.type === "message" && last.body.role === "assistant" && !last.body.from && !!last.body.text.trim() && asked && asked.seq < last.seq ? last.seq : undefined;
+    return { asked: asked?.seq, reply };
+  }, [rows]);
+  // Sending a message always brings you to the bottom, where the reply will appear (as on the web).
+  const lastAsked = useRef(marks.asked);
+  useEffect(() => {
+    if (marks.asked === undefined || marks.asked === lastAsked.current) return;
+    const first = lastAsked.current === undefined;
+    lastAsked.current = marks.asked;
+    if (first) return;
+    stick.current = true;
+    setShowLatest(false);
+    list.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [marks.asked]);
   const newChat = useWorkspace((x) => x.newChat);
   const [error, setError] = useState<string | null>(null),
     [loadingOlder, setLoadingOlder] = useState(false),
@@ -82,8 +101,12 @@ export function ChatScreen({
     );
   const status = botStatus(bot, live);
   // Marketplace bots suggest their own skills; everyone else gets general starters.
+  // Marketplace bots suggest their own skills; job bots (Head of Finance, HR…) their job's first tasks.
   const template = catalog.find((t) => t.label === bot.label);
-  const starters = template ? template.skills.map((sk) => ({ icon: "flash-outline" as const, label: sk.name })) : suggestions;
+  const starters = template
+    ? template.skills.map((sk) => ({ icon: "flash-outline" as const, label: sk.name }))
+    : startersFor(bot).map((label) => ({ icon: "flash-outline" as const, label: t(label) }));
+  const running = !!live?.isRunning;
   const more = () => {
     const actions = [
       { label: t("New conversation"), run: () => void newChat(bot.id).catch((e) => setError(e.message)) },
@@ -154,7 +177,11 @@ export function ChatScreen({
         data={timeline}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) =>
-          "work" in item ? <WorkDetails rows={item.work} bot={bot} /> : <MessageRow row={item.row} bot={bot} />
+          "work" in item ? (
+            <WorkDetails rows={item.work} bot={bot} />
+          ) : (
+            <MessageRow row={item.row} bot={bot} seen={item.row.seq === marks.asked} canRetry={!running && item.row.seq === marks.reply} />
+          )
         }
         contentContainerStyle={{ paddingVertical: space.md, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
@@ -211,7 +238,11 @@ export function ChatScreen({
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginTop: space.xxl }}>
               {starters.map((sug, i) => (
                 <FadeIn key={sug.label} delay={180 + i * 70}>
-                  <Chip label={sug.label} icon={sug.icon} onPress={() => composer.current?.prefill(sug.label)} />
+                  <Chip
+                    label={sug.label}
+                    icon={sug.icon}
+                    onPress={() => void client.request("POST", `/bots/${bot.id}/messages`, { text: sug.label, generation }).catch((e) => setError(e.message))}
+                  />
                 </FadeIn>
               ))}
             </View>
