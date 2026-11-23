@@ -295,3 +295,12 @@
 .lp-looks__swatches button[aria-checked=true] { outline: 3px solid currentColor; outline-offset: 3px; }
 @media (max-width: 720px) { .lp-looks__row { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 26px; } .lp-looks__swatches { gap: 9px; } .lp-looks__swatches button { width: 30px; height: 30px; } }
 @media (prefers-reduced-motion: reduce) { .lp-looks__fig { animation: none; } }
+
+/* The AI models under the hero */
+.lp-models { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 22px 0 0; color: #ffffffcc; font-size: 14px; }
+.lp-models > span { margin-inline-end: 4px; }
+.lp-models b { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 9px; border-radius: 999px; background: #fff; color: var(--lp-ink); font-weight: 600; font-size: 14px; }
+.lp-models img { width: 18px; height: 18px; }
+.lp-looks__row li b { font-size: 15px; }
+.lp-looks__row li small { margin-top: -6px; font-size: 13px; font-weight: 400; line-height: 1.35; color: var(--lp-ink-soft); max-width: 15ch; }
+@media (max-width: 520px) { .lp-models > span { flex-basis: 100%; } }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Download, Eye, Hand, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { CHARACTER_KINDS, CHARACTER_LABELS, CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
+import { CLAY, characterDataUri, type CharacterKind } from '../../../packages/contracts/src/characters';
 import '../styles/landing.css';
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
@@ -27,6 +27,16 @@ const TEAM: Bot[] = [
 const QUINN = TEAM[1];
 // A bright sky blue so the mark stands out on the blue header.
 const MARK = characterDataUri('accountant', '#5f9dff');
+/** The jobs shown on the landing page, one per character. */
+const JOBS: Record<CharacterKind, [string, string]> = {
+  accountant: ['Head of Finance', 'Budgets, reports and the monthly close'],
+  architect: ['Accounts Payable', 'Checks invoices and lines up payments'],
+  chef: ['Cashier', 'Tracks every sale and balances the till'],
+  medic: ['HR Assistant', 'Hiring, leave requests and onboarding'],
+  florist: ['Travel Planner', 'Flights, hotels and the full itinerary'],
+  engineer: ['Data Engineer', 'Pipelines, dashboards and clean data'],
+};
+const JOB_ORDER: CharacterKind[] = ['accountant', 'architect', 'chef', 'medic', 'florist', 'engineer'];
 const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
@@ -73,7 +83,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
         <div className="lp-open__body">
           <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>Give your</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>AI team a job.</span></span></h1>
-          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own browser. They read your email, research, plan your days and click through websites for you, while you watch.</p>
+          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own browser. They read your email, pay the bills, plan your trips and click through websites for you, while you sleep or get on with something else.</p>
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
             <label htmlFor="lp-task" className="lp-sr">What should your team do?</label>
@@ -83,6 +93,11 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
           <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label="Example jobs">
             {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === ex}>{ex}</button>)}
           </div>
+          <p className="lp-models lp-in" style={{ '--d': '540ms' } as CSSProperties}>
+            <span>Powered by the world’s best AI</span>
+            <b><img src="/brands/chatgpt.svg" alt="" width={18} height={18} />ChatGPT</b>
+            <b><img src="/brands/claude.svg" alt="" width={18} height={18} />Claude</b>
+          </p>
         </div>
 
         <div className="lp-team">
@@ -320,13 +335,13 @@ function Looks() {
   return (
     <section className="lp-looks">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>A job for each bot. A color for each one.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Pick who they are, then paint them any color you like. Change it anytime inside Fino.</p>
+        <h2 className="lp-h2" data-reveal>Hire a whole team. Each one has a job.</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>They work around the clock, while you sleep or do something else. Pick a job, then paint them any color you like.</p>
         <ul className="lp-looks__row" aria-label="Bot characters">
-          {CHARACTER_KINDS.map((k, i) => (
+          {JOB_ORDER.map((k, i) => (
             <li key={k} data-reveal style={{ '--i': 2 + i, '--bob': `${i * -0.7}s` } as CSSProperties}>
               <span className="lp-looks__fig"><img src={characterDataUri(k, color)} alt="" width={120} height={120} draggable={false} /></span>
-              <span>{CHARACTER_LABELS[k]}</span>
+              <b>{JOBS[k][0]}</b><small>{JOBS[k][1]}</small>
             </li>
           ))}
         </ul>
