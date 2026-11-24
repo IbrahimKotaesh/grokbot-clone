@@ -62,6 +62,8 @@ export function PlanSection() {
               <div className="cfg-row__sub">
                 {store
                   ? t('Billed through {store}. Change or cancel it from your phone’s subscription settings.', { store })
+                  : billing.trialUntil
+                    ? t('Free trial until {date}. Your card is charged then, unless you cancel before.', { date: new Date(billing.trialUntil).toLocaleString(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })
                   : billing.source === 'stripe' && date
                     ? t('Renews on {date}.', { date })
                     : paid ? (date ? t('Active until {date}.', { date }) : t('Your plan is active.')) : t('Upgrade for more bots and a cloud computer for your team.')}
@@ -92,13 +94,14 @@ export function PlanSection() {
                     disabled={isCurrent || !!busy || !billing.webCheckout}
                     onClick={() => void go(p.id, () => api.checkout(p.id))}
                   >
-                    {isCurrent ? t('Current plan') : busy === p.id ? t('Opening…') : t('Choose {plan}', { plan: t(p.name) })}
+                    {isCurrent ? t('Current plan') : busy === p.id ? t('Opening…') : billing.trialAvailable ? t('Try 1 day free') : t('Choose {plan}', { plan: t(p.name) })}
                   </button>
                 </div>
               );
             })}
           </div>
           {!billing.webCheckout && <div className="cfg-field__hint">{t('Web payments are coming soon. You can subscribe in the Fino iPhone app.')}</div>}
+          {billing.webCheckout && billing.trialAvailable && <div className="plan-note">{t('Try any plan free for 1 day. Your card is charged after the free day unless you cancel before; you can cancel in one click.')}</div>}
           {billing.webCheckout && <div className="cfg-field__hint">{t('Secure payment by Stripe. Cancel anytime. Your plan works on the web, Mac and iPhone.')}</div>}
         </section>
       )}

@@ -13,7 +13,7 @@ import type { Context } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from './db.js';
 import { env } from './env.js';
-import { PLANS, isPlanId, setPlan, type PlanId } from './plans.js';
+import { PLANS, TRIAL, isPlanId, setPlan, type PlanId } from './plans.js';
 
 const BUYABLE: PlanId[] = ['starter', 'pro', 'max', 'ultra'];
 const priceEnv = (plan: PlanId) => process.env[`STRIPE_PRICE_${plan.toUpperCase()}`]?.trim() || undefined;
@@ -26,10 +26,15 @@ for (const col of ['plan_source TEXT', 'stripe_customer_id TEXT', 'stripe_subscr
 }
 
 export type PlanSource = 'apple' | 'google' | 'stripe' | null;
-interface BillingRow { plan_source: PlanSource; stripe_customer_id: string | null; stripe_subscription_id: string | null; email: string }
+interface BillingRow { plan_source: PlanSource; stripe_customer_id: string | null; stripe_subscription_id: string | null; email: string; trial_used_at: number | null }
 const billingRow = (userId: string) =>
-  db.prepare('SELECT plan_source, stripe_customer_id, stripe_subscription_id, email FROM users WHERE id=?').get(userId) as BillingRow | undefined;
+  db.prepare('SELECT plan_source, stripe_customer_id, stripe_subscription_id, email, trial_used_at FROM users WHERE id=?').get(userId) as BillingRow | undefined;
 export const planSource = (userId: string): PlanSource => billingRow(userId)?.plan_source ?? null;
+/** One free trial day per account, only for someone not already paying anywhere. */
+export function trialAvailable(userId: string): boolean {
+  const row = billingRow(userId);
+  return stripeEnabled() && TRIAL.days > 0 && !!row && !row.trial_used_at && !row.plan_source;
+}
 export const setPlanSource = (userId: string, source: PlanSource) => db.prepare('UPDATE users SET plan_source=? WHERE id=?').run(source, userId);
 
 /** Calls the Stripe REST API with form encoding (no SDK needed). */
@@ -69,6 +74,12 @@ export async function createCheckout(userId: string, plan: string): Promise<{ ur
     success_url: `${env.appUrl}/?billing=success`,
     cancel_url: `${env.appUrl}/?billing=cancel`,
   };
+  if (trialAvailable(userId)) {
+    // Card now, charged after the free day unless cancelled; without a card at the end the subscription just ends.
+    params['subscription_data[trial_period_days]'] = String(TRIAL.days);
+    params['subscription_data[trial_settings][end_behavior][missing_payment_method]'] = 'cancel';
+    params.payment_method_collection = 'always';
+  }
   const price = priceEnv(plan);
   if (price) params['line_items[0][price]'] = price;
   else {
@@ -110,6 +121,7 @@ interface StripeSubscription {
   status: string;
   metadata?: Record<string, string>;
   current_period_end?: number;
+  trial_end?: number | null;
   items?: { data?: { current_period_end?: number; price?: { id?: string } }[] };
 }
 
@@ -141,8 +153,11 @@ export function applySubscription(sub: StripeSubscription) {
     const end = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
     db.prepare('UPDATE users SET stripe_customer_id=?, stripe_subscription_id=?, plan_source=? WHERE id=?').run(sub.customer, sub.id, 'stripe', userId);
     setPlan(userId, plan, end ? end * 1000 : null);
+    // The free day: remember it was used, and run on the trial budget until it ends.
+    const trialEnd = sub.status === 'trialing' && sub.trial_end ? sub.trial_end * 1000 : null;
+    db.prepare('UPDATE users SET plan_trial_until=?, trial_used_at=COALESCE(trial_used_at, CASE WHEN ? IS NOT NULL THEN ? END) WHERE id=?').run(trialEnd, trialEnd, Date.now(), userId);
   } else if (ours && ['canceled', 'unpaid', 'incomplete_expired'].includes(sub.status)) {
-    db.prepare('UPDATE users SET stripe_subscription_id=NULL, plan_source=NULL WHERE id=?').run(userId);
+    db.prepare('UPDATE users SET stripe_subscription_id=NULL, plan_source=NULL, plan_trial_until=NULL WHERE id=?').run(userId);
     setPlan(userId, 'free');
   }
 }

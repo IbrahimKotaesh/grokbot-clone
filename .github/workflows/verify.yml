@@ -88,6 +88,12 @@ jobs:
         env:
           SESSION_SECRET: ci-push-test-value
           DB_PATH: ':memory:'
+      - run: node tests/stripe-billing.mjs
+        env:
+          SESSION_SECRET: ci-stripe-test-value
+          DB_PATH: ':memory:'
+          STRIPE_WEBHOOK_SECRET: whsec_test
+          REVENUECAT_WEBHOOK_SECRET: rc_test
       - run: node tests/screen-routing.mjs
         env:
           SESSION_SECRET: ci-routing-test-value

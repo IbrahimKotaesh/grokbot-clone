@@ -8,13 +8,13 @@ import { db } from './db.js';
 import { env } from './env.js';
 import type { AuthVars } from './lib/auth.js';
 import { billingSummary, isPlanId, setPlan, type PlanId } from './plans.js';
-import { createCheckout, createPortal, planSource, setPlanSource, stripeEnabled } from './stripe.js';
+import { createCheckout, createPortal, planSource, setPlanSource, stripeEnabled, trialAvailable } from './stripe.js';
 
 export const billingApi = new Hono<AuthVars>();
 
 billingApi.get('/', (c) => {
   const id = c.get('user').id;
-  return c.json({ ...billingSummary(id), source: planSource(id), webCheckout: stripeEnabled() });
+  return c.json({ ...billingSummary(id), source: planSource(id), webCheckout: stripeEnabled(), trialAvailable: trialAvailable(id) });
 });
 
 /** Web: start Stripe Checkout for a plan (or the billing portal if already paying on the web). */

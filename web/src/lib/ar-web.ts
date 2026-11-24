@@ -629,4 +629,7 @@ export const arWeb: Record<string, string> = {
   "Unlimited bots": "بوتات بلا حدود",
   "Deeper reasoning": "تفكير أعمق",
   "Nothing to sign in to. Fino Flash, included in your plan.": "لا حاجة لتسجيل الدخول. Fino Flash مشمول في خطتك.",
+  "Try 1 day free": "جرّب يوم مجاناً",
+  "Try any plan free for 1 day. Your card is charged after the free day unless you cancel before; you can cancel in one click.": "جرّب أي خطة مجاناً ليوم واحد. تُخصم الرسوم من بطاقتك بعد اليوم المجاني إلا إذا ألغيت قبلها، والإلغاء بضغطة واحدة.",
+  "Free trial until {date}. Your card is charged then, unless you cancel before.": "تجربة مجانية حتى {date}. تُخصم الرسوم من بطاقتك عندها، إلا إذا ألغيت قبل ذلك.",
 };

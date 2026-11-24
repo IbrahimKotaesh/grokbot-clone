@@ -6,7 +6,10 @@ import { createHmac } from 'node:crypto';
 import { Hono } from 'hono';
 import { db } from '../server/dist/db.js';
 import { planOf } from '../server/dist/plans.js';
-import { stripeWebhook, verifyStripeSignature, planSource, createCheckout } from '../server/dist/stripe.js';
+import { stripeWebhook, verifyStripeSignature, planSource, createCheckout, trialAvailable } from '../server/dist/stripe.js';
+import { trialUntil, TRIAL } from '../server/dist/plans.js';
+import { hostedChatModel } from '../server/dist/hosted-models.js';
+import '../server/dist/usage-meter.js';
 import { revenueCatWebhook } from '../server/dist/billing.js';
 
 const SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -69,5 +72,30 @@ await rc({ type: 'EXPIRATION', app_user_id: 'phone', entitlement_ids: ['pro'], s
 assert.equal(planOf('phone').id, 'free', 'the Apple plan ends when Apple says so');
 
 await assert.rejects(createCheckout('web', 'enterprise'), /Pick Starter, Pro, Max or Ultra/);
-console.log('PASS: Stripe signatures checked; web purchase, plan change, past-due and cancel apply; Apple and Stripe never end each other’s plan');
+
+// Free trial day: offered once, sent to Stripe Checkout, small budget while it runs, gone after it ends
+process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
+const sent = []; const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init) => { sent.push({ url: String(url), body: new URLSearchParams(init?.body ?? '') }); return new Response(JSON.stringify({ url: 'https://checkout.stripe.com/test' }), { status: 200 }); };
+db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run('trier', 'trier@example.com', 'Trier', Date.now());
+assert.equal(trialAvailable('trier'), true, 'a new account can try a plan free');
+await createCheckout('trier', 'pro');
+const params = sent.at(-1).body;
+assert.equal(params.get('subscription_data[trial_period_days]'), String(TRIAL.days));
+assert.equal(params.get('subscription_data[trial_settings][end_behavior][missing_payment_method]'), 'cancel');
+assert.equal(params.get('payment_method_collection'), 'always', 'a card is taken up front');
+const tEnd = Math.floor(Date.now() / 1000) + 86400;
+await send({ type: 'customer.subscription.created', data: { object: sub({ id: 'sub_t', customer: 'cus_t', status: 'trialing', trial_end: tEnd, metadata: { user_id: 'trier', plan: 'pro' } }) } });
+assert.equal(planOf('trier').id, 'pro', 'the trial gives the full plan');
+assert.ok(trialUntil('trier') > Date.now(), 'and is marked as a trial');
+assert.equal(trialAvailable('trier'), false, 'one trial per account');
+db.prepare("INSERT INTO model_usage(user_id,bot_id,provider,model,input_tokens,cached_tokens,output_tokens,model_calls,computer_steps,tool_calls,started_at,ended_at,kind,hosted,cost_usd) VALUES ('trier','b','openrouter','x',0,0,0,1,0,0,?,?,'chat',1,?)").run(Date.now(), Date.now(), TRIAL.chatUsd);
+assert.throws(() => hostedChatModel('trier', 'deepseek/deepseek-v4.1-flash'), /free trial day's included AI is used up/, 'the trial has its own small AI budget');
+await send({ type: 'customer.subscription.updated', data: { object: sub({ id: 'sub_t', customer: 'cus_t', status: 'active', trial_end: tEnd, metadata: { user_id: 'trier', plan: 'pro' } }) } });
+assert.equal(trialUntil('trier'), null, 'once paid, the trial budget no longer applies');
+assert.equal(typeof hostedChatModel('trier', 'deepseek/deepseek-v4.1-flash'), 'string', 'the full plan budget is back');
+await createCheckout('trier', 'max');
+assert.match(sent.at(-1).url, /billing_portal/, 'an existing web subscriber is sent to the portal, not a second trial');
+globalThis.fetch = realFetch;
+console.log('PASS: Stripe signatures checked; web purchase, plan change, past-due and cancel apply; Apple and Stripe never end each other’s plan; one free trial day with a card, a small budget, then the full plan');
 db.close(); process.exit(0);

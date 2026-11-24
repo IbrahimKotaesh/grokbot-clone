@@ -1,16 +1,16 @@
 // Fino's own OpenRouter models: the server pays, so computer work is routed cheap-first and every plan has
 // a monthly cost cap. Users who add their own OpenRouter key pay for themselves and are never routed.
 import { db } from './db.js';
-import { planOf, type PlanId } from './plans.js';
+import { planOf, TRIAL, trialUntil, type PlanId } from './plans.js';
 
 /**
- * Hosts allowed to run Fino's included models: companies based in the US or EU (no hosts in China or run by
- * Chinese companies), and only hosts that neither keep prompts nor train on them. OpenRouter then picks the
- * cheapest healthy one and keeps each conversation on it for the prompt cache. OR_PROVIDER_ONLY overrides the list.
+ * Hosts for Fino's included models: any host that neither keeps prompts nor trains on them (OpenRouter's
+ * data_collection: deny). OpenRouter picks the cheapest healthy one (often Baidu for Fino Flash) and keeps each
+ * conversation on it for the prompt cache. OR_PROVIDER_ONLY (comma-separated host slugs) limits it to a list,
+ * e.g. US/EU hosts only, at about twice the cost per cached step.
  */
-export const HOSTED_PROVIDERS = (process.env.OR_PROVIDER_ONLY ?? 'deepinfra,together,fireworks,coreweave,crusoe,cohere,nebius,parasail,baseten,digitalocean,cloudflare,inference-net,wafer,open-inference,google-vertex,azure,river,modal,ionstream,tenstorrent,pareto-inference,particle-ai,morph')
-  .split(',').map((s) => s.trim()).filter(Boolean);
-export const hostedProviderPrefs = () => ({ only: HOSTED_PROVIDERS, data_collection: 'deny' as const });
+const HOSTED_PROVIDERS = (process.env.OR_PROVIDER_ONLY ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+export const hostedProviderPrefs = () => ({ data_collection: 'deny' as const, ...(HOSTED_PROVIDERS.length ? { only: HOSTED_PROVIDERS } : {}) });
 
 /** The server's OpenRouter key, or null when Fino doesn't host models on this server. */
 export const hostedKey = () => process.env.OPENROUTER_API_KEY || null;
@@ -93,12 +93,22 @@ export const computerSpend = (userId: string) => hostedSpend(userId, 'computer')
  * The model a chat step runs on with Fino's key: the bot's choice if the plan includes it, else the default.
  * Past the month's chat budget everything runs on the cheapest model; past twice the budget, replies stop.
  */
+/** The month's AI budget (USD at cost) for chat or computer work; the free trial day has its own small one. */
+function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
+  // Chat replies stop at twice the cap, so the trial's chat cap is half its budget.
+  if (trialUntil(userId)) return kind === 'chat' ? TRIAL.chatUsd / 2 : TRIAL.computerUsd;
+  const plan = planOf(userId).id;
+  return kind === 'chat' ? CHAT_CAP[plan] : COMPUTER_CAP[plan];
+}
+
 export function hostedChatModel(userId: string, wanted: string): string {
   const plan = planOf(userId).id;
-  const cap = CHAT_CAP[plan];
+  const cap = capFor(userId, 'chat');
   const spent = hostedSpend(userId, 'chat');
   if (cap !== null && spent >= cap * 2)
-    throw Object.assign(new Error("This month's included AI is used up. Upgrade your plan, or add your own AI key in Settings → AI models."), { status: 402 });
+    throw Object.assign(new Error(trialUntil(userId)
+      ? "The free trial day's included AI is used up. It refills when your plan starts, or connect your own ChatGPT in Settings → AI models."
+      : "This month's included AI is used up. Upgrade your plan, or add your own AI key in Settings → AI models."), { status: 402 });
   if (cap !== null && spent >= cap) return HOSTED_MODELS[0].id;
   return modelAllowed(plan, wanted) ? wanted : HOSTED_MODELS[0].id;
 }
@@ -112,12 +122,12 @@ export function hostedSummary(userId: string) {
     plan,
     models: HOSTED_MODELS.map((m) => ({ id: m.id, name: m.name, note: m.note, tier: m.tier, allowed: modelAllowed(plan, m.id) })),
     // Percent of the month's included AI used, not dollars: the app shows it as a simple meter.
-    usage: { chat: pct(hostedSpend(userId, 'chat'), CHAT_CAP[plan]), computer: pct(computerSpend(userId), COMPUTER_CAP[plan]) },
+    usage: { chat: pct(hostedSpend(userId, 'chat'), capFor(userId, 'chat')), computer: pct(computerSpend(userId), capFor(userId, 'computer')) },
   };
 }
 
 export function overComputerCap(userId: string): boolean {
-  const cap = COMPUTER_CAP[planOf(userId).id];
+  const cap = capFor(userId, 'computer');
   return cap !== null && computerSpend(userId) >= cap;
 }
 

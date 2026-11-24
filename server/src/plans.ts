@@ -55,6 +55,19 @@ if (!(db.prepare('PRAGMA table_info(users)').all() as any[]).some((c) => c.name 
   db.exec("UPDATE users SET plan='max'");
 }
 if (!(db.prepare('PRAGMA table_info(users)').all() as any[]).some((c) => c.name === 'plan_renews_at')) db.exec('ALTER TABLE users ADD COLUMN plan_renews_at INTEGER');
+for (const col of ['plan_trial_until INTEGER', 'trial_used_at INTEGER'])
+  if (!(db.prepare('PRAGMA table_info(users)').all() as any[]).some((c) => c.name === col.split(' ')[0])) db.exec(`ALTER TABLE users ADD COLUMN ${col}`);
+
+/**
+ * The free trial day (Stripe, card on file, charged after a day unless cancelled): the full plan, with a small
+ * budget so a trial costs Fino cents. One trial per account.
+ */
+export const TRIAL = { days: Number(process.env.STRIPE_TRIAL_DAYS ?? 1), chatUsd: 0.25, computerUsd: 0.25, computerMinutes: 30 };
+/** When the account's free trial ends, or null when it isn't in one. */
+export function trialUntil(userId: string): number | null {
+  const row = db.prepare('SELECT plan_trial_until FROM users WHERE id=?').get(userId) as { plan_trial_until: number | null } | undefined;
+  return row?.plan_trial_until && row.plan_trial_until > now() ? row.plan_trial_until : null;
+}
 db.exec('CREATE TABLE IF NOT EXISTS computer_usage (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER)');
 db.exec('CREATE INDEX IF NOT EXISTS computer_usage_user ON computer_usage(user_id, started_at)');
 
@@ -108,6 +121,8 @@ export function assertComputerAllowed(userId: string) {
   if (env.computerProvider !== 'orgo' && !usesServerResources(userId)) throw new PlanLimitError('The bot computer isn’t available on your account yet. Your bots can still chat and use your connected apps.', 'computer');
   const plan = planOf(userId);
   if (!plan.computer) throw new PlanLimitError('Computer use is part of the Pro plan. Upgrade in Account → Plan to give your bots a computer.', 'computer');
+  if (trialUntil(userId) && computerMinutesThisMonth(userId) >= TRIAL.computerMinutes)
+    throw new PlanLimitError(`The free trial day includes ${TRIAL.computerMinutes} minutes of computer use. Your full ${plan.computerHours} hours start when the trial ends.`, 'computer');
   if (plan.computerHours !== null && computerMinutesThisMonth(userId) >= plan.computerHours * 60)
     throw new PlanLimitError(`You've used this month's ${plan.computerHours} computer hours. Upgrade for more, or wait until next month.`, 'computer');
 }
@@ -126,6 +141,7 @@ export function billingSummary(userId: string) {
   return {
     plan: plan.id,
     renewsAt: row?.plan_renews_at ?? null,
+    trialUntil: trialUntil(userId),
     plans: Object.values(PLANS),
     usage: { bots, computerMinutes: computerMinutesThisMonth(userId) },
   };
