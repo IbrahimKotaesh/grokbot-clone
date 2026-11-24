@@ -113,16 +113,16 @@ export const motion = {
 // Per-bot accent, used sparingly (status ring, call orb glow).
 export const chatColors: Record<string, string> = {
   black: "#8e9bb0",
-  brown: "#c08a5a",
-  red: "#ff6b6b",
-  orange: "#ff9f43",
-  yellow: "#f5c84c",
-  green: "#3ddc97",
-  cyan: "#3cc8e0",
-  blue: "#5b9bff",
-  violet: "#a78bfa",
-  magenta: "#f472b6",
-  gray: "#a1a1aa",
+  brown: "#d77930",
+  red: "#ff5d48",
+  orange: "#ff8936",
+  yellow: "#ffc829",
+  green: "#5ace4e",
+  cyan: "#11c2b0",
+  blue: "#2b6eed",
+  violet: "#a669fc",
+  magenta: "#ff639c",
+  gray: "#a3a5ae",
 };
 // Bot characters (accountant, chef, medic…) drawn in packages/contracts/src/characters.ts and painted
 // in the bot's color. The old "fruit" names stay as aliases so screens and saved bots keep working.
@@ -138,7 +138,5 @@ export const fruitColor: Record<Fruit, string> = {
   florist: "magenta",
 };
 export const fruitFor = (shape: string): Fruit => characterKind(shape);
-/** Your own chat bubbles: one Messenger-style blue in light and dark. */
-export const CHAT_BLUE = "#1877F2";
 export const accentFor = (color?: string) =>
   chatColors[color ?? ""] ?? chatColors.blue;

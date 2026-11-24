@@ -1,4 +1,5 @@
 import type { AvatarColor } from '@shared/types';
+import { bubbleFor } from '../../../packages/contracts/src/characters';
 
 /**
  * Bot colors. `fill` is the avatar/swatch color, `bubble` the user message bubble, `action` the
@@ -29,11 +30,9 @@ export const palette = (c: AvatarColor | string | undefined): BotPalette => BOT_
 /** CSS custom properties that theme a subtree with a bot's color. */
 export function botVars(c: AvatarColor | string | undefined): React.CSSProperties {
   const p = palette(c);
-  const rgb=p.fill.slice(1).match(/../g)!.map(h=>parseInt(h,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
-  const luminance=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
-  const onBubble=luminance>.179?'#000000':'#ffffff';
+  const bubble = bubbleFor(c);
   return {
-    ['--bot-on-bubble' as string]:onBubble, ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: p.fill,
+    ['--bot-on-bubble' as string]: bubble.ink, ['--bot-fill' as string]: p.fill, ['--bot-bubble' as string]: bubble.bg,
     ['--bot-reply-bg' as string]:p.fill,
     ['--bot-reply-border' as string]:p.fill, ['--bot-action' as string]: 'var(--color-primary)', ['--bot-action-hover' as string]: 'var(--color-bg-primary-hover)',
     ['--bot-on-action' as string]: 'var(--color-on-primary)',

@@ -9,7 +9,8 @@ import type { Row, Bot } from "../../../packages/contracts/src/types";
 import { Button, IconButton, styles as s } from "./UI";
 import { FadeIn } from "./motion";
 import { client, authHeaders, connectApp } from "../lib/session";
-import { palette as p, type, space, radius, CHAT_BLUE } from "../theme";
+import { palette as p, type, space, radius } from "../theme";
+import { bubbleFor } from "../../../packages/contracts/src/characters";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { fetch as nativeFetch } from "expo/fetch";
@@ -35,6 +36,28 @@ async function openLibraryFile(botId: string, fullPath: string) {
     file.write(url.slice(url.indexOf(",") + 1), { encoding: "base64" });
     await Sharing.shareAsync(file.uri);
   } else await Linking.openURL(url);
+}
+/**
+ * Your message text, sized to its longest line. iOS lays out wrapped text at the full width it is
+ * offered, which leaves an empty strip inside the bubble; measuring the lines lets the bubble hug it.
+ */
+function FitText({ text, color }: { text: string; color: string }) {
+  const [width, setWidth] = useState<number>();
+  const right = rtl(text);
+  return (
+    <Text
+      selectable
+      onTextLayout={(e) => {
+        const lines = e.nativeEvent.lines;
+        if (lines.length < 2) return;
+        const widest = Math.ceil(Math.max(...lines.map((l) => l.width))) + 1;
+        if (widest !== width) setWidth(widest);
+      }}
+      style={{ width, color, fontSize: 16, lineHeight: 23, writingDirection: right ? "rtl" : "ltr", textAlign: right ? "right" : "left" }}
+    >
+      {text}
+    </Text>
+  );
 }
 const time = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
@@ -274,6 +297,8 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
   }
   const user = body.role === "user";
   const hasBody = !!text || !!body.files?.length;
+  // Your bubble wears the bot's color, so every chat looks like that bot's own.
+  const bubble = bubbleFor(bot.avatarColor);
   return (
     <Enter row={row}>
       <View style={{ paddingHorizontal: space.lg, paddingVertical: user ? 6 : 10, alignItems: user ? "flex-end" : "flex-start" }}>
@@ -281,7 +306,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
           style={{
             maxWidth: user ? "84%" : "100%",
             alignSelf: user ? "flex-end" : "stretch",
-            backgroundColor: user && hasBody ? CHAT_BLUE : "transparent",
+            backgroundColor: user && hasBody ? bubble.bg : "transparent",
             borderRadius: 22,
             borderBottomRightRadius: user ? 6 : 22,
             paddingHorizontal: user && hasBody ? space.lg : 2,
@@ -289,7 +314,11 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
             gap: space.md,
           }}
         >
-          {!!text && (
+          {!!text && user && (
+            // Plain text, not Markdown: Markdown paragraphs stretch to full width and puff the bubble up.
+            <FitText text={text} color={bubble.ink} />
+          )}
+          {!!text && !user && (
             <Markdown
               style={{
                 body: { color: user ? "#fff" : p.text, fontSize: user ? 16 : 16.5, lineHeight: user ? 23 : 26, writingDirection: rtl(text) ? "rtl" : "auto" },

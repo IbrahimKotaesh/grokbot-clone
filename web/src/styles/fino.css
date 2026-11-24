@@ -379,7 +379,7 @@ body{letter-spacing:0;}
 @media(prefers-reduced-motion:no-preference){.steps[open] .steps__list{animation:fino-menu-in 170ms ease-in-out}}
 
 .chat .bubble.is-agent{background:var(--bot-reply-bg,var(--color-bg-assistant));border-color:var(--bot-reply-border,var(--color-border-assistant));color:var(--color-ink)}
-.chat .bubble.is-user{background:var(--bot-bubble,var(--color-bubble-user));color:#fff}
+.chat .bubble.is-user{background:var(--bot-bubble,var(--color-bubble-user));color:var(--bot-on-bubble,#fff)}
 
 /* The chief anchors the roster; teammates stay in an ordered, quieter list. */
 .sidebar:not(.is-collapsed) .pinned{justify-content:center;padding:14px 0 24px;}

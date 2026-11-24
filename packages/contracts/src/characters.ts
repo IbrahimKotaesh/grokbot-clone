@@ -24,20 +24,36 @@ export function characterKind(shape: string | null | undefined): CharacterKind {
   return 'accountant';
 }
 
-/** Clay tones for each bot color: softer than the chat accents so the figures look like matte toys. */
+/** Clay tones for each bot color: bright enough to read as the bot's color, still matte like a toy. */
 export const CLAY: Record<string, string> = {
   black: '#5a5d6b',
-  brown: '#c27c45',
-  red: '#f8624f',
-  orange: '#fb8a3a',
-  yellow: '#fcc72c',
-  green: '#68bd5f',
-  cyan: '#26ad9f',
-  blue: '#4275d6',
-  violet: '#a97aeb',
-  magenta: '#f56d9f',
+  brown: '#d77930',
+  red: '#ff5d48',
+  orange: '#ff8936',
+  yellow: '#ffc829',
+  green: '#5ace4e',
+  cyan: '#11c2b0',
+  blue: '#2b6eed',
+  violet: '#a669fc',
+  magenta: '#ff639c',
   gray: '#a3a5ae',
 };
+
+/** Your chat bubble in a bot's chat: the bot's own hue, deep enough for its text to read (4:1 or better). */
+export const BUBBLE: Record<string, { bg: string; ink: string }> = {
+  black: { bg: '#3d404c', ink: '#ffffff' },
+  brown: { bg: '#bf6825', ink: '#ffffff' },
+  red: { bg: '#e5301f', ink: '#ffffff' },
+  orange: { bg: '#d45800', ink: '#ffffff' },
+  yellow: { bg: '#ffc620', ink: '#1f1a12' },
+  green: { bg: '#318f27', ink: '#ffffff' },
+  cyan: { bg: '#0c8a7d', ink: '#ffffff' },
+  blue: { bg: '#2b6eed', ink: '#ffffff' },
+  violet: { bg: '#9a55fc', ink: '#ffffff' },
+  magenta: { bg: '#e2186a', ink: '#ffffff' },
+  gray: { bg: '#7a7d8a', ink: '#ffffff' },
+};
+export const bubbleFor = (color?: string | null) => BUBBLE[color ?? ''] ?? BUBBLE.blue;
 
 function mix(hex: string, to: string, t: number): string {
   const a = hex.replace('#', ''), b = to.replace('#', '');

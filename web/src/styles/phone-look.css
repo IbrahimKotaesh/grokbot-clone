@@ -93,11 +93,11 @@
 
 body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
 
-/* ---------- chat: blue bubble for you (Messenger-style), plain text for the bot ---------- */
+/* ---------- chat: your bubble in the bot's color, plain text for the bot ---------- */
 .chat, .transcript, .chat__body { background: var(--p-bg); }
 .chat .bubble.is-user {
-  background: var(--chat-blue) !important;
-  color: #fff !important;
+  background: var(--bot-bubble, var(--chat-blue)) !important;
+  color: var(--bot-on-bubble, #fff) !important;
   border: 0;
   border-radius: 20px;
   padding: 10px 15px;
