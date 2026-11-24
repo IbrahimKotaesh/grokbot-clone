@@ -10,8 +10,7 @@ import { forgetClaudeLogin } from './claude-login.js';
 
 export const accountApi = new Hono<AuthVars>();
 
-if (!(db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).some((c) => c.name === 'auto_approve'))
-  db.exec('ALTER TABLE users ADD COLUMN auto_approve INTEGER NOT NULL DEFAULT 0');
+// The auto_approve column is created in db.ts.
 
 /** "Don't ask for approval": the user's bots act without asking (suspicious content still asks). */
 accountApi.get('/approvals', (c) => {

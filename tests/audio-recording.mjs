@@ -13,6 +13,6 @@ try {
  let session=createAudioRecording(b=>recorded.push(b),e=>errors.push(e));assert.equal(await session.start(),true);session.stop();assert.equal(recorded.length,1);assert.equal(recorded[0].type,'audio/mp4');assert.equal(await recorded[0].text(),'actual bytes');assert.ok(stopped);
  recorded=[];session=createAudioRecording(b=>recorded.push(b),e=>errors.push(e));await session.start();session.cancel();assert.equal(recorded.length,0,'Cancel never uploads captured audio');
  mode='late';stopped=0;session=createAudioRecording(b=>recorded.push(b),e=>errors.push(e));const waiting=session.start();session.cancel();resolveMedia(stream);assert.equal(await waiting,false);assert.equal(stopped,1,'Late microphone permission is released after cancellation');
- mode='denied';session=createAudioRecording(b=>recorded.push(b),e=>errors.push(e));assert.equal(await session.start(),false);assert.match(errors.at(-1),/Microphone access was denied/);
+ mode='denied';session=createAudioRecording(b=>recorded.push(b),e=>errors.push(e));assert.equal(await session.start(),false);assert.match(errors.at(-1),/microphone is blocked/);
  console.log('PASS: Safari MP4 format, recorded bytes, stopped tracks, cancelled uploads, late permission cleanup and permission errors');
 }finally{await fs.unlink(path);}

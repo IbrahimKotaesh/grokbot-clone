@@ -7,7 +7,7 @@ try{
  const {createElement:h}=await import('react'),{renderToStaticMarkup:render}=await import('react-dom/server'),{ApprovalCard}=await import(output.href);
  const body={type:'card',card:'approval',approvalId:'test',title:'Review action',tool:'shell',args:{command:'python -c "print(1)"'},status:'pending'};
  const fresh=render(h(ApprovalCard,{body:{...body,requiresFreshApproval:true}}));
- assert.ok(!fresh.includes('Always allow'));assert.ok(fresh.includes('Allow once'));assert.ok(fresh.includes('including in Autonomous mode'));
+ assert.ok(!fresh.includes('Always allow'));assert.ok(fresh.includes('Allow once'));assert.ok(fresh.includes('needs your OK each time'));
  assert.ok(render(h(ApprovalCard,{body})).includes('Always allow'),'Ordinary action grants are preserved');
  console.log('PASS: critical approval UI has Allow once, no permanent-grant button; ordinary approval UI unchanged');
 }finally{delete globalThis.window;await fs.unlink(output);}

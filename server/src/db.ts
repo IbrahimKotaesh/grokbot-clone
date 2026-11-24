@@ -165,3 +165,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS bot_chats(
  UPDATE bots SET next_seq=MAX(next_seq,COALESCE((SELECT MAX(seq)+1 FROM rows WHERE bot_id=bots.id),1));`);
 addColumn('approvals','generation','INTEGER');
 db.exec(`UPDATE approvals SET generation=COALESCE((SELECT r.generation FROM rows r WHERE r.bot_id=approvals.bot_id AND r.seq=approvals.row_seq AND json_extract(r.body,'$.approvalId')=approvals.id LIMIT 1),(SELECT generation FROM bots WHERE id=approvals.bot_id)) WHERE generation IS NULL`);
+
+// Users' "don't ask for approval" switch. Created here, with the schema, because approvals are checked from many
+// modules (the agent loop, tools, tests), not only the account routes.
+if (!(db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).some((c) => c.name === 'auto_approve'))
+  db.exec('ALTER TABLE users ADD COLUMN auto_approve INTEGER NOT NULL DEFAULT 0');

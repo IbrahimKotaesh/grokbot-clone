@@ -78,7 +78,6 @@ assert.ok(files.every((x) => x.mime.startsWith('application/vnd.openxmlformats')
 assert.equal(db.prepare('SELECT COUNT(*) n FROM message_images WHERE bot_id=?').get(bot.id).n, 1);
 
 // Approvals in balanced mode: reading/making files needs no OK, running code does
-try { db.exec('ALTER TABLE users ADD COLUMN auto_approve INTEGER NOT NULL DEFAULT 0'); } catch {}
 assert.equal(policyFor('office', 'view_file', { path: 'x' }, bot.id).decision, 'allow');
 assert.equal(policyFor('office', 'make_spreadsheet', {}, bot.id).decision, 'allow');
 assert.equal(policyFor('office', 'run_python', { code: 'print(1)' }, bot.id).decision, 'ask');
