@@ -24,8 +24,11 @@ const summarizer = hostedKey() ? new OpenAI({ apiKey: hostedKey()!, baseURL: 'ht
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 
 export const memoryConfig = {
-  /** Compact when the history estimate passes this many characters (~4 chars/token). GROKBOT_COMPACT_TOKENS overrides. */
-  compactChars: process.env.GROKBOT_COMPACT_TOKENS ? num(process.env.GROKBOT_COMPACT_TOKENS, 75_000) * 4 : num(process.env.GROKBOT_COMPACT_CHARS, 300_000),
+  /**
+   * Compact when the history estimate passes this many characters (~4 chars/token). GROKBOT_COMPACT_TOKENS overrides.
+   * ~40k tokens: every step re-sends the whole history, so a long chat made each step slow and costly (Mo reached 1.1M chars).
+   */
+  compactChars: process.env.GROKBOT_COMPACT_TOKENS ? num(process.env.GROKBOT_COMPACT_TOKENS, 40_000) * 4 : num(process.env.GROKBOT_COMPACT_CHARS, 160_000),
   /** User turns kept verbatim after a compaction. */
   keepTurns: num(process.env.GROKBOT_COMPACT_KEEP_TURNS, 4),
   /** Minutes without a message before consolidation runs. */
@@ -169,14 +172,24 @@ async function compactWithSummary(old: any[]): Promise<any[]> {
   const transcript = renderTranscript(old);
   const client = xaiReady ? xai : summarizer;
   if (!client) throw new Error('no model available to summarize');
-  const res: any = await client.responses.create({
-    model: xaiReady ? env.xaiModel : SUMMARY_MODEL,
-    input: [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: transcript }],
-    store: false,
-    reasoning: { effort: 'low' },
-  } as any);
-  const text = String(res.output_text ?? '').trim();
-  if (!text) throw new Error('summary was empty');
+  // Read the text from the output items too: some providers leave output_text empty while the message has it.
+  const textOfResponse = (res: any) => String(res?.output_text ?? '').trim()
+    || (res?.output ?? []).flatMap((o: any) => (o?.type === 'message' ? o.content ?? [] : [])).map((c: any) => c?.text ?? '').join('\n').trim();
+  let text = '';
+  for (const attempt of [{ reasoning: { effort: 'low' } }, { max_output_tokens: 3000 }]) {
+    try {
+      const res: any = await client.responses.create({
+        model: xaiReady ? env.xaiModel : SUMMARY_MODEL,
+        input: [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: attempt.max_output_tokens ? transcript.slice(-60_000) : transcript }],
+        store: false,
+        ...attempt,
+      } as any);
+      text = textOfResponse(res);
+      if (text) break;
+    } catch (e) { console.warn('[memory] summary attempt failed:', (e as Error).message); }
+  }
+  // Never stay over budget because a summary failed: keep the latest part of the transcript as plain notes.
+  if (!text) text = `[Summary unavailable; the most recent earlier exchanges follow, shortened.]\n${transcript.slice(-8_000)}`;
   // Earlier xAI compaction items can't be read back as text, so carry them over unchanged.
   const carried = old.filter((it) => it?.type === 'compaction');
   return [...carried, { role: 'user', content: `[Automatic summary of the earlier conversation, made to save space. Treat it as your own notes.]\n${text}` }];
@@ -222,7 +235,7 @@ export async function maybeCompact(botId: string, items: any[], opts: { force?: 
       replaced = await compactWithSummary(old);
     } catch (e2: any) {
       console.error(`[memory] summary fallback failed for ${botId}: ${e2?.message ?? e2}`);
-      compactCooldown.set(botId, now() + 10 * 60_000);
+      compactCooldown.set(botId, now() + 2 * 60_000);
       return items;
     }
   }

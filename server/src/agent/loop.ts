@@ -112,6 +112,26 @@ function enqueueBotMessage(fromBotId: string, toBotId: string, text: string, dep
  * and the provider's prompt cache keeps hitting (replacing one old screenshot per step broke it every step).
  */
 const IMAGE_BATCH = 4;
+
+/**
+ * Long tool results (pages, files, search results) from earlier requests are shortened: the bot already used them,
+ * and re-sending 12k characters of an old page on every step is what made long chats slow and costly. The current
+ * and previous request keep their full results. The cut only moves when a new message arrives, so within a turn
+ * the request stays identical step to step and the prompt cache keeps hitting.
+ */
+const KEEP_FULL_TURNS = 2, OLD_OUTPUT_CHARS = 1200;
+export function trimOldToolOutputs(items: any[]): any[] {
+  let turns = 0, cut = -1;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (it?.role === 'user' && it?.type !== 'function_call_output' && ++turns === KEEP_FULL_TURNS) { cut = i; break; }
+  }
+  if (cut <= 0) return items;
+  return items.map((it, i) => {
+    if (i >= cut || it?.type !== 'function_call_output' || typeof it.output !== 'string' || it.output.length <= OLD_OUTPUT_CHARS * 1.5) return it;
+    return { ...it, output: `${it.output.slice(0, OLD_OUTPUT_CHARS)}\n…[older result shortened to save space; call the tool again if you need the rest]` };
+  });
+}
 function pruneImages(items: any[]): any[] {
   const hasImage = (it: any) => {
     const content = it?.type === 'function_call_output' ? it.output : it?.role === 'user' ? it.content : null;
@@ -480,7 +500,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   // Runs inside the bot's serial queue, so compaction can't race a turn.
   const history = await maybeCompact(botId, loadHistory(botId)).catch(() => loadHistory(botId));
   // The model is only called when no approval is pending, so every orphaned call can be repaired.
-  const history2 = pruneImages(repairHistory(history));
+  const history2 = trimOldToolOutputs(pruneImages(repairHistory(history)));
   // Built once per turn: a memory saved mid-turn (remember, update_memory) would otherwise change the prompt on
   // the next step and throw away the whole cached conversation. It shows up from the next turn.
   let prompt = turnPrompts.get(botId);

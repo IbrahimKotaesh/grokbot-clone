@@ -211,7 +211,20 @@ export const TOOLS: ToolDef[] = [
       const count = r && now() - r.at < 3 * 60_000 ? r.n : 0;
       if (count >= MAX_PAGES) return { output: `You have read ${MAX_PAGES} pages for this request. Stop reading and answer with what you found, saying what you could not confirm.`, summary: 'Enough pages read' };
       pageReads.set(ctx.botId, { n: count + 1, at: now() });
-      const page = await readPage(String(a.url), a.max_chars);
+      // Sites that refuse plain fetches (LinkedIn's 999, logins, bot walls): open the page in the bot's own,
+      // signed-in Chrome instead and read it there, so the bot doesn't retry the blocked way.
+      const viaBrowser = async (why: string) => {
+        if (ctx.desktopTarget || getBotRow(ctx.botId)?.permission_mode === 'read_only') throw new Error(why);
+        const r = await TOOLS.find((t) => t.name === 'browser_navigate')!.impl({ url: String(a.url) }, ctx);
+        return { output: `(This site blocks direct reading, so it was opened in your own browser. Use browser_* tools for it from now on.)\n${typeof r.output === 'string' ? r.output : ''}`, summary: r.summary };
+      };
+      if (BROWSER_FIRST.test(String(a.url))) return viaBrowser('This site needs the browser.');
+      let page: Awaited<ReturnType<typeof readPage>>;
+      try { page = await readPage(String(a.url), a.max_chars); }
+      catch (e) {
+        if (/answered (999|401|403|429)\b/.test((e as Error).message)) return viaBrowser((e as Error).message);
+        throw e;
+      }
       const links = page.links.map((l) => `- ${l.text}: ${l.url}`).join('\n');
       return {
         output: `URL: ${page.url}\nTitle: ${page.title}\n\n${page.text}${links ? `\n\nLinks on the page:\n${links}` : ''}`,
@@ -891,6 +904,9 @@ export function policyKeys(toolName: string, args: any): string[] {
   }
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
+
+/** Sites that block plain page fetches for bots; read_page opens these in the bot's browser straight away. */
+const BROWSER_FIRST = /^https?:\/\/([a-z0-9-]+\.)*(linkedin\.com|indeed\.(com|nl)|glassdoor\.[a-z.]+|facebook\.com|instagram\.com|x\.com|twitter\.com)(\/|$)/i;
 
 const SAFE_LOCAL = new Set([...OFFICE_READS,...BROWSER_READS,'react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);

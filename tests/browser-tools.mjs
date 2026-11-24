@@ -82,6 +82,12 @@ assert.match(g3.block ?? '', /never types a payment card number/);
 const g4 = await employeeGuard('web', bot.id, 'browser_click', { ref: ref(page, 'Add row') });
 assert.deepEqual(g4, {}, 'ordinary buttons need no OK');
 
+// A site that blocks plain fetches (LinkedIn) is read through the bot's own browser instead
+const li = await toolMap.get('read_page').impl({ url: 'https://www.linkedin.com/jobs/search/?keywords=AI&location=Netherlands' }, ctx);
+assert.match(li.output, /blocks direct reading, so it was opened in your own browser/);
+assert.match(li.output, /URL: https:\/\/[a-z.]*linkedin\.com/);
+console.log('  read_page linkedin:', li.summary);
+
 await toolMap.get('shell').impl({ command: `rm -rf /root/grokbot/files/${bot.id}`, purpose: 'cleanup' }, ctx);
 console.log('PASS: browser tools read, find, fill a whole form (text, select, checkbox, upload), click and run scripts; card numbers are blocked and final buttons wait for the owner');
 db.close(); process.exit(0);
