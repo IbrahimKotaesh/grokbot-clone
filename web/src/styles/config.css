@@ -225,3 +225,15 @@
 .week-saved__facts b { color: var(--p-text); font-weight: 600; }
 .week-saved__facts .link-btn { font-size: 13px; margin-inline-start: auto; }
 .week-saved__how { margin: 10px 0 0; font-size: 13px; line-height: 19px; color: var(--p-muted); }
+
+/* Settings → Plan */
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.plan-card { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--color-bg-tertiary); box-shadow: var(--color-border-secondary) 0 0 0 0.5px inset; }
+.plan-card.is-featured { box-shadow: var(--color-primary) 0 0 0 1.5px inset; }
+.plan-card__name { font-size: 15px; font-weight: 600; }
+.plan-card__price { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+.plan-card__price span { font-size: 13px; font-weight: 450; color: var(--color-text-secondary); margin-inline-start: 2px; }
+.plan-card__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--color-text-secondary); flex: 1; }
+.plan-card__list li::before { content: "✓"; margin-inline-end: 6px; color: var(--color-text-primary); }
+.plan-card .cfg-btn { width: 100%; justify-content: center; }
+.plan-note { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--color-primary) 10%, transparent); font-size: 14px; margin-bottom: 4px; }

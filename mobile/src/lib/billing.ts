@@ -21,6 +21,8 @@ export interface BillingSummary {
   renewsAt: number | null;
   plans: Plan[];
   usage: { bots: number; computerMinutes: number };
+  /** Where the plan is paid: a plan bought on the web is changed there, never bought twice here. */
+  source?: "apple" | "google" | "stripe" | null;
 }
 
 interface State {

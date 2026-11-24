@@ -30,6 +30,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const current = summary?.plan ?? "free";
+  const webBilled = summary?.source === "stripe";
   const [selected, setSelected] = useState<PlanId>(current === "free" || current === "starter" ? "pro" : current === "pro" ? "max" : current);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const userId = useWorkspace((x) => x.user?.id);
@@ -121,13 +122,15 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
           title={
             !sel
               ? t("Loading…")
-              : sel.id === current
+              : webBilled
+                ? t("Your plan is billed on the web")
+                : sel.id === current
                 ? `You're on ${sel.name}`
                 : sel.id === "enterprise"
                   ? t("Talk to us")
                   : t(rank(sel.id) > rank(current) ? "Upgrade to {name} · {price}" : "Switch to {name} · {price}", { name: sel.name, price: `${price(sel)}${t("/mo")}` })
           }
-          disabled={!sel || sel.id === current}
+          disabled={!sel || sel.id === current || webBilled}
           busy={busy}
           onPress={() => void buy()}
         />

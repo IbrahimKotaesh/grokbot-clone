@@ -6,6 +6,9 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
+export interface BillingPlan { id: string; name: string; priceUsd: number | null; bots: number | null; computer: boolean; computerHours: number | null; highlights: string[] }
+export interface BillingSummary { plan: string; renewsAt: number | null; plans: BillingPlan[]; usage: { bots: number; computerMinutes: number }; source: 'apple' | 'google' | 'stripe' | null; webCheckout: boolean }
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
@@ -41,6 +44,9 @@ export const api = {
   renameChat:(id:string,generation:number,title:string)=>req<{chat:BotChat}>('PATCH',`/bots/${id}/chats/${generation}`,{title}),
   search: (q: string) => req<{ results: { botId: string; generation: number; seq: number; createdAt: number; role: 'user' | 'assistant'; from: string | null; chat: string | null; snippet: string }[] }>('GET', `/search?q=${encodeURIComponent(q)}`),
   weekStats: () => req<{ steps: number; replies: number; tasksDone: number; minutes: number }>('GET', '/stats/week'),
+  billing: () => req<BillingSummary>('GET', '/billing'),
+  checkout: (plan: string) => req<{ url: string }>('POST', '/billing/checkout', { plan }),
+  billingPortal: () => req<{ url: string }>('POST', '/billing/portal'),
   morningBrief: () => req<{ available: boolean; enabled: boolean; hour: number }>('GET', '/morning-brief'),
   setMorningBrief: (enabled: boolean, hour: number) => req<{ enabled: boolean; hour: number }>('PUT', '/morning-brief', { enabled, hour, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   regenerate: (id: string, generation?: number) => req<{ ok: true }>('POST', `/bots/${id}/regenerate`, { generation, ...executionEnvironment() }),

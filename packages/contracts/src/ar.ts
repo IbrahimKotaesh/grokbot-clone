@@ -585,6 +585,7 @@ export const ar: Record<string, string> = {
   "OpenAI's flagship": "النموذج الأقوى من OpenAI",
   "Job title": "المسمّى الوظيفي",
   "e.g. Accounts Payable": "مثلاً: الحسابات الدائنة",
+  "Your plan is billed on the web": "خطتك مدفوعة عبر الموقع",
   Plan: "الخطة",
   "{done} of {total}": "{done} من {total}",
   "Updating the plan": "يحدّث الخطة",

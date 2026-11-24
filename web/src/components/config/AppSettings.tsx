@@ -1,5 +1,6 @@
 import {AccessCodeSettings} from '../AccessCode';
 import {NotificationsSection} from './NotificationsSection';
+import { PlanSection } from './PlanSection';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Toolkit } from '@shared/types';
@@ -23,6 +24,7 @@ const SECTIONS: { id: AppSection; label: string }[] = [
   { id: 'computer', label: t("Computer") },
   { id: 'permissions', label: t("Permissions") },
   { id: 'apps', label: t("Connected apps") },
+  { id: 'plan', label: t("Plan") },
   { id: 'account', label: t("Account") },
 ];
 
@@ -56,6 +58,7 @@ export function AppSettings() {
           {section === 'computer' && <ComputerSection />}
           {section === 'permissions' && <PermissionsSection />}
           {section === 'apps' && <AppsSection />}
+          {section === 'plan' && <PlanSection />}
           {section === 'account' && <AccountSection />}
         </div>
       </div>

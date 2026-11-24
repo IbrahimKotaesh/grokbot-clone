@@ -1,3 +1,4 @@
+import { billingReturn } from './components/config/PlanSection';
 import { t } from './lib/i18n';
 import {isMacDesktop,openDesktopComputer,notifyDesktopContext} from './lib/desktop';
 import {AccessCodeGate} from './components/AccessCode';
@@ -51,6 +52,8 @@ function Shell() {
       }).catch(() => {}).finally(() => setAiChecked(true));
   }, [bots.length]);
   const view = useConfigUI((s) => s.view);
+  // Back from Stripe Checkout: show the Plan page, which says whether the payment went through.
+  useEffect(() => { if (billingReturn) useConfigUI.getState().openAppSettings('plan'); }, []);
   const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
   useEffect(()=>notifyDesktopContext(selectedBot?.id),[selectedBot?.id]);
   useEffect(()=>{if(viewerOpen&&isMacDesktop()&&openDesktopComputer(selectedBot?.id))useStore.getState().set({viewerOpen:false});},[viewerOpen,selectedBot?.id]);

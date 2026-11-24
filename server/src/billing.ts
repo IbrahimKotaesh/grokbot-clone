@@ -1,6 +1,6 @@
 // Plan endpoints for the apps, plus the store webhook that actually changes a user's plan.
 //
-// Purchases happen in the store (Apple In-App Purchase through RevenueCat, or Stripe on the web).
+// Purchases happen in the store (Apple In-App Purchase through RevenueCat, or Stripe on the web: stripe.ts).
 // The store tells us about them here; the app never sets its own plan in production.
 import { Hono, type Context } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
@@ -8,10 +8,27 @@ import { db } from './db.js';
 import { env } from './env.js';
 import type { AuthVars } from './lib/auth.js';
 import { billingSummary, isPlanId, setPlan, type PlanId } from './plans.js';
+import { createCheckout, createPortal, planSource, setPlanSource, stripeEnabled } from './stripe.js';
 
 export const billingApi = new Hono<AuthVars>();
 
-billingApi.get('/', (c) => c.json(billingSummary(c.get('user').id)));
+billingApi.get('/', (c) => {
+  const id = c.get('user').id;
+  return c.json({ ...billingSummary(id), source: planSource(id), webCheckout: stripeEnabled() });
+});
+
+/** Web: start Stripe Checkout for a plan (or the billing portal if already paying on the web). */
+billingApi.post('/checkout', async (c) => {
+  const { plan } = await c.req.json<{ plan?: string }>().catch(() => ({ plan: '' }));
+  try { return c.json(await createCheckout(c.get('user').id, String(plan ?? ''))); }
+  catch (e) { return c.json({ error: (e as Error).message }, 400); }
+});
+
+/** Web: Stripe's billing portal for card, invoices, plan changes and cancelling. */
+billingApi.post('/portal', async (c) => {
+  try { return c.json(await createPortal(c.get('user').id)); }
+  catch (e) { return c.json({ error: (e as Error).message }, 400); }
+});
 
 /** Development only: switch plans without a store, so every plan can be tried locally. */
 billingApi.post('/dev-plan', async (c) => {
@@ -42,8 +59,13 @@ export async function revenueCatWebhook(c: Context) {
   if (!user) return c.json({ ok: true });
   const plans = ((e.entitlement_ids ?? []) as string[]).map((id) => ENTITLEMENTS[id]).filter(Boolean);
   const best = plans.sort((a, b) => RANK.indexOf(b) - RANK.indexOf(a))[0];
-  if (['EXPIRATION', 'CANCELLATION_EXPIRED'].includes(e.type)) setPlan(user.id, 'free');
-  else if (best && ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION', 'NON_RENEWING_PURCHASE'].includes(e.type))
+  const source = e.store === 'PLAY_STORE' ? 'google' : 'apple';
+  // A plan paid on the web is Stripe's to end; an old phone subscription expiring doesn't touch it.
+  if (['EXPIRATION', 'CANCELLATION_EXPIRED'].includes(e.type)) {
+    if (planSource(user.id) !== 'stripe') { setPlan(user.id, 'free'); setPlanSource(user.id, null); }
+  } else if (best && ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION', 'NON_RENEWING_PURCHASE'].includes(e.type)) {
     setPlan(user.id, best, typeof e.expiration_at_ms === 'number' ? e.expiration_at_ms : null);
+    setPlanSource(user.id, source);
+  }
   return c.json({ ok: true });
 }
