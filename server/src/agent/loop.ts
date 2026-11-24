@@ -306,6 +306,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (route) {
         const screen = calls.filter((c: any) => /^(computer_|open_browser)/.test(c.name));
         route.computer = screen.length > 0;
+        route.screenRun = screen.length ? route.screenRun + 1 : 0;
         if (!route.escalated)
           for (const c of screen) {
             const out = st.outputs.find((o: any) => o.call_id === c.call_id)?.output;

@@ -26,7 +26,7 @@ import { hub } from './lib/hub.js';
 import { createSession, destroySession, requireUser, userFromRequest, userFromCookieHeader, type AuthVars } from './lib/auth.js';
 import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
 import { enqueue, interrupt, isBotBusy, resolveApproval } from './agent/loop.js';
-import { computerState, ensureComputer, refreshComputer, restartBotComputer, suspendComputer } from './computer.js';
+import { closeBotBrowser, computerState, ensureComputer, refreshComputer, restartBotComputer, suspendComputer } from './computer.js';
 import { orgo } from './orgo.js';
 import { catalog, connectedToolkits, deleteConnection, disconnect, googleProfile, startConnect, startGoogleLogin, toolkitInfo } from './composio.js';
 import { runRoutine, scheduleRoutine, unscheduleRoutine } from './routines.js';
@@ -233,6 +233,8 @@ api.delete('/bots/:id', (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
   for (const r of listRoutines(b.id)) unscheduleRoutine(r.id);
+  const lease = db.prepare('SELECT screen_id FROM screens WHERE bot_id=?').get(b.id) as { screen_id: string } | undefined;
+  void closeBotBrowser(c.get('user').id, b.id, lease?.screen_id);
   db.prepare('DELETE FROM screens WHERE bot_id=?').run(b.id);
   db.prepare('DELETE FROM bots WHERE id=?').run(b.id);
   hub.emit(c.get('user').id, { type: 'roster' });

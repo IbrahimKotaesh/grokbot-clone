@@ -120,11 +120,18 @@ export interface RouteState {
   trouble: number; // failed or no-op screen actions on the cheap model
   escalated: boolean;
   uses: Record<string, number>; // how often each tool ran in this turn (the loop watcher)
+  screenRun: number; // screen steps in a row
 }
-export const newRoute = (): RouteState => ({ computer: false, cheapSteps: 0, trouble: 0, escalated: false, uses: {} });
+export const newRoute = (): RouteState => ({ computer: false, cheapSteps: 0, trouble: 0, escalated: false, uses: {}, screenRun: 0 });
+
+/**
+ * Screen steps run on DeepSeek: it reads images, it was the stronger screen model in our test, and it shares the
+ * prompt cache with the rest of the conversation. Measured on a real screen task: warm DeepSeek steps cost
+ * $0.00015-0.00018, while each switch to Qwen started cold (Mo: 0 of 32k cached, $0.0033) and even warm Qwen steps
+ * were $0.0002-0.0003. Qwen remains the fallback once a plan's monthly computer budget is used up.
+ */
 
 /** Stay on the cheap model until it struggles (2 failed/no-op actions or 25 steps), unless the month's budget is used up. */
-export function computerModel(userId: string, r: RouteState): string {
-  if (!r.escalated && (r.trouble >= 2 || r.cheapSteps >= 25) && !overComputerCap(userId)) r.escalated = true;
-  return r.escalated ? COMPUTER_STRONG : COMPUTER_CHEAP;
+export function computerModel(userId: string, _r: RouteState): string {
+  return overComputerCap(userId) ? COMPUTER_CHEAP : COMPUTER_STRONG;
 }

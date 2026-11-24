@@ -88,6 +88,10 @@ jobs:
         env:
           SESSION_SECRET: ci-push-test-value
           DB_PATH: ':memory:'
+      - run: node tests/screen-routing.mjs
+        env:
+          SESSION_SECRET: ci-routing-test-value
+          DB_PATH: ':memory:'
       - run: node tests/history-trim.mjs
         env:
           SESSION_SECRET: ci-trim-test-value

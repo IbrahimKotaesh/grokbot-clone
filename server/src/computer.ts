@@ -208,6 +208,18 @@ async function leaseScreen(userId: string, botId: string, computerId: string): P
   return { computerId, screenId: screenId! };
 }
 
+/**
+ * A deleted bot's Chrome would otherwise keep running (and its profile keep its logins) until the machine restarts;
+ * a dozen leftover browsers ran the local desktop out of memory. Best effort, and never wakes a sleeping computer.
+ */
+export async function closeBotBrowser(userId: string, botId: string, screenId?: string): Promise<void> {
+  const c = db.prepare('SELECT orgo_id, status FROM computers WHERE user_id=?').get(userId) as { orgo_id: string | null; status: string } | undefined;
+  const computerId = env.computerProvider === 'local' ? (c?.orgo_id ?? 'local') : c?.orgo_id;
+  if (!computerId || (env.computerProvider !== 'local' && c?.status !== 'running')) return;
+  const profile = `/root/grokbot/profiles/${botId.replace(/[^\w-]/g, '')}`;
+  try { await orgo.bash(computerId, screenId ?? 'default', `pkill -9 -f "[u]ser-data-dir=${profile}" ; rm -rf '${profile}'`, 20); } catch { /* best effort */ }
+}
+
 /** Restart a frozen bot's screen (its browser and desktop), leaving the other bots' screens alone. */
 export async function restartBotComputer(userId: string, botId: string): Promise<void> {
   const { computerId, screenId } = await screenFor(userId, botId);
