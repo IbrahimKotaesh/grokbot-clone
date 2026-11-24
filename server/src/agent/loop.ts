@@ -104,20 +104,28 @@ function enqueueBotMessage(fromBotId: string, toBotId: string, text: string, dep
 
 // ---------- history helpers ----------
 
-/** Keep only the most recent screenshots inline; older ones become a short caption. */
+/**
+ * Keep only recent screenshots inline; older ones become a short caption. Captions are added in batches
+ * of IMAGE_BATCH, so the start of the request stays byte-for-byte the same for several steps in a row
+ * and the provider's prompt cache keeps hitting (replacing one old screenshot per step broke it every step).
+ */
+const IMAGE_BATCH = 4;
 function pruneImages(items: any[]): any[] {
+  const hasImage = (it: any) => {
+    const content = it?.type === 'function_call_output' ? it.output : it?.role === 'user' ? it.content : null;
+    return Array.isArray(content) && content.some((c: any) => c?.type === 'input_image');
+  };
+  const total = items.filter(hasImage).length;
+  const drop = Math.max(0, Math.floor((total - KEEP_IMAGES) / IMAGE_BATCH) * IMAGE_BATCH);
   let seen = 0;
   const out = [...items];
-  for (let i = out.length - 1; i >= 0; i--) {
+  for (let i = 0; i < out.length && seen < drop; i++) {
     const it = out[i];
-    const content = it?.type === 'function_call_output' ? it.output : it?.role === 'user' ? it.content : null;
-    if (!Array.isArray(content)) continue;
-    if (!content.some((c: any) => c?.type === 'input_image')) continue;
+    if (!hasImage(it)) continue;
+    const content = it.type === 'function_call_output' ? it.output : it.content;
     seen++;
-    if (seen > KEEP_IMAGES) {
-      const replaced = content.map((c: any) => (c?.type === 'input_image' ? { type: 'input_text', text: '[older screenshot omitted]' } : c));
-      out[i] = it.type === 'function_call_output' ? { ...it, output: replaced } : { ...it, content: replaced };
-    }
+    const replaced = content.map((c: any) => (c?.type === 'input_image' ? { type: 'input_text', text: '[older screenshot omitted]' } : c));
+    out[i] = it.type === 'function_call_output' ? { ...it, output: replaced } : { ...it, content: replaced };
   }
   return out;
 }
@@ -451,12 +459,14 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   const history = await maybeCompact(botId, loadHistory(botId)).catch(() => loadHistory(botId));
   // The model is only called when no approval is pending, so every orphaned call can be repaired.
   const history2 = pruneImages(repairHistory(history));
-  const input = [{ role: 'system', content: await systemPrompt(userId, botId) }, ...history2];
+  const input: any[] = [{ role: 'system', content: await systemPrompt(userId, botId, { withTime: false }) }, ...history2];
 
   const active = turnProvider.get(botId) ?? bot.agent_provider;
   const provider = (LOOP_PROVIDERS as string[]).includes(active) ? (active as LoopProvider) : 'xai';
   const llm = loopClient(userId, provider, provider === bot.agent_provider ? bot.model : null);
   if (provider !== 'xai') input.splice(1, input.length - 1, ...imagesOutOfToolReplies(history2));
+  // The clock goes last (to the minute), so everything before it is the same as the previous step and is read from cache.
+  input.push({ role: 'system', content: `Current time: ${new Date().toISOString().slice(0, 16)}Z` });
   // On Fino's own key, screen steps run on a cheap vision model and move up only when it struggles.
   const route = routes.get(botId);
   let model = llm.model;
@@ -470,9 +480,17 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     tools: llm.xaiExtras
       ? tools
       : [...tools.filter((t: any) => t.type === 'function'), ...(provider === 'openrouter' ? [OPENROUTER_WEB_SEARCH] : [])],
-    // Fino's included models answer with light thinking (much faster); OpenRouter picks the fastest host.
+    // Fino's included models answer with light thinking (much faster).
     reasoning: { effort: llm.hosted ? (process.env.OR_EFFORT ?? 'low') : (bot.effort ?? 'medium') },
-    ...(provider === 'openrouter' ? { provider: { sort: process.env.OR_PROVIDER_SORT ?? 'throughput' } } : {}),
+    // On Fino's key, OpenRouter's default routing (cheapest healthy host) plus a session id keeps every step of
+    // a conversation on one host, so its prompt cache hits: cached input costs ~1/50th on DeepSeek. Sorting by
+    // throughput hopped between hosts (no cache) and often picked pricier ones. A user's own key keeps speed first.
+    ...(provider === 'openrouter'
+      ? {
+          session_id: `fino:${botId}:${bot.generation}`,
+          ...(llm.hosted ? (process.env.OR_PROVIDER_SORT ? { provider: { sort: process.env.OR_PROVIDER_SORT } } : {}) : { provider: { sort: 'throughput' } }),
+        }
+      : {}),
     store: false,
     stream: true,
     ...(llm.xaiExtras

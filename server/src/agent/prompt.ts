@@ -6,7 +6,11 @@ import { connectedToolkits } from '../composio.js';
 import { memoriesForPrompt } from './memory.js';
 import {semanticMemoryForPrompt} from './automatic-memory.js';
 
-export async function systemPrompt(userId: string, botId: string): Promise<string> {
+/**
+ * `withTime: false` leaves the clock out: the built-in loop sends it in a short note at the end of each
+ * request instead, so this long prompt stays identical between steps and the provider's prompt cache hits.
+ */
+export async function systemPrompt(userId: string, botId: string, opts: { withTime?: boolean } = {}): Promise<string> {
   const semanticPromise=semanticMemoryForPrompt(userId,botId);
   const bot = getBotRow(botId);
   const user = db.prepare('SELECT * FROM users WHERE id=?').get(userId) as any;
@@ -95,7 +99,7 @@ ${localDesktopTarget()?`The owner enabled a temporary local ${localDesktopTarget
 
 ## Context
 - This conversation is separate from other chats with this Bot. Shared durable memories and Bot settings still apply; use search_conversation with explicit earlier-conversation scope only when the owner asks for other chat history. Scheduled work and unsolicited bot messages go to the main chat.
-- Current time: ${new Date().toISOString()}
+${opts.withTime === false ? '- Current time: given in the system note at the end of the conversation.' : `- Current time: ${new Date().toISOString()}`}
 - User: ${user?.name ?? ''} <${user?.email ?? ''}>
 - Connected apps: ${apps || 'none yet'}
 ${team ? `- Other Bots on the team:\n${team}` : '- You are the only Bot on the team so far.'}
