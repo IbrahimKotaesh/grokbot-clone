@@ -22,7 +22,7 @@ import { hub } from '../lib/hub.js';
 import { appendHistory, appendRow, emitBot, getBotRow, getRow, listRows, loadHistory, setLive, updateRow } from '../store.js';
 import type { MessageBody, RowBody, ToolCallBody } from '../types.js';
 import { visibleTranscriptRows } from '../lib/message-text.js';
-import { composioTools, toolkitInfo } from '../composio.js';
+import { toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
 import { repairHistory } from './history.js';
 import { maybeCompact, noteUsage } from './memory.js';
@@ -256,9 +256,10 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       }
     }
 
+    // Connected apps go through the connected_apps tool (list_tools, then execute). Sending Composio's own five
+    // meta tools as well cost ~5k tokens on every step, and bots almost never called them directly.
     const tools = [
       ...functionSchemas(),
-      ...(await composioTools(userId)),
       { type: 'web_search' },
       { type: 'x_search' },
     ];

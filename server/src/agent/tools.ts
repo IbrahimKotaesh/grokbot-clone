@@ -222,7 +222,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'update_plan',
     description:
-      'Show the user a live checklist while you work on a long request (about 6 or more steps, or several parts). Call it before starting with every step pending except the first in_progress, then call it again each time a step finishes so exactly one step is in_progress. The same card updates in place. Keep steps short (2-6 words) and in the user\'s language. Skip it for quick questions.',
+      'Show the user a live checklist while you work on a long request (about 6 or more steps, or several parts). Call it before starting with every step pending except the first in_progress, then call it again each time a step finishes so exactly one step is in_progress. The same card updates in place. Keep steps short (2-6 words) and in the user\'s language. Never use it for a search, a lookup, a question or anything you can finish in a few steps.',
     parameters: obj(
       {
         title: { type: 'string', description: 'Optional short title, e.g. "Booking your flight".' },
@@ -529,7 +529,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
   },
   {
     name: 'remember',
-    description: 'Save a durable memory about the user, their preferences, or your job, so you remember it in future conversations.',
+    description: 'Save a durable memory about the user, their preferences, or your job, so you remember it in future conversations. Only facts the user stated or asked you to keep; never your own task progress, plans or search results.',
     parameters: obj({ text: { type: 'string' } }, ['text']),
     activity: 'remembering',
     label: 'Saving notes',
@@ -729,7 +729,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
   },
   {
     name: 'send_to_bot',
-    description: "Send a message to another Bot on the user's team (by name) to delegate work or ask a question. Their reply will arrive later as a new message to you.",
+    description: "Send a message to another Bot on the user's team (by name) to delegate work or ask a question. Their reply will arrive later as a new message to you. Use it only when the user asks you to involve that Bot, or the task clearly needs that Bot's job. Never to report your own progress or results: tell the user directly.",
     parameters: obj({ bot_name: { type: 'string' }, message: { type: 'string' } }, ['bot_name', 'message']),
     activity: 'messaging_named',
     label: 'Messaging a Bot',
