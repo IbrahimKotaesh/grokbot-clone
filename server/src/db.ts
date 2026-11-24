@@ -148,6 +148,8 @@ addColumn('bots', 'voice_speed', 'REAL NOT NULL DEFAULT 1');
 addColumn('bots', 'voice_language', "TEXT NOT NULL DEFAULT 'auto'");
 
 addColumn('login_attempts', 'native_challenge', 'TEXT');
+addColumn('login_attempts', 'code_verifier', 'TEXT');
+addColumn('login_attempts', 'nonce', 'TEXT');
 addColumn('bots', 'agent_provider', 'TEXT');
 addColumn('bots', 'model', "TEXT NOT NULL DEFAULT ''");
 

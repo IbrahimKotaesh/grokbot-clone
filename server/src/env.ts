@@ -21,6 +21,9 @@ export const env = {
   xaiKey: process.env.XAI_API_KEY || 'disabled',
   xaiModel: process.env.XAI_MODEL ?? 'grok-4.7',
   composioKey: process.env.COMPOSIO_API_KEY || 'disabled',
+  /** Google sign-in (OpenID Connect, name and email only). Without it, sign-in falls back to the Composio Gmail flow. */
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   orgoKey: process.env.ORGO_API_KEY || 'disabled',
   /** Orgo workspace that holds every user's box. */
   orgoWorkspaceId: process.env.ORGO_WORKSPACE_ID ?? '',

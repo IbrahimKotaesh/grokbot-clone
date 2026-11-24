@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
 import { accountApi } from './account.js';
@@ -57,16 +58,37 @@ api.get('/auth/me', (c) => {
   const user = userFromRequest(c);
   const localAccount = env.devLogin && env.computerProvider === 'local'
     ? db.prepare('SELECT email, name FROM users ORDER BY created_at ASC LIMIT 1').get() ?? null : null;
-  return c.json({ user, devLogin: env.devLogin, googleLogin: env.composioKey !== 'disabled', passwordLogin: true, localAccount });
+  return c.json({ user, devLogin: env.devLogin, googleLogin: googleDirect() || env.composioKey !== 'disabled', passwordLogin: true, localAccount });
 });
 
+const googleDirect = () => !!(env.googleClientId && env.googleClientSecret);
+const b64url = (b: Buffer) => b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
 api.get('/auth/google/start', async (c) => {
-  if (env.composioKey === 'disabled') return c.redirect(`${env.appUrl}/?login=google-unavailable`);
+  if (!googleDirect() && env.composioKey === 'disabled') return c.redirect(`${env.appUrl}/?login=google-unavailable`);
   try {
     const nativeChallenge = c.req.query('native_challenge') ?? '';
     if (nativeChallenge && !validChallenge(nativeChallenge)) return c.json({ error: 'invalid challenge' }, 400);
     const attemptId = newId('login');
     const provisional = newId('usr');
+    // Direct "Sign in with Google": only the name and email (openid email profile), with PKCE and a nonce.
+    if (googleDirect()) {
+      const verifier = b64url(randomBytes(32)), nonce = b64url(randomBytes(16));
+      db.prepare('INSERT INTO login_attempts(id,provisional_user_id,connected_account_id,created_at,native_challenge,code_verifier,nonce) VALUES (?,?,?,?,?,?,?)')
+        .run(attemptId, provisional, null, now(), nativeChallenge || null, verifier, nonce);
+      const q = new URLSearchParams({
+        client_id: env.googleClientId,
+        redirect_uri: `${env.serverUrl}/api/auth/google/callback`,
+        response_type: 'code',
+        scope: 'openid email profile',
+        state: attemptId,
+        nonce,
+        code_challenge: b64url(createHash('sha256').update(verifier).digest()),
+        code_challenge_method: 'S256',
+        prompt: 'select_account',
+      });
+      return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${q}`);
+    }
     const cb = `${env.serverUrl}/api/auth/google/callback?attempt=${attemptId}`;
     const { redirectUrl, connectedAccountId } = await startGoogleLogin(provisional, cb);
     db.prepare('INSERT INTO login_attempts(id,provisional_user_id,connected_account_id,created_at) VALUES (?,?,?,?)').run(attemptId, provisional, connectedAccountId ?? null, now());
@@ -78,7 +100,45 @@ api.get('/auth/google/start', async (c) => {
   }
 });
 
+/** Exchanges Google's code for the ID token and returns the verified email and name. */
+async function googleIdentity(code: string, attempt: { code_verifier: string; nonce: string }): Promise<{ email: string; name?: string }> {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ code, client_id: env.googleClientId, client_secret: env.googleClientSecret, redirect_uri: `${env.serverUrl}/api/auth/google/callback`, grant_type: 'authorization_code', code_verifier: attempt.code_verifier }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const token = (await res.json().catch(() => ({}))) as { id_token?: string };
+  if (!res.ok || !token.id_token) throw new Error(`Google token exchange failed (${res.status})`);
+  // The ID token comes straight from Google's token endpoint over TLS with our secret, so its claims are trusted
+  // (OpenID Connect Core 3.1.3.7); we still check who it is for, who issued it, freshness, the nonce and the email.
+  const claims = JSON.parse(Buffer.from(token.id_token.split('.')[1] ?? '', 'base64url').toString('utf8'));
+  const okIssuer = claims.iss === 'https://accounts.google.com' || claims.iss === 'accounts.google.com';
+  if (!okIssuer || claims.aud !== env.googleClientId || !(claims.exp * 1000 > Date.now()) || claims.nonce !== attempt.nonce) throw new Error('Google ID token rejected');
+  if (!claims.email || claims.email_verified !== true) throw new Error('Google account email is not verified');
+  return { email: String(claims.email), name: typeof claims.name === 'string' ? claims.name : undefined };
+}
+
 api.get('/auth/google/callback', async (c) => {
+  // Direct Google sign-in comes back with ?code&state; the Composio flow with ?attempt.
+  if (c.req.query('state')) {
+    const attempt = db.prepare('SELECT * FROM login_attempts WHERE id=?').get(c.req.query('state') ?? '') as any;
+    const code = c.req.query('code');
+    if (!attempt || !attempt.code_verifier || now() - attempt.created_at > 15 * 60_000 || !code) return c.redirect(`${env.appUrl}/?login=failed`);
+    db.prepare('DELETE FROM login_attempts WHERE id=?').run(attempt.id);
+    try {
+      const profile = await googleIdentity(code, attempt);
+      if (env.allowedEmails.length && !env.allowedEmails.includes(profile.email.toLowerCase())) return c.redirect(`${env.appUrl}/?login=not-allowed`);
+      const { id, isNew } = findOrCreateUser(profile.email, profile.name, attempt.provisional_user_id);
+      if (!isNew) emailProven(id);
+      if (attempt.native_challenge) return c.redirect(`fino://auth?code=${encodeURIComponent(issueNativeTicket(id, attempt.native_challenge))}`);
+      createSession(c, id);
+      return c.redirect(`${env.appUrl}/`);
+    } catch (e: any) {
+      console.error('[auth] google sign-in', e?.message ?? e);
+      return c.redirect(`${env.appUrl}/?login=failed`);
+    }
+  }
   const attempt = db.prepare('SELECT * FROM login_attempts WHERE id=?').get(c.req.query('attempt') ?? '') as any;
   const caId = c.req.query('connected_account_id') ?? attempt?.connected_account_id;
   if (!attempt || now() - attempt.created_at > 15 * 60_000 || c.req.query('status') === 'failed' || !caId) return c.redirect(`${env.appUrl}/?login=failed`);

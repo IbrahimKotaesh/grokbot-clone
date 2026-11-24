@@ -88,6 +88,12 @@ jobs:
         env:
           SESSION_SECRET: ci-push-test-value
           DB_PATH: ':memory:'
+      - run: node tests/google-login.mjs
+        env:
+          SESSION_SECRET: ci-google-test-value
+          DB_PATH: ':memory:'
+          GOOGLE_CLIENT_ID: test-client
+          GOOGLE_CLIENT_SECRET: test-secret
       - run: node tests/stripe-billing.mjs
         env:
           SESSION_SECRET: ci-stripe-test-value
