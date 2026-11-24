@@ -308,12 +308,19 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
             alignSelf: user ? "flex-end" : "stretch",
             backgroundColor: user && hasBody ? bubble.bg : "transparent",
             borderRadius: 22,
-            borderBottomRightRadius: user ? 6 : 22,
+            borderTopEndRadius: user && hasBody ? 4 : 22,
             paddingHorizontal: user && hasBody ? space.lg : 2,
             paddingVertical: user && hasBody ? 10 : 0,
             gap: space.md,
           }}
         >
+          {user && hasBody && (
+            // WhatsApp-style tail at the bubble's top corner, on whichever side your bubble sits.
+            <View
+              pointerEvents="none"
+              style={{ position: "absolute", top: 0, end: -8, width: 0, height: 0, borderTopWidth: 13, borderTopColor: bubble.bg, borderEndWidth: 10, borderEndColor: "transparent" }}
+            />
+          )}
           {!!text && user && (
             // Plain text, not Markdown: Markdown paragraphs stretch to full width and puff the bubble up.
             <FitText text={text} color={bubble.ink} />
