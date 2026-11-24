@@ -1,3 +1,4 @@
+import { land } from '../lib/sendFlight';
 import { plural, t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
@@ -72,8 +73,11 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, seenBy }: 
   const b = row.body as MessageBody;
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
+  const wrap = useRef<HTMLDivElement>(null);
+  // Your just-sent message flies in from the composer.
+  useLayoutEffect(() => { if (side === 'right') land(row.botId, b.text, wrap.current); }, []);
   return (
-    <div className={`bubble-wrap is-${side}`} data-seq={row.seq}>
+    <div ref={wrap} className={`bubble-wrap is-${side}`} data-seq={row.seq}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
       {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}${fresh ? ' is-fresh' : ''}`}>
         {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}

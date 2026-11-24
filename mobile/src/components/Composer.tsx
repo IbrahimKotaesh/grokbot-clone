@@ -1,3 +1,4 @@
+import { markSent } from "../lib/sendFlight";
 import { Image } from "expo-image";
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import {
@@ -216,15 +217,17 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
     if (busy || (!text.trim() && !attachments.length)) return;
     setBusy(true);
     setError("");
+    // The words leave the box at once and fly into the chat; they come back if sending fails.
+    markSent(text);
+    setDraft("");
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const { row } = await client.send(bot.id, generation, text, attachments.filter((a) => a.image), attachments.filter((a) => !a.image));
       useWorkspace.getState().event({ type: "rows", botId: bot.id, generation, rows: [row] });
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setDraft("");
       setAttachments([]);
     } catch (e) {
       setError((e as Error).message);
-      if (text !== draft) setDraft(text); // keep a voice transcript so nothing is lost
+      setDraft(text); // nothing typed is lost
     } finally {
       setBusy(false);
     }

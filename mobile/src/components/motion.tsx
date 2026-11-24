@@ -17,6 +17,29 @@ let reduceMotion = false;
 void AccessibilityInfo.isReduceMotionEnabled().then((v) => (reduceMotion = v));
 AccessibilityInfo.addEventListener("reduceMotionChanged", (v) => (reduceMotion = v));
 
+/** Your sent message: rises out of the composer and settles into place with a soft spring. */
+export function FlyIn({ children, from = 90 }: { children: React.ReactNode; from?: number }) {
+  const v = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  useEffect(() => {
+    if (reduceMotion) return;
+    Animated.spring(v, { toValue: 1, damping: 17, stiffness: 190, mass: 0.85, useNativeDriver: true }).start();
+  }, []);
+  return (
+    <Animated.View
+      style={{
+        opacity: v.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.35, 1, 1], extrapolate: "clamp" }),
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [from, 0] }) },
+          { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) },
+          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 /** Fades and lifts its children into place once, on mount. */
 export function FadeIn({
   children,

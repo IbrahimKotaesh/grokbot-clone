@@ -7,7 +7,8 @@ import { Chart } from "./Chart";
 import { PlanCard } from "./PlanCard";
 import type { Row, Bot } from "../../../packages/contracts/src/types";
 import { Button, IconButton, styles as s } from "./UI";
-import { FadeIn } from "./motion";
+import { FadeIn, FlyIn } from "./motion";
+import { takeFlight } from "../lib/sendFlight";
 import { client, authHeaders, connectApp } from "../lib/session";
 import { palette as p, type, space, radius } from "../theme";
 import { bubbleFor } from "../../../packages/contracts/src/characters";
@@ -63,6 +64,9 @@ const time = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: 
 
 /** Rows that just arrived glide in; history renders still. */
 function Enter({ row, children }: { row: Row; children: React.ReactNode }) {
+  // The message you just sent from this phone flies up from the composer; everything else fades in.
+  const [fly] = useState(() => row.body.type === "message" && row.body.role === "user" && !row.body.from && takeFlight(row.body.text));
+  if (fly) return <FlyIn>{children}</FlyIn>;
   return Date.now() - row.createdAt < 8000 ? (
     <FadeIn offset={8} duration={280}>
       {children}

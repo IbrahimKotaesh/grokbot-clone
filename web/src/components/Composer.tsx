@@ -1,3 +1,4 @@
+import { launch } from '../lib/sendFlight';
 import { firstTask } from './Landing';
 import { t } from '../lib/i18n';
 import {ProviderLogo} from './ProviderLogo';
@@ -129,12 +130,15 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
     const msg = text.trim();
     if ((!msg && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
     setSending(true); setError(null);
+    // The words leave the box at once and fly into the chat; they come back if sending fails.
+    launch(bot.id, msg, ref.current);
+    setText('');
     try {
       await api.send(bot.id, msg, photos,documents,generation);
       setPhotos([]);photoDrafts.delete(draftKey);setDocuments([]);documentDrafts.delete(draftKey);
-      setText('');
       drafts.delete(draftKey);
     } catch (e) {
+      setText(msg);
       setError((e as Error).message || t("Message failed to send"));
     } finally {
       setSending(false);
