@@ -20,7 +20,8 @@ import { env } from '../env.js';
 import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { appendHistory, appendRow, emitBot, getBotRow, getRow, listRows, loadHistory, setLive, updateRow } from '../store.js';
-import type { MessageBody, ToolCallBody } from '../types.js';
+import type { MessageBody, RowBody, ToolCallBody } from '../types.js';
+import { visibleTranscriptRows } from '../lib/message-text.js';
 import { composioTools, toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
 import { repairHistory } from './history.js';
@@ -327,12 +328,27 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     await finishDesktopWork(ctx,completed&&!ctrl.signal.aborted,!!stillPending);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
+    // A scheduled check that found nothing leaves no trace: its "Running routine" line, steps and empty reply go.
+    if (trigger.type === 'routine') { try { hideQuietRoutine(botId, trigger.routineId); } catch (e) { console.warn('[routine] tidy', (e as Error).message); } }
     // A new reply the person hasn't read yet: the bot stands out in the list until they open it.
-    const replied = db.prepare("SELECT 1 FROM rows WHERE bot_id=? AND seq>=? AND kind='message' AND json_extract(body,'$.role')='assistant' AND length(coalesce(json_extract(body,'$.text'),''))>0 LIMIT 1").get(botId, firstSeq);
+    const replied = db.prepare("SELECT 1 FROM rows WHERE bot_id=? AND seq>=? AND kind='message' AND json_extract(body,'$.role')='assistant' AND json_extract(body,'$.replaced') IS NULL AND length(coalesce(json_extract(body,'$.text'),''))>0 LIMIT 1").get(botId, firstSeq);
     if (replied) db.prepare('UPDATE bots SET unread = unread + 1 WHERE id=?').run(botId);
     emitBot(botId);
 
   }
+}
+
+/** Marks a finished routine run as replaced (hidden everywhere) when it produced nothing worth showing. */
+export function hideQuietRoutine(botId: string, routineId: string) {
+  const gen = getBotRow(botId)?.generation;
+  const start = db.prepare("SELECT seq FROM rows WHERE bot_id=? AND generation=? AND kind='event' AND json_extract(body,'$.event')='routine-run' AND json_extract(body,'$.ref')=? ORDER BY seq DESC LIMIT 1").get(botId, gen, routineId) as { seq: number } | undefined;
+  if (!start) return;
+  const run = listRows(botId, { limit: 500 }).filter((r) => r.seq >= start.seq && !r.body.replaced);
+  // Stop at the next person's message or routine run: only this run's own rows are judged.
+  const end = run.findIndex((r, i) => i > 0 && ((r.body.type === 'message' && r.body.role === 'user') || (r.body.type === 'event' && r.body.event === 'routine-run')));
+  const mine = end < 0 ? run : run.slice(0, end);
+  if (!mine.length || visibleTranscriptRows(mine).length) return;
+  for (const r of mine) updateRow(botId, r.seq, { ...r.body, replaced: true } as RowBody);
 }
 
 /** Run function calls in order. Returns true if the turn paused for approval. */
