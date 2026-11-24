@@ -621,4 +621,10 @@ export const arWeb: Record<string, string> = {
   "Claude Code on your computer": "Claude Code على كمبيوترك",
   "Priority support": "دعم بأولوية",
   "Your plan is active.": "خطتك فعّالة.",
+  "Ultra": "Ultra",
+  "Quinn + 30 bots": "Quinn + 30 بوت",
+  "Computer use · 60 h/month": "استخدام الكمبيوتر · 60 ساعة/شهرياً",
+  "Computer use · 150 h/month": "استخدام الكمبيوتر · 150 ساعة/شهرياً",
+  "Top AI models included": "أقوى نماذج الذكاء الاصطناعي مشمولة",
+  "Unlimited bots": "بوتات بلا حدود",
 };

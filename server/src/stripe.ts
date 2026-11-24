@@ -8,14 +8,14 @@
 // Setup: STRIPE_SECRET_KEY (sk_test_… or sk_live_…), and a webhook endpoint at
 // <APP_URL>/api/billing/stripe-webhook for checkout.session.completed and
 // customer.subscription.created/updated/deleted, with its signing secret in STRIPE_WEBHOOK_SECRET.
-// Optional STRIPE_PRICE_STARTER / _PRO / _MAX use Dashboard prices; otherwise prices come from plans.ts.
+// Optional STRIPE_PRICE_STARTER / _PRO / _MAX / _ULTRA use Dashboard prices; otherwise prices come from plans.ts.
 import type { Context } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from './db.js';
 import { env } from './env.js';
 import { PLANS, isPlanId, setPlan, type PlanId } from './plans.js';
 
-const BUYABLE: PlanId[] = ['starter', 'pro', 'max'];
+const BUYABLE: PlanId[] = ['starter', 'pro', 'max', 'ultra'];
 const priceEnv = (plan: PlanId) => process.env[`STRIPE_PRICE_${plan.toUpperCase()}`]?.trim() || undefined;
 
 export const stripeEnabled = () => !!process.env.STRIPE_SECRET_KEY?.trim();
@@ -49,7 +49,7 @@ async function stripe<T>(method: 'GET' | 'POST', path: string, params?: Record<s
 
 /** Starts Stripe Checkout for a plan and returns the page to send the user to. */
 export async function createCheckout(userId: string, plan: string): Promise<{ url: string }> {
-  if (!isPlanId(plan) || !BUYABLE.includes(plan)) throw new Error('Pick Starter, Pro or Max.');
+  if (!isPlanId(plan) || !BUYABLE.includes(plan)) throw new Error('Pick Starter, Pro, Max or Ultra.');
   const row = billingRow(userId);
   if (!row) throw new Error('Account not found.');
   if (row.plan_source === 'apple' || row.plan_source === 'google')

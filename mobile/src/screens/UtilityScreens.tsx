@@ -445,7 +445,7 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
 }
 
 function PlanCard({ plan, usage, onPress }: { plan: Plan | null; usage?: { computerMinutes: number }; onPress: () => void }) {
-  const top = plan?.id === "max" || plan?.id === "enterprise";
+  const top = plan?.id === "ultra" || plan?.id === "enterprise";
   return (
     <Pressable
       accessibilityRole="button"

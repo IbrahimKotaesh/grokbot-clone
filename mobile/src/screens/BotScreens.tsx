@@ -263,7 +263,7 @@ export function ModelScreen({ done, openModels, openClaudeCode }: { done: () => 
     o.id === "claude-code" ? computerOn : (o.id === "openrouter" && !!hosted?.available) || (!!connected && (o.needs.some((n) => connected.includes(n)) || (shared && (o.id === "codex" || o.id === "claude"))));
   // Fino pays for "Included models" unless the user added their own OpenRouter key.
   const included = provider === "openrouter" && !!hosted?.available && !connected?.includes("openrouter");
-  const tierName = (tier: string) => (tier === "max" ? "Max" : tier === "pro" ? "Pro" : "Starter");
+  const tierName = (tier: string) => (tier === "ultra" ? "Ultra" : tier === "max" ? "Max" : tier === "pro" ? "Pro" : "Starter");
   return (
     <ScrollView style={s.screen} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
         <Header large={false} title={t("Model & permissions")} right={<IconButton name="close" label={t("Close")} variant="filled" size={34} iconSize={16} onPress={done} />} />

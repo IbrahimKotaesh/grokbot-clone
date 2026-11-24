@@ -46,7 +46,7 @@ export async function storePrices(): Promise<Record<string, string>> {
   if (!configuredFor) return {};
   try {
     const out: Record<string, string> = {};
-    for (const plan of ["starter", "pro", "max"]) {
+    for (const plan of ["starter", "pro", "max", "ultra"]) {
       const pkg = await packageFor(plan);
       if (pkg) out[plan] = pkg.product.priceString;
     }

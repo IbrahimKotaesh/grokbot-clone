@@ -40,8 +40,8 @@ billingApi.post('/dev-plan', async (c) => {
 });
 
 // RevenueCat entitlement identifiers → plans. Configure the same ids in the RevenueCat dashboard.
-const ENTITLEMENTS: Record<string, PlanId> = { starter: 'starter', pro: 'pro', max: 'max', enterprise: 'enterprise' };
-const RANK: PlanId[] = ['starter', 'pro', 'max', 'enterprise'];
+const ENTITLEMENTS: Record<string, PlanId> = { starter: 'starter', pro: 'pro', max: 'max', ultra: 'ultra', enterprise: 'enterprise' };
+const RANK: PlanId[] = ['starter', 'pro', 'max', 'ultra', 'enterprise'];
 
 /**
  * RevenueCat webhook (https://www.revenuecat.com/docs/integrations/webhooks).

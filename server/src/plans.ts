@@ -4,7 +4,7 @@ import { env } from './env.js';
 // price what Fino itself provides: bots, the cloud computer and voice.
 import { db, now } from './db.js';
 
-export type PlanId = 'free' | 'starter' | 'pro' | 'max' | 'enterprise';
+export type PlanId = 'free' | 'starter' | 'pro' | 'max' | 'ultra' | 'enterprise';
 export interface Plan {
   id: PlanId;
   name: string;
@@ -31,9 +31,15 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 10, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
     highlights: ['Quinn + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', 'Claude Code on your computer'],
   },
+  // Prices and hours are set so the heaviest user still leaves a margin after the store's cut: each
+  // computer hour costs about $0.42 (Orgo $0.055 plus ~$0.36 of screen-step AI), see hosted-models.ts caps.
   max: {
-    id: 'max', name: 'Max', priceUsd: 199.99, bots: null, computer: true, computerHours: 100, voiceMinutes: 600, marketplace: 'all',
-    highlights: ['Unlimited bots', 'Computer use · 100 h/month', 'Every marketplace bot', 'Priority support'],
+    id: 'max', name: 'Max', priceUsd: 99.99, bots: 30, computer: true, computerHours: 60, voiceMinutes: 300, marketplace: 'all',
+    highlights: ['Quinn + 30 bots', 'Computer use · 60 h/month', 'Every marketplace bot', 'Top AI models included'],
+  },
+  ultra: {
+    id: 'ultra', name: 'Ultra', priceUsd: 199.99, bots: null, computer: true, computerHours: 150, voiceMinutes: 600, marketplace: 'all',
+    highlights: ['Unlimited bots', 'Computer use · 150 h/month', 'Every marketplace bot', 'Priority support'],
   },
   enterprise: {
     id: 'enterprise', name: 'Enterprise', priceUsd: null, bots: null, computer: true, computerHours: null, voiceMinutes: null, marketplace: 'all',
@@ -61,7 +67,7 @@ export function planOf(userId: string): Plan {
 export function setPlan(userId: string, plan: PlanId, renewsAt: number | null = null) {
   if (plan === 'free') plan = 'starter', renewsAt = null;
   // A paid plan always carries a renewal date so it is never mistaken for Free.
-  else if (plan !== 'max' && plan !== 'enterprise' && !renewsAt) renewsAt = now() + 31 * 86400_000;
+  else if (plan !== 'max' && plan !== 'ultra' && plan !== 'enterprise' && !renewsAt) renewsAt = now() + 31 * 86400_000;
   db.prepare('UPDATE users SET plan=?, plan_renews_at=? WHERE id=?').run(plan, renewsAt, userId);
 }
 

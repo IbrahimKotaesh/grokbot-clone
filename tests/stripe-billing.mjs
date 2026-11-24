@@ -68,6 +68,6 @@ assert.equal(planOf('phone').id, 'pro', 'a web subscription that was never their
 await rc({ type: 'EXPIRATION', app_user_id: 'phone', entitlement_ids: ['pro'], store: 'APP_STORE' });
 assert.equal(planOf('phone').id, 'free', 'the Apple plan ends when Apple says so');
 
-await assert.rejects(createCheckout('web', 'enterprise'), /Pick Starter, Pro or Max/);
+await assert.rejects(createCheckout('web', 'enterprise'), /Pick Starter, Pro, Max or Ultra/);
 console.log('PASS: Stripe signatures checked; web purchase, plan change, past-due and cancel apply; Apple and Stripe never end each other’s plan');
 db.close(); process.exit(0);

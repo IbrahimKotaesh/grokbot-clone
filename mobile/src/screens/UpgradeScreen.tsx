@@ -161,7 +161,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
     </View>
   );
 }
-const rank = (id: PlanId) => ["free", "starter", "pro", "max", "enterprise"].indexOf(id);
+const rank = (id: PlanId) => ["free", "starter", "pro", "max", "ultra", "enterprise"].indexOf(id);
 
 function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; price: string | null; selected: boolean; current: boolean; onPress: () => void }) {
   const v = useRef(new Animated.Value(selected ? 1 : 0)).current;

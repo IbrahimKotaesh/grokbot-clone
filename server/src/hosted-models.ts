@@ -14,9 +14,9 @@ export const COMPUTER_STRONG = process.env.OR_COMPUTER_STRONG ?? 'deepseek/deeps
  * Monthly computer-work AI budget (USD, at cost) per plan. Past it, work continues on the cheap model only,
  * so a heavy user never pushes a plan below its margin. null = no cap.
  */
-const COMPUTER_CAP: Record<PlanId, number | null> = { free: 0, starter: 0.5, pro: 8, max: 30, enterprise: null };
+const COMPUTER_CAP: Record<PlanId, number | null> = { free: 0, starter: 0.5, pro: 8, max: 22, ultra: 55, enterprise: null };
 /** Monthly chat AI budget (USD, at cost). Past it replies use the cheapest model; past twice it, they stop. */
-const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 3, pro: 5, max: 20, enterprise: null };
+const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 3, pro: 5, max: 10, ultra: 20, enterprise: null };
 
 /** The models Fino includes, and the lowest plan that unlocks each. The first one is everyone's default. */
 export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId }[] = [
@@ -30,26 +30,26 @@ export const HOSTED_MODELS: { id: string; name: string; note: string; tier: Plan
   { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', note: 'Top writing and reasoning', tier: 'max' },
   { id: 'openai/gpt-5.4', name: 'GPT-5.4', note: "OpenAI's flagship", tier: 'max' },
 ];
-const RANK: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, max: 3, enterprise: 4 };
+const RANK: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, max: 3, ultra: 4, enterprise: 5 };
 export const modelAllowed = (plan: PlanId, id: string) => {
   const m = HOSTED_MODELS.find((x) => x.id === id);
   return !!m && RANK[plan] >= RANK[m.tier];
 };
 
-// USD per million tokens: [input, cached input, output]. Fallback when OpenRouter doesn't report the cost.
+// USD per million tokens: [input, cached input, output], from OpenRouter on 2026-11-24. Fallback when OpenRouter doesn't report the cost.
 const PRICES: Record<string, [number, number, number]> = {
-  'qwen/qwen3.7-flash': [0.03, 0.003, 0.13],
-  'deepseek/deepseek-v4.1-flash': [0.05, 0.005, 0.2],
-  'qwen/qwen3.7-plus': [0.32, 0.032, 1.28],
+  'qwen/qwen3.7-flash': [0.03, 0.006, 0.13],
+  'deepseek/deepseek-v4.1-flash': [0.0507, 0.001, 0.2028],
+  'qwen/qwen3.7-plus': [0.32, 0.064, 1.28],
   'qwen/qwen3.8-flash': [0.15, 0.015, 0.47],
-  'deepseek/deepseek-v4-pro': [0.9, 0.09, 1.5],
+  'deepseek/deepseek-v4-pro': [1.28, 0.108, 2.56],
   'minimax/minimax-m3.1-flash': [0.075, 0.0075, 0.3],
   'z-ai/glm-4.6v': [0.3, 0.03, 0.9],
   'openai/gpt-5.4-mini': [0.75, 0.075, 4.5],
-  'x-ai/grok-4.3': [1.25, 0.125, 2.5],
-  'anthropic/claude-sonnet-5.5': [2, 0.2, 10],
+  'x-ai/grok-4.3': [1.25, 0.2, 2.5],
+  'anthropic/claude-sonnet-5.5': [2, 0.1, 10],
   'openai/gpt-5.4': [2.5, 0.25, 15],
-  'z-ai/glm-5.3-flash': [0.04, 0.004, 0.078],
+  'z-ai/glm-5.3-flash': [0.15, 0.03, 0.5],
   'openai/gpt-5.4-nano': [0.2, 0.02, 1.25],
 };
 

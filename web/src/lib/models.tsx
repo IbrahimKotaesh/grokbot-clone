@@ -77,4 +77,4 @@ export function BrainLogo({ bot }: { bot: { agentProvider?: string; model?: stri
   return <ModelLogo model="openai/" />;
 }
 
-export const tierName = (tier: string) => (tier === 'max' ? 'Max' : tier === 'pro' ? 'Pro' : 'Starter');
+export const tierName = (tier: string) => (tier === 'ultra' ? 'Ultra' : tier === 'max' ? 'Max' : tier === 'pro' ? 'Pro' : 'Starter');

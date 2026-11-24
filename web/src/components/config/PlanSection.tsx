@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type BillingSummary } from '../../lib/api';
 import { lang, t } from '../../lib/i18n';
 
-const BUYABLE = ['starter', 'pro', 'max'];
+const BUYABLE = ['starter', 'pro', 'max', 'ultra'];
 
 /** "success" or "cancel" when Stripe Checkout sent the user back here; read once, then cleared from the address bar. */
 export const billingReturn = (() => {
