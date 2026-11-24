@@ -1,6 +1,6 @@
 // Scanned PDFs have no text layer. OpenRouter's file parser runs Mistral OCR on the pages
 // (about $0.002 a page) and a cheap model returns the transcription as plain text.
-import { hostedKey } from './hosted-models.js';
+import { hostedKey, hostedProviderPrefs } from './hosted-models.js';
 
 const OCR_MODEL = process.env.OR_OCR_MODEL ?? 'deepseek/deepseek-v4.1-flash';
 const OCR_ENGINE = process.env.OR_OCR_ENGINE ?? 'mistral-ocr';
@@ -15,6 +15,7 @@ export async function ocrPdf(data: Buffer, name: string): Promise<string> {
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       model: OCR_MODEL,
+      provider: hostedProviderPrefs(),
       max_tokens: 16_000,
       plugins: [{ id: 'file-parser', pdf: { engine: OCR_ENGINE } }],
       messages: [

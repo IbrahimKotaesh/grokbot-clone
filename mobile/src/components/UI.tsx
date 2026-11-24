@@ -500,9 +500,10 @@ export function ProviderMark({ provider, size = 22 }: { provider: string; size?:
 
 /** The logo of the company behind a model id like "deepseek/deepseek-v4.1-flash". */
 const MODEL_LOGOS: { prefix: string; source: number; tint?: string }[] = [
-  { prefix: "deepseek/", source: require("../../assets/models/deepseek.svg") },
-  { prefix: "qwen/", source: require("../../assets/models/qwen.svg") },
-  { prefix: "z-ai/", source: require("../../assets/models/glm.svg") },
+  // Fino's included models (Fino Flash, Logic, Deep) carry the Fino mark.
+  { prefix: "deepseek/", source: require("../../assets/models/fino.png") },
+  { prefix: "z-ai/", source: require("../../assets/models/fino.png") },
+  { prefix: "qwen/", source: require("../../assets/models/fino.png") },
   { prefix: "x-ai/", source: require("../../assets/models/grok.svg"), tint: p.text },
   { prefix: "openai/", source: require("../../assets/chatgpt.svg"), tint: p.text },
   { prefix: "anthropic/", source: require("../../assets/claude.svg"), tint: "#df9c78" },

@@ -1,5 +1,5 @@
 import {recallTokens} from './recall.js';
-import { hostedKey } from '../hosted-models.js';
+import { hostedKey, hostedProviderPrefs } from '../hosted-models.js';
 import OpenAI from 'openai';
 import { db, now } from '../db.js';
 import '../db-config.js';
@@ -182,6 +182,7 @@ async function compactWithSummary(old: any[]): Promise<any[]> {
         model: xaiReady ? env.xaiModel : SUMMARY_MODEL,
         input: [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: attempt.max_output_tokens ? transcript.slice(-60_000) : transcript }],
         store: false,
+        ...(xaiReady ? {} : { provider: hostedProviderPrefs() }),
         ...attempt,
       } as any);
       text = textOfResponse(res);

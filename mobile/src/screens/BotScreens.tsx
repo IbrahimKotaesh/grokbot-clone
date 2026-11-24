@@ -219,7 +219,7 @@ const providerOptions: { id: ProviderId; name: string; detail: string; needs: st
   { id: "codex", name: t("ChatGPT"), detail: t("Your ChatGPT subscription or OpenAI key"), needs: ["chatgpt", "openai"], mark: "codex" },
   { id: "claude-code", name: t("Claude Code"), detail: t("Your Claude subscription · pure Claude Code, on your computer"), needs: ["@computer"], mark: "claude" },
   { id: "claude", name: t("Claude (API key)"), detail: t("Your Anthropic API key"), needs: ["anthropic"], mark: "claude" },
-  { id: "openrouter", name: t("Included models"), detail: t("DeepSeek, Qwen, GLM, Claude… part of your plan"), needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["deepseek/deepseek-v4.1-flash", "qwen/qwen3.7-flash", "z-ai/glm-5.3-flash"] },
+  { id: "openrouter", name: t("Included models"), detail: t("Fino Flash, GPT, Claude… part of your plan"), needs: ["openrouter"], icon: "git-network-outline", color: "#a78bfa", models: ["deepseek/deepseek-v4.1-flash", "z-ai/glm-5.3-flash", "deepseek/deepseek-v4-pro"] },
   { id: "groq", name: "Groq", detail: t("Very fast, free tier"), needs: ["groq"], icon: "flash-outline", color: "#ff9f43", models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"] },
   { id: "xai", name: "Grok", detail: t("Fast Grok models from xAI"), needs: ["xai"], icon: "planet-outline", color: p.text },
 ];

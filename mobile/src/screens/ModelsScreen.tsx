@@ -19,7 +19,7 @@ type KeyId = "openai" | "anthropic" | "openrouter" | "groq" | "xai";
 const keyInfo: Record<KeyId, { name: string; mark?: string; icon?: React.ComponentProps<typeof Ionicons>["name"]; color?: string; prefix: string; where: string }> = {
   openai: { name: tr("OpenAI API key"), mark: "codex", prefix: "sk-…", where: "platform.openai.com → API keys" },
   anthropic: { name: tr("Anthropic API key"), mark: "claude", prefix: "sk-ant-…", where: "console.anthropic.com → API keys" },
-  openrouter: { name: "OpenRouter", icon: "git-network-outline", color: "#a78bfa", prefix: "sk-or-…", where: tr("DeepSeek, Qwen, GLM… very cheap · openrouter.ai/keys") },
+  openrouter: { name: "OpenRouter", icon: "git-network-outline", color: "#a78bfa", prefix: "sk-or-…", where: tr("Hundreds of models, very cheap · openrouter.ai/keys") },
   groq: { name: "Groq", icon: "flash-outline", color: "#ff9f43", prefix: "gsk_…", where: tr("Very fast, free tier · console.groq.com/keys") },
   xai: { name: "xAI Grok", icon: "planet-outline", color: "#f5f5f7", prefix: "xai-…", where: tr("Fast Grok models · console.x.ai") },
 };

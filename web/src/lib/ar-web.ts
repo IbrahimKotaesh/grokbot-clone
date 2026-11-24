@@ -627,4 +627,6 @@ export const arWeb: Record<string, string> = {
   "Computer use · 150 h/month": "استخدام الكمبيوتر · 150 ساعة/شهرياً",
   "Top AI models included": "أقوى نماذج الذكاء الاصطناعي مشمولة",
   "Unlimited bots": "بوتات بلا حدود",
+  "Deeper reasoning": "تفكير أعمق",
+  "Nothing to sign in to. Fino Flash, included in your plan.": "لا حاجة لتسجيل الدخول. Fino Flash مشمول في خطتك.",
 };

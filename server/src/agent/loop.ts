@@ -13,7 +13,7 @@ import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
 import { TurnMeter } from '../usage-meter.js';
-import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, hostedChatModel, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
+import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
 import { env } from '../env.js';
@@ -535,7 +535,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     ...(provider === 'openrouter'
       ? {
           session_id: `fino:${botId}:${bot.generation}`,
-          ...(llm.hosted ? (process.env.OR_PROVIDER_SORT ? { provider: { sort: process.env.OR_PROVIDER_SORT } } : {}) : { provider: { sort: 'throughput' } }),
+          ...(llm.hosted ? { provider: { ...hostedProviderPrefs(), ...(process.env.OR_PROVIDER_SORT ? { sort: process.env.OR_PROVIDER_SORT } : {}) } } : { provider: { sort: 'throughput' } }),
         }
       : {}),
     store: false,
