@@ -16,6 +16,7 @@ import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { orgo } from '../orgo.js';
 import { restartBotComputer, screenFor } from '../computer.js';
+import { OFFICE_TOOLS, OFFICE_READS } from './office-tools.js';
 import { appendRow, updateRow, getBotRow, listRows, listRoutines, toRoutine, describeCron } from '../store.js';
 import { readPage } from './read-page.js';
 import { composioTools, executeComposio, executeComposio as runAppTool, innerToolSlugs, isReadOnlySlug, toolkitInfo } from '../composio.js';
@@ -862,6 +863,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
   },
 ];
 
+TOOLS.push(...(OFFICE_TOOLS as ToolDef[]));
 export const toolMap = new Map(TOOLS.map((t) => [t.name, t]));
 
 export function functionSchemas() {
@@ -887,7 +889,7 @@ export function policyKeys(toolName: string, args: any): string[] {
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
 
-const SAFE_LOCAL = new Set(['react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set([...OFFICE_READS,'react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {

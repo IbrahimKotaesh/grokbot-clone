@@ -11,6 +11,7 @@ export function freshApprovalReason(name:string,args:any,quarantined=false):stri
   for(const call of items){const reason=freshApprovalReason(String(call.tool_slug??call.slug??call.name??call.tool??''),call.arguments??call.args??{},quarantined);if(reason)return reason;}
   return;
  }
+ if(name==='run_python')return 'It runs code on the bot\'s computer, so it needs your OK each time.';
  if(name==='shell'){
   if(!plainReadCommand(args?.command))return 'It runs on the bot\'s computer and could change files or reach the internet, so it needs your OK each time.';
   return;
