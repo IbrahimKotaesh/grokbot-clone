@@ -2,6 +2,7 @@ import { userInControl, noteWaitingForHandback } from '../vnc.js';
 import { availableProviders, isQuotaError, markExhausted, pickProvider, PROVIDER_NAMES } from './fallback.js';
 import { claudeCodeTurn } from './claude-code-turn.js';
 import { loopClient, LOOP_PROVIDERS, type LoopProvider } from './model-clients.js';
+import { BROWSER_TOOL_NAMES } from './browser-tools.js';
 import {desktopForTrigger,withDesktopTarget,localDesktopTarget,DESKTOP_TOOLS,runDesktopTool,type DesktopTarget} from '../desktop-device.js';
 import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
@@ -411,7 +412,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         else if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
         else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
-        if(!toolMap.has(c.name)||['connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','computer_click','computer_type','computer_key','computer_scroll','computer_drag','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
+        if(!toolMap.has(c.name)||[...BROWSER_TOOL_NAMES,'connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','computer_click','computer_type','computer_key','computer_scroll','computer_drag','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
       } catch (e: any) {
         res = { output: `Tool error: ${e?.message ?? e}` };

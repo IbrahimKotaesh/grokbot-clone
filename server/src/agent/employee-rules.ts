@@ -6,6 +6,7 @@ import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
 import { env } from '../env.js';
 import { isReadOnlySlug } from '../composio.js';
+import { cdp } from './browser-tools.js';
 
 export type Guard = { block?: string; decide?: string; title?: string };
 
@@ -120,6 +121,33 @@ export async function employeeGuard(userId: string, botId: string, name: string,
     if (what) return { block: `Fino never types ${what}. Payments are always done by the owner themselves.` };
   }
   if (name === 'shell' && moneyText(String(args?.command ?? ''))) return { block: 'Fino never handles payment card or bank numbers. Payments are always done by the owner themselves.' };
+
+  // In-page browser tools: the same rules, judged from the element itself.
+  if (name === 'browser_click' || name === 'browser_fill') {
+    if (name === 'browser_fill') {
+      const what = (args?.fields ?? []).map((f: any) => moneyText(String(f?.value ?? ''))).find(Boolean);
+      if (what) return { block: `Fino never types ${what}. Payments are always done by the owner themselves.` };
+    }
+    if (opts.pageCheck === false) return {};
+    const fields = name === 'browser_fill' ? (args?.fields ?? []) : [];
+    const ref = name === 'browser_click' ? args?.ref : args?.click_ref ?? (args?.press_enter ? fields[fields.length - 1]?.ref : fields[0]?.ref);
+    if (ref === undefined || ref === null) return {};
+    let p: any = null;
+    try { p = await cdp({ userId, botId }, { op: 'probe', ref: Number(ref) }); } catch { p = null; }
+    if (!p?.info) return {};
+    const payPage = p.pay || PAY_PAGE.test(p.url) || PAY_PAGE.test(p.title);
+    if (payPage && name === 'browser_fill') return { block: 'This is a payment page. Fino never types on payment pages; the owner pays themselves.' };
+    // What actually gets pressed: the clicked element, or the form's submit button when Enter is pressed.
+    const pressing = name === 'browser_click' || args?.click_ref != null ? { text: p.info.text, submit: p.info.submit } : args?.press_enter ? { text: p.info.formSubmit, submit: !!p.info.formSubmit } : null;
+    if (!pressing) return {};
+    const label = String(pressing.text ?? '');
+    if (payPage && (pressing.submit || FINAL_WORDS.test(label))) return { block: `This button (“${label || 'pay'}”) is on a payment page. Fino never pays; the owner pays themselves.` };
+    if ((pressing.submit && FINAL_WORDS.test(label)) || STRONG_FINAL.test(label)) {
+      const host = (() => { try { return new URL(p.url).host || p.title; } catch { return p.title || String(p.url).slice(0, 60); } })();
+      return { decide: `This is a final step: “${label}” on ${host}. Fino waits for your OK before finishing things like applications, orders and messages.`, title: `${label} on ${host}` };
+    }
+    return {};
+  }
 
   const click = name === 'computer_click' && (!args?.button || args.button === 'left');
   const enter = name === 'computer_key' && isEnter(String(args?.keys ?? ''));
