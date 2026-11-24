@@ -8,6 +8,8 @@ import { createBot } from '../server/dist/bots.js';
 import { initSubagents } from '../server/dist/agent/subagents.js';
 import { toolMap } from '../server/dist/agent/tools.js';
 import { employeeGuard } from '../server/dist/agent/employee-rules.js';
+import { hub } from '../server/dist/lib/hub.js';
+const pointers = []; hub.subscribe('web', (e) => { if (e?.type === 'pointer') pointers.push(e); });
 initSubagents();
 db.prepare('INSERT INTO users(id,email,name,created_at) VALUES (?,?,?,?)').run('web', 'web@example.com', 'Web', Date.now());
 try { db.prepare("UPDATE users SET plan='pro'").run(); } catch {}
@@ -62,6 +64,8 @@ await assert.rejects(toolMap.get('browser_fill').impl({ fields: [{ ref: 1, files
 // Click a normal button
 page = await run('browser_click', { ref: ref(page, 'Add row') });
 assert.match(page, /rows: 1/);
+assert.ok(pointers.some((p) => p.action === 'click' && p.x > 0 && p.y > 0), 'The mouse overlay glides to what the bot clicks');
+assert.ok(pointers.filter((p) => p.action === 'move').length >= 4, 'and to each field it fills');
 
 // Script
 const js = JSON.parse(await run('browser_run_js', { code: 'return document.querySelector("select").value', purpose: 'test' }));

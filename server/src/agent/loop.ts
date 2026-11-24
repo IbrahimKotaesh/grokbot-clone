@@ -325,6 +325,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     }
     aborts.delete(botId);
     routes.delete(botId);
+    turnPrompts.delete(botId);
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
     await finishDesktopWork(ctx,completed&&!ctrl.signal.aborted,!!stillPending);
     if (!stillPending) setLive(botId, { isRunning: false, activity: null, awaiting: null, startedAt: null });
@@ -350,6 +351,9 @@ export function hideQuietRoutine(botId: string, routineId: string) {
   if (!mine.length || visibleTranscriptRows(mine).length) return;
   for (const r of mine) updateRow(botId, r.seq, { ...r.body, replaced: true } as RowBody);
 }
+
+/** The system prompt of each bot's running turn (see callModel). */
+const turnPrompts = new Map<string, string>();
 
 /** Run function calls in order. Returns true if the turn paused for approval. */
 async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
@@ -476,7 +480,11 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   const history = await maybeCompact(botId, loadHistory(botId)).catch(() => loadHistory(botId));
   // The model is only called when no approval is pending, so every orphaned call can be repaired.
   const history2 = pruneImages(repairHistory(history));
-  const input: any[] = [{ role: 'system', content: await systemPrompt(userId, botId, { withTime: false }) }, ...history2];
+  // Built once per turn: a memory saved mid-turn (remember, update_memory) would otherwise change the prompt on
+  // the next step and throw away the whole cached conversation. It shows up from the next turn.
+  let prompt = turnPrompts.get(botId);
+  if (prompt === undefined) turnPrompts.set(botId, (prompt = await systemPrompt(userId, botId, { withTime: false })));
+  const input: any[] = [{ role: 'system', content: prompt }, ...history2];
 
   const active = turnProvider.get(botId) ?? bot.agent_provider;
   const provider = (LOOP_PROVIDERS as string[]).includes(active) ? (active as LoopProvider) : 'xai';

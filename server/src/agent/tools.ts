@@ -866,7 +866,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
 
 TOOLS.push(...(OFFICE_TOOLS as ToolDef[]));
 // browser_navigate opens Chrome through open_browser when it isn't running yet.
-TOOLS.push(...(browserTools((url, ctx) => TOOLS.find((t) => t.name === 'open_browser')!.impl({ url }, ctx)) as ToolDef[]));
+TOOLS.push(...(browserTools((url, ctx) => TOOLS.find((t) => t.name === 'open_browser')!.impl({ url }, ctx), (ctx, x, y, action) => pointer(ctx, x, y, action)) as ToolDef[]));
 export const toolMap = new Map(TOOLS.map((t) => [t.name, t]));
 
 export function functionSchemas() {

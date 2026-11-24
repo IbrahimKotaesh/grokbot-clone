@@ -119,8 +119,9 @@ def snapshot(tab, query="", text=True, chars=6000, mx=150):
 def el(ref):
     return "document.querySelector('[data-fino-ref=\"%d\"]')" % int(ref)
 def center(tab, ref):
-    r = tab.js("(() => { const e = %s; if (!e) return null; e.scrollIntoView({block: 'center', inline: 'center'}); const b = e.getBoundingClientRect(); return {x: b.left + b.width / 2, y: b.top + b.height / 2}; })()" % el(ref))
+    r = tab.js("(() => { const e = %s; if (!e) return null; e.scrollIntoView({block: 'center', inline: 'center'}); const b = e.getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2; return {x, y, sx: Math.round(window.screenX + Math.max(0, (window.outerWidth - window.innerWidth) / 2) + x), sy: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + y)}; })()" % el(ref))
     if not r: out(error="Element [%s] is gone. Call browser_read again to get fresh numbers." % ref)
+    POINTS.append({"x": r["sx"], "y": r["sy"]})
     return r
 def click(tab, ref):
     c = center(tab, ref); time.sleep(0.15)
@@ -134,6 +135,7 @@ def key(tab, k):
     tab.call("Input.dispatchKeyEvent", down)
     tab.call("Input.dispatchKeyEvent", {"type": "keyUp", "key": k, "code": k, "windowsVirtualKeyCode": vk})
 
+POINTS = []
 ts = tabs()
 op = A["op"]
 if ts is None:
@@ -162,7 +164,7 @@ if op == "navigate":
     out(page=snapshot(tab, "", True, 4000), tabs=tab_list)
 if op == "click":
     click(tab, A["ref"]); settle(tab)
-    out(page=snapshot(tab, "", True, 2500))
+    out(page=snapshot(tab, "", True, 2500), points=POINTS)
 if op == "fill":
     last = None
     for f in A.get("fields") or []:
@@ -170,11 +172,13 @@ if op == "fill":
         info = tab.js("(() => { const e = %s; if (!e) return null; return {tag: e.tagName, type: e.type || '', ce: e.isContentEditable}; })()" % el(ref))
         if not info: out(error="Element [%s] is gone. Call browser_read again." % ref)
         if f.get("files"):
+            center(tab, ref)
             node = tab.js(el(ref), False)
             tab.call("DOM.setFileInputFiles", {"files": f["files"], "objectId": node["objectId"]})
             continue
         v = f.get("value")
         if info["tag"] == "SELECT":
+            center(tab, ref)
             ok = tab.js("(() => { const e = %s, v = %s.toLowerCase(); const o = [...e.options].find((o) => o.value.toLowerCase() === v || o.text.trim().toLowerCase() === v) || [...e.options].find((o) => o.text.toLowerCase().includes(v)); if (!o) return false; e.value = o.value; e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); return true; })()" % (el(ref), json.dumps(str(v))))
             if not ok: out(error="Option %r not found in [%s]." % (v, ref))
             continue
@@ -191,7 +195,7 @@ if op == "fill":
         key(tab, "Enter"); settle(tab)
     elif A.get("click_ref") is not None:
         click(tab, A["click_ref"]); settle(tab)
-    out(page=snapshot(tab, "", True, 2500))
+    out(page=snapshot(tab, "", True, 2500), points=POINTS)
 if op == "js":
     v = tab.js("(async () => { %s })()" % A["code"] if "return" in A["code"] else A["code"])
     out(value=v, url=tab.js("location.href"))
@@ -246,7 +250,16 @@ const notLocal = (ctx: BrowserCtx) => {
 const host = (u: string) => { try { return new URL(u).host; } catch { return u.slice(0, 60); } };
 
 /** Built with a starter that opens Chrome when it isn't running yet (open_browser, from tools.ts). */
-export function browserTools(startBrowser: (url: string, ctx: any) => Promise<unknown>) {
+export type Pointer = (ctx: any, x: number, y: number, action: 'move' | 'click') => void;
+/** Shows the bot's mouse gliding to each element it clicks or fills, so the owner sees the work happen. */
+async function glide(ctx: any, points: { x: number; y: number }[] | undefined, pointer: Pointer, click: boolean) {
+  for (const [i, p] of (points ?? []).entries()) {
+    pointer(ctx, p.x, p.y, click && i === (points!.length - 1) ? 'click' : 'move');
+    if (i < points!.length - 1) await new Promise((r) => setTimeout(r, 220));
+  }
+}
+
+export function browserTools(startBrowser: (url: string, ctx: any) => Promise<unknown>, pointer: Pointer = () => {}) {
   return [
     {
       name: 'browser_navigate',
@@ -285,6 +298,7 @@ export function browserTools(startBrowser: (url: string, ctx: any) => Promise<un
       impl: async (a: any, ctx: any): Promise<BrowserResult> => {
         notLocal(ctx);
         const r = await cdp(ctx, { op: 'click', ref: Number(a.ref) });
+        await glide(ctx, r.points, pointer, true);
         return { output: formatPage(r.page), summary: `Clicked [${a.ref}]` };
       },
     },
@@ -303,6 +317,7 @@ export function browserTools(startBrowser: (url: string, ctx: any) => Promise<un
         const lib = `/root/grokbot/files/${ctx.botId}/`;
         for (const f of a.fields ?? []) for (const p of f.files ?? []) if (!String(p).startsWith(lib) || String(p).includes('..')) throw new Error(`Upload files from your Library folder (${lib}) only.`);
         const r = await cdp(ctx, { op: 'fill', fields: a.fields ?? [], press_enter: !!a.press_enter, click_ref: a.click_ref ?? null });
+        await glide(ctx, r.points, pointer, a.click_ref != null);
         return { output: formatPage(r.page), summary: `Filled ${(a.fields ?? []).length} field${(a.fields ?? []).length === 1 ? '' : 's'}` };
       },
     },
