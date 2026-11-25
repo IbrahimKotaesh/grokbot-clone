@@ -448,7 +448,6 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
         {(user || !body.streaming) && (
           <View style={[s.row, { gap: space.md, marginTop: user && body.reaction ? 14 : 4, marginHorizontal: 4 }]}>
             <Text style={[type.caption, { color: p.faint, fontWeight: "400" }]}>{time(row.createdAt)}</Text>
-            {user && seen && !!body.seenAt && <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>{t("Seen")}</Text>}
             {canRetry && (
               <Pressable
                 accessibilityRole="button"

@@ -11,6 +11,8 @@ export function WorkDetails({ rows, bot }: { rows: Row[]; bot: Bot }) {
   const failed = rows.some((r) => r.body.type === "tool-call" && ["error", "denied"].includes(r.body.status));
   const waiting = rows.some((r) => r.body.type === "tool-call" && r.body.status === "awaiting-approval");
   const running = rows.some((r) => r.body.type === "tool-call" && r.body.status === "running");
+  // A clean chat: work that finished fine leaves no trace; only live, waiting or failed work shows.
+  if (!failed && !waiting && !running) return null;
   const title = failed ? t("Some steps need attention") : waiting ? t("Waiting for your permission") : running ? t("Working") : t("Completed {n}", { n: n(rows.length, "{n} step", "{n} steps") });
   return (
     <View style={{ marginHorizontal: space.lg, marginVertical: space.xs }}>

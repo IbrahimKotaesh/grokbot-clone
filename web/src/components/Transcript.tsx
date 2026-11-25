@@ -1,5 +1,5 @@
 import { land } from '../lib/sendFlight';
-import { plural, t } from '../lib/i18n';
+import { t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -69,7 +69,16 @@ function cornerClass(i: number, n: number) {
 
 const SERVER_CAPTIONS = new Set(['Computer · final screenshot']);
 
-const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, seenBy }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean; onRetry?: () => void; seenBy?: Bot }) {
+/** Messages whose time is said by the next one: same side, within a few minutes. The time shows once, at the end of a turn. */
+function quietTimes(items: Item[]): Set<number> {
+  const msgs: { seq: number; side: string; ts: number }[] = [];
+  for (const it of items) if (it.kind === 'group') for (const r of it.rows) msgs.push({ seq: r.seq, side: it.side, ts: r.createdAt });
+  const quiet = new Set<number>();
+  for (let i = 0; i < msgs.length - 1; i++) if (msgs[i + 1].side === msgs[i].side && msgs[i + 1].ts - msgs[i].ts < GROUP_GAP) quiet.add(msgs[i].seq);
+  return quiet;
+}
+
+const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, quietTime }: { row: Row; side: 'left' | 'right'; pos: string; fresh?: boolean; onRetry?: () => void; quietTime?: boolean }) {
   const b = row.body as MessageBody;
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
@@ -77,7 +86,7 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, seenBy }: 
   // Your just-sent message flies in from the composer.
   useLayoutEffect(() => { if (side === 'right') land(row.botId, b.text, wrap.current); }, []);
   return (
-    <div ref={wrap} className={`bubble-wrap is-${side}`} data-seq={row.seq}>
+    <div ref={wrap} className={`bubble-wrap is-${side}${quietTime && !onRetry ? ' is-quiet-time' : ''}`} data-seq={row.seq}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
       {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}${fresh ? ' is-fresh' : ''}`}>
         {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
@@ -97,7 +106,6 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, seenBy }: 
         <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>
         {side === 'left' && !b.streaming && b.text.trim() && <CopyButton text={b.text} />}
         {onRetry && <RetryButton onRetry={onRetry} />}
-        {seenBy && b.seenAt && <span className="bubble__seen" title={t('Seen by {name}', { name: seenBy.name })}><BotAvatarFor bot={seenBy} size={14} />{t('Seen')}</span>}
       </div>
     </div>
   );
@@ -142,15 +150,14 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
 
 function Steps({ rows }: { rows: Row[] }) {
   const calls = rows.map((r) => r.body as ToolCallBody);
-  const visible = calls;
-  const active=visible.find(c=>c.status==='running');
+  // A clean chat: finished work stays out of the way, and the activity line shows what's happening now.
+  // Only steps that failed or were refused show, so the person knows something needs a look.
+  const visible = calls.filter((c) => c.status === 'error' || c.status === 'denied');
   if (!visible.length) return null;
-  const n = visible.length;
   return (
     <details className="steps">
       <summary className="steps__toggle">
-        {active ? t(stepTitle(active)) : plural(n, '{n} step', '{n} steps')}
-        {active&&<span className="steps__working" aria-label={t("Working")}/>}
+        {t('Some steps need attention')}
         <Icon name="chev_down" size={10} opacity={0.66} className="steps__chev" />
       </summary>
         <ul className="steps__list">
@@ -185,6 +192,7 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
   const stick = useRef(true);
   const [showJump, setShowJump] = useState(false);
   const items = useMemo(() => buildItems(rows), [rows]);
+  const quiet = useMemo(() => quietTimes(items), [items]);
 
   const running = !!live?.isRunning;
   const waiting = !running && (!!live?.awaiting || live?.activity?.kind === 'waiting_for_you');
@@ -204,8 +212,6 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     const asked = [...shown].reverse().find((r) => r.body.type === 'message' && r.body.role === 'user');
     return asked && asked.body.type === 'message' && !asked.body.from ? lastReply.seq : undefined;
   }, [shownRows, running, waiting]);
-  // "Seen" shows under the person's latest message only.
-  const lastAskSeq = useMemo(() => [...shownRows].reverse().find((r) => r.body.type === 'message' && r.body.role === 'user' && !r.body.from)?.seq, [shownRows]);
   const [retryError, setRetryError] = useState('');
   const retry = () => {
     setRetryError(''); stick.current = true;
@@ -297,7 +303,7 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
                 <div key={it.key} className={`group is-${it.side}`}>
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} seenBy={r.seq === lastAskSeq ? bot : undefined} /></Fragment>
+                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} quietTime={quiet.has(r.seq)} /></Fragment>
                   ))}
                 </div>
               );

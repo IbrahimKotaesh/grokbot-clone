@@ -438,3 +438,7 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .finish-toast__view { background: var(--chat-blue); color: #fff; }
 .finish-toast__ghost { background: transparent; color: var(--p-muted); box-shadow: inset 0 0 0 1px var(--p-line-strong); }
 @media (prefers-reduced-motion: reduce) { .finish-toast { animation: none; } }
+
+/* The time shows once at the end of a turn; earlier messages in the same run reveal theirs on hover. */
+.bubble-wrap.is-quiet-time .bubble__meta { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .15s ease, opacity .15s ease; }
+@media (hover: hover) { .bubble-wrap.is-quiet-time:hover .bubble__meta { max-height: 28px; opacity: 1; } }
