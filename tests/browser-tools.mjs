@@ -30,6 +30,7 @@ const html = `<!doctype html><title>Apply</title><h1>Job application</h1>
 <label>Country <select name="c"><option value="">Pick</option><option value="nl">Netherlands</option><option value="lb">Lebanon</option></select></label>
 <label><input type="checkbox" name="terms"> I agree</label>
 <label>CV <input type="file" name="cv"></label>
+<div class="drop"><button type="button" onclick="this.nextElementSibling.click()">Selecteer bestanden</button><input type="file" name="docs" style="display:none"></div>
 <button type="button" onclick="document.getElementById('out').textContent='rows: '+(++window.k||(window.k=1))">Add row</button>
 <button type="submit">Submit application</button></form><p id="out">rows: 0</p>`;
 const url = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
@@ -60,6 +61,10 @@ assert.match(page, /"Country" = "Lebanon"/);
 assert.match(page, /"I agree" \(checked\)/);
 assert.match(page, /"CV" = "C:\\\\fakepath\\\\cv\.txt"|"CV" = ".*cv\.txt"/);
 await assert.rejects(toolMap.get('browser_fill').impl({ fields: [{ ref: 1, files: ['/etc/passwd'] }] }, ctx), /Library folder/);
+// A site that hides the file field behind its own "Select files" button: the file still goes straight in
+await run('browser_fill', { fields: [{ ref: ref(page, 'Selecteer bestanden'), files: [`/root/grokbot/files/${bot.id}/cv.txt`] }] });
+const docs = JSON.parse(await run('browser_run_js', { code: 'return document.querySelector("[name=docs]").files[0]?.name', purpose: 'test' }));
+assert.equal(docs.value, 'cv.txt', 'the hidden file field behind the button got the file');
 
 // Click a normal button
 page = await run('browser_click', { ref: ref(page, 'Add row') });
@@ -81,6 +86,11 @@ const g3 = await employeeGuard('web', bot.id, 'browser_fill', { fields: [{ ref: 
 assert.match(g3.block ?? '', /never types a payment card number/);
 const g4 = await employeeGuard('web', bot.id, 'browser_click', { ref: ref(page, 'Add row') });
 assert.deepEqual(g4, {}, 'ordinary buttons need no OK');
+// Typing on the screen: only Enter in the form is a final step; plain typing and a file path in the file window are not
+await run('browser_run_js', { code: 'document.querySelector("[name=name]").focus(); return 1', purpose: 'test' });
+assert.deepEqual(await employeeGuard('web', bot.id, 'computer_type', { text: 'Ibrahim' }), {}, 'typing without Enter needs no OK');
+assert.deepEqual(await employeeGuard('web', bot.id, 'computer_type', { text: `/root/grokbot/files/${bot.id}/cv.txt`, press_enter: true }), {}, 'a file path for the file window needs no OK');
+assert.match((await employeeGuard('web', bot.id, 'computer_type', { text: 'Ibrahim', press_enter: true })).decide ?? '', /final step/, 'typing then Enter in the application form still waits for the owner');
 
 // A site that blocks plain fetches (LinkedIn) is read through the bot's own browser instead
 const li = await toolMap.get('read_page').impl({ url: 'https://www.linkedin.com/jobs/search/?keywords=AI&location=Netherlands' }, ctx);

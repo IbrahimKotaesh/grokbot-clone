@@ -90,10 +90,10 @@ const PROBE = (x?: number, y?: number) => `(()=>{
   let at=null; ${x === undefined ? '' : `at=describe(document.elementFromPoint(${x}-left,${y}-top));`}
   const a=document.activeElement, f=a&&a.form; let enter=null;
   if(f){ const s=f.querySelector('button[type=submit],button:not([type]),input[type=submit]'); enter={field:a.tagName,text:s?(s.innerText||s.value||'').trim().slice(0,80):'',submit:true}; }
-  return {pay, at, enter};
+  return {pay, at, enter, focused: document.hasFocus()};
 })()`;
 
-async function probe(userId: string, botId: string, x?: number, y?: number): Promise<{ url: string; title: string; pay: boolean; at: any; enter: any } | null> {
+async function probe(userId: string, botId: string, x?: number, y?: number): Promise<{ url: string; title: string; pay: boolean; at: any; enter: any; focused: boolean } | null> {
   const { computerId, screenId } = await screenFor(userId, botId);
   const script = Buffer.from(CDP_PY).toString('base64');
   const expr = Buffer.from(PROBE(x, y)).toString('base64');
@@ -101,7 +101,7 @@ async function probe(userId: string, botId: string, x?: number, y?: number): Pro
   try {
     const out = JSON.parse((r.output ?? '').trim().split('\n').pop() ?? '');
     if (!out.ok) return null;
-    return { url: out.url, title: out.title, pay: !!out.value?.pay, at: out.value?.at ?? null, enter: out.value?.enter ?? null };
+    return { url: out.url, title: out.title, pay: !!out.value?.pay, at: out.value?.at ?? null, enter: out.value?.enter ?? null, focused: out.value?.focused !== false };
   } catch { return null; }
 }
 
@@ -150,7 +150,9 @@ export async function employeeGuard(userId: string, botId: string, name: string,
   }
 
   const click = name === 'computer_click' && (!args?.button || args.button === 'left');
-  const enter = name === 'computer_key' && isEnter(String(args?.keys ?? ''));
+  // Typing only finishes something when it ends with Enter; a file path typed into the system file window never does.
+  const typedEnter = name === 'computer_type' && !!args?.press_enter && !/^\/[^\s]*$/.test(String(args?.text ?? '').trim());
+  const enter = (name === 'computer_key' && isEnter(String(args?.keys ?? ''))) || typedEnter;
   if (!click && !enter && name !== 'computer_type') return {};
   // Only the bot's own Linux browser can be inspected; a turn driving the owner's Mac browser skips the page check.
   if (opts.pageCheck === false || (env.computerProvider !== 'local' && env.computerProvider !== 'orgo')) return {};
@@ -160,7 +162,8 @@ export async function employeeGuard(userId: string, botId: string, name: string,
 
   const payPage = page.pay || PAY_PAGE.test(page.url) || PAY_PAGE.test(page.title);
   if (payPage && name !== 'computer_click') return { block: 'This is a payment page. Fino never types on payment pages; the owner pays themselves.' };
-  const target = name === 'computer_click' ? page.at : page.enter;
+  // Keys go to whatever window is in front: when a system window (like the file picker) has focus, the page's form is not touched.
+  const target = name === 'computer_click' ? page.at : enter && page.focused ? page.enter : null;
   const label = String(target?.text ?? '');
   if (payPage && target && (target.submit || FINAL_WORDS.test(label))) return { block: `This button (“${label || 'pay'}”) is on a payment page. Fino never pays; the owner pays themselves.` };
   if (target && ((target.submit && FINAL_WORDS.test(label)) || STRONG_FINAL.test(label))) {

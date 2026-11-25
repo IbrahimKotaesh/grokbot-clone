@@ -173,7 +173,13 @@ if op == "fill":
         if not info: out(error="Element [%s] is gone. Call browser_read again." % ref)
         if f.get("files"):
             center(tab, ref)
-            node = tab.js(el(ref), False)
+            # Many sites hide the real file field behind a styled "Select files" button or drop zone:
+            # find the field that button belongs to, so the file goes in without the system file window.
+            node = tab.js("(() => { const e = %s; if (!e) return null; const isFile = (x) => x && x.tagName === 'INPUT' && x.type === 'file';"
+                          " if (isFile(e)) return e; if (isFile(e.control)) return e.control; const lab = e.closest('label'); if (lab && isFile(lab.control)) return lab.control;"
+                          " for (let p = e; p; p = p.parentElement) { const f = p.querySelector && p.querySelector('input[type=file]'); if (f) return f; }"
+                          " return document.querySelector('input[type=file]'); })()" % el(ref), False)
+            if not node or not node.get("objectId"): out(error="There is no file upload field on this page near [%s]." % ref)
             tab.call("DOM.setFileInputFiles", {"files": f["files"], "objectId": node["objectId"]})
             continue
         v = f.get("value")
@@ -304,7 +310,7 @@ export function browserTools(startBrowser: (url: string, ctx: any) => Promise<un
     },
     {
       name: 'browser_fill',
-      description: 'Fill a whole form in one step: fields is a list of {ref, value} (text, a select option, true/false for checkboxes) or {ref, files} to upload files from your Library (absolute paths). Then optionally press_enter or click_ref (e.g. a Next button). Returns the page after. Never fill payment details.',
+      description: 'Fill a whole form in one step: fields is a list of {ref, value} (text, a select option, true/false for checkboxes) or {ref, files} to upload files from your Library (absolute paths; ref can be the file field or the site\'s own Select files / upload button, the file goes straight in). Never open the system file window to upload. Then optionally press_enter or click_ref (e.g. a Next button). Returns the page after. Never fill payment details.',
       parameters: obj({
         fields: { type: 'array', items: obj({ ref: { type: 'integer' }, value: { type: ['string', 'boolean', 'number'] }, files: { type: 'array', items: { type: 'string' } } }, ['ref']) },
         press_enter: { type: 'boolean' },
