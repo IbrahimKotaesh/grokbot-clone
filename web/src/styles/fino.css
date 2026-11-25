@@ -125,7 +125,9 @@ button, a { touch-action: manipulation; }
 .composer__model { display:flex; align-items:center; gap:8px; font-size:12px; color:#61776e; }
 .composer__model select { border:1px solid #789d8e55; border-radius:12px; padding:7px 10px; background:#e9f5ef; color:#184e3c; font:inherit; font-weight:600; cursor:pointer; }
 .composer__voice-status { font-size:11px; color:#6b8078; text-align:end; overflow-wrap:anywhere; }
-.composer__input, .bubble__plain, .md p, .md li, .md blockquote, .md h1, .md h2, .md h3 { text-align:start; unicode-bidi:plaintext; }
+.composer__input, .bubble__plain { text-align:start; unicode-bidi:plaintext; }
+/* Bot replies set a direction on every line (Markdown.tsx); let it hold. */
+.md p, .md li, .md blockquote, .md h1, .md h2, .md h3, .md h4, .md ul, .md ol { text-align:start; unicode-bidi:isolate; }
 .md pre, .md pre code { direction:ltr; text-align:start; unicode-bidi:isolate; }
 @media(max-width:600px) { .composer__footer { gap:8px; } .composer__voice-status { max-width:48%; } }
 

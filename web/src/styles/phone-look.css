@@ -206,7 +206,9 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 [dir='rtl'] .transcript__col .bubble, [dir='rtl'] .transcript__col .plan-card, [dir='rtl'] .transcript__col .steps,
 [dir='rtl'] .transcript__col .card, [dir='rtl'] .transcript__col .system-event, [dir='rtl'] .transcript__col .notice,
 [dir='rtl'] .transcript__col .divider, [dir='rtl'] .transcript__col .activity-line, [dir='rtl'] .transcript__col .empty-chat { direction: rtl; }
-.chat .bubble.is-user .bubble__plain, .chat .bubble .md { unicode-bidi: plaintext; text-align: start; }
+.chat .bubble.is-user .bubble__plain { unicode-bidi: plaintext; text-align: start; }
+/* Bot replies: each line carries its own dir (Markdown.tsx), so it lines up with its language. */
+.chat .bubble .md, .chat .bubble .md [dir] { text-align: start; }
 
 /* No brand mark in the sidebar: the controls sit at the end of the top bar. */
 .sidebar__titlebar .sidebar__controls { margin-inline-start: auto; }

@@ -83,7 +83,7 @@
 .md strong { font-weight: 600; }
 .md h1, .md h2, .md h3, .md h4 { font-size: 15px; line-height: 22px; font-weight: 600; }
 .md h1 { font-size: 17px; line-height: 24px; }
-.md blockquote { padding-left: 10px; border-left: 2px solid var(--color-border-primary); color: var(--color-text-secondary); }
+.md blockquote { padding-inline-start: 10px; border-inline-start: 2px solid var(--color-border-primary); color: var(--color-text-secondary); }
 .md code { font-family: var(--font-mono-stack); font-size: 13px; background: var(--color-bg-tertiary); padding: 1px 4px; border-radius: 4px; }
 .md pre {
   background: var(--color-bg-subtle); border-radius: var(--radius-sm); padding: 8px 12px; overflow-x: auto;
