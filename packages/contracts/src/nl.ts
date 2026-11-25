@@ -197,7 +197,7 @@ export const nl: Record<string, string> = {
   "Find the cheapest flight to Paris next month": "Vind de goedkoopste vlucht naar Parijs volgende maand",
   "Find unpaid invoices in my email": "Vind onbetaalde facturen in mijn e-mail",
   "Finds leads, drafts outreach": "Vindt leads, stelt outreach op",
-  "Fino Flash, GPT, Claude… part of your plan": "Fino Flash, GPT, Claude… onderdeel van je plan",
+  "Bart Flash, GPT, Claude… part of your plan": "Bart Flash, GPT, Claude… onderdeel van je plan",
   "Five posts, ready for review": "Vijf berichten, klaar voor beoordeling",
   "Flag important senders": "Markeer belangrijke afzenders",
   "For personal life": "Voor privéleven",

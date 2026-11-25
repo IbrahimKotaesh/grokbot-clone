@@ -600,7 +600,7 @@ export const ar: Record<string, string> = {
   "Careful with numbers and logic": "دقيق في الأرقام والمنطق",
   "Stronger Qwen, sees images": "Qwen أقوى، ويفهم الصور",
   "Deeper reasoning": "تفكير أعمق",
-  "Fino Flash, GPT, Claude… part of your plan": "Fino Flash وGPT وClaude… ضمن خطتك",
+  "Bart Flash, GPT, Claude… part of your plan": "Bart Flash وGPT وClaude… ضمن خطتك",
   "Deeper reasoning from DeepSeek": "تفكير أعمق من DeepSeek",
   "Hundreds of models, very cheap · openrouter.ai/keys": "مئات النماذج، رخيصة جداً · openrouter.ai/keys",
   "Don't ask for approval": "عدم طلب الموافقة",

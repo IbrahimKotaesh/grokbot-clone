@@ -240,7 +240,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
             <span className="onb__icon"><Sparkles size={18} /></span>
             <div className="onb__option-text">
               <strong>{t('Use Fino’s models')}</strong>
-              <small>{t('Nothing to sign in to. Fino Flash, included in your plan.')}</small>
+              <small>{t('Nothing to sign in to. Bart Flash, included in your plan.')}</small>
             </div>
             {included ? <span className="onb__check"><Check size={16} /></span>
               : <button type="button" className="onb__small" onClick={() => { useAllBots('openrouter'); setIncluded(true); onReady(); setJustConnected(true); }}>{t('Start')}</button>}

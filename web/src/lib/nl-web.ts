@@ -397,7 +397,7 @@ export const nlWeb: Record<string, string> = {
   "Nothing matches “{q}”": "Niets komt overeen met “{q}”",
   "Nothing said yet.": "Nog niets gezegd.",
   "Nothing scheduled. Try asking in chat, for example “send me a summary every weekday at 8am”.": "Niets gepland. Probeer het eens in de chat, bijvoorbeeld “stuur me elke werkdag om 8 uur een samenvatting”.",
-  "Nothing to sign in to. Fino Flash, included in your plan.": "Niets om in te loggen. Fino Flash, inbegrepen in je abonnement.",
+  "Nothing to sign in to. Bart Flash, included in your plan.": "Niets om in te loggen. Bart Flash, inbegrepen in je abonnement.",
   "Notifications": "Meldingen",
   "Notifications are blocked for this site in your browser settings.": "Meldingen zijn geblokkeerd voor deze site in je browserinstellingen.",
   "Notifications are enabled on this device.": "Meldingen zijn ingeschakeld op dit apparaat.",

@@ -30,15 +30,15 @@ export function useHostedModels() {
 export const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
 const NAMES: Record<string, string> = {
   // Fino's own names for the open-source models it hosts.
-  'deepseek/deepseek-v4.1-flash': 'Fino Flash',
-  'z-ai/glm-5.3-flash': 'Fino Logic',
-  'deepseek/deepseek-v4-pro': 'Fino Deep',
+  'deepseek/deepseek-v4.1-flash': 'Bart Flash',
+  'z-ai/glm-5.3-flash': 'Bart Logic',
+  'deepseek/deepseek-v4-pro': 'Bart Deep',
   'openai/gpt-5.4-mini': 'GPT-5.4 mini',
   'x-ai/grok-4.3': 'Grok 4.3',
   'anthropic/claude-sonnet-5.5': 'Claude Sonnet 5.5',
   'openai/gpt-5.4': 'GPT-5.4',
 };
-/** "deepseek/deepseek-v4.1-flash" → "Fino Flash"; the default model when none is set. */
+/** "deepseek/deepseek-v4.1-flash" → "Bart Flash"; the default model when none is set. */
 export const modelName = (id?: string) => (id ? NAMES[id] ?? id.split('/').pop() ?? id : NAMES[DEFAULT_MODEL]);
 
 /** What the bot runs on, as one label: an included model's name, or the user's own subscription. */
@@ -51,9 +51,9 @@ export function brainLabel(bot: { agentProvider?: string; model?: string }) {
 }
 
 const LOGOS: [string, string][] = [
-  ['deepseek/', 'fino'],
-  ['z-ai/', 'fino'],
-  ['qwen/', 'fino'],
+  ['deepseek/', 'bart'],
+  ['z-ai/', 'bart'],
+  ['qwen/', 'bart'],
   ['x-ai/', 'grok'],
   ['openai/', 'chatgpt'],
   ['anthropic/', 'claude'],
@@ -63,7 +63,7 @@ export function ModelLogo({ model, dim = false }: { model: string; dim?: boolean
   const file = LOGOS.find(([p]) => model.startsWith(p))?.[1] ?? 'chatgpt';
   return (
     <span className={`provider-logo provider-logo--${file}`} aria-hidden="true" style={dim ? { opacity: 0.45 } : undefined}>
-      <img src={`/brands/${file}.${file === 'fino' ? 'png' : 'svg'}`} width={20} height={20} alt="" />
+      <img src={`/brands/${file}.${file === 'bart' ? 'png' : 'svg'}`} width={20} height={20} alt="" />
     </span>
   );
 }

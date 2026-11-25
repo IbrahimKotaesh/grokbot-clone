@@ -5,7 +5,7 @@ import { planOf, TRIAL, trialUntil, type PlanId } from './plans.js';
 
 /**
  * Hosts for Fino's included models: any host that neither keeps prompts nor trains on them (OpenRouter's
- * data_collection: deny). OpenRouter picks the cheapest healthy one (often Baidu for Fino Flash) and keeps each
+ * data_collection: deny). OpenRouter picks the cheapest healthy one (often Baidu for Bart Flash) and keeps each
  * conversation on it for the prompt cache. OR_PROVIDER_ONLY (comma-separated host slugs) limits it to a list,
  * e.g. US/EU hosts only, at about twice the cost per cached step.
  */
@@ -30,9 +30,9 @@ const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 3, pro: 5
 /** The models Fino includes, and the lowest plan that unlocks each. The first one is everyone's default. */
 export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId }[] = [
   // Fino's own names for the open-source models it hosts (built on DeepSeek and GLM; see the privacy page).
-  { id: 'deepseek/deepseek-v4.1-flash', name: 'Fino Flash', note: 'Fast everyday model', tier: 'free' },
-  { id: 'z-ai/glm-5.3-flash', name: 'Fino Logic', note: 'Careful with numbers and logic', tier: 'starter' },
-  { id: 'deepseek/deepseek-v4-pro', name: 'Fino Deep', note: 'Deeper reasoning', tier: 'pro' },
+  { id: 'deepseek/deepseek-v4.1-flash', name: 'Bart Flash', note: 'Fast everyday model', tier: 'free' },
+  { id: 'z-ai/glm-5.3-flash', name: 'Bart Logic', note: 'Careful with numbers and logic', tier: 'starter' },
+  { id: 'deepseek/deepseek-v4-pro', name: 'Bart Deep', note: 'Deeper reasoning', tier: 'pro' },
   { id: 'openai/gpt-5.4-mini', name: 'GPT-5.4 mini', note: 'Balanced model from OpenAI', tier: 'pro' },
   { id: 'x-ai/grok-4.3', name: 'Grok 4.3', note: 'Sharp and up to date, from xAI', tier: 'pro' },
   { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', note: 'Top writing and reasoning', tier: 'max' },
