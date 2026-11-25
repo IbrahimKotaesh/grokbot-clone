@@ -459,3 +459,26 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 /* The time shows once at the end of a turn; earlier messages in the same run reveal theirs on hover. */
 .bubble-wrap.is-quiet-time .bubble__meta { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .15s ease, opacity .15s ease; }
 @media (hover: hover) { .bubble-wrap.is-quiet-time:hover .bubble__meta { max-height: 28px; opacity: 1; } }
+
+/* ---------- reading type in chat: the device's own text face, sized and spaced for long reading ----------
+   San Francisco on Apple devices, Segoe on Windows, Roboto on Android; Arabic falls back to the system Arabic face. */
+:root { --font-read: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", "Tajawal", sans-serif; }
+.chat .bubble, .chat .bubble .md, .chat .bubble__plain { font-family: var(--font-read); font-weight: 400; letter-spacing: 0; }
+.chat .bubble.is-agent { font-size: 16px; line-height: 1.65; }
+.chat .bubble.is-user { font-size: 16px; line-height: 1.45; }
+.chat .bubble .md > * + * { margin-top: 14px; }
+.chat .bubble .md ul, .chat .bubble .md ol { padding-inline: 24px 0; }
+.chat .bubble .md li + li { margin-top: 8px; }
+.chat .bubble .md li::marker { color: var(--p-text); }
+.chat .bubble .md strong { font-weight: 650; }
+.chat .bubble .md h1, .chat .bubble .md h2, .chat .bubble .md h3, .chat .bubble .md h4 { font-family: var(--font-read); font-weight: 700; letter-spacing: -0.01em; }
+.chat .bubble .md h1 { font-size: 1.3em; line-height: 1.3; }
+.chat .bubble .md h2 { font-size: 1.15em; line-height: 1.35; }
+.chat .bubble .md h3, .chat .bubble .md h4 { font-size: 1.04em; line-height: 1.45; }
+.chat .bubble .md * + h1, .chat .bubble .md * + h2, .chat .bubble .md * + h3 { margin-top: 22px; }
+.chat .bubble .md code { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; color: #2b5cb0; background: var(--p-raised); border: 1px solid var(--p-line); border-radius: 6px; padding: 1px 6px; }
+.chat .bubble .md pre code { color: inherit; border: 0; padding: 0; background: none; }
+:root[data-theme='dark'] .chat .bubble .md code { color: #8fb6ff; }
+@media (max-width: 760px) {
+  .chat .bubble.is-agent, .chat .bubble.is-user { font-size: 17px; }
+}
