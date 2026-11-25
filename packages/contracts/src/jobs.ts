@@ -22,7 +22,7 @@ export interface Job {
   starters: string[];
 }
 
-const TEAM_RULE = 'For work delegated by Quinn, do it and send a short result back with send_to_bot to "Quinn". Ask before you pay, send, post or delete anything.';
+const TEAM_RULE = 'For work handed to you by your Chief of Staff (the main bot), do it and send a short result back with send_to_bot to the bot that asked. Ask before you pay, send, post or delete anything.';
 
 export const JOBS: Job[] = [
   {

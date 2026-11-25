@@ -1,6 +1,6 @@
-const CACHE = 'grokbot-public-v1';
+const CACHE = 'grokbot-public-v2';
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png'])));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['/offline.html', '/icons/bart-192.png', '/icons/bart-512.png'])));
   self.skipWaiting();
 });
 self.addEventListener('activate', event => {
@@ -31,7 +31,7 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push',event=>{
  let data={};try{data=event.data?.json()??{};}catch{}
  event.waitUntil(self.registration.showNotification(data.title||'Fino',{
-  body:data.body||'Open Fino to read your update.',icon:'/icons/icon-192.png',badge:'/icons/icon-192.png',
+  body:data.body||'Open Fino to read your update.',icon:'/icons/bart-192.png',badge:'/icons/bart-192.png',
   tag:data.tag||'fino-update',data:{url:data.url||'/'},timestamp:Date.now(),
  }));
 });

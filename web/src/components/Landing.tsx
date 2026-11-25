@@ -18,16 +18,16 @@ const store = {
 export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => store.drop(FIRST_TASK) };
 
 type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
-// An example team. Every new account starts with Quinn; people add the others themselves.
+// An example team. Every new account starts with Bart; people add the others themselves.
 const TEAM: Bot[] = [
   { id: 'nour', name: 'Nour', role: 'Research', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'quinn', name: 'Quinn', role: 'Chief of Staff', img: characterDataUri('accountant', 'cyan'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
-  { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'red'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
+  { id: 'quinn', name: 'Bart', role: 'Chief of Staff', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
   { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
-// A bright sky blue so the mark stands out on the blue header.
-const MARK = characterDataUri('accountant', '#5f9dff');
+// Bart, Fino's main character, is the logo: yellow on the tomato header.
+const MARK = characterDataUri('accountant', 'yellow');
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
 
@@ -141,7 +141,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         <div className="lp-wrap lp-close__in">
           <div className="lp-close__copy" data-reveal>
             <h2 className="lp-h2">Meet your team today.</h2>
-            <p className="lp-copy">Create your account with Google or your email. Quinn, your Chief of Staff, is waiting in the first chat.</p>
+            <p className="lp-copy">Create your account with Google or your email. Bart, your Chief of Staff, is waiting in the first chat.</p>
           </div>
           <div className="lp-close__panel" data-reveal style={{ '--i': 2 } as CSSProperties}>
             {signedIn ? <div className="auth"><h2 className="auth__title">You’re signed in.</h2><a className="auth__submit" href="/">Open Fino</a></div> : <AuthPanel initial="signup" />}
@@ -332,9 +332,9 @@ const ASSISTANT_SALARY = 2500;
 const ASSISTANT_EXTRA = 500;
 // The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
 const PLAN_BY_ID = {
-  starter: { name: 'Starter', price: 14.99, bots: 'Quinn + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
-  pro: { name: 'Pro', price: 49.99, bots: 'Quinn + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
-  max: { name: 'Max', price: 99.99, bots: 'Quinn + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
+  starter: { name: 'Starter', price: 14.99, bots: 'Bart + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
+  pro: { name: 'Pro', price: 49.99, bots: 'Bart + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
+  max: { name: 'Max', price: 99.99, bots: 'Bart + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
   ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Their own computer · 150 h a month', 'Top AI models included', 'Priority support'] },
 } as const;
 const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : roles <= 3 ? PLAN_BY_ID.max : PLAN_BY_ID.ultra);
@@ -455,7 +455,7 @@ function Jobs() {
 function FirstSteps() {
   const steps = [
     { t: 'Sign up', d: 'With Google or your email. No AI account or setup needed.' },
-    { t: 'Meet Quinn', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
+    { t: 'Meet Bart', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
     { t: 'Give a job', d: 'Type or say it. Watch the bot work, and approve what matters.' },
   ];
   return (
@@ -479,7 +479,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">
         <h2 className="lp-h2" data-reveal>Simple plans. No hiring.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Every plan includes Quinn, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.</p>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Every plan includes Bart, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.</p>
         <ul className="lp-plans__row">
           {list.map((p, i) => (
             <li key={p.name} className={p.name === 'Max' ? 'is-pick' : ''} data-reveal style={{ '--i': 2 + i } as CSSProperties}>

@@ -181,7 +181,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
   return (
     <section className="onb__step">
       <div className="onb__team onb__team--small" aria-hidden="true">
-        {([['architect', 'violet'], ['accountant', 'cyan'], ['medic', 'red'], ['florist', 'magenta']] as const).map(([k, c], i) => <span key={k} style={{ '--i': i } as CSSProperties}><img src={characterDataUri(k, c)} alt="" /></span>)}
+        {([['architect', 'violet'], ['accountant', 'yellow'], ['medic', 'red'], ['florist', 'magenta']] as const).map(([k, c], i) => <span key={k} style={{ '--i': i } as CSSProperties}><img src={characterDataUri(k, c)} alt="" /></span>)}
       </div>
       <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
       <p>{required ? t('Pick how your bots think: your ChatGPT, your Claude, or Fino’s own models.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
@@ -253,12 +253,12 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
   );
 }
 
-/** Step 2: what should your team do? Each picked job becomes a ready-made bot that Quinn can hand work to. */
+/** Step 2: what should your team do? Each picked job becomes a ready-made bot that Bart can hand work to. */
 function TeamStep({ onNext, onBack }: { onNext: (jobs: string[]) => void; onBack: () => void }) {
   const bots = useStore((s) => s.bots);
   const has = (title: string) => bots.some((b) => b.kind !== 'room' && b.label?.trim().toLowerCase() === title.toLowerCase());
   const [picked, setPicked] = useState<string[]>([]);
-  // How many more bots the plan allows besides Quinn (null = no limit), so we never offer more than fit.
+  // How many more bots the plan allows besides Bart (null = no limit), so we never offer more than fit.
   const [room, setRoom] = useState<number | null | undefined>(undefined);
   const [planName, setPlanName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -284,13 +284,13 @@ function TeamStep({ onNext, onBack }: { onNext: (jobs: string[]) => void; onBack
   };
   const roomNote = () => room === 0
     ? t('Your {plan} plan has no room for more bots. Upgrade anytime to add them.').replace('{plan}', planName)
-    : (room === 1 ? t('Your {plan} plan includes 1 bot besides Quinn. Upgrade anytime for more.') : t('Your {plan} plan includes {n} bots besides Quinn. Upgrade anytime for more.').replace('{n}', String(room))).replace('{plan}', planName);
+    : (room === 1 ? t('Your {plan} plan includes 1 bot besides Bart. Upgrade anytime for more.') : t('Your {plan} plan includes {n} bots besides Bart. Upgrade anytime for more.').replace('{n}', String(room))).replace('{plan}', planName);
 
   const hire = async () => {
     const chosen = JOBS.filter((j) => picked.includes(j.id) && !has(j.title));
     if (!chosen.length || stuck) { onNext(picked); return; }
     setBusy(true); setError('');
-    // New bots think with the same AI as Quinn, which the first step just set up.
+    // New bots think with the same AI as Bart, which the first step just set up.
     const primary = useStore.getState().bots.find((b) => b.isPrimary);
     for (const j of chosen) {
       try {
@@ -310,7 +310,7 @@ function TeamStep({ onNext, onBack }: { onNext: (jobs: string[]) => void; onBack
   return (
     <section className="onb__step">
       <h1>{t('What should your team do?')}</h1>
-      <p>{t('Pick the jobs you want help with. Each one becomes a bot with its own browser and memory, working while you sleep or do something else. Quinn, your Chief of Staff, hands them work.')}</p>
+      <p>{t('Pick the jobs you want help with. Each one becomes a bot with its own browser and memory, working while you sleep or do something else. Bart, your Chief of Staff, hands them work.')}</p>
       <div className="onb__jobs" role="group" aria-label={t('Jobs')}>
         {JOBS.map((j) => {
           const hired = has(j.title);

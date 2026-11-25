@@ -1,9 +1,9 @@
 /* Public landing page. Fino blue opening, clay team on the fold, white working sections. */
 .lp {
-  --lp-blue: #2f6fd8;
-  --lp-blue-deep: #2459b8;
+  --lp-blue: #c13f22; /* Fino tomato: the brand color (name kept for the existing rules) */
+  --lp-blue-deep: #a5341b;
   --lp-on-blue: #fff8ee;
-  --lp-on-blue-soft: #e6eefc;
+  --lp-on-blue-soft: #fff8ee;
   --lp-ink: #211c17;
   --lp-ink-soft: #5e5248;
   --lp-ground: #fff8ee;
@@ -338,15 +338,15 @@
 .lp-slipdoc--fino { background: var(--lp-ground); transform: rotate(.8deg); margin-top: 18px; box-shadow: 0 30px 60px -30px #0b1f5c66, 0 2px 8px #0b1f5c1f, inset 0 0 0 2px var(--lp-blue); }
 .lp-slipdoc--fino header b { padding: 4px 12px; margin: -4px 0 -4px -4px; border-radius: 999px; background: var(--lp-blue); color: #fff; font-size: 17px; }
 .lp-slipdoc--fino footer strong { color: var(--lp-blue); }
-:root[data-theme="dark"] .lp-slipdoc--fino footer strong { color: #7fa6ff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-slipdoc--fino footer strong { color: #7fa6ff; } }
+:root[data-theme="dark"] .lp-slipdoc--fino footer strong { color: #ff8a6b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-slipdoc--fino footer strong { color: #ff8a6b; } }
 .lp-total { display: inline-block; animation: lp-tick .5s var(--lp-ease); }
 @keyframes lp-tick { from { opacity: .2; transform: translateY(8px); filter: blur(3px); } }
 .lp-cost__out { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px 28px; margin-top: 40px; padding-top: 30px; border-top: 1px solid var(--lp-line); }
 .lp-cost__out p { margin: 0; font-size: clamp(1.6rem, 3.2vw, 2.5rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
 .lp-cost__out strong { color: var(--lp-blue); font-variant-numeric: tabular-nums; }
-:root[data-theme="dark"] .lp-cost__out strong { color: #7fa6ff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-cost__out strong { color: #7fa6ff; } }
+:root[data-theme="dark"] .lp-cost__out strong { color: #ff8a6b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-cost__out strong { color: #ff8a6b; } }
 
 /* ---- jobs: pick a job, read its report, approve ---- */
 .lp-jobs { padding: clamp(80px, 10vw, 140px) 0; }
@@ -386,8 +386,8 @@
 .lp-steps__row { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(20px, 3vw, 44px); margin: 44px 0 0; padding: 0; }
 .lp-steps__row li { position: relative; padding-top: 22px; border-top: 2px solid var(--lp-ink); }
 .lp-steps__n { display: block; font-size: clamp(2.6rem, 4.4vw, 3.6rem); font-weight: 600; line-height: 1; letter-spacing: -0.04em; color: var(--lp-blue); font-variant-numeric: tabular-nums; }
-:root[data-theme="dark"] .lp-steps__n { color: #7fa6ff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-steps__n { color: #7fa6ff; } }
+:root[data-theme="dark"] .lp-steps__n { color: #ff8a6b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-steps__n { color: #ff8a6b; } }
 .lp-steps__row b { display: block; margin-top: 14px; font-size: 21px; letter-spacing: -0.02em; }
 .lp-steps__row p { margin: 8px 0 0; max-width: 32ch; font-size: 16px; line-height: 1.5; color: var(--lp-ink-soft); }
 

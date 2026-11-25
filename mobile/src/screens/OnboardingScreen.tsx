@@ -134,7 +134,7 @@ export function OnboardingScreen({ done }: { done: () => void }) {
           key="pick"
           title={tr("Meet your team")}
           subtitle={tr("Each bot comes with ready-made skills. Turn off any you don't need.")}
-          footer={<Button title={picked.length ? tr("Create my team · {n}", { n: picked.length + 1 }) : tr("Continue with Quinn only")} onPress={() => go("build")} />}
+          footer={<Button title={picked.length ? tr("Create my team · {n}", { n: picked.length + 1 }) : tr("Continue with Bart only")} onPress={() => go("build")} />}
         >
           {primary && (
             <FadeIn style={[s.card, s.row]}>
@@ -370,7 +370,7 @@ function Build({ templates, onFinish }: { templates: BotTemplate[]; onFinish: ()
           )}
           <Text style={[type.largeTitle, { color: p.text, textAlign: "center" }]}>{finished ? tr("Your team is ready") : tr("Hiring your team…")}</Text>
           <Text style={[type.body, { color: p.muted, textAlign: "center" }]}>
-            {finished ? tr("Say hi to Quinn. It already knows who you are and who's on the team.") : tr("Setting up each bot with its skills.")}
+            {finished ? tr("Say hi to Bart. It already knows who you are and who's on the team.") : tr("Setting up each bot with its skills.")}
           </Text>
         </View>
         {templates.map((t, i) => {

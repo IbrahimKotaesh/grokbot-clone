@@ -21,21 +21,21 @@ export const PLANS: Record<PlanId, Plan> = {
   // Everyone without an active subscription. Paid plans must clearly add something.
   free: {
     id: 'free', name: 'Free', priceUsd: 0, bots: 1, computer: false, computerHours: 0, voiceMinutes: 10, marketplace: 'personal',
-    highlights: ['Quinn + 1 bot', 'Chat and voice messages', 'Personal marketplace bots'],
+    highlights: ['Bart + 1 bot', 'Chat and voice messages', 'Personal marketplace bots'],
   },
   starter: {
     id: 'starter', name: 'Starter', priceUsd: 14.99, bots: 3, computer: false, computerHours: 0, voiceMinutes: 30, marketplace: 'personal',
-    highlights: ['Quinn + 3 bots', 'Chat, voice messages and files', 'Personal marketplace bots', 'Use your own AI model'],
+    highlights: ['Bart + 3 bots', 'Chat, voice messages and files', 'Personal marketplace bots', 'Use your own AI model'],
   },
   pro: {
     id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 10, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
-    highlights: ['Quinn + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', 'Claude Code on your computer'],
+    highlights: ['Bart + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', 'Claude Code on your computer'],
   },
   // Prices and hours are set so the heaviest user still leaves a margin after the store's cut: each
   // computer hour costs about $0.42 (Orgo $0.055 plus ~$0.36 of screen-step AI), see hosted-models.ts caps.
   max: {
     id: 'max', name: 'Max', priceUsd: 99.99, bots: 30, computer: true, computerHours: 60, voiceMinutes: 300, marketplace: 'all',
-    highlights: ['Quinn + 30 bots', 'Computer use · 60 h/month', 'Every marketplace bot', 'Top AI models included'],
+    highlights: ['Bart + 30 bots', 'Computer use · 60 h/month', 'Every marketplace bot', 'Top AI models included'],
   },
   ultra: {
     id: 'ultra', name: 'Ultra', priceUsd: 199.99, bots: null, computer: true, computerHours: 150, voiceMinutes: 600, marketplace: 'all',
