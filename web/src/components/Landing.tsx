@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
-import { ArrowRight, Download, Eye, Hand, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Check, Download, Eye, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
+import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import '../styles/landing.css';
 
@@ -28,7 +28,6 @@ const TEAM: Bot[] = [
 const QUINN = TEAM[1];
 // A bright sky blue so the mark stands out on the blue header.
 const MARK = characterDataUri('accountant', '#5f9dff');
-const LOOK_COLORS = ['cyan', 'blue', 'green', 'yellow', 'orange', 'red', 'magenta', 'violet'] as const;
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
 
@@ -64,6 +63,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
           <a className="lp-mark" href="/welcome"><img src={MARK} alt="" width={36} height={36} /><span>Fino</span></a>
           <div className="lp-nav__links">
             <a href="#demo">See it work</a>
+            <a href="#plans">Plans</a>
             <a href="#mac">Mac app</a>
             {signedIn
               ? <a className="lp-pill lp-pill--light" href="/">Open Fino</a>
@@ -73,8 +73,8 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </nav>
 
         <div className="lp-open__body">
-          <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>Give your</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>AI team a job.</span></span></h1>
-          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own browser. They read your email, line up the bills for your OK, plan your trips and click through websites for you, while you sleep or get on with something else.</p>
+          <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>Hire a team.</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>Not a payroll.</span></span></h1>
+          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.</p>
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
             <label htmlFor="lp-task" className="lp-sr">What should your team do?</label>
@@ -102,9 +102,13 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </div>
       </section>
 
+      <Cost onStart={() => start('signup')} signedIn={signedIn} />
+
       <Demo />
 
-      <Looks />
+      <Jobs />
+
+      <FirstSteps />
 
       <section className="lp-apps">
         <div className="lp-wrap lp-apps__in">
@@ -123,11 +127,13 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
           <h2 className="lp-h2" data-reveal>You stay in charge.</h2>
           <ol className="lp-rules">
             <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>Watch it live.</b> Every click the bot makes shows up on screen, cursor and all.</div></li>
-            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>Approve first.</b> Emails, posts and payments wait until you say yes.</div></li>
+            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>Approve first.</b> Emails, posts and anything final wait until you say yes. Fino never pays for you.</div></li>
             <li data-reveal style={{ '--i': 3 } as CSSProperties}><Hand size={28} aria-hidden /><div><b>Take over anytime.</b> Grab the browser yourself, then hand it back.</div></li>
           </ol>
         </div>
       </section>
+
+      <Plans onStart={() => start('signup')} signedIn={signedIn} />
 
       <MacBand />
 
@@ -320,25 +326,172 @@ export function MacOffer() {
   );
 }
 
-/** Every job comes in every color: pick a swatch and the whole team repaints, like in the app. */
-function Looks() {
-  const [color, setColor] = useState<string>('cyan');
+/* ---- The cost of people vs. a Fino team ---- */
+// The low end for one full-time assistant: $2,500 salary plus about $500 of employer costs a month.
+const ASSISTANT_SALARY = 2500;
+const ASSISTANT_EXTRA = 500;
+// The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
+const PLAN_BY_ID = {
+  starter: { name: 'Starter', price: 14.99, bots: 'Quinn + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
+  pro: { name: 'Pro', price: 49.99, bots: 'Quinn + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
+  max: { name: 'Max', price: 99.99, bots: 'Quinn + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
+  ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Their own computer · 150 h a month', 'Top AI models included', 'Priority support'] },
+} as const;
+const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : roles <= 3 ? PLAN_BY_ID.max : PLAN_BY_ID.ultra);
+const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: n % 1 ? 2 : 0, minimumFractionDigits: n % 1 ? 2 : 0 })}`;
+
+function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
+  const [roles, setRoles] = useState(3);
+  const plan = planFor(roles);
+  const humanYear = roles * (ASSISTANT_SALARY + ASSISTANT_EXTRA) * 12;
+  const finoYear = Math.round(plan.price * 12);
   return (
-    <section className="lp-looks">
+    <section className="lp-cost" id="cost">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>Hire a whole team. Each one has a job.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>They work around the clock, while you sleep or do something else. Pick a job, then paint them any color you like.</p>
-        <ul className="lp-looks__row" aria-label="Bot characters">
-          {JOBS.map((j, i) => (
-            <li key={j.id} data-reveal style={{ '--i': 2 + i, '--bob': `${i * -0.7}s` } as CSSProperties}>
-              <span className="lp-looks__fig"><img src={characterDataUri(j.character, color)} alt="" width={120} height={120} draggable={false} /></span>
-              <b>{j.title}</b><small>{j.blurb}</small>
+        <h2 className="lp-h2" data-reveal>A team for less than one day of wages.</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>One full-time assistant costs at least {usd(ASSISTANT_SALARY)} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.</p>
+
+        <div className="lp-cost__ask" data-reveal style={{ '--i': 2 } as CSSProperties}>
+          <span id="lp-roles-label">How many people’s routine work?</span>
+          <div className="lp-stepper" role="group" aria-labelledby="lp-roles-label">
+            <button type="button" onClick={() => setRoles((r) => Math.max(1, r - 1))} disabled={roles <= 1} aria-label="Fewer"><Minus size={18} aria-hidden /></button>
+            <output aria-live="polite">{roles}</output>
+            <button type="button" onClick={() => setRoles((r) => Math.min(6, r + 1))} disabled={roles >= 6} aria-label="More"><Plus size={18} aria-hidden /></button>
+          </div>
+        </div>
+
+        <div className="lp-cost__docs">
+          <article className="lp-slipdoc lp-slipdoc--pay" data-reveal style={{ '--i': 3 } as CSSProperties} aria-label="Payroll for assistants">
+            <header><b>Payroll</b><span>{roles} {roles === 1 ? 'assistant' : 'assistants'} · per month</span></header>
+            <dl>
+              <div><dt>Salary</dt><dd>{usd(ASSISTANT_SALARY * roles)}</dd></div>
+              <div><dt>Employer costs</dt><dd>{usd(ASSISTANT_EXTRA * roles)}</dd></div>
+              <div><dt>Working hours</dt><dd>40 a week each</dd></div>
+              <div><dt>Evenings, weekends, holidays</dt><dd>Off</dd></div>
+            </dl>
+            <footer><span>A year</span><strong key={humanYear} className="lp-total">{usd(humanYear)}</strong></footer>
+          </article>
+
+          <article className="lp-slipdoc lp-slipdoc--fino" data-reveal style={{ '--i': 4 } as CSSProperties} aria-label={`Fino ${plan.name} plan`}>
+            <header><b>Fino {plan.name}</b><span>{usd(plan.price)} · per month</span></header>
+            <dl>
+              <div><dt>Bots</dt><dd>{plan.bots}</dd></div>
+              <div><dt>Their own computer</dt><dd>{plan.hours} h a month</dd></div>
+              <div><dt>Working hours</dt><dd>Around the clock</dd></div>
+              <div><dt>Anything final</dt><dd>Waits for your OK</dd></div>
+            </dl>
+            <footer><span>A year</span><strong key={finoYear} className="lp-total">{usd(finoYear)}</strong></footer>
+          </article>
+        </div>
+
+        <div className="lp-cost__out" data-reveal style={{ '--i': 5 } as CSSProperties}>
+          <p>You keep <strong key={humanYear - finoYear} className="lp-total">{usd(humanYear - finoYear)}</strong> a year.</p>
+          <button type="button" className="lp-pill lp-pill--blue" onClick={onStart}>{signedIn ? 'Open Fino' : 'Build my team'} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
+        </div>
+        <p className="lp-fine" data-reveal style={{ '--i': 6 } as CSSProperties}>Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.</p>
+      </div>
+    </section>
+  );
+}
+
+/* ---- A job for each bot: what it reports, and what it waits for you to approve ---- */
+type JobStory = { runs: string; uses: string; says: string[]; waits: string; done: string };
+const STORIES: Record<string, JobStory> = {
+  finance: { runs: 'Every weekday at 8:30', uses: 'Gmail, Sheets', says: ['The month-end close is nearly done. Two expenses have no receipt, and marketing is 12% over budget.', 'I wrote the one-page summary for the board.'], waits: 'Send the summary to the board', done: 'Sent. I’ll chase the two missing receipts tomorrow morning.' },
+  payables: { runs: 'Mondays at 9:00', uses: 'Gmail, Drive', says: ['Six invoices came in this week. The one from Northwind is a copy of #1042, so I set it aside.', 'The other five are checked and lined up: $8,240 in total.'], waits: 'Mark the five as ready for you to pay', done: 'Done. They’re in your payments list. Fino never pays; you do that yourself.' },
+  cashier: { runs: 'Every night at 23:00', uses: 'Sheets', says: ['Today: 143 sales, $4,312. The till was $20 short after the evening shift.', 'The sales sheet is up to date.'], waits: 'Message the shift lead about the $20', done: 'Sent, kindly. I’ll tell you what they say.' },
+  hr: { runs: 'When someone applies', uses: 'Gmail, Calendar', says: ['Twelve people applied for the barista job. Four fit, and two can work weekends.', 'I drafted interview invites for Thursday afternoon.'], waits: 'Send the four interview invites', done: 'Sent. Three have already picked a time.' },
+  travel: { runs: 'When you ask', uses: 'Browser, Calendar', says: ['Lisbon, 12 to 15 March: a direct flight at 8:40 for $186, and a hotel near the office at $132 a night.', 'The full plan is in your Drive.'], waits: 'Fill in the booking for you to pay', done: 'Everything is filled in. The last step, paying, is yours.' },
+  data: { runs: 'Every morning at 7:00', uses: 'Sheets, Browser', says: ['The sales dashboard was stuck since Monday: the export renamed a column.', 'I fixed the import and refreshed the numbers.'], waits: 'Replace the shared sheet with the fixed one', done: 'Replaced. The team sees today’s numbers now.' },
+};
+
+function Jobs() {
+  const [pick, setPick] = useState(JOBS[0].id);
+  const [ok, setOk] = useState<Record<string, boolean>>({});
+  const job = JOBS.find((j) => j.id === pick) ?? JOBS[0];
+  const story = STORIES[job.id];
+  const img = characterDataUri(job.character, job.color);
+  return (
+    <section className="lp-jobs" id="jobs">
+      <div className="lp-wrap">
+        <h2 className="lp-h2" data-reveal>Give each bot a job worth doing.</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Pick a job to see what its bot tells you, and what it waits for you to approve.</p>
+        <div className="lp-jobs__in" data-reveal style={{ '--i': 2 } as CSSProperties}>
+          <div className="lp-jobs__list" role="tablist" aria-label="Jobs">
+            {JOBS.map((j) => (
+              <button key={j.id} type="button" role="tab" id={`lp-tab-${j.id}`} aria-selected={j.id === pick} aria-controls="lp-job-panel" onClick={() => setPick(j.id)}>
+                <img src={characterDataUri(j.character, j.color)} alt="" width={40} height={40} draggable={false} />
+                <span><b>{j.title}</b><small>{j.blurb}</small></span>
+              </button>
+            ))}
+          </div>
+          {story && (
+            <div className="lp-jobs__chat" role="tabpanel" id="lp-job-panel" aria-labelledby={`lp-tab-${job.id}`} key={job.id}>
+              <div className="lp-jobs__head">
+                <img src={img} alt="" width={44} height={44} draggable={false} />
+                <div><b>{job.name}</b><span>{job.title}</span></div>
+                <dl><div><dt>Runs</dt><dd>{story.runs}</dd></div><div><dt>Uses</dt><dd>{story.uses}</dd></div></dl>
+              </div>
+              <div className="lp-jobs__msgs">
+                {story.says.map((t, i) => <p key={i} className="lp-msg" style={{ '--i': i } as CSSProperties}>{t}</p>)}
+                {ok[job.id]
+                  ? <><p className="lp-msg lp-msg--me">Approved</p><p className="lp-msg">{story.done}</p></>
+                  : <div className="lp-ask" style={{ '--i': story.says.length } as CSSProperties}>
+                      <span>Waiting for your OK</span>
+                      <b>{story.waits}</b>
+                      <div><button type="button" className="lp-ask__yes" onClick={() => setOk((o) => ({ ...o, [job.id]: true }))}><Check size={16} strokeWidth={2.6} aria-hidden /> Approve</button><button type="button" className="lp-ask__no" onClick={() => setPick(JOBS[(JOBS.indexOf(job) + 1) % JOBS.length].id)}>Not now</button></div>
+                    </div>}
+              </div>
+              <span className="lp-desk__tag">Example</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---- From sign-up to the first job ---- */
+function FirstSteps() {
+  const steps = [
+    { t: 'Sign up', d: 'With Google or your email. No AI account or setup needed.' },
+    { t: 'Meet Quinn', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
+    { t: 'Give a job', d: 'Type or say it. Watch the bot work, and approve what matters.' },
+  ];
+  return (
+    <section className="lp-steps">
+      <div className="lp-wrap">
+        <h2 className="lp-h2" data-reveal>Your first job in three steps.</h2>
+        <ol className="lp-steps__row">
+          {steps.map((s, i) => (
+            <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{s.t}</b><p>{s.d}</p></li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/* ---- Plans ---- */
+function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
+  const list = [PLAN_BY_ID.starter, PLAN_BY_ID.pro, PLAN_BY_ID.max, PLAN_BY_ID.ultra];
+  return (
+    <section className="lp-plans" id="plans">
+      <div className="lp-wrap">
+        <h2 className="lp-h2" data-reveal>Simple plans. No hiring.</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Every plan includes Quinn, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.</p>
+        <ul className="lp-plans__row">
+          {list.map((p, i) => (
+            <li key={p.name} className={p.name === 'Max' ? 'is-pick' : ''} data-reveal style={{ '--i': 2 + i } as CSSProperties}>
+              <b>{p.name}</b>
+              {p.name === 'Max' && <em>Most teams</em>}
+              <strong>{usd(p.price)}<small>/month</small></strong>
+              <span className="lp-plans__bots">{p.bots}</span>
+              <ul>{p.lines.map((l) => <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{l}</li>)}</ul>
+              <button type="button" className={`lp-pill ${p.name === 'Max' ? 'lp-pill--blue' : 'lp-pill--line'}`} onClick={onStart}>{signedIn ? 'Open Fino' : `Start with ${p.name}`}</button>
             </li>
           ))}
         </ul>
-        <div className="lp-looks__swatches" role="radiogroup" aria-label="Color" data-reveal style={{ '--i': 8 } as CSSProperties}>
-          {LOOK_COLORS.map((c) => <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} style={{ background: CLAY[c] }} onClick={() => setColor(c)} />)}
-        </div>
       </div>
     </section>
   );
