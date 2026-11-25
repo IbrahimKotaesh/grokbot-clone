@@ -1,15 +1,21 @@
 /* Public landing page. Fino blue opening, clay team on the fold, white working sections. */
 .lp {
-  --lp-blue: #235bd6;
-  --lp-blue-deep: #1a47ad;
-  --lp-on-blue: #ffffff;
-  --lp-on-blue-soft: #dfe8fb;
-  --lp-ink: #16181d;
-  --lp-ink-soft: #4a4f5a;
-  --lp-ground: #ffffff;
-  --lp-ground-2: #f3f5f9;
-  --lp-line: #16181d1a;
-  --lp-cursor: #fd690f;
+  --lp-blue: #2f6fd8;
+  --lp-blue-deep: #2459b8;
+  --lp-on-blue: #fff8ee;
+  --lp-on-blue-soft: #e6eefc;
+  --lp-ink: #211c17;
+  --lp-ink-soft: #5e5248;
+  --lp-ground: #fff8ee;
+  --lp-ground-2: #fcefdf;
+  --lp-card: #ffffff;
+  --lp-line: #211c171f;
+  --lp-edge: #211c17;
+  --lp-sun: #ffcf3a;
+  --lp-pink: #f46ba6;
+  --lp-leaf: #5cc25f;
+  --lp-tomato: #f2564b;
+  --lp-cursor: #ff8a3d;
   --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
   height: 100%;
   overflow-y: auto;
@@ -17,13 +23,14 @@
   scroll-behavior: smooth;
   background: var(--lp-ground);
   color: var(--lp-ink);
-  font-family: var(--font-stack);
+  font-family: "Nunito", "Tajawal", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .lp { --lp-ink: #eef0f4; --lp-ink-soft: #a9afbb; --lp-ground: #101217; --lp-ground-2: #171a21; --lp-line: #ffffff1c; }
+  :root:not([data-theme="light"]) .lp { --lp-ink: #fff4e8; --lp-ink-soft: #c2b4a5; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
 }
-:root[data-theme="dark"] .lp { --lp-ink: #eef0f4; --lp-ink-soft: #a9afbb; --lp-ground: #101217; --lp-ground-2: #171a21; --lp-line: #ffffff1c; }
+:root[data-theme="dark"] .lp { --lp-ink: #fff4e8; --lp-ink-soft: #c2b4a5; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
 .lp ::selection { background: var(--lp-blue); color: #fff; }
 .lp-open ::selection { background: #fff; color: var(--lp-blue); }
 .lp a { color: inherit; }
@@ -431,3 +438,101 @@
   .lp-total, .lp-ask, .lp-jobs__msgs .lp-msg { animation: none; }
   .lp-slipdoc--pay, .lp-slipdoc--fino { transform: none; }
 }
+
+/* =====================================================================
+   Sticker world: chunky serif headlines, ink outlines and hard offset
+   shadows, sunny buttons, cream paper. The structure above stays; this
+   layer gives every part its sticker edge.
+   ===================================================================== */
+.lp-h1, .lp-h2, .lp-mark span, .lp-slipdoc header b, .lp-plans__row > li > b, .lp-steps__row b, .lp-cost__out p, .lp-rules b { font-family: "Fraunces", "Tajawal", Georgia, serif; font-weight: 900; }
+.lp-h1 { letter-spacing: -0.02em; line-height: 1; }
+.lp-h2 { letter-spacing: -0.015em; line-height: 1.04; }
+.lp-copy, .lp-lede { font-weight: 600; }
+.lp :focus-visible { outline: 3px solid var(--lp-sun); outline-offset: 3px; }
+
+/* the sticker edge */
+.lp-slip, .lp-bubble, .lp-desk, .lp-mac__window, .lp-close__panel, .lp-jobs__chat, .lp-plans__row, .lp-slipdoc, .lp-steps__row li, .lp-ask {
+  border: 2.5px solid var(--lp-edge);
+  box-shadow: 5px 5px 0 var(--lp-edge);
+}
+.lp-slip:focus-within { box-shadow: 7px 7px 0 var(--lp-edge); }
+
+/* sunny sticker buttons */
+.lp-pill--light, .lp-slip__go, .lp-pill--blue, .lp-pill--dark, .lp-ask__yes, .lp .auth__submit {
+  background: var(--lp-sun) !important; color: var(--lp-ink-on-sun, #211c17) !important;
+  border: 2.5px solid #211c17; box-shadow: 3px 3px 0 #211c17; font-weight: 800;
+  transition: transform .12s ease, box-shadow .12s ease, background-color .2s;
+}
+.lp-pill--light:hover, .lp-slip__go:hover, .lp-pill--blue:hover, .lp-pill--dark:hover, .lp-ask__yes:hover, .lp .auth__submit:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #211c17; background: #ffd95e !important; }
+.lp-pill--light:active, .lp-slip__go:active, .lp-pill--blue:active, .lp-pill--dark:active, .lp-ask__yes:active, .lp .auth__submit:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #211c17; }
+.lp-pill--line, .lp-ask__no { border: 2.5px solid var(--lp-edge) !important; box-shadow: 3px 3px 0 var(--lp-edge) !important; background: var(--lp-card) !important; color: var(--lp-ink) !important; font-weight: 800; transition: transform .12s ease, box-shadow .12s ease; }
+.lp-pill--line:hover, .lp-ask__no:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--lp-edge) !important; color: var(--lp-ink) !important; }
+
+/* opening: sticker blue with a light polka dot */
+.lp-open { background-color: var(--lp-blue); background-image: radial-gradient(#ffffff1c 2px, transparent 2.6px); background-size: 30px 30px; }
+.lp-open .lp-h1 { color: #fff8ee; }
+.lp-mark span { font-size: 24px; }
+.lp-slip { border-radius: 24px; }
+.lp-slip__go { border-radius: 16px; }
+.lp-chips button { border: 2px solid #211c17; background: #fff8ee; color: #211c17; font-weight: 700; box-shadow: 2px 2px 0 #211c17; }
+.lp-chips button:hover, .lp-chips button[aria-pressed="true"] { background: var(--lp-sun); border-color: #211c17; }
+.lp-models { color: #fff8eedd; font-weight: 700; }
+.lp-models b { border: 2px solid #211c17; box-shadow: 2px 2px 0 #211c17; background: #fff8ee; }
+.lp-bot img { filter: drop-shadow(0 10px 0 #0b2a6b40); }
+.lp-bot figcaption { border: 2px solid #211c17; box-shadow: 2px 2px 0 #211c17; background: #fff8ee; color: #211c17; font-weight: 700; }
+.lp-bubble { background: #fff8ee; color: #211c17; border-radius: 20px 20px 6px 20px; font-weight: 600; }
+.lp-bubble b { color: var(--lp-blue); }
+
+/* sections */
+.lp-desk { border-radius: 24px; }
+.lp-desk__tag { background: var(--lp-sun); color: #211c17; border: 2px solid #211c17; }
+.lp-msg--me { background: var(--lp-blue); }
+
+.lp-stepper { border: 2.5px solid var(--lp-edge); box-shadow: 3px 3px 0 var(--lp-edge); background: var(--lp-card); }
+.lp-stepper button { border: 2px solid var(--lp-edge); box-shadow: none; }
+.lp-stepper button:hover:not(:disabled) { background: var(--lp-sun); color: #211c17; }
+.lp-slipdoc { border-radius: 20px; }
+.lp-slipdoc--pay { background: var(--lp-ground-2); }
+.lp-slipdoc--fino { background: var(--lp-card); box-shadow: 6px 6px 0 var(--lp-edge); }
+.lp-slipdoc--fino header b { background: var(--lp-sun); color: #211c17; border: 2px solid #211c17; }
+.lp-slipdoc--pay footer strong { text-decoration-color: var(--lp-tomato); }
+.lp-cost__out { border-top: 2.5px dashed var(--lp-line); }
+
+.lp-jobs__chat { background: var(--lp-ground-2); border-radius: 24px; }
+.lp-jobs__list button[aria-selected=true] { background: var(--lp-card); box-shadow: 3px 3px 0 var(--lp-edge), inset 0 0 0 2.5px var(--lp-edge); }
+.lp-jobs__msgs .lp-msg { background: var(--lp-card); border: 2px solid var(--lp-edge); box-shadow: none; }
+.lp-ask { background: var(--lp-card); }
+.lp-ask > span { color: var(--lp-tomato); }
+
+.lp-steps__row li { padding: 24px 24px 26px; border-radius: 20px; background: var(--lp-card); }
+.lp-steps__n { display: grid; place-items: center; width: 52px; height: 52px; border: 2.5px solid #211c17; border-radius: 50%; background: var(--lp-pink); color: #211c17 !important; font-family: "Fraunces", Georgia, serif; font-weight: 900; font-size: 26px; }
+.lp-steps__row li:nth-child(2) .lp-steps__n { background: var(--lp-sun); }
+.lp-steps__row li:nth-child(3) .lp-steps__n { background: var(--lp-leaf); }
+
+.lp-logos li { border: 2px solid var(--lp-edge); box-shadow: 2px 2px 0 var(--lp-edge); background: var(--lp-card); font-weight: 700; }
+.lp-rules { border-top: 2.5px solid var(--lp-edge); }
+.lp-rules svg { box-sizing: content-box; padding: 10px; border: 2.5px solid #211c17; border-radius: 50%; background: var(--lp-sun); color: #211c17; }
+.lp-rules li:nth-child(2) svg { background: var(--lp-leaf); }
+.lp-rules li:nth-child(3) svg { background: var(--lp-pink); }
+
+.lp-plans__row { background: var(--lp-card); }
+.lp-plans__row > li.is-pick { border: 2.5px solid #211c17; box-shadow: 5px 5px 0 #211c17; background: var(--lp-blue); }
+.lp-plans__row em { background: var(--lp-sun); color: #211c17; border: 2px solid #211c17; }
+.lp-plans__row .is-pick .lp-pill--blue { background: var(--lp-sun) !important; color: #211c17 !important; }
+
+.lp-mac__window { border-radius: 18px; }
+.lp-close { background-color: var(--lp-blue); background-image: radial-gradient(#ffffff1c 2px, transparent 2.6px); background-size: 30px 30px; }
+.lp-close .lp-h2 { color: #fff8ee; }
+.lp-close__panel { background: #fff8ee; border-radius: 24px; }
+.lp .auth__google { border: 2px solid #211c17; box-shadow: 3px 3px 0 #211c17; background: #fff; font-weight: 800; }
+.lp .auth__field input { border: 2px solid #211c1755; background: #fff; }
+.lp .auth__field input:focus { border-color: #211c17; box-shadow: 3px 3px 0 #211c17; }
+@media (prefers-reduced-motion: reduce) { .lp-pill--light, .lp-slip__go, .lp-pill--blue, .lp-pill--dark { transition: none; } }
+/* Room for the team on the fold: the chips wrap before they reach it. */
+@media (min-width: 1081px) {
+  .lp-open { min-height: max(100svh, 860px); }
+  .lp-chips { max-width: min(600px, calc(100% - min(46vw, 640px))); }
+  .lp-team { width: min(44vw, 620px); }
+}
+/* The chips are cream in both themes, so the ChatGPT mark stays dark on them. */
+.lp-models img[src*="chatgpt"] { filter: brightness(0); }

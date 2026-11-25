@@ -1,4 +1,11 @@
 import { keepFresh } from './lib/fresh';
+import '@fontsource/nunito/latin-400.css';
+import '@fontsource/nunito/latin-500.css';
+import '@fontsource/nunito/latin-600.css';
+import '@fontsource/nunito/latin-700.css';
+import '@fontsource/nunito/latin-800.css';
+import '@fontsource/fraunces/latin-700.css';
+import '@fontsource/fraunces/latin-900.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

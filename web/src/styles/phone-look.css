@@ -1,50 +1,61 @@
 /*
- * The phone app's look on the web and Mac app. Same tokens as mobile/src/theme.ts:
- * a pure black (or warm off-white) canvas, neutral greys, white (or ink) primary actions.
+ * Fino's sticker look on the web and Mac app: a warm cream (or warm dark) canvas, dark-brown ink,
+ * Nunito type, and sticker edges (ink outline + a hard offset shadow) on the main actions.
  * Bot colors only tint avatars. Your messages sit in a blue bubble; replies are plain text.
  * Loaded last so it wins over the older layers.
  */
 
 :root {
   --chat-blue: #1877f2;
-  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Tajawal", "IBM Plex Sans", system-ui, sans-serif;
+  --font-stack: "Nunito", "Tajawal", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Fraunces", "Tajawal", Georgia, serif;
+  --font-weight-regular: 500;
+  --font-weight-medium: 600;
+  --font-weight-semibold: 700;
 
-  /* light — warm paper tones, like Claude's light mode (mobile `light` palette matches) */
-  --p-bg: #faf9f5;
-  --p-sidebar: #f3f1ea;
+  /* light — warm cream paper and dark-brown ink */
+  --p-bg: #fff8ee;
+  --p-sidebar: #fcefdf;
   --p-surface: #ffffff;
-  --p-raised: #efede5;
-  --p-elevated: #e6e3d9;
-  --p-line: #e6e3d9;
-  --p-line-strong: #d3d0c4;
-  --p-text: #1f1e1d;
-  --p-muted: #6f6d66;
-  --p-faint: #a6a39a;
-  --p-primary: #1f1e1d;
-  --p-on-primary: #ffffff;
-  --p-blue: #2f6fe0;
-  --p-red: #e5484d;
-  --p-green: #1f9d6a;
-  --p-amber: #d99a00;
+  --p-raised: #f8ecdc;
+  --p-elevated: #f1e1cd;
+  --p-line: #eedfcc;
+  --p-line-strong: #dcc8b0;
+  --p-text: #211c17;
+  --p-muted: #6c6056;
+  --p-faint: #9a8b7d;
+  --p-primary: #211c17;
+  --p-on-primary: #fff8ee;
+  --p-blue: #2f6fd8;
+  --p-red: #d9342a;
+  --p-green: #2f8a35;
+  --p-amber: #c98a00;
+  /* sticker edges */
+  --p-edge: #211c17;
+  --p-sun: #ffcf3a;
+  --p-on-sun: #211c17;
 }
 :root[data-theme='dark'] {
-  /* dark — mobile `dark` palette */
-  --p-bg: #000000;
-  --p-sidebar: #000000;
-  --p-surface: #0f0f10;
-  --p-raised: #1b1b1d;
-  --p-elevated: #262629;
-  --p-line: #232326;
-  --p-line-strong: #323236;
-  --p-text: #f5f5f7;
-  --p-muted: #8e8e93;
-  --p-faint: #5c5c61;
-  --p-primary: #f5f5f7;
-  --p-on-primary: #000000;
-  --p-blue: #7aa7ff;
-  --p-red: #ff5c5c;
-  --p-green: #3ddc97;
-  --p-amber: #ffc04d;
+  /* dark — warm night: cocoa grounds, cream ink */
+  --p-bg: #15110e;
+  --p-sidebar: #110e0b;
+  --p-surface: #1e1915;
+  --p-raised: #28221d;
+  --p-elevated: #332b25;
+  --p-line: #2d2620;
+  --p-line-strong: #43392f;
+  --p-text: #fff4e8;
+  --p-muted: #bcae9f;
+  --p-faint: #85786b;
+  --p-primary: #fff4e8;
+  --p-on-primary: #15110e;
+  --p-blue: #84b3ff;
+  --p-red: #ff6e63;
+  --p-green: #74d57d;
+  --p-amber: #ffcf3a;
+  --p-edge: #000000;
+  --p-sun: #ffcf3a;
+  --p-on-sun: #211c17;
 }
 
 /* Map the web's tokens onto the phone palette (both themes). */
@@ -136,10 +147,11 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 /* ---------- composer: a raised rounded box like the phone ---------- */
 .composer-shell {
   background: var(--p-surface);
-  border: 1px solid var(--p-line);
-  border-radius: 26px;
-  box-shadow: none;
+  border: 2px solid var(--p-edge);
+  border-radius: 24px;
+  box-shadow: 3px 3px 0 var(--p-edge);
 }
+:root[data-theme='dark'] .composer-shell { border-color: var(--p-line-strong); }
 .composer__input { color: var(--p-text); font-size: 16px; }
 .composer__input::placeholder { color: var(--p-faint); }
 .composer__cta { background: var(--p-primary); color: var(--p-on-primary); border-radius: 50%; }
@@ -163,7 +175,10 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 .details { background: var(--p-bg); border-inline-start: 1px solid var(--p-line); }
 .menu, .bot-chat-menu { background: var(--p-elevated); border: 1px solid var(--p-line-strong); }
 .card, .plan-card, .cfg-card, .chat-chart { background: var(--p-surface); border: 1px solid var(--p-line); box-shadow: none; }
-.btn--primary, .cfg-btn--primary { background: var(--p-primary); color: var(--p-on-primary); border: 0; }
+.btn--primary, .cfg-btn--primary { background: var(--p-sun); color: var(--p-on-sun); border: 2px solid var(--p-edge); box-shadow: 3px 3px 0 var(--p-edge); font-weight: 800; transition: transform .12s ease, box-shadow .12s ease; }
+.btn--primary:hover:not(:disabled), .cfg-btn--primary:hover:not(:disabled) { background: var(--p-sun); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--p-edge); }
+.btn--primary:active:not(:disabled), .cfg-btn--primary:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--p-edge); }
+.btn--primary:disabled, .cfg-btn--primary:disabled { box-shadow: none; opacity: .55; }
 .btn--secondary, .cfg-btn--secondary { background: var(--p-raised); color: var(--p-text); border: 0; }
 .toggle.is-on { background: var(--p-green); }
 .toggle.is-on .toggle__knob { background: #ffffff; }
