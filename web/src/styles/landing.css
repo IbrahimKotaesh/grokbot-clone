@@ -536,3 +536,5 @@
 }
 /* The chips are cream in both themes, so the ChatGPT mark stays dark on them. */
 .lp-models img[src*="chatgpt"] { filter: brightness(0); }
+/* Bart, the logo, is a flat sticker: no glow. */
+.lp-mark img { filter: none; }
