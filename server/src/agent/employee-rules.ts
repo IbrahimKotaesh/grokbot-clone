@@ -105,6 +105,8 @@ async function probe(userId: string, botId: string, x?: number, y?: number): Pro
   } catch { return null; }
 }
 
+// Public drop sites a bot could push the owner's files to.
+const FILE_DROP = /\b(tmpfiles\.org|catbox\.moe|litterbox|bashupload|transfer\.sh|file\.io|0x0\.st|gofile\.io|wetransfer|pastebin\.com|termbin|anonfiles|filebin|temp\.sh|oshi\.at|pixeldrain|uguu\.se|paste\.ee|dpaste|ghostbin|sendspace|mediafire|hastebin)\b/i;
 const isEnter = (keys: string) => /(^|\+)(return|enter|kp_enter)$/i.test(keys.trim());
 
 /** Checks a bot's next action against the employee rules. Fast: only browser-facing actions look at the page. */
@@ -115,6 +117,16 @@ export async function employeeGuard(userId: string, botId: string, name: string,
     : [name];
   const money = slugs.find(moneySlug);
   if (money) return { block: `Fino never pays or moves money (${money}). Tell the owner what needs paying; they pay themselves.` };
+
+  // The owner's files never go to outside file-sharing or paste sites, whatever the reason.
+  const canPush = ['shell', 'run_python', 'browser_run_js', 'COMPOSIO_MULTI_EXECUTE_TOOL'].includes(name) || /^COMPOSIO_REMOTE/.test(name);
+  if (canPush && FILE_DROP.test(JSON.stringify(args ?? {}))) return { block: 'Fino never uploads the owner\'s files to outside file-sharing or paste sites. To attach files to an email use draft_email; otherwise tell the owner what is blocked.' };
+
+  // Sending an email is always the owner's call, even on Autonomous.
+  if (name === 'send_email') {
+    const to = String(args?.to ?? '').trim(), subject = String(args?.subject ?? '').trim();
+    return { decide: `This sends an email${to ? ` to ${to}` : ''}${subject ? ` (“${subject}”)` : ''}. Fino waits for your OK before anything is sent.`, title: `Send email${to ? ` to ${to}` : ''}` };
+  }
 
   if (name === 'computer_type') {
     const what = moneyText(String(args?.text ?? ''));

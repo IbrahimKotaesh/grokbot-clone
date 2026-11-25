@@ -54,7 +54,7 @@ def lib_path(p, must_exist=False):
 `;
 
 /** Runs a Python script on the bot's computer with a JSON payload and returns its FINO_RESULT. */
-async function runPy(ctx: OfficeCtx, script: string, payload: Record<string, unknown>, opts: { libs?: string[]; timeout?: number } = {}): Promise<any> {
+export async function runPy(ctx: OfficeCtx, script: string, payload: Record<string, unknown>, opts: { libs?: string[]; timeout?: number } = {}): Promise<any> {
   const { computerId, screenId } = await screenFor(ctx.userId, ctx.botId);
   const b64 = Buffer.from(JSON.stringify({ ...payload, _root: libraryOf(ctx.botId) }), 'utf8').toString('base64');
   const tmp = `/tmp/fino-py-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.b64`;
