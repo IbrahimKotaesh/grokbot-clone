@@ -2,8 +2,8 @@
 .lp {
   --lp-blue: #c13f22; /* Fino tomato: the brand color (name kept for the existing rules) */
   --lp-blue-deep: #a5341b;
-  --lp-on-blue: #fff8ee;
-  --lp-on-blue-soft: #fff8ee;
+  --lp-on-blue: #ffffff; /* text on dark grounds is pure white */
+  --lp-on-blue-soft: #ffffff;
   --lp-ink: #211c17;
   --lp-ink-soft: #5e5248;
   --lp-ground: #fff8ee;
@@ -28,9 +28,9 @@
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .lp { --lp-ink: #fff4e8; --lp-ink-soft: #c2b4a5; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
+  :root:not([data-theme="light"]) .lp { --lp-ink: #ffffff; --lp-ink-soft: #d6cabd; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
 }
-:root[data-theme="dark"] .lp { --lp-ink: #fff4e8; --lp-ink-soft: #c2b4a5; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
+:root[data-theme="dark"] .lp { --lp-ink: #ffffff; --lp-ink-soft: #d6cabd; --lp-ground: #15110e; --lp-ground-2: #1c1713; --lp-card: #241e19; --lp-line: #ffffff1c; --lp-edge: #050403; }
 .lp ::selection { background: var(--lp-blue); color: #fff; }
 .lp-open ::selection { background: #fff; color: var(--lp-blue); }
 .lp a { color: inherit; }
@@ -470,13 +470,13 @@
 
 /* opening: sticker blue with a light polka dot */
 .lp-open { background-color: var(--lp-blue); background-image: radial-gradient(#ffffff1c 2px, transparent 2.6px); background-size: 30px 30px; }
-.lp-open .lp-h1 { color: #fff8ee; }
+.lp-open .lp-h1 { color: #ffffff; }
 .lp-mark span { font-size: 24px; }
 .lp-slip { border-radius: 24px; }
 .lp-slip__go { border-radius: 16px; }
 .lp-chips button { border: 2px solid #211c17; background: #fff8ee; color: #211c17; font-weight: 700; box-shadow: 2px 2px 0 #211c17; }
 .lp-chips button:hover, .lp-chips button[aria-pressed="true"] { background: var(--lp-sun); border-color: #211c17; }
-.lp-models { color: #fff8eedd; font-weight: 700; }
+.lp-models { color: #ffffff; font-weight: 700; }
 .lp-models b { border: 2px solid #211c17; box-shadow: 2px 2px 0 #211c17; background: #fff8ee; }
 .lp-bot img { filter: none; }
 .lp-bot figcaption { border: 2px solid #211c17; box-shadow: 2px 2px 0 #211c17; background: #fff8ee; color: #211c17; font-weight: 700; }
@@ -522,7 +522,7 @@
 
 .lp-mac__window { border-radius: 18px; }
 .lp-close { background-color: var(--lp-blue); background-image: radial-gradient(#ffffff1c 2px, transparent 2.6px); background-size: 30px 30px; }
-.lp-close .lp-h2 { color: #fff8ee; }
+.lp-close .lp-h2 { color: #ffffff; }
 .lp-close__panel { background: #fff8ee; border-radius: 24px; }
 .lp .auth__google { border: 2px solid #211c17; box-shadow: 3px 3px 0 #211c17; background: #fff; font-weight: 800; }
 .lp .auth__field input { border: 2px solid #211c1755; background: #fff; }
