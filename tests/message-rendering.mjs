@@ -13,7 +13,13 @@ try {
  const actual=render(`مرحبا **بالعربي**. ${marker}\n\n> اقتباس عربي\n\n1. One\n2. اثنان\n\n[Official source](https://example.com/report)`);
  assert.ok(!actual.includes('turn550136view2'));assert.ok(!actual.includes('\uE200'));
  assert.match(actual,/Some source links are unavailable/);assert.match(actual,/<strong>بالعربي<\/strong>/);
- assert.match(actual,/href="https:\/\/example.com\/report"/);assert.match(actual,/<blockquote>/);assert.match(actual,/<ol>/);assert.match(render('- **Sheet1:** 81 إيصال'),/<li dir="auto">/);assert.match(render('[Tracker](https://docs.google.com/spreadsheets/d/12345678901234567890/edit)'),/Preview using your connected Google account/);assert.match(actual,/dir="auto"/);
+ assert.match(actual,/href="https:\/\/example.com\/report"/);assert.match(actual,/<blockquote dir="rtl">/);assert.match(actual,/<ol dir="rtl">/);assert.match(render('- **Sheet1:** 81 إيصال'),/<li dir="ltr">/);assert.match(render('[Tracker](https://docs.google.com/spreadsheets/d/12345678901234567890/edit)'),/Preview using your connected Google account/);assert.match(actual,/class="md" dir="rtl"/);
+ // Each line on its own side: Arabic right-to-left, English left-to-right, labels on their own lines
+ const mixed=render('تم الدرافت محفوظ في Gmail.\n\n**إلى:** nicolas@example.nl\n**الموضوع:** Sollicitatie AI-beleid\n\n**1) Freelance Copilot Studio Consultant — الأقوى**\n\nGeachte heer Henkemans,');
+ assert.match(mixed,/<p dir="rtl"><strong>إلى:<\/strong> <a [^>]*>nicolas@example.nl<\/a><br\/?>\n?<strong>الموضوع:<\/strong>/,'Arabic labels stay right-to-left, one per line');
+ assert.match(mixed,/<p dir="ltr"><strong>1\) Freelance/,'a mostly-English title reads left-to-right');
+ assert.match(mixed,/<p dir="ltr">Geachte heer Henkemans,/,'a Dutch email body reads left-to-right');
+ assert.match(render('Hello there, this is English.'),/class="md" dir="ltr"><p dir="ltr">/,'English replies stay left-to-right');
  assert.ok(!render('Partial \uE200ci').includes('\uE200'));
  assert.ok(!render('Text \uE200cite\uE202turn123view0').includes('turn123view0'));
  const literal=render('`'+marker+'`');assert.ok(literal.includes('turn550136view2'),'Code samples stay literal');
