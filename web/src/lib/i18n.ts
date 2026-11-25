@@ -1,16 +1,19 @@
 // Fino on the web and the Mac app speaks the same languages as the phone app.
 // English text is the key, so a missing translation simply shows the English.
-// The shared dictionary is packages/contracts/src/ar.ts; web-only words live in ar-web.ts.
+// Shared dictionaries live in packages/contracts/src (ar.ts, nl.ts); web-only words in ar-web.ts / nl-web.ts.
+// English is the main language; Arabic and Dutch are supporting languages.
 import { ar as phone } from '../../../packages/contracts/src/ar';
+import { nl as phoneNl } from '../../../packages/contracts/src/nl';
 import { arWeb } from './ar-web';
+import { nlWeb } from './nl-web';
 
-export type LangChoice = 'system' | 'en' | 'ar';
+export type LangChoice = 'system' | 'en' | 'ar' | 'nl';
 const KEY = 'fino.lang';
 
 export function langChoice(): LangChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'ar' || v === 'system' ? v : 'en';
+    return v === 'ar' || v === 'nl' || v === 'system' ? v : 'en';
   } catch {
     return 'en';
   }
@@ -24,10 +27,13 @@ export function setLangChoice(v: LangChoice) {
 
 const browserLang = () => (typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? 'en' : 'en').slice(0, 2).toLowerCase();
 const choice = langChoice();
-// English unless the user picks Arabic (or picks "System" on an Arabic device) in Settings > General.
-export const lang: 'ar' | 'en' = choice === 'system' ? (browserLang() === 'ar' ? 'ar' : 'en') : choice;
+// English unless the user picks Arabic or Dutch (or picks "System" on an Arabic or Dutch device) in Settings > General.
+const sys = browserLang();
+export const lang: 'ar' | 'en' | 'nl' = choice === 'system' ? (sys === 'ar' || sys === 'nl' ? sys : 'en') : choice;
 export const isArabic = lang === 'ar';
-const dict: Record<string, string> = isArabic ? { ...phone, ...arWeb } : {};
+/** The locale for dates and times in the chosen language. */
+export const locale = lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-GB';
+const dict: Record<string, string> = isArabic ? { ...phone, ...arWeb } : lang === 'nl' ? { ...phoneNl, ...nlWeb } : {};
 
 if (typeof document !== 'undefined') {
   document.documentElement.lang = lang;

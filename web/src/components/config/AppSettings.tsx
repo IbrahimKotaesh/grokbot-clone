@@ -109,7 +109,7 @@ function MorningBriefSettings() {
     const prev = state; setState(next); setError('');
     api.setMorningBrief(next.enabled, next.hour).catch((e) => { setState(prev); setError((e as Error).message); });
   };
-  const label = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(lang === 'ar' ? 'ar' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+  const label = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-US', { hour: 'numeric', minute: '2-digit' });
   return (
     <section className="cfg-section">
       <div className="cfg-section__label">{t('Morning brief')}</div>
@@ -166,7 +166,7 @@ function GeneralSection() {
       </section>
       <section className="cfg-section">
         <div className="cfg-section__label">{t('Language')}</div>
-        <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('System') }, { value: 'en', label: t("English") }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
+        <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('System') }, { value: 'en', label: t("English") }, { value: 'nl', label: 'Nederlands' }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
         <div className="cfg-field__hint">{t('Your choice is saved on this device. System follows your browser’s language.')}</div>
       </section>
       <MorningBriefSettings />

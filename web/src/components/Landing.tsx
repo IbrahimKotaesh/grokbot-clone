@@ -3,6 +3,7 @@ import { ArrowRight, Check, Download, Eye, Hand, Minus, Plus, ShieldCheck, X } f
 import { AuthPanel } from './AuthPanel';
 import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
+import { lang, setLangChoice, t } from '../lib/i18n';
 import '../styles/landing.css';
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
@@ -48,7 +49,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
     store.set(FIRST_TASK, job.slice(0, 2000));
     start('signup');
   };
-  const choose = (example: string) => { setTask(example); setSaid(pickBot(example)); };
+  const choose = (example: string) => { setTask(t(example)); setSaid(pickBot(example)); };
   // The matching bot answers a moment after typing stops.
   useEffect(() => {
     if (!task.trim()) return;
@@ -62,41 +63,42 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Fino">
           <a className="lp-mark" href="/welcome"><img src={MARK} alt="" width={36} height={36} /><span>Fino</span></a>
           <div className="lp-nav__links">
-            <a href="#demo">See it work</a>
-            <a href="#plans">Plans</a>
-            <a href="#mac">Mac app</a>
+            <a href="#demo">{t('See it work')}</a>
+            <a href="#plans">{t('Plans')}</a>
+            <a href="#mac">{t('Mac app')}</a>
+            <LangSwitch />
             {signedIn
-              ? <a className="lp-pill lp-pill--light" href="/">Open Fino</a>
-              : <><button type="button" className="lp-nav__signin" onClick={() => start('signin')}>Sign in</button>
-                <button type="button" className="lp-pill lp-pill--light" onClick={() => start('signup')}>Get started</button></>}
+              ? <a className="lp-pill lp-pill--light" href="/">{t('Open Fino')}</a>
+              : <><button type="button" className="lp-nav__signin" onClick={() => start('signin')}>{t('Sign in')}</button>
+                <button type="button" className="lp-pill lp-pill--light" onClick={() => start('signup')}>{t('Get started')}</button></>}
           </div>
         </nav>
 
         <div className="lp-open__body">
-          <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>Hire a team.</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>Not a payroll.</span></span></h1>
-          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.</p>
+          <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>{t('Hire a team.')}</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>{t('Not a payroll.')}</span></span></h1>
+          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>{t('Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.')}</p>
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
-            <label htmlFor="lp-task" className="lp-sr">What should your team do?</label>
-            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder="Find five flats near my office and compare the rent…" autoComplete="off" maxLength={2000} />
-            <button type="submit" className="lp-slip__go">{signedIn ? 'Open Fino' : 'Get started'} <ArrowRight size={20} strokeWidth={2.4} aria-hidden /></button>
+            <label htmlFor="lp-task" className="lp-sr">{t('What should your team do?')}</label>
+            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={t('Find five flats near my office and compare the rent…')} autoComplete="off" maxLength={2000} />
+            <button type="submit" className="lp-slip__go">{t(signedIn ? 'Open Fino' : 'Get started')} <ArrowRight size={20} strokeWidth={2.4} aria-hidden /></button>
           </form>
-          <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label="Example jobs">
-            {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === ex}>{ex}</button>)}
+          <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label={t('Example jobs')}>
+            {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === t(ex)}>{t(ex)}</button>)}
           </div>
           <p className="lp-models lp-in" style={{ '--d': '540ms' } as CSSProperties}>
-            <span>Powered by the world’s best AI</span>
+            <span>{t('Powered by the world’s best AI')}</span>
             <b><img src="/brands/chatgpt.svg" alt="" width={18} height={18} />ChatGPT</b>
             <b><img src="/brands/claude.svg" alt="" width={18} height={18} />Claude</b>
           </p>
         </div>
 
         <div className="lp-team">
-          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{said.name} · {said.role}</b>{said.reply}</blockquote>}</div>
+          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{said.name} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
           {TEAM.map((b, i) => (
             <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s` } as CSSProperties}>
               <span className="lp-bot__pop"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
-              <figcaption><b>{b.name}</b> <span>{b.role}</span></figcaption>
+              <figcaption><b>{b.name}</b> <span>{t(b.role)}</span></figcaption>
             </figure>
           ))}
         </div>
@@ -112,9 +114,9 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <section className="lp-apps">
         <div className="lp-wrap lp-apps__in">
-          <h2 className="lp-h2" data-reveal>It works where you already work.</h2>
-          <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.</p>
-          <ul className="lp-logos" aria-label="Some apps you can connect">
+          <h2 className="lp-h2" data-reveal>{t('It works where you already work.')}</h2>
+          <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.')}</p>
+          <ul className="lp-logos" aria-label={t('Some apps you can connect')}>
             {[['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Google Docs', '/assets/apps/google-docs.png'], ['Google Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png'], ['Canva', '/assets/apps/canva.png']].map(([name, src], i) => (
               <li key={name} data-reveal style={{ '--i': 2 + i } as CSSProperties}><img src={src} alt="" width={30} height={30} /><span>{name}</span></li>
             ))}
@@ -124,11 +126,11 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <section className="lp-charge">
         <div className="lp-wrap">
-          <h2 className="lp-h2" data-reveal>You stay in charge.</h2>
+          <h2 className="lp-h2" data-reveal>{t('You stay in charge.')}</h2>
           <ol className="lp-rules">
-            <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>Watch it live.</b> Every click the bot makes shows up on screen, cursor and all.</div></li>
-            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>Approve first.</b> Emails, posts and anything final wait until you say yes. Fino never pays for you.</div></li>
-            <li data-reveal style={{ '--i': 3 } as CSSProperties}><Hand size={28} aria-hidden /><div><b>Take over anytime.</b> Grab the browser yourself, then hand it back.</div></li>
+            <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>{t('Watch it live.')}</b> {t('Every click the bot makes shows up on screen, cursor and all.')}</div></li>
+            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>{t('Approve first.')}</b> {t('Emails, posts and anything final wait until you say yes. Fino never pays for you.')}</div></li>
+            <li data-reveal style={{ '--i': 3 } as CSSProperties}><Hand size={28} aria-hidden /><div><b>{t('Take over anytime.')}</b> {t('Grab the browser yourself, then hand it back.')}</div></li>
           </ol>
         </div>
       </section>
@@ -140,11 +142,11 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
       <section className="lp-close" id="start">
         <div className="lp-wrap lp-close__in">
           <div className="lp-close__copy" data-reveal>
-            <h2 className="lp-h2">Meet your team today.</h2>
-            <p className="lp-copy">Create your account with Google or your email. Bart, your Chief of Staff, is waiting in the first chat.</p>
+            <h2 className="lp-h2">{t('Meet your team today.')}</h2>
+            <p className="lp-copy">{t('Create your account with Google or your email. Bart, your Chief of Staff, is waiting in the first chat.')}</p>
           </div>
           <div className="lp-close__panel" data-reveal style={{ '--i': 2 } as CSSProperties}>
-            {signedIn ? <div className="auth"><h2 className="auth__title">You’re signed in.</h2><a className="auth__submit" href="/">Open Fino</a></div> : <AuthPanel initial="signup" />}
+            {signedIn ? <div className="auth"><h2 className="auth__title">{t('You’re signed in.')}</h2><a className="auth__submit" href="/">{t('Open Fino')}</a></div> : <AuthPanel initial="signup" />}
           </div>
         </div>
       </section>
@@ -152,7 +154,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot__in">
           <span className="lp-mark lp-mark--small"><img src={MARK} alt="" width={24} height={24} /> Fino</span>
-          <nav aria-label="Legal"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/support.html">Support</a></nav>
+          <nav aria-label={t('Legal')}><LangSwitch /><a href="/privacy.html">{t('Privacy')}</a><a href="/terms.html">{t('Terms')}</a><a href="/support.html">{t('Support')}</a></nav>
         </div>
       </footer>
     </div>
@@ -235,27 +237,27 @@ function Demo() {
   return (
     <section className="lp-demo" id="demo" ref={ref}>
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>Watch it work.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Ask in chat. The bot opens its own browser, and you see every move it makes.</p>
+        <h2 className="lp-h2" data-reveal>{t('Watch it work.')}</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Ask in chat. The bot opens its own browser, and you see every move it makes.')}</p>
       </div>
-      <div className={`lp-desk${fade ? ' is-fading' : ''}`} data-reveal style={{ '--i': 2 } as CSSProperties} aria-label="Demo: a bot searching a jobs site in its browser">
+      <div className={`lp-desk${fade ? ' is-fading' : ''}`} data-reveal style={{ '--i': 2 } as CSSProperties} aria-label={t('Demo: a bot searching a jobs site in its browser')}>
         <div className="lp-desk__chat">
-          <div className="lp-desk__head"><img src={TEAM[0].img} alt="" width={28} height={28} /> Nour <span>Research</span></div>
+          <div className="lp-desk__head"><img src={TEAM[0].img} alt="" width={28} height={28} /> Nour <span>{t('Research')}</span></div>
           <div className="lp-msgs">
-            {msgs.map((m) => <p key={m.id} className={m.who === 'me' ? 'lp-msg lp-msg--me' : m.who === 'bot' ? 'lp-msg' : 'lp-step'}>{m.text}</p>)}
-            {thinking && <p className="lp-msg lp-typing" aria-label="Nour is typing"><i /><i /><i /></p>}
+            {msgs.map((m) => <p key={m.id} className={m.who === 'me' ? 'lp-msg lp-msg--me' : m.who === 'bot' ? 'lp-msg' : 'lp-step'}>{t(m.text)}</p>)}
+            {thinking && <p className="lp-msg lp-typing" aria-label={t('Nour is typing')}><i /><i /><i /></p>}
           </div>
-          <div className="lp-desk__composer">Message Nour…</div>
+          <div className="lp-desk__composer">{t('Message Nour…')}</div>
         </div>
         <div className="lp-desk__browser">
-          <div className="lp-desk__bar"><i /><i /><i /><span>jobs.example.com</span><em><b className="lp-live-dot" />Bot connected</em></div>
+          <div className="lp-desk__bar"><i /><i /><i /><span>jobs.example.com</span><em><b className="lp-live-dot" />{t('Bot connected')}</em></div>
           <div className="lp-site" ref={site}>
             <div className="lp-site__brand">jobboard</div>
-            <div ref={job} className={`lp-site__field${focus === 'job' ? ' is-focus' : ''}`}>{jobText || <span>Job title or keyword</span>}{focus === 'job' && <b className="lp-caret" />}</div>
-            <div ref={city} className={`lp-site__field${focus === 'city' ? ' is-focus' : ''}`}>{cityText || <span>City</span>}{focus === 'city' && <b className="lp-caret" />}</div>
-            <div ref={go} className={`lp-site__search${pressed ? ' is-pressed' : ''}`}>Search jobs</div>
+            <div ref={job} className={`lp-site__field${focus === 'job' ? ' is-focus' : ''}`}>{jobText || <span>{t('Job title or keyword')}</span>}{focus === 'job' && <b className="lp-caret" />}</div>
+            <div ref={city} className={`lp-site__field${focus === 'city' ? ' is-focus' : ''}`}>{cityText || <span>{t('City')}</span>}{focus === 'city' && <b className="lp-caret" />}</div>
+            <div ref={go} className={`lp-site__search${pressed ? ' is-pressed' : ''}`}>{t('Search jobs')}</div>
             <ul className={`lp-site__results${results ? ' is-in' : ''}`}>
-              {RESULTS.map((r, i) => <li key={r} style={{ transitionDelay: results ? `${i * 90}ms` : '0ms' }}><b>{r.split(' · ')[0]}</b><span>{r.split(' · ')[1]} · Amsterdam</span></li>)}
+              {RESULTS.map((r, i) => <li key={r} style={{ transitionDelay: results ? `${i * 90}ms` : '0ms' }}><b>{t(r.split(' · ')[0])}</b><span>{t(r.split(' · ')[1])} · Amsterdam</span></li>)}
             </ul>
             <span className="lp-cursor" aria-hidden style={{ '--x': cursor.x, '--y': cursor.y } as CSSProperties}>
               <i key={cursor.click} className={cursor.click ? 'is-click' : ''} />
@@ -263,7 +265,7 @@ function Demo() {
             </span>
           </div>
         </div>
-        <span className="lp-desk__tag">Demo</span>
+        <span className="lp-desk__tag">{t('Demo')}</span>
       </div>
     </section>
   );
@@ -291,12 +293,12 @@ function MacBand() {
     <section className="lp-mac" id="mac">
       <div className="lp-wrap lp-mac__in">
         <div data-reveal>
-          <h2 className="lp-h2">Fino for Mac.</h2>
-          <p className="lp-copy">The same workspace in its own window, with the Fino Browser docked beside your chat. Your bot drives it with a visible cursor; you can grab it any time.</p>
+          <h2 className="lp-h2">{t('Fino for Mac.')}</h2>
+          <p className="lp-copy">{t('The same workspace in its own window, with the Fino Browser docked beside your chat. Your bot drives it with a visible cursor; you can grab it any time.')}</p>
           {info?.available === false
-            ? <p className="lp-mac__soon">The Mac app download is coming soon.</p>
-            : <a className="lp-pill lp-pill--dark lp-mac__dl" href="/api/download/mac" download onClick={() => store.drop(OFFER_MAC)}><Download size={20} aria-hidden /> Download for Mac</a>}
-          <p className="lp-mac__fine">For macOS 14 or later on Apple silicon{size && ` · ${size}`}. Open the download and move Fino to Applications. If macOS says it can’t check Fino the first time, open System Settings → Privacy & Security and choose Open Anyway.</p>
+            ? <p className="lp-mac__soon">{t('The Mac app download is coming soon.')}</p>
+            : <a className="lp-pill lp-pill--dark lp-mac__dl" href="/api/download/mac" download onClick={() => store.drop(OFFER_MAC)}><Download size={20} aria-hidden /> {t('Download for Mac')}</a>}
+          <p className="lp-mac__fine">{t('For macOS 14 or later on Apple silicon')}{size && ` · ${size}`}. {t('Open the download and move Fino to Applications. If macOS says it can’t check Fino the first time, open System Settings → Privacy & Security and choose Open Anyway.')}</p>
         </div>
         <div className="lp-mac__window" data-reveal style={{ '--i': 2 } as CSSProperties} aria-hidden>
           <div className="lp-mac__lights"><i /><i /><i /></div>
@@ -319,9 +321,9 @@ export function MacOffer() {
   return (
     <aside className="mac-offer" role="status">
       <img src={MARK} alt="" width={44} height={44} />
-      <div><b>Get Fino for Mac</b><span>Your bot gets its own browser beside your chat.</span></div>
-      <a className="mac-offer__dl" href="/api/download/mac" download onClick={close}><Download size={16} aria-hidden /> Download</a>
-      <button type="button" className="mac-offer__x" onClick={close} aria-label="Not now"><X size={16} /></button>
+      <div><b>{t('Get Fino for Mac')}</b><span>{t('Your bot gets its own browser beside your chat.')}</span></div>
+      <a className="mac-offer__dl" href="/api/download/mac" download onClick={close}><Download size={16} aria-hidden /> {t('Download')}</a>
+      <button type="button" className="mac-offer__x" onClick={close} aria-label={t('Not now')}><X size={16} /></button>
     </aside>
   );
 }
@@ -348,47 +350,47 @@ function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean })
   return (
     <section className="lp-cost" id="cost">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>A team for less than one day of wages.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>One full-time assistant costs at least {usd(ASSISTANT_SALARY)} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.</p>
+        <h2 className="lp-h2" data-reveal>{t('A team for less than one day of wages.')}</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('One full-time assistant costs at least {amount} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.', { amount: usd(ASSISTANT_SALARY) })}</p>
 
         <div className="lp-cost__ask" data-reveal style={{ '--i': 2 } as CSSProperties}>
-          <span id="lp-roles-label">How many people’s routine work?</span>
+          <span id="lp-roles-label">{t('How many people’s routine work?')}</span>
           <div className="lp-stepper" role="group" aria-labelledby="lp-roles-label">
-            <button type="button" onClick={() => setRoles((r) => Math.max(1, r - 1))} disabled={roles <= 1} aria-label="Fewer"><Minus size={18} aria-hidden /></button>
+            <button type="button" onClick={() => setRoles((r) => Math.max(1, r - 1))} disabled={roles <= 1} aria-label={t('Fewer')}><Minus size={18} aria-hidden /></button>
             <output aria-live="polite">{roles}</output>
-            <button type="button" onClick={() => setRoles((r) => Math.min(6, r + 1))} disabled={roles >= 6} aria-label="More"><Plus size={18} aria-hidden /></button>
+            <button type="button" onClick={() => setRoles((r) => Math.min(6, r + 1))} disabled={roles >= 6} aria-label={t('More')}><Plus size={18} aria-hidden /></button>
           </div>
         </div>
 
         <div className="lp-cost__docs">
-          <article className="lp-slipdoc lp-slipdoc--pay" data-reveal style={{ '--i': 3 } as CSSProperties} aria-label="Payroll for assistants">
-            <header><b>Payroll</b><span>{roles} {roles === 1 ? 'assistant' : 'assistants'} · per month</span></header>
+          <article className="lp-slipdoc lp-slipdoc--pay" data-reveal style={{ '--i': 3 } as CSSProperties} aria-label={t('Payroll for assistants')}>
+            <header><b>{t('Payroll')}</b><span>{t(roles === 1 ? '{n} assistant · per month' : '{n} assistants · per month', { n: roles })}</span></header>
             <dl>
-              <div><dt>Salary</dt><dd>{usd(ASSISTANT_SALARY * roles)}</dd></div>
-              <div><dt>Employer costs</dt><dd>{usd(ASSISTANT_EXTRA * roles)}</dd></div>
-              <div><dt>Working hours</dt><dd>40 a week each</dd></div>
-              <div><dt>Evenings, weekends, holidays</dt><dd>Off</dd></div>
+              <div><dt>{t('Salary')}</dt><dd>{usd(ASSISTANT_SALARY * roles)}</dd></div>
+              <div><dt>{t('Employer costs')}</dt><dd>{usd(ASSISTANT_EXTRA * roles)}</dd></div>
+              <div><dt>{t('Working hours')}</dt><dd>{t('40 a week each')}</dd></div>
+              <div><dt>{t('Evenings, weekends, holidays')}</dt><dd>{t('Off')}</dd></div>
             </dl>
-            <footer><span>A year</span><strong key={humanYear} className="lp-total">{usd(humanYear)}</strong></footer>
+            <footer><span>{t('A year')}</span><strong key={humanYear} className="lp-total">{usd(humanYear)}</strong></footer>
           </article>
 
-          <article className="lp-slipdoc lp-slipdoc--fino" data-reveal style={{ '--i': 4 } as CSSProperties} aria-label={`Fino ${plan.name} plan`}>
-            <header><b>Fino {plan.name}</b><span>{usd(plan.price)} · per month</span></header>
+          <article className="lp-slipdoc lp-slipdoc--fino" data-reveal style={{ '--i': 4 } as CSSProperties} aria-label={t('Fino {plan} plan', { plan: plan.name })}>
+            <header><b>Fino {plan.name}</b><span>{usd(plan.price)} · {t('per month')}</span></header>
             <dl>
-              <div><dt>Bots</dt><dd>{plan.bots}</dd></div>
-              <div><dt>Their own computer</dt><dd>{plan.hours} h a month</dd></div>
-              <div><dt>Working hours</dt><dd>Around the clock</dd></div>
-              <div><dt>Anything final</dt><dd>Waits for your OK</dd></div>
+              <div><dt>{t('Bots')}</dt><dd>{t(plan.bots)}</dd></div>
+              <div><dt>{t('Their own computer')}</dt><dd>{t('{n} h a month', { n: plan.hours })}</dd></div>
+              <div><dt>{t('Working hours')}</dt><dd>{t('Around the clock')}</dd></div>
+              <div><dt>{t('Anything final')}</dt><dd>{t('Waits for your OK')}</dd></div>
             </dl>
-            <footer><span>A year</span><strong key={finoYear} className="lp-total">{usd(finoYear)}</strong></footer>
+            <footer><span>{t('A year')}</span><strong key={finoYear} className="lp-total">{usd(finoYear)}</strong></footer>
           </article>
         </div>
 
         <div className="lp-cost__out" data-reveal style={{ '--i': 5 } as CSSProperties}>
-          <p>You keep <strong key={humanYear - finoYear} className="lp-total">{usd(humanYear - finoYear)}</strong> a year.</p>
-          <button type="button" className="lp-pill lp-pill--blue" onClick={onStart}>{signedIn ? 'Open Fino' : 'Build my team'} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
+          <p>{t('You keep')} <strong key={humanYear - finoYear} className="lp-total">{usd(humanYear - finoYear)}</strong> {t('a year.')}</p>
+          <button type="button" className="lp-pill lp-pill--blue" onClick={onStart}>{t(signedIn ? 'Open Fino' : 'Build my team')} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
         </div>
-        <p className="lp-fine" data-reveal style={{ '--i': 6 } as CSSProperties}>Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.</p>
+        <p className="lp-fine" data-reveal style={{ '--i': 6 } as CSSProperties}>{t('Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.')}</p>
       </div>
     </section>
   );
@@ -414,14 +416,14 @@ function Jobs() {
   return (
     <section className="lp-jobs" id="jobs">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>Give each bot a job worth doing.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Pick a job to see what its bot tells you, and what it waits for you to approve.</p>
+        <h2 className="lp-h2" data-reveal>{t('Give each bot a job worth doing.')}</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Pick a job to see what its bot tells you, and what it waits for you to approve.')}</p>
         <div className="lp-jobs__in" data-reveal style={{ '--i': 2 } as CSSProperties}>
-          <div className="lp-jobs__list" role="tablist" aria-label="Jobs">
+          <div className="lp-jobs__list" role="tablist" aria-label={t('Jobs')}>
             {JOBS.map((j) => (
               <button key={j.id} type="button" role="tab" id={`lp-tab-${j.id}`} aria-selected={j.id === pick} aria-controls="lp-job-panel" onClick={() => setPick(j.id)}>
                 <img src={characterDataUri(j.character, j.color)} alt="" width={40} height={40} draggable={false} />
-                <span><b>{j.title}</b><small>{j.blurb}</small></span>
+                <span><b>{t(j.title)}</b><small>{t(j.blurb)}</small></span>
               </button>
             ))}
           </div>
@@ -429,20 +431,20 @@ function Jobs() {
             <div className="lp-jobs__chat" role="tabpanel" id="lp-job-panel" aria-labelledby={`lp-tab-${job.id}`} key={job.id}>
               <div className="lp-jobs__head">
                 <img src={img} alt="" width={44} height={44} draggable={false} />
-                <div><b>{job.name}</b><span>{job.title}</span></div>
-                <dl><div><dt>Runs</dt><dd>{story.runs}</dd></div><div><dt>Uses</dt><dd>{story.uses}</dd></div></dl>
+                <div><b>{job.name}</b><span>{t(job.title)}</span></div>
+                <dl><div><dt>{t('Runs')}</dt><dd>{t(story.runs)}</dd></div><div><dt>{t('Uses')}</dt><dd>{t(story.uses)}</dd></div></dl>
               </div>
               <div className="lp-jobs__msgs">
-                {story.says.map((t, i) => <p key={i} className="lp-msg" style={{ '--i': i } as CSSProperties}>{t}</p>)}
+                {story.says.map((line, i) => <p key={i} className="lp-msg" style={{ '--i': i } as CSSProperties}>{t(line)}</p>)}
                 {ok[job.id]
-                  ? <><p className="lp-msg lp-msg--me">Approved</p><p className="lp-msg">{story.done}</p></>
+                  ? <><p className="lp-msg lp-msg--me">{t('Approved')}</p><p className="lp-msg">{t(story.done)}</p></>
                   : <div className="lp-ask" style={{ '--i': story.says.length } as CSSProperties}>
-                      <span>Waiting for your OK</span>
-                      <b>{story.waits}</b>
-                      <div><button type="button" className="lp-ask__yes" onClick={() => setOk((o) => ({ ...o, [job.id]: true }))}><Check size={16} strokeWidth={2.6} aria-hidden /> Approve</button><button type="button" className="lp-ask__no" onClick={() => setPick(JOBS[(JOBS.indexOf(job) + 1) % JOBS.length].id)}>Not now</button></div>
+                      <span>{t('Waiting for your OK')}</span>
+                      <b>{t(story.waits)}</b>
+                      <div><button type="button" className="lp-ask__yes" onClick={() => setOk((o) => ({ ...o, [job.id]: true }))}><Check size={16} strokeWidth={2.6} aria-hidden /> {t('Approve')}</button><button type="button" className="lp-ask__no" onClick={() => setPick(JOBS[(JOBS.indexOf(job) + 1) % JOBS.length].id)}>{t('Not now')}</button></div>
                     </div>}
               </div>
-              <span className="lp-desk__tag">Example</span>
+              <span className="lp-desk__tag">{t('Example')}</span>
             </div>
           )}
         </div>
@@ -461,10 +463,10 @@ function FirstSteps() {
   return (
     <section className="lp-steps">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>Your first job in three steps.</h2>
+        <h2 className="lp-h2" data-reveal>{t('Your first job in three steps.')}</h2>
         <ol className="lp-steps__row">
           {steps.map((s, i) => (
-            <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{s.t}</b><p>{s.d}</p></li>
+            <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{t(s.t)}</b><p>{t(s.d)}</p></li>
           ))}
         </ol>
       </div>
@@ -478,21 +480,27 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
   return (
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>Simple plans. No hiring.</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>Every plan includes Bart, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.</p>
+        <h2 className="lp-h2" data-reveal>{t('Simple plans. No hiring.')}</h2>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Every plan includes Bart, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.')}</p>
         <ul className="lp-plans__row">
           {list.map((p, i) => (
             <li key={p.name} className={p.name === 'Max' ? 'is-pick' : ''} data-reveal style={{ '--i': 2 + i } as CSSProperties}>
               <b>{p.name}</b>
-              {p.name === 'Max' && <em>Most teams</em>}
-              <strong>{usd(p.price)}<small>/month</small></strong>
-              <span className="lp-plans__bots">{p.bots}</span>
-              <ul>{p.lines.map((l) => <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{l}</li>)}</ul>
-              <button type="button" className={`lp-pill ${p.name === 'Max' ? 'lp-pill--blue' : 'lp-pill--line'}`} onClick={onStart}>{signedIn ? 'Open Fino' : `Start with ${p.name}`}</button>
+              {p.name === 'Max' && <em>{t('Most teams')}</em>}
+              <strong>{usd(p.price)}<small>{t('/month')}</small></strong>
+              <span className="lp-plans__bots">{t(p.bots)}</span>
+              <ul>{p.lines.map((l) => <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{t(l)}</li>)}</ul>
+              <button type="button" className={`lp-pill ${p.name === 'Max' ? 'lp-pill--blue' : 'lp-pill--line'}`} onClick={onStart}>{signedIn ? t('Open Fino') : t('Start with {plan}', { plan: p.name })}</button>
             </li>
           ))}
         </ul>
       </div>
     </section>
   );
+}
+
+/** English or Dutch for the public page; the app follows the same choice. */
+function LangSwitch() {
+  const other = lang === 'nl' ? { code: 'en' as const, label: 'English' } : { code: 'nl' as const, label: 'Nederlands' };
+  return <button type="button" className="lp-lang" onClick={() => setLangChoice(other.code)} lang={other.code}>{other.label}</button>;
 }

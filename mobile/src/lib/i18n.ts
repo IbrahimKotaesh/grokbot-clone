@@ -2,6 +2,7 @@
 // English text is the key, so a missing translation simply shows the English.
 import { I18nManager } from "react-native";
 import { ar } from "./ar";
+import { nl } from "../../../packages/contracts/src/nl";
 
 function phoneLanguage() {
   try {
@@ -13,14 +14,16 @@ function phoneLanguage() {
     return Intl.DateTimeFormat().resolvedOptions().locale.slice(0, 2);
   }
 }
-export const lang: "ar" | "en" = phoneLanguage() === "ar" ? "ar" : "en";
+// English is the main language; Arabic and Dutch follow the phone when it speaks them.
+const phoneLang = phoneLanguage();
+export const lang: "ar" | "en" | "nl" = phoneLang === "ar" || phoneLang === "nl" ? phoneLang : "en";
 export const isArabic = lang === "ar";
 /** True when the layout runs right-to-left (mirror arrows and chevrons with this). */
 export const isRTL = I18nManager.isRTL;
 
 /** Translate an English UI string. `{name}` placeholders are filled from `vars`. */
 export function t(text: string, vars?: Record<string, string | number>) {
-  let out = isArabic ? (ar[text] ?? text) : text;
+  let out = isArabic ? (ar[text] ?? text) : lang === "nl" ? (nl[text] ?? text) : text;
   if (vars) for (const k in vars) out = out.split(`{${k}}`).join(String(vars[k]));
   return out;
 }

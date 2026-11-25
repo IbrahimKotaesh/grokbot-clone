@@ -46,7 +46,7 @@ export function PlanSection() {
     </>
   );
   const current = billing.plans.find((p) => p.id === billing.plan);
-  const date = billing.renewsAt ? new Date(billing.renewsAt).toLocaleDateString(lang === 'ar' ? 'ar' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const date = billing.renewsAt ? new Date(billing.renewsAt).toLocaleDateString(lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const store = billing.source === 'apple' ? 'Apple' : billing.source === 'google' ? 'Google Play' : null;
   const paid = billing.plan !== 'free';
 
@@ -63,7 +63,7 @@ export function PlanSection() {
                 {store
                   ? t('Billed through {store}. Change or cancel it from your phone’s subscription settings.', { store })
                   : billing.trialUntil
-                    ? t('Free trial until {date}. Your card is charged then, unless you cancel before.', { date: new Date(billing.trialUntil).toLocaleString(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })
+                    ? t('Free trial until {date}. Your card is charged then, unless you cancel before.', { date: new Date(billing.trialUntil).toLocaleString(lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })
                   : billing.source === 'stripe' && date
                     ? t('Renews on {date}.', { date })
                     : paid ? (date ? t('Active until {date}.', { date }) : t('Your plan is active.')) : t('Upgrade for more bots and a cloud computer for your team.')}
