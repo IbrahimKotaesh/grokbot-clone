@@ -545,3 +545,11 @@
 @media (max-width: 860px) { .lp-nav .lp-lang { padding: 4px 10px; font-size: 13px; } }
 .lp-pill, .lp-lang { white-space: nowrap; }
 @media (max-width: 400px) { .lp-nav .lp-pill--light { padding: 0 16px; } .lp-nav__links { gap: 10px; } }
+.lp-lang__short { display: none; }
+@media (max-width: 560px) {
+  .lp-nav .lp-lang__long { display: none; }
+  .lp-nav .lp-lang__short { display: inline; }
+  .lp-nav__links { gap: 8px; }
+  .lp-nav .lp-pill--light { height: 42px; padding: 0 14px; font-size: 14px; }
+  .lp-mark span { font-size: 21px; }
+}

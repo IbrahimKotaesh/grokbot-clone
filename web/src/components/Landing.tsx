@@ -502,5 +502,6 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
 /** English or Dutch for the public page; the app follows the same choice. */
 function LangSwitch() {
   const other = lang === 'nl' ? { code: 'en' as const, label: 'English' } : { code: 'nl' as const, label: 'Nederlands' };
-  return <button type="button" className="lp-lang" onClick={() => setLangChoice(other.code)} lang={other.code}>{other.label}</button>;
+  // Phones show the short code so the header still fits next to the sign-in buttons.
+  return <button type="button" className="lp-lang" onClick={() => setLangChoice(other.code)} lang={other.code} aria-label={other.label}><span className="lp-lang__long">{other.label}</span><span className="lp-lang__short" aria-hidden>{other.code.toUpperCase()}</span></button>;
 }
