@@ -49,17 +49,29 @@ export async function toolkitInfo(slug: string): Promise<CatalogItem | undefined
 
 // ---------- per-user connections ----------
 
+/** Every connected account of a user. Composio answers in pages (10 by default), so read them all:
+ * with expired ones piling up, an active Gmail can sit on page two. */
+async function allConnections(userId: string, statuses?: string[]): Promise<any[]> {
+  const items: any[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const r: any = await composio.connectedAccounts.list({ userIds: [userId], limit: 100, ...(statuses ? { statuses } : {}), ...(cursor ? { cursor } : {}) } as any);
+    items.push(...(r?.items ?? []));
+    cursor = r?.nextCursor ?? r?.next_cursor ?? undefined;
+    if (!cursor) break;
+  }
+  return items;
+}
+
 export async function connectedToolkits(userId: string): Promise<Set<string>> {
   if (env.composioKey === 'disabled') return new Set<string>();
-  const r = await composio.connectedAccounts.list({ userIds: [userId], statuses: ['ACTIVE'] } as any);
-  const items: any[] = (r as any).items ?? [];
+  const items = await allConnections(userId, ['ACTIVE']);
   return new Set(items.map((i) => i.toolkit?.slug ?? i.toolkitSlug).filter(Boolean));
 }
 
 export async function connectionsDetail(userId: string) {
   if (env.composioKey === 'disabled') return [];
-  const r = await composio.connectedAccounts.list({ userIds: [userId] } as any);
-  return ((r as any).items ?? []).map((i: any) => ({ id: i.id, toolkit: i.toolkit?.slug ?? i.toolkitSlug, status: i.status }));
+  return (await allConnections(userId)).map((i: any) => ({ id: i.id, toolkit: i.toolkit?.slug ?? i.toolkitSlug, status: i.status }));
 }
 
 export async function disconnect(userId: string, toolkit: string) {

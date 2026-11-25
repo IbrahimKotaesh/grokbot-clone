@@ -17,7 +17,10 @@ const ctx = { userId: 'mail', botId: bot.id, depth: 0, enqueueBotMessage() {} };
 
 // Simulated Gmail behind the owner's connection
 const calls = [];
-composio.connectedAccounts.list = async () => ({ items: [{ id: 'ca_gmail', toolkit: { slug: 'gmail' }, status: 'ACTIVE' }] });
+// Composio answers in pages: the active Gmail sits on page two behind expired accounts.
+composio.connectedAccounts.list = async (q) => q.cursor === 'p2'
+  ? { items: [{ id: 'ca_gmail', toolkit: { slug: 'gmail' }, status: 'ACTIVE' }] }
+  : { items: Array.from({ length: 10 }, (_, i) => ({ id: `ca_old${i}`, toolkit: { slug: 'gmail' }, status: 'EXPIRED' })), nextCursor: 'p2' };
 composio.tools.proxyExecute = async (req) => {
   calls.push(req);
   if (req.method === 'GET') return { status: 200, data: { id: 'm1', threadId: 't9', payload: { headers: [{ name: 'Message-ID', value: '<abc@mail.example>' }, { name: 'Subject', value: 'Your application' }, { name: 'From', value: 'Nicolas <nicolas@data-first.example>' }] } } };
