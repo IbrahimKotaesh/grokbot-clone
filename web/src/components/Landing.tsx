@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Check, Download, Eye, Globe, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { characterDataUri } from '../../../packages/contracts/src/characters';
+import { CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import { lang, setLangChoice, t } from '../lib/i18n';
 import '../styles/landing.css';
@@ -18,13 +18,13 @@ const store = {
 /** The job typed on the landing page, handed once to the first chat after sign-in. */
 export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => store.drop(FIRST_TASK) };
 
-type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
+type Bot = { id: string; name: string; role: string; color: string; img: string; reply: string; match: RegExp };
 // An example team. Every new account starts with Badr; people add the others themselves.
 const TEAM: Bot[] = [
-  { id: 'nour', name: 'Nour', role: 'Research', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'quinn', name: 'Badr', role: 'Chief of Staff', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
-  { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
-  { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
+  { id: 'nour', name: 'Nour', role: 'Research', color: 'violet', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
+  { id: 'quinn', name: 'Badr', role: 'Chief of Staff', color: 'yellow', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'kai', name: 'Kai', role: 'Inbox', color: 'blue', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
+  { id: 'sol', name: 'Sol', role: 'Planner', color: 'magenta', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
 // Badr, Fino's main character, is the logo: yellow on the tomato header.
@@ -61,7 +61,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
     <div className="lp" ref={root}>
       <section className="lp-open">
         <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Fino">
-          <a className="lp-mark" href="/welcome"><img src={MARK} alt="" width={36} height={36} /><span>Fino</span></a>
+          <a className="lp-mark" href="/welcome" aria-label="Fino"><img src={MARK} alt="" width={36} height={36} /><span>{t('Badr')}</span></a>
           <div className="lp-nav__links">
             <a href="#demo">{t('See it work')}</a>
             <a href="#plans">{t('Plans')}</a>
@@ -96,8 +96,16 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         <div className="lp-team">
           <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{t(said.name)} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
           {TEAM.map((b, i) => (
-            <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s` } as CSSProperties}>
-              <span className="lp-bot__pop"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
+            <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s`, '--c': CLAY[b.color], '--k': `${i * -1.7}s` } as CSSProperties}>
+              <span className="lp-bot__pop">
+                <Screen id={b.id} />
+                <span className="lp-bot__lift"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
+              </span>
+              <span className="lp-deskbar" aria-hidden>
+                <span className="lp-kb"><i className="lp-hand" /><i className="lp-hand lp-hand--r" /></span>
+                {b.id === 'quinn' && <span className="lp-mug"><i /><i /></span>}
+                {b.id === 'sol' && <span className="lp-plant"><i /><i /><i /></span>}
+              </span>
               <figcaption><b>{t(b.name)}</b> <span>{t(b.role)}</span></figcaption>
             </figure>
           ))}
@@ -153,11 +161,40 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot__in">
-          <span className="lp-mark lp-mark--small"><img src={MARK} alt="" width={24} height={24} /> Fino</span>
+          <span className="lp-mark lp-mark--small"><img src={MARK} alt="" width={24} height={24} /> {t('Badr')}</span>
           <nav aria-label={t('Legal')}><LangSwitch /><a href="/privacy.html">{t('Privacy')}</a><a href="/terms.html">{t('Terms')}</a><a href="/support.html">{t('Support')}</a></nav>
         </div>
       </footer>
     </div>
+  );
+}
+
+/* Each bot's own computer on the opening scene: a looping, wordless picture of the work it does.
+   Nour searches the web, Badr ticks off the team's tasks, Kai writes an email that waits for your OK,
+   Sol fills the week. Pure CSS; with reduced motion every screen shows its finished state. */
+function Screen({ id }: { id: string }) {
+  const rows = (n: number) => Array.from({ length: n }, (_, k) => k);
+  return (
+    <span className={`lp-scr lp-scr--${id}`} aria-hidden>
+      {id === 'nour' && <>
+        <i className="lp-scr__url" />
+        <i className="lp-scr__find"><b /></i>
+        {rows(3).map((k) => <i key={k} className={`lp-scr__hit lp-k${k + 1}`}><s /><u /></i>)}
+      </>}
+      {id === 'quinn' && <>
+        {rows(3).map((k) => <i key={k} className={`lp-scr__task lp-k${k + 1}`}><s><b /></s><u /></i>)}
+        <i className="lp-scr__bar"><b /></i>
+      </>}
+      {id === 'kai' && <>
+        <i className="lp-scr__to" /><i className="lp-scr__subj" />
+        {rows(3).map((k) => <i key={k} className={`lp-scr__line lp-l${k + 1}`} />)}
+        <i className="lp-scr__ok lp-k4">✓</i>
+      </>}
+      {id === 'sol' && <>
+        <i className="lp-scr__grid" />
+        {rows(4).map((k) => <i key={k} className={`lp-scr__slot lp-s${k + 1} lp-k${k + 1}`} />)}
+      </>}
+    </span>
   );
 }
 

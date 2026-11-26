@@ -560,3 +560,119 @@
 
 /* Right-to-left (Arabic): arrows point the way the reader goes. */
 [dir='rtl'] .lp .lucide-arrow-right { transform: scaleX(-1); }
+
+/* ---- The opening scene: the team at work, each bot at its own computer ----
+   Every station is a size container, so screen, bot, desk and hands scale together (cqw = station width). */
+.lp-bot { container-type: inline-size; margin: 0; }
+.lp-bot__pop { position: relative; display: flex; flex-direction: column; align-items: center; }
+.lp-bot__lift { position: relative; z-index: 2; display: block; width: 74cqw; margin-top: -15cqw; transition: transform .7s var(--lp-ease); }
+.lp-bot__float { animation-duration: 3.8s; }
+.lp-bot.is-up { transform: none; }
+.lp-bot.is-up .lp-bot__lift { transform: translateY(-9cqw) scale(1.05); }
+.lp-bot.is-up .lp-scr { box-shadow: 3px 3px 0 #211c17, 0 0 0 5px var(--lp-sun); }
+
+/* The computer screen: a cream sticker monitor with a title bar in the bot's own colour. */
+.lp-scr { position: relative; z-index: 1; display: block; width: 86cqw; aspect-ratio: 4 / 3; overflow: hidden; border: 2.5px solid #211c17; border-radius: 10px; background: #fff8ee; box-shadow: 3px 3px 0 #211c17; transition: box-shadow .4s var(--lp-ease); }
+.lp-scr::before { content: ""; position: absolute; inset: 0 0 auto; height: 14%; border-bottom: 2px solid #211c17; background: var(--c); }
+.lp-scr::after { content: ""; position: absolute; top: 4.5%; left: 5%; width: 20%; height: 5%; background: radial-gradient(circle, #211c17 42%, transparent 46%) 0 50% / 33.3% 100% repeat-x; opacity: .55; }
+.lp-scr i, .lp-scr i * { position: absolute; display: block; }
+.lp-scr i { font-style: normal; }
+
+/* Loop steps shared by every screen: k1…k4 appear one after another, all clear together before the loop restarts. */
+@keyframes lp-k1 { 0%, 18% { opacity: 0; transform: translateY(40%) scale(.9); } 26%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes lp-k2 { 0%, 34% { opacity: 0; transform: translateY(40%) scale(.9); } 42%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes lp-k3 { 0%, 50% { opacity: 0; transform: translateY(40%) scale(.9); } 58%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes lp-k4 { 0%, 66% { opacity: 0; transform: translateY(40%) scale(.6); } 72% { opacity: 1; transform: scale(1.12); } 76%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes lp-type { 0%, 4% { width: 0; } 22%, 92% { width: var(--w); } 100% { width: 0; } }
+.lp-scr .lp-k1, .lp-scr .lp-k2, .lp-scr .lp-k3, .lp-scr .lp-k4 { animation: 7s var(--k, 0s) infinite both; }
+.lp-scr .lp-k1 { animation-name: lp-k1; } .lp-scr .lp-k2 { animation-name: lp-k2; } .lp-scr .lp-k3 { animation-name: lp-k3; } .lp-scr .lp-k4 { animation-name: lp-k4; }
+
+/* Nour: types a search, results arrive, the best one gets starred. */
+.lp-scr__url { top: 20%; left: 7%; width: 86%; height: 8%; border-radius: 99px; background: #211c171a; }
+.lp-scr__find { top: 33%; left: 7%; width: 86%; height: 12%; border: 2px solid #211c17; border-radius: 6px; background: #fff; }
+.lp-scr__find b { --w: 58%; top: 30%; left: 6%; height: 40%; width: var(--w); border-radius: 99px; background: #211c17; animation: lp-type 7s var(--k, 0s) infinite both; }
+.lp-scr__hit { left: 7%; width: 86%; height: 11%; }
+.lp-scr__hit.lp-k1 { top: 52%; } .lp-scr__hit.lp-k2 { top: 66%; } .lp-scr__hit.lp-k3 { top: 80%; }
+.lp-scr__hit s { top: 0; left: 0; height: 100%; aspect-ratio: 1; border-radius: 3px; background: var(--c); }
+.lp-scr__hit u { top: 30%; left: 18%; height: 40%; width: 62%; border-radius: 99px; background: #211c172e; }
+.lp-scr__hit.lp-k3 u { width: 44%; }
+.lp-scr__hit.lp-k2 { border-radius: 4px; animation-name: lp-k2, lp-star; }
+@keyframes lp-star { 0%, 74% { background: transparent; } 80%, 92% { background: #ffcf3a99; } 100% { background: transparent; } }
+
+/* Badr: the team's tasks get ticked off and the progress bar fills. */
+.lp-scr__task { left: 8%; width: 84%; height: 14%; opacity: 1; }
+.lp-scr__task.lp-k1 { top: 23%; } .lp-scr__task.lp-k2 { top: 44%; } .lp-scr__task.lp-k3 { top: 65%; }
+.lp-scr .lp-scr__task { animation: none; }
+.lp-scr__task s { top: 0; left: 0; height: 100%; aspect-ratio: 1; border: 2px solid #211c17; border-radius: 4px; background: #fff; overflow: hidden; }
+.lp-scr__task s b { inset: 0; background: var(--lp-leaf); animation: 7s var(--k, 0s) infinite both; }
+.lp-scr__task s b::after { content: ""; position: absolute; left: 33%; top: 12%; width: 26%; height: 52%; border: solid #211c17; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.lp-scr__task.lp-k1 s b { animation-name: lp-k1; } .lp-scr__task.lp-k2 s b { animation-name: lp-k2; } .lp-scr__task.lp-k3 s b { animation-name: lp-k3; }
+.lp-scr__task u { top: 30%; left: 24%; height: 40%; width: 68%; border-radius: 99px; background: #211c172e; }
+.lp-scr__task.lp-k2 u { width: 54%; } .lp-scr__task.lp-k3 u { width: 62%; }
+.lp-scr__bar { left: 8%; bottom: 8%; width: 84%; height: 7%; border: 2px solid #211c17; border-radius: 99px; background: #fff; overflow: hidden; }
+.lp-scr__bar b { top: 0; left: 0; height: 100%; width: 100%; background: var(--c); animation: lp-fill 7s var(--k, 0s) infinite both; }
+@keyframes lp-fill { 0%, 22% { width: 0; } 28% { width: 34%; } 38%, 44% { width: 34%; } 50% { width: 67%; } 54%, 58% { width: 67%; } 64%, 92% { width: 100%; } 100% { width: 0; } }
+
+/* Kai: writes an email line by line; it waits for your OK. */
+.lp-scr__to { top: 21%; left: 7%; width: 38%; height: 7%; border-radius: 99px; background: #211c172e; }
+.lp-scr__subj { top: 33%; left: 7%; width: 62%; height: 8%; border-radius: 99px; background: #211c17; }
+.lp-scr__line { left: 7%; height: 6.5%; border-radius: 99px; background: #211c1759; animation: lp-type 7s infinite both; }
+.lp-scr__line.lp-l1 { --w: 84%; top: 50%; animation-delay: calc(var(--k, 0s) + 0s); }
+.lp-scr__line.lp-l2 { --w: 76%; top: 61%; animation-delay: calc(var(--k, 0s) + .55s); }
+.lp-scr__line.lp-l3 { --w: 48%; top: 72%; animation-delay: calc(var(--k, 0s) + 1.1s); }
+.lp-scr__ok { right: 6%; bottom: 6%; display: grid !important; place-items: center; width: 24%; height: 17%; border: 2px solid #211c17; border-radius: 99px; background: var(--lp-sun); color: #211c17; font: 900 clamp(8px, 2.6cqw, 15px) / 1 "Nunito", system-ui, sans-serif; }
+
+/* Sol: plans the week, blocks drop into the calendar. */
+.lp-scr__grid { inset: 22% 6% 7%; border: 2px solid #211c1755; border-radius: 4px; background: linear-gradient(90deg, #211c1726 2px, transparent 2px) 0 0 / 20% 100%, linear-gradient(#211c1726 2px, transparent 2px) 0 0 / 100% 33.4%; }
+.lp-scr__slot { height: 19%; border: 2px solid #211c17; border-radius: 4px; }
+.lp-s1 { top: 26%; left: 9%; width: 30%; background: var(--lp-sun); }
+.lp-s2 { top: 50%; left: 46%; width: 18%; background: var(--lp-leaf); }
+.lp-s3 { top: 26%; left: 66%; width: 25%; background: var(--c); }
+.lp-s4 { top: 72%; left: 27%; width: 34%; background: #7b68d6; }
+
+/* The desk: one cream bar across the team (each station draws its own piece), keyboards and hands on top. */
+.lp-deskbar { position: relative; z-index: 3; display: block; width: 101%; height: 13cqw; margin-top: -17cqw; border-block: 2.5px solid #211c17; background: #fff8ee; box-shadow: 0 4px 0 #211c17; }
+.lp-bot:first-of-type .lp-deskbar { border-left: 2.5px solid #211c17; border-radius: 12px 0 0 12px; }
+.lp-bot:last-of-type .lp-deskbar { border-right: 2.5px solid #211c17; border-radius: 0 12px 12px 0; }
+.lp-kb { position: absolute; left: 50%; top: -4cqw; width: 54cqw; height: 9cqw; margin-left: -27cqw; border: 2px solid #211c17; border-radius: 5px; background: #3a322b radial-gradient(circle, #fff8ee88 1.1px, transparent 1.6px) 0 0 / 6cqw 3.6cqw; }
+.lp-hand { position: absolute; top: -5cqw; left: 12%; width: 13cqw; height: 11cqw; border: 2px solid #211c17; border-radius: 50% 50% 45% 45%; background: var(--c); animation: lp-tap .34s var(--k, 0s) ease-in-out infinite alternate; }
+.lp-hand--r { left: auto; right: 12%; animation-delay: calc(var(--k, 0s) - .17s); }
+@keyframes lp-tap { from { transform: translateY(0); } to { transform: translateY(-3.5cqw) rotate(-6deg); } }
+/* Every few seconds a bot stops typing for a breath, so the four hands don't look like a machine. */
+.lp-bot:nth-of-type(odd) .lp-hand { animation-duration: .38s; }
+
+/* Badr's coffee, with steam. Sol keeps a plant. */
+.lp-mug { position: absolute; right: 4cqw; top: -10cqw; width: 11cqw; height: 11cqw; border: 2px solid #211c17; border-radius: 2px 2px 5px 5px; background: #fff; }
+.lp-mug::after { content: ""; position: absolute; right: -5cqw; top: 2cqw; width: 4cqw; height: 5cqw; border: 2px solid #211c17; border-left: 0; border-radius: 0 6px 6px 0; }
+.lp-mug i { position: absolute; bottom: 100%; left: 2.5cqw; width: 2.4cqw; height: 6cqw; border-radius: 99px; background: #ffffffcc; animation: lp-steam 2.6s ease-in infinite; }
+.lp-mug i + i { left: 6cqw; animation-delay: -1.3s; }
+@keyframes lp-steam { from { opacity: 0; transform: translateY(2cqw) scaleY(.6); } 30% { opacity: .9; } to { opacity: 0; transform: translateY(-7cqw) scaleY(1.1) rotate(10deg); } }
+.lp-plant { position: absolute; left: 3cqw; top: -15cqw; width: 12cqw; height: 15cqw; }
+.lp-plant::after { content: ""; position: absolute; left: 1cqw; bottom: 0; width: 10cqw; height: 7cqw; border: 2px solid #211c17; border-radius: 2px 2px 6px 6px; background: #e0773c; }
+.lp-plant i { position: absolute; bottom: 5cqw; left: 4cqw; width: 4.5cqw; height: 9cqw; border: 2px solid #211c17; border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%; background: var(--lp-leaf); transform-origin: 50% 100%; animation: lp-sway 3.4s ease-in-out infinite alternate; }
+.lp-plant i:nth-child(1) { transform: rotate(-32deg); animation-name: lp-sway-l; }
+.lp-plant i:nth-child(3) { transform: rotate(32deg); animation-name: lp-sway-r; }
+@keyframes lp-sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes lp-sway-l { from { transform: rotate(-36deg); } to { transform: rotate(-26deg); } }
+@keyframes lp-sway-r { from { transform: rotate(26deg); } to { transform: rotate(36deg); } }
+
+.lp-bot figcaption { position: relative; z-index: 4; margin-top: 12px; }
+.lp-team { align-items: flex-start; }
+.lp-bubble-slot { bottom: 120px; }
+
+/* Arabic reads from the right: the scene moves to the left of the opening and the bubble to its right. */
+@media (min-width: 1081px) {
+  [dir='rtl'] .lp-team { right: auto; left: clamp(16px, 4vw, 64px); }
+  [dir='rtl'] .lp-bubble-slot { right: auto; left: calc(100% + 20px); }
+  [dir='rtl'] .lp-bubble { border-radius: 20px 20px 20px 6px; transform-origin: left bottom; }
+}
+@media (max-width: 560px) {
+  .lp-bot figcaption { margin-top: 10px; }
+  .lp-scr { border-width: 2px; border-radius: 7px; box-shadow: 2px 2px 0 #211c17; }
+  .lp-scr::before { border-bottom-width: 1.5px; }
+  .lp-scr__find, .lp-scr__task s, .lp-scr__bar, .lp-scr__ok, .lp-scr__slot, .lp-kb, .lp-hand, .lp-mug, .lp-plant i, .lp-plant::after { border-width: 1.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-scr *, .lp-hand, .lp-mug i, .lp-plant i, .lp-bot__float { animation: none !important; }
+  .lp-mug i { opacity: .7; }
+}
