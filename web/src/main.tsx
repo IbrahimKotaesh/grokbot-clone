@@ -21,6 +21,10 @@ import './styles/viewer.css';
 import './styles/voice.css';
 import './styles/fino.css';
 import './styles/phone-look.css';
+import '@fontsource/baloo-bhaijaan-2/arabic-700.css';
+import '@fontsource/baloo-bhaijaan-2/arabic-800.css';
+import '@fontsource/tajawal/arabic-500.css';
+import '@fontsource/tajawal/arabic-700.css';
 import './styles/workspace.css';
 import './styles/polish.css';
 

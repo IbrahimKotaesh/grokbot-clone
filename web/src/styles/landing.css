@@ -710,5 +710,32 @@
 /* "Everything in Starter, plus": a small lead-in line above what the plan adds. */
 .lp-plans__plus { font-weight: 800; opacity: .8; }
 
-/* Arabic: the page keeps its left-to-right layout, but Arabic headings and paragraphs read and line up from the right. */
-:root:lang(ar) .lp :is(h1, h2, h3, p:not(.lp-models), li, dt, dd, blockquote) { direction: rtl; text-align: right; }
+/* ===== One centered composition for every language =====
+   The opening and each section's heading sit on the page's center line, so Arabic and English share one layout
+   with no left/right conflict. The bots' scene stands under the job slip like a stage. */
+.lp .lp-open { min-height: auto; padding-bottom: 30px; }
+.lp .lp-open__body { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: clamp(28px, 7vh, 72px); }
+.lp .lp-open .lp-h1 { max-width: 15ch; margin-inline: auto; text-align: center; }
+.lp .lp-open .lp-lede { max-width: 50ch; margin-inline: auto; text-align: center; }
+.lp .lp-open .lp-slip { width: min(720px, 100%); max-width: none; margin-inline: auto; }
+.lp .lp-open .lp-chips { justify-content: center; max-width: 800px; margin-inline: auto; }
+.lp .lp-open .lp-models { justify-content: center; max-width: none; }
+.lp .lp-open .lp-team { position: relative; inset: auto; width: min(880px, 100%); margin: clamp(60px, 9vh, 100px) auto 0; }
+.lp .lp-open .lp-bubble-slot { left: 50%; right: auto; bottom: calc(100% + 14px); width: min(380px, 92vw); transform: translateX(-50%); }
+.lp .lp-open .lp-bubble { border-radius: 20px; transform-origin: 50% 100%; }
+@media (max-width: 560px) { .lp .lp-open .lp-team { margin-top: 128px; } }
+
+/* Section openings: heading and intro on the center line */
+.lp :is(.lp-demo, .lp-jobs, .lp-steps, .lp-charge, .lp-plans, .lp-cost) > .lp-wrap > :is(.lp-h2, .lp-copy, .lp-fine) { margin-inline: auto; text-align: center; }
+.lp .lp-cost .lp-stepper, .lp .lp-cost .lp-stepper-row { margin-inline: auto; }
+
+/* Arabic: a rounded Arabic display face that matches Badr (Baloo Bhaijaan 2), Tajawal for body text.
+   Two-column blocks stack on the center line, and text inside cards reads right to left. */
+:root:lang(ar) .lp { font-family: "Nunito", "Tajawal", system-ui, sans-serif; }
+:root:lang(ar) :is(.lp-h1, .lp-h2, .lp-steps__row b, .lp-rules b, .lp-cost__out p, .lp-plans__row > li > b, .gate__head h1, .cheer__card h2) { font-family: "Fraunces", "Baloo Bhaijaan 2", Georgia, serif; letter-spacing: 0; }
+:root:lang(ar) .lp-h1 { line-height: 1.18; font-weight: 800; }
+:root:lang(ar) .lp-h2 { line-height: 1.25; font-weight: 800; }
+:root:lang(ar) .lp :is(.lp-apps__in, .lp-mac__in, .lp-close__in) { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+:root:lang(ar) .lp :is(.lp-apps__in, .lp-mac__in, .lp-close__in) :is(.lp-h2, .lp-copy) { margin-inline: auto; text-align: center; }
+:root:lang(ar) .lp .lp-logos { justify-content: center; }
+:root:lang(ar) .lp :is(.lp-slipdoc, .lp-jobs__chat, .lp-jobs__list, .lp-steps__row li, .lp-plans__row > li, .lp-rules li, .lp-close__panel, .lp-desk__chat) { direction: rtl; text-align: right; }
