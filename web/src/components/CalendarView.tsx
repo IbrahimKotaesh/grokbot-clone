@@ -20,6 +20,18 @@ function weekStart(offset: number) {
 }
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
+/** A routine that runs many times a day (hourly checks) shows once, with its first and last run and a count. */
+function foldRepeats(list: CalEvent[]): (CalEvent & { times: number; last?: number })[] {
+  const byRoutine = new Map<string, CalEvent[]>();
+  for (const e of list) byRoutine.set(e.routineId, [...(byRoutine.get(e.routineId) ?? []), e]);
+  const out: (CalEvent & { times: number; last?: number })[] = [];
+  for (const runs of byRoutine.values()) {
+    if (runs.length > 3) out.push({ ...runs[0], times: runs.length, last: runs[runs.length - 1].at });
+    else for (const e of runs) out.push({ ...e, times: 1 });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
 /** The week ahead: every routine run by every Bot, day by day. */
 export function CalendarView() {
   const bots = useStore((s) => s.bots);
@@ -66,7 +78,7 @@ export function CalendarView() {
           )}
           <div className="cal-week" aria-busy={events === null}>
             {days.map((d) => {
-              const list = (events ?? []).filter((e) => sameDay(new Date(e.at), d));
+              const list = foldRepeats((events ?? []).filter((e) => sameDay(new Date(e.at), d)));
               const isToday = sameDay(d, today);
               return (
                 <section key={d.toDateString()} className={`cal-day${isToday ? ' is-today' : ''}${d < today && !isToday ? ' is-past' : ''}`} aria-label={d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}>
@@ -75,8 +87,8 @@ export function CalendarView() {
                     {list.map((e) => {
                       const bot = byId.get(e.botId);
                       return (
-                        <button key={`${e.routineId}-${e.at}`} type="button" className={`cal-event${e.at < Date.now() ? ' is-done' : ''}`} style={botVars(bot?.avatarColor)} onClick={() => open(e)} title={e.description || e.name}>
-                          <time>{clock(e.at)}</time>
+                        <button key={`${e.routineId}-${e.at}`} type="button" className={`cal-event${(e.last ?? e.at) < Date.now() ? ' is-done' : ''}`} style={botVars(bot?.avatarColor)} onClick={() => open(e)} title={e.description || e.name}>
+                          <time>{e.times > 1 ? `${clock(e.at)}–${clock(e.last!)} · ${e.times}×` : clock(e.at)}</time>
                           <span className="cal-event__name" dir="auto">{e.name}</span>
                           {bot && <span className="cal-event__bot"><BotAvatarFor bot={bot} size={16} /><span dir="auto">{bot.name}</span></span>}
                         </button>

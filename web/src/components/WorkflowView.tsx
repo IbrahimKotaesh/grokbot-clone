@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Bot, Task } from '@shared/types';
 import { t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
-import { displayName, useStore } from '../store';
+import { useStore } from '../store';
 import { useConfigUI } from '../configStore';
 import { relativeShort } from '../lib/time';
 import { TaskRow, WeekSaved, sortTasks, useTasks } from './config/TasksView';
@@ -23,7 +23,7 @@ function Node({ bot, chief = false }: { bot: Bot; chief?: boolean }) {
     <button type="button" className={`flow-node${chief ? ' is-chief' : ''} is-${st.tone}`} onClick={open} title={t('Open {name}', { name: bot.name })}>
       <span className="flow-node__avatar"><BotAvatarFor bot={bot} size={chief ? 52 : 40} />{st.tone !== 'idle' && <i className={`status-dot is-${st.tone === 'working' ? 'working' : 'attention'}`} />}</span>
       <span className="flow-node__text">
-        <b dir="auto">{displayName(bot)}</b>
+        <b dir="auto">{bot.name}</b>
         <small>{bot.label ? t(bot.label) : chief ? t('Chief of Staff') : t('Teammate')}</small>
         <em className={`flow-node__status is-${st.tone}`}>{st.text}</em>
       </span>
