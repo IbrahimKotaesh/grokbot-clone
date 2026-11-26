@@ -676,3 +676,11 @@
   .lp-scr *, .lp-hand, .lp-mug i, .lp-plant i, .lp-bot__float { animation: none !important; }
   .lp-mug i { opacity: .7; }
 }
+/* On wide screens the scene is the centrepiece of the opening: bigger, with the text column kept clear of it. */
+@media (min-width: 1081px) {
+  .lp-open { --scene: min(50vw, 760px); }
+  .lp-team { width: var(--scene); }
+  .lp-open { --text: calc(100vw - var(--scene) - 2 * clamp(16px, 4vw, 64px) - 56px); }
+  .lp-slip, .lp-chips, .lp-models { max-width: min(680px, var(--text)); }
+  .lp-lede { max-width: min(46ch, var(--text)); }
+}
