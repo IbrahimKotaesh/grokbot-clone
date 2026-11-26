@@ -3,11 +3,10 @@ import { ArrowRight, Check, Lock } from 'lucide-react';
 import { api, type BillingSummary } from '../lib/api';
 import { locale, t } from '../lib/i18n';
 import { billingReturn } from './config/PlanSection';
-import { characterDataUri } from '../../../packages/contracts/src/characters';
+import { Badr } from './Badr';
 import '../styles/plan-gate.css';
 
 const SHOWN = ['starter', 'pro', 'max'];
-const BADR = characterDataUri('accountant', 'yellow');
 const FROM_GATE = 'fino.checkoutFromGate';
 /** True when this page load is the return from a checkout started on the plan screen (read once). */
 export const cameFromGate = (() => {
@@ -26,6 +25,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
   const [picked, setPicked] = useState('pro');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [cheer, setCheer] = useState(false);
 
   useEffect(() => {
     let stop = false, tries = 0;
@@ -34,17 +34,21 @@ export function PlanGate({ children }: { children: ReactNode }) {
       setBilling(b);
       // Stripe tells the server a few seconds after its page closes; keep checking for up to a minute.
       if (activating && b.planRequired && ++tries < 30) setTimeout(load, 2000);
-      else setActivating(false);
+      else {
+        // The plan just started: Badr celebrates for a moment over the team.
+        if (activating && !b.planRequired) setCheer(true);
+        setActivating(false);
+      }
     }).catch(() => { if (!stop) setFailed(true); });
     load();
     return () => { stop = true; };
   }, []);
 
   // If billing can't be read, don't lock anyone out: the server still refuses bot turns without a plan.
-  if (failed || (billing && !billing.planRequired)) return <>{children}</>;
+  if (failed || (billing && !billing.planRequired)) return <>{children}{cheer && <Cheer onDone={() => setCheer(false)} />}</>;
   if (!billing || activating) return (
     <div className="gate gate--wait" role="status">
-      <img src={BADR} alt="" width={88} height={88} />
+      <Badr mood={activating ? 'think' : 'hop'} size={96} />
       <p>{activating ? t('Payment received. Activating your plan…') : t('One moment…')}</p>
     </div>
   );
@@ -68,9 +72,9 @@ export function PlanGate({ children }: { children: ReactNode }) {
     <div className="gate">
       <main className="gate__in">
         <header className="gate__head">
-          <img className="gate__badr" src={BADR} alt="" width={76} height={76} />
+          <Badr mood="wave" size={84} className="gate__badr" />
           <h1>{trial
-            ? <><span>{t('Pick your plan.')}</span> <em>{t('The first day is free.')}</em></>
+            ? <><span>{t('Pick your plan')}</span> <em>{t('Your first day is free')}</em></>
             : t('Pick a plan to keep working with your team.')}</h1>
           <p>{trial
             ? t('Your team is ready and waiting. Pick a plan to meet them.')
@@ -78,11 +82,11 @@ export function PlanGate({ children }: { children: ReactNode }) {
           {billingReturn === 'cancel' && <p className="gate__note" role="status">{t('No problem. Pick a plan whenever you’re ready.')}</p>}
         </header>
 
-        <div className="gate__plans" role="radiogroup" aria-label={t('Plans')}>
+        <div className="gate__plans" role="radiogroup" aria-label={t('Plans')} data-picked={plan.id}>
           {plans.map((p) => {
             const on = p.id === plan.id;
             return (
-              <label key={p.id} className={`gate__plan${on ? ' is-on' : ''}`}>
+              <label key={p.id} className={`gate__plan gate__plan--${p.id}${on ? ' is-on' : ''}`}>
                 <input type="radio" name="gate-plan" value={p.id} checked={on} onChange={() => setPicked(p.id)} />
                 <span className="gate__row">
                   <span className="gate__dot" aria-hidden />
@@ -99,8 +103,8 @@ export function PlanGate({ children }: { children: ReactNode }) {
         </div>
 
         <div className="gate__cta">
-          <button type="button" className="gate__go" disabled={busy} onClick={() => void start()}>
-            <span>{busy ? t('Opening…') : trial ? t('Try {plan} free for 1 day', { plan: t(plan.name) }) : t('Continue with {plan}', { plan: t(plan.name) })}</span>
+          <button type="button" className={`gate__go gate__go--${plan.id}`} disabled={busy} onClick={() => void start()}>
+            <span>{busy ? t('Opening…') : trial ? t('Start your free day') : t('Continue with {plan}', { plan: t(plan.name) })}</span>
             {!busy && <ArrowRight size={20} strokeWidth={2.6} aria-hidden />}
           </button>
           <p className="gate__then">{trial
@@ -114,6 +118,18 @@ export function PlanGate({ children }: { children: ReactNode }) {
           <button type="button" onClick={() => void api.logout().finally(() => location.assign('/welcome'))}>{t('Sign out')}</button>
         </footer>
       </main>
+    </div>
+  );
+}
+
+/** "You're in": shown once, right after a plan starts; goes away by itself. */
+function Cheer({ onDone }: { onDone: () => void }) {
+  useEffect(() => { const id = setTimeout(onDone, 6500); return () => clearTimeout(id); }, []);
+  return (
+    <div className="cheer" role="status">
+      <Badr mood="celebrate" size={84} />
+      <div><b>{t('You’re in!')}</b><span>{t('Your plan is active. Say hi to your team.')}</span></div>
+      <button type="button" onClick={onDone} aria-label={t('Close')}>×</button>
     </div>
   );
 }

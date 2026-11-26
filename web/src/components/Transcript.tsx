@@ -11,6 +11,7 @@ import { ActivityLine } from './ActivityLine';
 import { CardRow } from './cards/Cards';
 import { Icon } from './Icon';
 import { Markdown } from './Markdown';
+import { Badr } from './Badr';
 import { api } from '../lib/api';
 import { startersFor } from '../../../packages/contracts/src/jobs';
 import {stepDestination,stepTitle} from '../lib/work-step';
@@ -332,7 +333,7 @@ function EmptyChat({ bot, generation }: { bot: Bot; generation?: number }) {
   };
   return (
     <div className="empty-chat">
-      <BotAvatarFor bot={bot} size={72} />
+      {bot.isPrimary && bot.avatarShape === 'accountant' ? <Badr mood="wave" size={88} /> : <BotAvatarFor bot={bot} size={72} />}
       <div className="empty-chat__title">{bot.name}</div>
       <div className="empty-chat__sub">{(bot.description && t(bot.description)) || (bot.mode === 'teammate' ? t("A Bot for the whole team. Hand it a task and it will see it through.") : t("Your personal assistant. Hand it a task and it will see it through."))}</div>
       {bot.kind !== 'room' && (

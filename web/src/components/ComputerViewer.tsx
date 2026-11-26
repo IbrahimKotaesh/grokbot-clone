@@ -7,6 +7,7 @@ import { botVars } from '../lib/colors';
 import { useSelectedBot, useStore } from '../store';
 import { computerStatusText } from './DetailsPanel';
 import { Icon } from './Icon';
+import { Badr } from './Badr';
 
 type Mode = 'watch' | 'control';
 type Conn = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -145,7 +146,7 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
           </>
         ) : (
           <div className="viewer__overlay viewer__overlay--asleep">
-            <span className="viewer__sleep-face"><i /><i /></span>
+            <Badr mood={busy ? 'hop' : 'sleep'} size={76} className="viewer__badr" />
             <span>{busy ? t("Starting your computer…") : wakeError || (computer?.status === 'error' ? t("The computer is unavailable.") : panel ? t("Asleep. It wakes up when {name} needs it.", { name: bot.name }) : t("The computer is asleep."))}</span>
             {!busy && <button type="button" className="btn btn--light" onClick={() => void wake()}>{wakeError || computer?.status === 'error' ? t("Try again") : t("Wake computer")}</button>}
           </div>

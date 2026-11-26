@@ -24,6 +24,7 @@ import { Landing, MacOffer } from './components/Landing';
 import { ResizeHandle, restoreColumnWidths } from './components/ResizeHandle';
 import { FinishToast } from './components/FinishToast';
 import { PlanGate, cameFromGate } from './components/PlanGate';
+import { Badr } from './components/Badr';
 restoreColumnWidths();
 
 function Shell() {
@@ -157,7 +158,7 @@ export function App() {
   const [signingIn, setSigningIn] = useState(() => (p => p.has('login') || p.has('reset'))(new URLSearchParams(location.search)));
   const [signInMode, setSignInMode] = useState<'signin' | 'signup'>('signin');
   useEffect(() => { useStore.getState().checkAuth(); }, []);
-  if (!authChecked) return <div className="boot" />;
+  if (!authChecked) return <div className="boot"><Badr mood="hop" size={64} /></div>;
   const web = !isMacDesktop();
   // /welcome shows the landing page to signed-in people too (its buttons then open the workspace).
   if (web && user && location.pathname === '/welcome') return <Landing signedIn onSignIn={() => {}} />;

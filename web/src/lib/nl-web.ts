@@ -1,5 +1,10 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "You’re in!": "Je bent binnen!",
+  "Your plan is active. Say hi to your team.": "Je abonnement is actief. Zeg hoi tegen je team.",
+  "Pick your plan": "Kies je abonnement",
+  "Your first day is free": "De eerste dag is gratis",
+  "Start your free day": "Start je gratis dag",
   "Your team is ready and waiting. Pick a plan to meet them.": "Je team staat klaar. Kies een abonnement om ze te ontmoeten.",
   "Best fit": "Beste keuze",
   "Pick your plan.": "Kies je abonnement.",

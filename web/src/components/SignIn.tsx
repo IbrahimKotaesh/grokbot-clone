@@ -1,5 +1,5 @@
 import { t } from '../lib/i18n';
-import { characterDataUri } from '../../../packages/contracts/src/characters';
+import { Badr } from './Badr';
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -35,7 +35,7 @@ export function SignIn({ initial = 'signin' }: { initial?: 'signin' | 'signup' }
       <div className="signin__chrome"><TrafficLights /></div>
       <div className="signin__card">
         <div className="signin__hero">
-          <img className="signin__mascot" src={characterDataUri('accountant', 'yellow')} alt="Badr, Fino's main character" />
+          <Badr mood="peek" size={112} className="signin__mascot signin__mascot--badr" />
         </div>
         <h1 className="signin__title">Fino</h1>
         <p className="signin__sub">{t("A little company. A lot done. Your AI team, tools and ideas in one place.")}</p>
