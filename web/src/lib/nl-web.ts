@@ -874,4 +874,11 @@ export const nlWeb: Record<string, string> = {
   "Group Bots, like a YouTube team": "Groepeer Bots, zoals een YouTube-team",
   "Groups this Bot in the sidebar, like a YouTube team or Accounting.": "Zet deze Bot in een map in de zijbalk, zoals YouTube-team of Boekhouding.",
   "Make folders with + at the top of the Bot list.": "Maak mappen met + boven de Botlijst.",
+  "Calling…": "Bellen…",
+  "Call with {name}": "Gesprek met {name}",
+  "Back to chat": "Terug naar chat",
+  "Transcript": "Transcript",
+  "Chat": "Chat",
+  "Close": "Sluiten",
+  "Open call": "Gesprek openen",
 };

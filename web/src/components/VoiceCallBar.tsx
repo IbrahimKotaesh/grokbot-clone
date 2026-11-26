@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
 import { useStore } from '../store';
-import { callLevels, endCall, toggleMute, useVoice } from '../voice/call';
+import { callLevels, endCall, setCallExpanded, toggleMute, useVoice } from '../voice/call';
 
 function MicGlyph({ off }: { off?: boolean }) {
   return (
@@ -66,7 +66,8 @@ export function VoiceCallBar() {
     if (expanded && logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [expanded, v.captions]);
 
-  if (v.status === 'idle' || v.status === 'ending' || !bot) return null;
+  // While the full-screen call view is open the bar stays out of the way.
+  if (v.status === 'idle' || v.status === 'ending' || !bot || v.expanded) return null;
 
   const working = v.working.length > 0;
   const status =
@@ -90,6 +91,7 @@ export function VoiceCallBar() {
       aria-label={`Voice call with ${bot.name}`}
     >
       <div className="vcall__main">
+        <button type="button" className="vcall__open" onClick={() => setCallExpanded(true)} aria-label={t('Open call')} title={t('Open call')} />
         <span className="vcall__avatar" ref={avatarRef}>
           <span className="vcall__halo" aria-hidden />
           <BotAvatarFor bot={bot} size={36} />

@@ -953,4 +953,11 @@ export const arWeb: Record<string, string> = {
   "Group Bots, like a YouTube team": "اجمع البوتات، مثل فريق اليوتيوب",
   "Groups this Bot in the sidebar, like a YouTube team or Accounting.": "يضع هذا البوت ضمن مجموعة في القائمة الجانبية، مثل فريق اليوتيوب أو المحاسبة.",
   "Make folders with + at the top of the Bot list.": "أنشئ المجموعات من زر + أعلى قائمة البوتات.",
+  "Calling…": "جارٍ الاتصال…",
+  "Call with {name}": "مكالمة مع {name}",
+  "Back to chat": "الرجوع للمحادثة",
+  "Transcript": "النص",
+  "Chat": "المحادثة",
+  "Close": "إغلاق",
+  "Open call": "فتح المكالمة",
 };

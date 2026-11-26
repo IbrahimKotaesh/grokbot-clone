@@ -27,11 +27,13 @@ interface VoiceState {
   captions: Caption[];
   error: string | null;
   startedAt: number | null;
+  /** The full-screen call view is showing (false = shrunk to the bar above the chat). */
+  expanded: boolean;
 }
 
 export const useVoice = create<VoiceState>(() => ({
   status: 'idle', botId: null, callId: null, muted: false, speaking: false, listening: false, thinking: false,
-  working: [], captions: [], error: null, startedAt: null,
+  working: [], captions: [], error: null, startedAt: null, expanded: false,
 }));
 
 const setV = (p: Partial<VoiceState>) => useVoice.setState(p);
@@ -49,6 +51,7 @@ export function startCall(botId: string) {
 }
 
 export function endCall() { current?.end(); }
+export const setCallExpanded = (expanded: boolean) => setV({ expanded });
 export function toggleMute() { current?.setMuted(!useVoice.getState().muted); }
 export function callLevels(): { out: number; mic: number } {
   return current && !current.ended ? { out: current.player.level(), mic: current.micLevel() } : { out: 0, mic: 0 };
@@ -94,7 +97,7 @@ class VoiceCall {
   micLevel() { return useVoice.getState().muted ? 0 : this.mic?.level ?? 0; }
 
   async start() {
-    setV({ status: 'connecting', botId: this.botId, callId: null, muted: false, speaking: false, listening: false, thinking: false, working: [], captions: [], error: null, startedAt: null });
+    setV({ status: 'connecting', botId: this.botId, callId: null, muted: false, speaking: false, listening: false, thinking: false, working: [], captions: [], error: null, startedAt: null, expanded: true });
     window.addEventListener('pagehide', this.onUnload);
     let stream: MediaStream;
     try {
