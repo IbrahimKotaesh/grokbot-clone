@@ -16,6 +16,7 @@ import type { Server } from 'node:http';
 import { env } from './env.js';
 import { api } from './routes.js';
 import { attachVncRelay, onHandback } from './vnc.js';
+import { attachVoiceRelay } from './fal-voice.js';
 import { initRoutines } from './routines.js';
 import { initTriggers } from './triggers.js';
 import { initProactive } from './proactive.js';
@@ -73,6 +74,7 @@ if (fs.existsSync(webDist)) {
 
 const server = serve({ fetch: app.fetch, port: env.port, hostname: '127.0.0.1' }, (info) => console.log(`[grokbot] server on http://localhost:${info.port} (${env.agentProvider}, ${env.computerProvider})`));
 attachVncRelay(server as unknown as Server);
+attachVoiceRelay(server as unknown as Server);
 // When the owner presses "I'm done", a bot that paused for them picks the task back up.
 onHandback((_userId, botId) => enqueue(botId, { type: 'system', text: 'The owner pressed "I\'m done" and handed your computer back. Look at the screen first (they may have changed something), then continue the task where you left off.' }));
 attachDesktopDevices(server as unknown as Server);

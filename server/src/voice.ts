@@ -11,6 +11,7 @@ import type { AuthVars } from './lib/auth.js';
 import { appendRow, emitBot, getBotRow, getLive, listRoutines, listTasks, updateRow } from './store.js';
 import { enqueue } from './agent/loop.js';
 import { computerState } from './computer.js';
+import { falSpeak, falVoiceReady, mintRelayTicket } from './fal-voice.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
 export const voiceApi = new Hono<AuthVars>();
@@ -20,6 +21,8 @@ const VOICE_MODEL = process.env.XAI_VOICE_MODEL ?? 'grok-voice-latest';
 const STT_MODEL = process.env.XAI_STT_MODEL ?? 'grok-voice-transcribe-2.0';
 const SAMPLE_RATE = 24000;
 const xaiHeaders = () => ({ Authorization: `Bearer ${env.xaiKey}` });
+/** Without an xAI key, Grok Voice runs through fal and our own relay (fal-voice.ts). */
+const viaFal = () => env.xaiKey === 'disabled' && falVoiceReady();
 
 // ---------- voices / languages ----------
 
@@ -242,18 +245,27 @@ voiceApi.post('/session', async (c) => {
   if (!bot) return c.json({ error: 'not found' }, 404);
   const s = settingsOf(bot);
 
-  const r = await fetch(`${XAI}/realtime/client_secrets`, {
-    method: 'POST',
-    headers: { ...xaiHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expires_after: { seconds: 300 } }),
-    signal: AbortSignal.timeout(15_000),
-  }).catch((e) => ({ ok: false, status: 0, text: async () => String(e?.message ?? e) }) as any);
-  if (!r.ok) {
-    const detail = await r.text().catch(() => '');
-    console.warn('[voice] client secret mint failed', r.status, detail.slice(0, 300));
-    return c.json({ error: 'Could not start a voice session' }, 502);
+  let secret: { value: string; expires_at: number };
+  let websocketUrl = `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(VOICE_MODEL)}`;
+  if (viaFal()) {
+    secret = mintRelayTicket(user.id);
+    const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? 'localhost';
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host);
+    websocketUrl = `${local ? 'ws' : 'wss'}://${host}/api/voice/relay`;
+  } else {
+    const r = await fetch(`${XAI}/realtime/client_secrets`, {
+      method: 'POST',
+      headers: { ...xaiHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expires_after: { seconds: 300 } }),
+      signal: AbortSignal.timeout(15_000),
+    }).catch((e) => ({ ok: false, status: 0, text: async () => String(e?.message ?? e) }) as any);
+    if (!r.ok) {
+      const detail = await r.text().catch(() => '');
+      console.warn('[voice] client secret mint failed', r.status, detail.slice(0, 300));
+      return c.json({ error: 'Could not start a voice session' }, 502);
+    }
+    secret = (await r.json()) as { value: string; expires_at: number };
   }
-  const secret = (await r.json()) as { value: string; expires_at: number };
 
   const instructions = voiceInstructions(user.id, bot, s.language);
   const session: Record<string, unknown> = {
@@ -280,7 +292,7 @@ voiceApi.post('/session', async (c) => {
     clientSecret: secret.value,
     expiresAt: secret.expires_at,
     model: VOICE_MODEL,
-    websocketUrl: `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(VOICE_MODEL)}`,
+    websocketUrl,
     sampleRate: SAMPLE_RATE,
     instructions,
     voice: s.voice,
@@ -419,6 +431,12 @@ voiceApi.post('/preview', async (c) => {
   const language = p.language && langName(p.language) ? p.language : s.language;
   const text = String(p.text || `Hi, I'm ${bot?.name ?? 'your Bot'}. This is how I'll sound when we talk.`).slice(0, 400);
   const codec = p.codec === 'pcm' ? 'pcm' : 'mp3';
+  if (viaFal()) {
+    if (codec !== 'pcm') return c.json({ error: 'Preview unavailable' }, 502);
+    const pcm = await falSpeak(text, voice, clampSpeed(p.speed ?? s.speed)).catch((e) => { console.warn('[voice] fal preview failed', e?.message); return null; });
+    if (!pcm?.length) return c.json({ error: 'Preview unavailable' }, 502);
+    return c.body(pcm, 200, { 'Content-Type': `audio/pcm;rate=${SAMPLE_RATE}`, 'Cache-Control': 'no-store' });
+  }
   const r = await fetch(`${XAI}/tts`, {
     method: 'POST',
     headers: { ...xaiHeaders(), 'Content-Type': 'application/json' },
