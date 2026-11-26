@@ -23,13 +23,13 @@ const llm = hostedKey() ? new OpenAI({ apiKey: hostedKey()!, baseURL: 'https://o
 async function genderOf(name: string, label: string): Promise<'female' | 'male'> {
   if (!llm) return 'male';
   try {
-    const r = await llm.chat.completions.create({
-      model: 'deepseek/deepseek-v4.1-flash', max_tokens: 5, temperature: 0,
+    const r = await llm.chat.completions.create(({
+      model: 'deepseek/deepseek-v4.1-flash', max_tokens: 200, temperature: 0, reasoning: { enabled: false },
       messages: [
         { role: 'system', content: 'You classify an assistant persona by its name. Answer with exactly one word: female or male. If the name is not clearly a woman\'s name, answer male.' },
         { role: 'user', content: `Name: ${name}\nRole: ${label}` },
       ],
-    });
+    } as any)) as OpenAI.Chat.Completions.ChatCompletion;
     return /female/i.test(r.choices[0]?.message?.content ?? '') ? 'female' : 'male';
   } catch { return 'male'; }
 }
