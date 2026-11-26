@@ -67,5 +67,8 @@
   @keyframes computer-sheet-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   .mobile-topbar .icon-btn[aria-pressed=true] { background: var(--p-raised); }
   .mobile-topbar__spacer { width: 44px; }
+  /* Call + computer on the right; the name stays centred over the chat. */
+  .mobile-topbar__right { display: flex; gap: 2px; }
+  .mobile-topbar .mobile-brand { position: absolute; left: 50%; transform: translateX(-50%); max-width: calc(100% - 210px); }
   .chat__show-computer { display: none !important; }
 }

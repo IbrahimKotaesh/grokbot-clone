@@ -1,4 +1,6 @@
 import { billingReturn } from './components/config/PlanSection';
+import { Phone } from 'lucide-react';
+import { isCallActive, startCall, useVoice } from './voice/call';
 import { t } from './lib/i18n';
 import {isMacDesktop,openDesktopComputer,notifyDesktopContext} from './lib/desktop';
 import {AccessCodeGate} from './components/AccessCode';
@@ -29,6 +31,7 @@ restoreColumnWidths();
 
 function Shell() {
   const detailsOpen = useStore((s) => s.detailsOpen);
+  const calling = useVoice((s) => isCallActive(s));
   const modal = useStore((s) => s.modal);
   const viewerOpen = useStore((s) => s.viewerOpen);
   const collapsed = useStore((s) => s.sidebarCollapsed);
@@ -128,7 +131,10 @@ function Shell() {
       <div className="mobile-topbar">
         <button ref={navButton} type="button" className="icon-btn" aria-label={t("Open conversations")} aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
         <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>
-        {selectedBot && selectedBot.kind !== 'room' && !isMacDesktop() ? <button type="button" className="icon-btn" aria-label={t("Show computer")} aria-pressed={detailsOpen} onClick={() => useStore.getState().set({detailsOpen:!detailsOpen})}><Icon name="monitor" size={21}/></button> : <span className="mobile-topbar__spacer" />}
+        {selectedBot && selectedBot.kind !== 'room' ? <span className="mobile-topbar__right">
+          {!calling && <button type="button" className="icon-btn" aria-label={t("Call {name}", { name: selectedBot.name })} onClick={() => startCall(selectedBot.id)}><Phone size={20} strokeWidth={1.9} /></button>}
+          {!isMacDesktop() && <button type="button" className="icon-btn" aria-label={t("Show computer")} aria-pressed={detailsOpen} onClick={() => useStore.getState().set({detailsOpen:!detailsOpen})}><Icon name="monitor" size={21}/></button>}
+        </span> : <span className="mobile-topbar__spacer" />}
       </div>
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
