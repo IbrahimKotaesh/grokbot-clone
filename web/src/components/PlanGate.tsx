@@ -105,7 +105,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
         </div>
 
         <div className="gate__cta">
-          <button type="button" className={`gate__go gate__go--${plan.id}`} disabled={busy} onClick={() => void start()}>
+          <button type="button" className="gate__go" disabled={busy} onClick={() => void start()}>
             <span>{busy ? t('Opening…') : trial ? t('Start your free day') : t('Continue with {plan}', { plan: t(plan.name) })}</span>
             {!busy && <ArrowRight size={20} strokeWidth={2.6} aria-hidden />}
           </button>
