@@ -5,6 +5,7 @@ import { locale, t } from '../lib/i18n';
 import { billingReturn } from './config/PlanSection';
 import { Badr } from './Badr';
 import '../styles/plan-gate.css';
+import { BlurWords } from '../lib/motion';
 
 const SHOWN = ['starter', 'pro', 'max'];
 const FROM_GATE = 'fino.checkoutFromGate';
@@ -74,8 +75,8 @@ export function PlanGate({ children }: { children: ReactNode }) {
         <header className="gate__head">
           <Badr mood="wave" size={116} className="gate__badr" />
           <h1>{trial
-            ? <><span>{t('Pick your plan')}</span> <em>{t('Your first day is free')}</em></>
-            : t('Pick a plan to keep working with your team.')}</h1>
+            ? <><BlurWords text={t('Pick your plan')} /> <BlurWords as="em" text={t('Your first day is free')} delay={0.25} /></>
+            : <BlurWords text={t('Pick a plan to keep working with your team.')} />}</h1>
           <p>{trial
             ? t('Your team is ready and waiting. Pick a plan to meet them.')
             : t('Your free day or plan has ended. Choose a plan and your bots pick up right where they left off.')}</p>
@@ -131,7 +132,7 @@ function Cheer({ onDone }: { onDone: () => void }) {
     <div className="cheer" role="status" onClick={onDone}>
       <div className="cheer__card" onClick={(e) => e.stopPropagation()}>
         <Badr mood="celebrate" size={128} />
-        <h2>{t('You’re in!')}</h2>
+        <BlurWords as="h2" text={t('You’re in!')} delay={0.15} />
         <p>{t('Your plan is active. Say hi to your team.')}</p>
         <button type="button" onClick={onDone}>{t('Meet your team')}</button>
       </div>

@@ -10,6 +10,7 @@ import { isMacDesktop, useDesktopState } from '../lib/desktop';
 import { useHostedModels } from '../lib/models';
 import { useStore } from '../store';
 import { ProviderLogo } from './ProviderLogo';
+import { BlurWords } from '../lib/motion';
 
 const DONE_KEY = 'fino.onboarded';
 export const onboardingDone = () => { try { return localStorage.getItem(DONE_KEY) === '1'; } catch { return true; } };
@@ -183,7 +184,7 @@ function BrainStep({ onNext, required, ready, onReady, last }: { onNext: () => v
       <div className="onb__team onb__team--small" aria-hidden="true">
         {([['architect', 'violet'], ['accountant', 'yellow'], ['medic', 'red'], ['florist', 'magenta']] as const).map(([k, c], i) => <span key={k} style={{ '--i': i } as CSSProperties}><img src={characterDataUri(k, c)} alt="" /></span>)}
       </div>
-      <h1>{required ? t('Connect your AI') : t('Choose your AI')}</h1>
+      <h1><BlurWords key={String(required ? t('Connect your AI') : t('Choose your AI'))} text={required ? t('Connect your AI') : t('Choose your AI')} /></h1>
       <p>{required ? t('Pick how your bots think: your ChatGPT, your Claude, or Fino’s own models.') : t('Your bots think with the AI you pick. You can change it per bot anytime.')}</p>
       <div className="onb__options">
         <div className={`onb__option${chatgpt === 'connected' ? ' is-done' : ''}`}>
@@ -309,7 +310,7 @@ function TeamStep({ onNext, onBack }: { onNext: (jobs: string[]) => void; onBack
   const count = JOBS.filter((j) => picked.includes(j.id) && !has(j.title)).length;
   return (
     <section className="onb__step">
-      <h1>{t('What should your team do?')}</h1>
+      <h1><BlurWords text={t('What should your team do?')} /></h1>
       <p>{t('Pick the jobs you want help with. Each one becomes a bot with its own browser and memory, working while you sleep or do something else. Badr, your Chief of Staff, hands them work.')}</p>
       <div className="onb__jobs" role="group" aria-label={t('Jobs')}>
         {JOBS.map((j) => {
@@ -353,7 +354,7 @@ function AppsStep({ jobs, onNext, onBack, last }: { jobs: string[]; onNext: () =
 
   return (
     <section className="onb__step">
-      <h1>{t('Connect their apps')}</h1>
+      <h1><BlurWords text={t('Connect their apps')} /></h1>
       <p>{t('These are the apps your new team works in. Connect what you use; bots ask before they send, pay or delete anything. You can skip this and connect later.')}</p>
       {!configured ? <div className="onb__error">{t('App connections need setup on this server.')}</div> : (
         <div className="onb__apps">
@@ -382,7 +383,7 @@ function ComputerStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
   const ask = () => { (window as Window & { webkit?: { messageHandlers?: { finoUI?: { postMessage: (v: unknown) => void } } } }).webkit?.messageHandlers?.finoUI?.postMessage({ action: 'setupComputer' }); };
   return (
     <section className="onb__step">
-      <h1>{t('Let Fino use this Mac')}</h1>
+      <h1><BlurWords text={t('Let Fino use this Mac')} /></h1>
       <p>{t('Your bots can open apps, browse in Chrome and type for you here. You stay in control: they ask first, and you can stop anytime with ⌘.')}</p>
       <div className={`onb__option${ready ? ' is-done' : ''}`}>
         <span className="onb__icon"><Laptop size={18} /></span>

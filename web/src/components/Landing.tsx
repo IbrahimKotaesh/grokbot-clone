@@ -5,6 +5,10 @@ import { CLAY, characterDataUri } from '../../../packages/contracts/src/characte
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import { lang, setLangChoice, t } from '../lib/i18n';
 import '../styles/landing.css';
+import { BlurWords, ScrollContainer, ScrollFade } from '../lib/motion';
+
+/** A section headline: words arrive out of a blur, and it fades away as it scrolls off the top. */
+const Headline = ({ text }: { text: string }) => <ScrollFade fadeIn={false}><BlurWords as="h2" className="lp-h2" when="view" text={text} /></ScrollFade>;
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
 
@@ -83,6 +87,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
   }, [task]);
 
   return (
+    <ScrollContainer value={root}>
     <div className="lp" ref={root}>
       <section className="lp-open">
         <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Badr">
@@ -100,7 +105,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </nav>
 
         <div className="lp-open__body">
-          <h1 className="lp-h1"><span className="lp-line"><span className="lp-in" style={{ '--d': '80ms' } as CSSProperties}>{t('Hire a team.')}</span></span> <span className="lp-line"><span className="lp-in" style={{ '--d': '170ms' } as CSSProperties}>{t('Not a payroll.')}</span></span></h1>
+          <h1 className="lp-h1" aria-label={`${t('Hire a team.')} ${t('Not a payroll.')}`}><BlurWords className="lp-line lp-line--words" text={t('Hire a team.')} delay={0.1} stagger={0.09} /> <BlurWords className="lp-line lp-line--words" text={t('Not a payroll.')} delay={0.32} stagger={0.09} /></h1>
           <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>{t('Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.')}</p>
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
@@ -147,7 +152,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <section className="lp-apps">
         <div className="lp-wrap lp-apps__in">
-          <h2 className="lp-h2" data-reveal>{t('It works where you already work.')}</h2>
+          <Headline text={t('It works where you already work.')} />
           <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.')}</p>
           <ul className="lp-logos" aria-label={t('Some apps you can connect')}>
             {[['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Google Docs', '/assets/apps/google-docs.png'], ['Google Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png'], ['Canva', '/assets/apps/canva.png']].map(([name, src], i) => (
@@ -159,7 +164,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <section className="lp-charge">
         <div className="lp-wrap">
-          <h2 className="lp-h2" data-reveal>{t('You stay in charge.')}</h2>
+          <Headline text={t('You stay in charge.')} />
           <ol className="lp-rules">
             <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>{t('Watch it live.')}</b> {t('Every click the bot makes shows up on screen, cursor and all.')}</div></li>
             <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>{t('Approve first.')}</b> {t('Emails, posts and anything final wait until you say yes. Fino never pays for you.')}</div></li>
@@ -191,6 +196,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </div>
       </footer>
     </div>
+    </ScrollContainer>
   );
 }
 
@@ -299,7 +305,7 @@ function Demo() {
   return (
     <section className="lp-demo" id="demo" ref={ref}>
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>{t('Watch it work.')}</h2>
+        <Headline text={t('Watch it work.')} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Ask in chat. The bot opens its own browser, and you see every move it makes.')}</p>
       </div>
       {/* Fading is a data attribute, not a class: a changing className would wipe the reveal's is-in class and hide the demo. */}
@@ -413,7 +419,7 @@ function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean })
   return (
     <section className="lp-cost" id="cost">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>{t('A team for less than one day of wages.')}</h2>
+        <Headline text={t('A team for less than one day of wages.')} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('One full-time assistant costs at least {amount} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.', { amount: usd(ASSISTANT_SALARY) })}</p>
 
         <div className="lp-cost__ask" data-reveal style={{ '--i': 2 } as CSSProperties}>
@@ -479,7 +485,7 @@ function Jobs() {
   return (
     <section className="lp-jobs" id="jobs">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>{t('Give each bot a job worth doing.')}</h2>
+        <Headline text={t('Give each bot a job worth doing.')} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Pick a job to see what its bot tells you, and what it waits for you to approve.')}</p>
         <div className="lp-jobs__in" data-reveal style={{ '--i': 2 } as CSSProperties}>
           <div className="lp-jobs__list" role="tablist" aria-label={t('Jobs')}>
@@ -526,7 +532,7 @@ function FirstSteps() {
   return (
     <section className="lp-steps">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>{t('Your first job in three steps.')}</h2>
+        <Headline text={t('Your first job in three steps.')} />
         <ol className="lp-steps__row">
           {steps.map((s, i) => (
             <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{t(s.t)}</b><p>{t(s.d)}</p></li>
@@ -543,7 +549,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
   return (
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">
-        <h2 className="lp-h2" data-reveal>{t('Simple plans. No hiring.')}</h2>
+        <Headline text={t('Simple plans. No hiring.')} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Every plan includes Badr, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.')}</p>
         <ul className="lp-plans__row">
           {list.map((p, i) => (

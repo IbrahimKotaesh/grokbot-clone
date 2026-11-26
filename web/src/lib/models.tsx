@@ -42,13 +42,42 @@ const NAMES: Record<string, string> = {
 /** "deepseek/deepseek-v4.1-flash" → "Badr 4.8"; the default model when none is set. */
 export const modelName = (id?: string) => t(id ? NAMES[id] ?? id.split('/').pop() ?? id : NAMES[DEFAULT_MODEL]);
 
-/** What the bot runs on, as one label: an included model's name, or the user's own subscription. */
+/** A model from the user's own ChatGPT or Claude subscription, as their account lists it. */
+export interface SubscriptionModel { id: string; name: string; note: string; isDefault?: boolean }
+export type SubscriptionKind = 'codex' | 'claude';
+const subCache: Partial<Record<SubscriptionKind, SubscriptionModel[]>> = {};
+const subPending: Partial<Record<SubscriptionKind, Promise<SubscriptionModel[]>>> = {};
+export function loadSubscriptionModels(kind: SubscriptionKind): Promise<SubscriptionModel[]> {
+  if (subCache[kind]) return Promise.resolve(subCache[kind]!);
+  return (subPending[kind] ??= fetch(`/api/subscription-models/${kind}`, { credentials: 'include' })
+    .then((r) => (r.ok ? r.json() : { models: [] }))
+    .then((d: { models: SubscriptionModel[]; live: boolean }) => { if (d.live) subCache[kind] = d.models; return d.models ?? []; })
+    .catch(() => [] as SubscriptionModel[])
+    .finally(() => { delete subPending[kind]; }));
+}
+/** The live model list of one subscription; null while it loads. */
+export function useSubscriptionModels(kind: SubscriptionKind | null) {
+  const [list, setList] = useState<SubscriptionModel[] | null>(kind ? subCache[kind] ?? null : null);
+  useEffect(() => { if (!kind) return; let on = true; setList(subCache[kind] ?? null); void loadSubscriptionModels(kind).then((m) => on && setList(m)); return () => { on = false; }; }, [kind]);
+  return list;
+}
+/** "gpt-6-astra" → "GPT-6 Astra", "claude-fable-5-2" → "Fable 5.2", "opus" → "Opus". */
+export function subscriptionModelName(kind: SubscriptionKind, id: string) {
+  const known = subCache[kind]?.find((m) => m.id === id)?.name;
+  if (known) return known;
+  if (/^gpt-/i.test(id)) return id.replace(/^gpt-([\d.]+)-?/i, 'GPT-$1 ').replace(/\b([a-z])/g, (c) => c.toUpperCase()).trim();
+  const m = /^claude-([a-z]+)-(\d+)(?:-(\d))?/i.exec(id);
+  if (m) return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? `.${m[3]}` : ''}`;
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+/** What the bot runs on, as one label: an included model's name, or the user's own subscription (and its model). */
 export function brainLabel(bot: { agentProvider?: string; model?: string }) {
   if (bot.agentProvider === 'openrouter') return modelName(bot.model);
-  if (bot.agentProvider === 'claude' || bot.agentProvider === 'claude-code') return 'Claude Code';
+  if (bot.agentProvider === 'claude' || bot.agentProvider === 'claude-code') return bot.model ? subscriptionModelName('claude', bot.model) : 'Claude Code';
   if (bot.agentProvider === 'xai') return 'Grok';
   if (bot.agentProvider === 'groq') return 'Groq';
-  return 'ChatGPT';
+  return bot.model ? subscriptionModelName('codex', bot.model) : 'ChatGPT';
 }
 
 const LOGOS: [string, string][] = [

@@ -2,9 +2,9 @@ import { launch } from '../lib/sendFlight';
 import { firstTask } from './Landing';
 import { t } from '../lib/i18n';
 import {ProviderLogo} from './ProviderLogo';
-import { BrainLogo, brainLabel, DEFAULT_MODEL, ModelLogo, tierName, useHostedModels } from '../lib/models';
+import { BrainLogo, brainLabel, DEFAULT_MODEL, ModelLogo, subscriptionModelName, tierName, useHostedModels, useSubscriptionModels } from '../lib/models';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
 import type { Bot, PermissionMode } from '@shared/types';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -69,7 +69,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
-  const [settingsMenu,setSettingsMenu]=useState<'model'|'permissions'|null>(null);
+  const [settingsMenu,setSettingsMenu]=useState<'model'|'codex'|'claude'|'permissions'|null>(null);
   const [switching, setSwitching] = useState(false);
   const [dictating,setDictating]=useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -150,6 +150,9 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
 
   const hosted = useHostedModels();
   const included = bot.agentProvider === 'openrouter';
+  const onCodex = bot.agentProvider === 'codex' || !bot.agentProvider, onClaude = bot.agentProvider === 'claude';
+  const subKind = settingsMenu === 'codex' || settingsMenu === 'claude' ? settingsMenu : null;
+  const subModels = useSubscriptionModels(subKind);
   const changeProvider = async (agentProvider: 'codex' | 'claude' | 'openrouter', model = '') => {
     setSwitching(true); setError(null);
     try {
@@ -234,15 +237,21 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
             )}
           </span>
           <span className="composer__setting-anchor composer__model-picker">
-            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${brainLabel(bot)}`} aria-expanded={settingsMenu==='model'} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><BrainLogo bot={bot}/><span>{brainLabel(bot)}</span><ChevronDown size={12}/></button>
+            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${brainLabel(bot)}`} aria-expanded={settingsMenu==='model'||!!subKind} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><BrainLogo bot={bot}/><span>{brainLabel(bot)}</span><ChevronDown size={12}/></button>
             {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
-              {label:'ChatGPT',description:t('Your ChatGPT subscription'),icon:<ProviderLogo provider="codex"/>,selected:bot.agentProvider==='codex'||!bot.agentProvider,hint:bot.agentProvider==='codex'||!bot.agentProvider?'✓':undefined,onSelect:()=>void changeProvider('codex')},
-              {label:'Claude Code',description:t('Your Claude subscription'),icon:<ProviderLogo provider="claude"/>,selected:bot.agentProvider==='claude',hint:bot.agentProvider==='claude'?'✓':undefined,onSelect:()=>void changeProvider('claude')},
+              {label:'ChatGPT',description:onCodex&&bot.model?subscriptionModelName('codex',bot.model):t('Your ChatGPT subscription'),icon:<ProviderLogo provider="codex"/>,selected:onCodex,hint:'›',onSelect:()=>setSettingsMenu('codex')},
+              {label:'Claude',description:onClaude&&bot.model?subscriptionModelName('claude',bot.model):t('Your Claude subscription'),icon:<ProviderLogo provider="claude"/>,selected:onClaude,hint:'›',onSelect:()=>setSettingsMenu('claude')},
               ...(hosted?.available?hosted.models.map((m)=>{
                 const on=included&&(bot.model||DEFAULT_MODEL)===m.id;
                 return {label:m.name,description:m.allowed?t(m.note):t('Included in {name}',{name:tierName(m.tier)}),icon:<ModelLogo model={m.id} dim={!m.allowed}/>,selected:on,locked:!m.allowed,hint:on?'✓':m.allowed?undefined:'🔒',onSelect:()=>{if(!m.allowed){setError(t('{model} is included in the {name} plan. Upgrade in the Fino app.',{model:m.name,name:tierName(m.tier)}));return;}void changeProvider('openrouter',m.id);}};
               }):[]),
             ]}/>}
+            {subKind&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
+              {label:t('Account default'),description:t('Whatever your {name} plan uses by default',{name:subKind==='codex'?'ChatGPT':'Claude'}),icon:<ProviderLogo provider={subKind}/>,selected:(subKind==='codex'?onCodex:onClaude)&&!bot.model,hint:(subKind==='codex'?onCodex:onClaude)&&!bot.model?'✓':undefined,onSelect:()=>void changeProvider(subKind,'')},
+              ...(subModels??[]).map((m)=>{const on=(subKind==='codex'?onCodex:onClaude)&&bot.model===m.id;return {label:m.name,description:m.note,selected:on,hint:on?'✓':undefined,onSelect:()=>void changeProvider(subKind,m.id)};}),
+            ]}>
+              <button type="button" className="menu__back" onMouseDown={(e)=>e.stopPropagation()} onClick={()=>setSettingsMenu('model')}><ChevronLeft size={15} className="menu__back-icon"/>{subKind==='codex'?'ChatGPT':'Claude'}{!subModels&&<small>{t('Loading models…')}</small>}</button>
+            </Menu>}
           </span>
           <span className="composer__setting-anchor composer__permissions">
             <button type="button" className="composer__setting" aria-label={`Permissions: ${permission.name}`} title={permission.description} aria-expanded={settingsMenu==='permissions'} disabled={sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='permissions'?null:'permissions')}><permission.icon size={16}/><span>{permission.name}</span><ChevronDown size={12}/></button>

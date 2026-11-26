@@ -27,6 +27,7 @@ import '@fontsource/tajawal/arabic-500.css';
 import '@fontsource/tajawal/arabic-700.css';
 import './styles/workspace.css';
 import './styles/polish.css';
+import { MotionRoot } from './lib/motion';
 
 const root = createRoot(document.getElementById('root')!);
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('badr-preview')) {
@@ -34,7 +35,9 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('badr-previe
 } else {
   root.render(
     <StrictMode>
-      <App />
+      <MotionRoot>
+        <App />
+      </MotionRoot>
     </StrictMode>,
   );
 }

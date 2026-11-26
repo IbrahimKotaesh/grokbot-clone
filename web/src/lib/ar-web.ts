@@ -914,4 +914,7 @@ export const arWeb: Record<string, string> = {
   "How {name} sounds when you call.": "صوت {name} عندما تتصل به.",
   "Listen": "استمع",
   "Playing…": "يُشغَّل…",
+  "Whatever your {name} plan uses by default": "النموذج الافتراضي في خطة {name}",
+  "Loading models…": "جارٍ تحميل النماذج…",
+  "Every model your {name} plan includes.": "كل النماذج المتاحة في خطة {name}.",
 };

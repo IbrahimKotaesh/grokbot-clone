@@ -3,6 +3,7 @@ import type { Bot, LiveState, Row } from '@shared/types';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { activityPhrase } from '../lib/phrases';
 import { t } from '../lib/i18n';
+import { FadeSwap } from '../lib/motion';
 
 /** A real seconds counter: 7s, 42s, 1:05, 12:30. */
 const clock = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 3600)}h ${Math.floor(s / 60) % 60}m`; };
@@ -21,7 +22,7 @@ export function ActivityLine({ bot, live, rows, writing = false }: { bot: Bot; l
   return (
     <div className={`activity-line${waiting ? ' is-waiting' : ''}`} role="status" aria-live="polite">
       <span className="activity-line__mark"><BotAvatarFor bot={bot} size={20} /></span>
-      <span className="activity-line__text shimmer" key={phrase}>{phrase}</span>
+      <FadeSwap className="activity-line__text shimmer" value={phrase} />
       {!waiting && <span className="activity-line__time">· {clock(now - since)}</span>}
       {waiting && live.awaiting?.reason && <span className="activity-line__time">· {live.awaiting.reason}</span>}
     </div>

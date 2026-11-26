@@ -1,6 +1,7 @@
 import { t } from '../../lib/i18n';
 import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { BrainPicker } from './BrainPicker';
+import { subscriptionModelName, useSubscriptionModels, type SubscriptionKind } from '../../lib/models';
 import { voiceApi, type VoiceOptions } from '../../voice/api';
 import { previewVoice } from '../../voice/call';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -189,8 +190,8 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         <Field label={t("Brain")} hint={t("Included models are part of your Fino plan. Or use your own ChatGPT or Claude subscription.")}>
           <BrainPicker provider={draft.agentProvider ?? 'codex'} model={draft.model ?? ''} onChange={(agentProvider, model) => { put('agentProvider', agentProvider); put('model', model); }} />
         </Field>
-        {draft.agentProvider !== 'openrouter' && <Field label={t("Model")} htmlFor="cfg-model" hint={draft.agentProvider === 'claude' ? t("Leave blank for your Claude default, or enter sonnet, opus or haiku.") : t("Leave blank to use your Codex default model.")}>
-          <input id="cfg-model" className="text-input" value={draft.model ?? ''} maxLength={100} placeholder={t("Account default")} onChange={(e)=>put('model',e.target.value)} />
+        {(draft.agentProvider === 'codex' || draft.agentProvider === 'claude') && <Field label={t("Model")} htmlFor="cfg-model" hint={t("Every model your {name} plan includes.", { name: draft.agentProvider === 'claude' ? 'Claude' : 'ChatGPT' })}>
+          <SubscriptionModelSelect kind={draft.agentProvider} value={draft.model ?? ''} onChange={(m) => put('model', m)} />
         </Field>}
         <Field label={t("Thinking effort")} hint={EFFORT_HINT[draft.effort]}>
           <Segmented label={t("Thinking effort")} value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />
@@ -473,5 +474,19 @@ function RoutineItem({ r, onFlash }: { r: Routine; onFlash: (t: string) => void 
         <Switch on={enabled} onChange={toggle} label={`${r.name} ${enabled ? 'on' : 'paused'}`} />
       </div>
     </div>
+  );
+}
+
+/** The models of the user's own ChatGPT or Claude plan, read live from their account. */
+function SubscriptionModelSelect({ kind, value, onChange }: { kind: SubscriptionKind; value: string; onChange: (model: string) => void }) {
+  const list = useSubscriptionModels(kind);
+  const known = !value || list?.some((m) => m.id === value);
+  return (
+    <select id="cfg-model" className="text-input" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{t('Account default')}</option>
+      {!known && <option value={value}>{subscriptionModelName(kind, value)}</option>}
+      {(list ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.note ? ` — ${t(m.note)}` : ''}</option>)}
+      {!list && <option disabled>{t('Loading models…')}</option>}
+    </select>
   );
 }

@@ -832,4 +832,7 @@ export const nlWeb: Record<string, string> = {
   "How {name} sounds when you call.": "Zo klinkt {name} als je belt.",
   "Listen": "Luister",
   "Playing…": "Speelt af…",
+  "Whatever your {name} plan uses by default": "Wat je {name}-abonnement standaard gebruikt",
+  "Loading models…": "Modellen laden…",
+  "Every model your {name} plan includes.": "Elk model in je {name}-abonnement.",
 };

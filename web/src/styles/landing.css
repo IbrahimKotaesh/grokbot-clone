@@ -762,3 +762,6 @@
 .lp .lp-mac__browser div { border-radius: 12px; }
 .lp .lp-site__results li, .lp .lp-site__field, .lp .lp-site__search { border-radius: 14px; }
 .lp .lp-stepper, .lp .lp-stepper button { border-radius: 999px; }
+
+/* Headline words arrive out of a blur (Motion); the line must not clip the blur or the rise. */
+.lp-line--words { overflow: visible; padding-bottom: 0; margin-bottom: 0; }

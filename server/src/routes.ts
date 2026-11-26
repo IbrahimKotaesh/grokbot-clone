@@ -3,6 +3,7 @@ import { markVoiceChosen } from './voice-cast.js';
 import { falVoiceReady } from './fal-voice.js';
 import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
+import { subscriptionModels } from './subscription-models.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
 import { assertCanCreateBot, PLAN_REQUIRED_MESSAGE, PlanLimitError, planRequired } from './plans.js';
@@ -352,6 +353,11 @@ api.get('/bots/:id/images/:imageId', (c) => {
 });
 
 api.get('/hosted-models', (c) => c.json(hostedSummary(c.get('user').id)));
+api.get('/subscription-models/:kind', async (c) => {
+  const kind = c.req.param('kind');
+  if (kind !== 'codex' && kind !== 'claude') return c.json({ error: 'Unknown subscription' }, 404);
+  return c.json(await subscriptionModels(c.get('user').id, kind));
+});
 
 api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json({error:'Attachments are too large. Files: 10 MB each, 20 MB total; photos: 3 MB each.'},413)}), async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));

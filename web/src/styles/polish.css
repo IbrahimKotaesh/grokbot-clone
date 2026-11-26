@@ -72,3 +72,38 @@
 .cfg-voice { display: flex; gap: 8px; align-items: center; }
 .cfg-voice select { flex: 1; min-width: 0; }
 .cfg-voice .cfg-btn { flex: none; }
+
+/* Sub-menu header: back to the list of brains. */
+.menu__back { display: flex; align-items: center; gap: 6px; width: 100%; padding: 9px 10px 8px; border: 0; background: none; color: var(--p-ink, inherit); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px; text-align: start; }
+.menu__back:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+.menu__back small { margin-inline-start: auto; font-weight: 500; color: var(--p-faint); font-size: 11.5px; }
+.menu__back-icon { opacity: .6; }
+
+/* ---- Apple-style motion: things grow out of a soft blur on a gentle spring, and settle without a bounce. ---- */
+:root {
+  --ease-apple: cubic-bezier(.16, 1, .3, 1);
+  /* A critically damped spring, sampled (what Motion uses for its springs). */
+  --spring: linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 20.6%, 1.035 23.4%, 1.032 27.1%, 1.011 34.8%, .999 44.5%, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .menu { animation: apple-pop .34s var(--spring) both; }
+  .modal { animation: apple-sheet .5s var(--spring) both; }
+  .modal-scrim { animation: apple-fade .3s ease-out both; }
+  .details { animation: apple-slide .45s var(--ease-apple) both; }
+  .bubble.is-fresh { animation: apple-arrive .6s var(--ease-apple) both; }
+  @keyframes apple-pop { from { opacity: 0; scale: .94; filter: blur(6px); } 60% { filter: blur(0); } to { opacity: 1; scale: 1; filter: none; } }
+  @keyframes apple-sheet { from { opacity: 0; scale: .95; translate: 0 14px; filter: blur(10px); } 55% { filter: blur(0); } to { opacity: 1; scale: 1; translate: 0 0; filter: none; } }
+  @keyframes apple-fade { from { opacity: 0; } }
+  @keyframes apple-slide { from { opacity: 0; translate: 26px 0; filter: blur(6px); } to { opacity: 1; translate: 0 0; filter: none; } }
+  @keyframes apple-arrive { from { opacity: 0; translate: 0 10px; scale: .985; filter: blur(8px); } 70% { filter: blur(0); } to { opacity: 1; translate: 0 0; scale: 1; filter: none; } }
+  /* Buttons answer a press like iOS: a quick, soft squeeze. */
+  .composer__cta, .composer__btn, .chat__call, .auth__submit, .lp-pill, .gate button { transition: transform .35s var(--spring), background-color .2s, opacity .2s; }
+  .composer__cta:active:not(:disabled), .composer__btn:active:not(:disabled), .chat__call:active, .auth__submit:active, .lp-pill:active, .gate button:active:not(:disabled) { transform: scale(.94); transition-duration: .12s; }
+}
+@media (max-width: 560px) and (prefers-reduced-motion: no-preference) {
+  .composer .menu, .composer .menu.is-center, .composer__permissions .menu { animation: sheet-up .5s var(--spring) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu, .modal, .details, .bubble.is-fresh { animation: apple-fade .2s ease-out both; }
+  @keyframes apple-fade { from { opacity: 0; } }
+}
