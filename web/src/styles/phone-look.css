@@ -116,10 +116,11 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 }
 .chat .bubble.is-user.is-first, .chat .bubble.is-user.is-mid, .chat .bubble.is-user.is-last { border-radius: 20px; }
 /* WhatsApp-style tail on the first bubble of each run of your messages. */
-.chat .bubble.is-user:not(.is-mid):not(.is-last) { border-start-end-radius: 4px; overflow: visible; }
+/* Your bubbles sit on the right in every language, so the tail is placed physically (top right), never by text direction. */
+.chat .bubble.is-user:not(.is-mid):not(.is-last) { border-top-right-radius: 4px; overflow: visible; }
 .chat .bubble.is-user:not(.is-mid):not(.is-last)::after {
-  content: ""; position: absolute; top: 0; inset-inline-end: -8px; width: 0; height: 0; pointer-events: none;
-  border-top: 13px solid var(--bot-bubble, var(--chat-blue)); border-inline-end: 10px solid transparent;
+  content: ""; position: absolute; top: 0; right: -8px; left: auto; width: 0; height: 0; pointer-events: none;
+  border-top: 13px solid var(--bot-bubble, var(--chat-blue)); border-right: 10px solid transparent; border-left: 0;
 }
 .chat .bubble.is-agent {
   background: transparent !important;

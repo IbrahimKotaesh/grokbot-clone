@@ -53,9 +53,10 @@ export function brainLabel(bot: { agentProvider?: string; model?: string }) {
 }
 
 const LOGOS: [string, string][] = [
-  ['deepseek/', 'bart'],
-  ['z-ai/', 'bart'],
-  ['qwen/', 'bart'],
+  // Fino's own models get a simple spark mark (Badr's face already appears enough around the app).
+  ['deepseek/', 'badr-spark'],
+  ['z-ai/', 'badr-spark'],
+  ['qwen/', 'badr-spark'],
   ['x-ai/', 'grok'],
   ['openai/', 'chatgpt'],
   ['anthropic/', 'claude'],
@@ -65,7 +66,7 @@ export function ModelLogo({ model, dim = false }: { model: string; dim?: boolean
   const file = LOGOS.find(([p]) => model.startsWith(p))?.[1] ?? 'chatgpt';
   return (
     <span className={`provider-logo provider-logo--${file}`} aria-hidden="true" style={dim ? { opacity: 0.45 } : undefined}>
-      <img src={`/brands/${file}.${file === 'bart' ? 'png' : 'svg'}`} width={20} height={20} alt="" />
+      <img src={`/brands/${file}.svg`} width={20} height={20} alt="" />
     </span>
   );
 }

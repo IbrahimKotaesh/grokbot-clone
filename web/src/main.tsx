@@ -22,6 +22,7 @@ import './styles/voice.css';
 import './styles/fino.css';
 import './styles/phone-look.css';
 import './styles/workspace.css';
+import './styles/polish.css';
 
 const root = createRoot(document.getElementById('root')!);
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('badr-preview')) {

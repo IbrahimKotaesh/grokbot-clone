@@ -124,14 +124,17 @@ export function PlanGate({ children }: { children: ReactNode }) {
   );
 }
 
-/** "You're in": shown once, right after a plan starts; goes away by itself. */
+/** "You're in": shown once, right after a plan starts, over the team; goes away by itself or with the button. */
 function Cheer({ onDone }: { onDone: () => void }) {
-  useEffect(() => { const id = setTimeout(onDone, 6500); return () => clearTimeout(id); }, []);
+  useEffect(() => { const id = setTimeout(onDone, 7000); return () => clearTimeout(id); }, []);
   return (
-    <div className="cheer" role="status">
-      <Badr mood="celebrate" size={84} />
-      <div><b>{t('You’re in!')}</b><span>{t('Your plan is active. Say hi to your team.')}</span></div>
-      <button type="button" onClick={onDone} aria-label={t('Close')}>×</button>
+    <div className="cheer" role="status" onClick={onDone}>
+      <div className="cheer__card" onClick={(e) => e.stopPropagation()}>
+        <Badr mood="celebrate" size={128} />
+        <h2>{t('You’re in!')}</h2>
+        <p>{t('Your plan is active. Say hi to your team.')}</p>
+        <button type="button" onClick={onDone}>{t('Meet your team')}</button>
+      </div>
     </div>
   );
 }

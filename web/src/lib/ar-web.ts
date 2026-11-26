@@ -1,5 +1,6 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Meet your team": "تعرّف على فريقك",
   "Badr + 5 bots": "بدر + 5 بوتات",
   "Badr + 15 bots": "بدر + 15 بوت",
   "Badr + 40 bots": "بدر + 40 بوت",
