@@ -689,3 +689,20 @@
   .lp-bubble-slot { right: 0; bottom: calc(100% + 18px); width: min(340px, 30vw); }
 }
 @media (max-width: 560px) { .lp-team { margin-top: 124px; } }
+
+/* ---- Phones ---- */
+@media (max-width: 560px) {
+  /* Header: logo, language, Sign in and Get started stay on one line. */
+  .lp-nav__signin { white-space: nowrap; font-size: 14px; }
+  .lp-nav .lp-lang svg { display: none; }
+  .lp-nav .lp-lang { padding: 4px 9px; }
+  .lp-nav__links { gap: 10px; }
+  /* The demo fits one phone screen: the chat keeps its newest lines in view, the browser keeps a fixed height,
+     so nothing jumps while the bot works. */
+  .lp-msgs { height: 222px; min-height: 0; justify-content: flex-end; padding: 14px; }
+  .lp-desk__composer { margin: 8px 12px 12px; padding: 11px 16px; }
+  .lp-site { height: 318px; min-height: 0; padding: 18px 18px; }
+  .lp-site__results { margin-top: 12px; gap: 6px; }
+  .lp-site__results li { padding: 8px 12px; }
+}
+@media (max-width: 370px) { .lp-mark span { font-size: 19px; } .lp-nav .lp-pill--light { padding: 0 12px; } }
