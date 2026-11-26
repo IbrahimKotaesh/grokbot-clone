@@ -397,10 +397,10 @@ const ASSISTANT_SALARY = 2500;
 const ASSISTANT_EXTRA = 500;
 // The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
 const PLAN_BY_ID = {
-  starter: { name: 'Starter', price: 14.99, bots: 'Badr + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
-  pro: { name: 'Pro', price: 49.99, bots: 'Badr + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
-  max: { name: 'Max', price: 99.99, bots: 'Badr + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
-  ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Their own computer · 150 h a month', 'Top AI models included', 'Priority support'] },
+  starter: { name: 'Starter', price: 14.99, bots: 'Badr + 5 bots', hours: 3, lines: ['Ready-to-work bots with superpowers', 'Their own computer · 3 h a month', 'Use your own Claude Code and ChatGPT'] },
+  pro: { name: 'Pro', price: 49.99, bots: 'Badr + 15 bots', hours: 20, lines: ['Everything in Starter, plus', 'Their own computer · 20 h a month', 'Every marketplace bot', 'Stronger AI models included'] },
+  max: { name: 'Max', price: 99.99, bots: 'Badr + 40 bots', hours: 60, lines: ['Everything in Pro, plus', 'Their own computer · 60 h a month', 'Top AI models included', 'Priority support'] },
+  ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Everything in Max, plus', 'Their own computer · 150 h a month', 'Early access to new features'] },
 } as const;
 const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : roles <= 3 ? PLAN_BY_ID.max : PLAN_BY_ID.ultra);
 const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: n % 1 ? 2 : 0, minimumFractionDigits: n % 1 ? 2 : 0 })}`;
@@ -552,7 +552,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
               {p.name === 'Max' && <em>{t('Most teams')}</em>}
               <strong>{usd(p.price)}<small>{t('/month')}</small></strong>
               <span className="lp-plans__bots">{t(p.bots)}</span>
-              <ul>{p.lines.map((l) => <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{t(l)}</li>)}</ul>
+              <ul>{p.lines.map((l) => l.startsWith('Everything in ') ? <li key={l} className="lp-plans__plus">{t(l)}</li> : <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{t(l)}</li>)}</ul>
               <button type="button" className={`lp-pill ${p.name === 'Max' ? 'lp-pill--blue' : 'lp-pill--line'}`} onClick={onStart}>{signedIn ? t('Open Fino') : t('Start with {plan}', { plan: p.name })}</button>
             </li>
           ))}

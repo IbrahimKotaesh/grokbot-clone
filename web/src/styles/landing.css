@@ -706,3 +706,6 @@
   .lp-site__results li { padding: 8px 12px; }
 }
 @media (max-width: 370px) { .lp-mark span { font-size: 19px; } .lp-nav .lp-pill--light { padding: 0 12px; } }
+
+/* "Everything in Starter, plus": a small lead-in line above what the plan adds. */
+.lp-plans__plus { font-weight: 800; opacity: .8; }

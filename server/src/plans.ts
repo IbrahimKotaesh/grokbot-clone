@@ -23,23 +23,24 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'free', name: 'Free', priceUsd: 0, bots: 1, computer: false, computerHours: 0, voiceMinutes: 10, marketplace: 'personal',
     highlights: ['Badr + 1 bot', 'Chat and voice messages', 'Personal marketplace bots'],
   },
+  // Each plan adds to the one before. Prices are set for about a 70% margin at typical use: a computer hour costs
+  // Fino about $0.42 (Orgo $0.055 plus ~$0.36 of screen-step AI), a computer's idle disk ~$2 a month, Stripe ~3% + $0.30,
+  // and hosted AI is capped per plan in hosted-models.ts so even the heaviest user stays above ~55%.
   starter: {
-    id: 'starter', name: 'Starter', priceUsd: 14.99, bots: 3, computer: false, computerHours: 0, voiceMinutes: 30, marketplace: 'personal',
-    highlights: ['Badr + 3 bots', 'Chat, voice messages and files', 'Personal marketplace bots', 'Use your own AI model'],
+    id: 'starter', name: 'Starter', priceUsd: 14.99, bots: 5, computer: true, computerHours: 3, voiceMinutes: 30, marketplace: 'personal',
+    highlights: ['Badr + 5 bots', 'Ready-to-work bots with superpowers', 'Their own computer · 3 h a month', 'Use your own Claude Code and ChatGPT'],
   },
   pro: {
-    id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 10, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
-    highlights: ['Badr + 10 bots', 'Computer use · 20 h/month', 'Every marketplace bot', 'Claude Code on your computer'],
+    id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 15, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
+    highlights: ['Everything in Starter, plus', 'Badr + 15 bots', 'Their own computer · 20 h a month', 'Every marketplace bot', 'Stronger AI models included'],
   },
-  // Prices and hours are set so the heaviest user still leaves a margin after the store's cut: each
-  // computer hour costs about $0.42 (Orgo $0.055 plus ~$0.36 of screen-step AI), see hosted-models.ts caps.
   max: {
-    id: 'max', name: 'Max', priceUsd: 99.99, bots: 30, computer: true, computerHours: 60, voiceMinutes: 300, marketplace: 'all',
-    highlights: ['Badr + 30 bots', 'Computer use · 60 h/month', 'Every marketplace bot', 'Top AI models included'],
+    id: 'max', name: 'Max', priceUsd: 99.99, bots: 40, computer: true, computerHours: 60, voiceMinutes: 300, marketplace: 'all',
+    highlights: ['Everything in Pro, plus', 'Badr + 40 bots', 'Their own computer · 60 h a month', 'Top AI models included', 'Priority support'],
   },
   ultra: {
     id: 'ultra', name: 'Ultra', priceUsd: 199.99, bots: null, computer: true, computerHours: 150, voiceMinutes: 600, marketplace: 'all',
-    highlights: ['Unlimited bots', 'Computer use · 150 h/month', 'Every marketplace bot', 'Priority support'],
+    highlights: ['Everything in Max, plus', 'Unlimited bots', 'Their own computer · 150 h a month', 'Early access to new features'],
   },
   enterprise: {
     id: 'enterprise', name: 'Enterprise', priceUsd: null, bots: null, computer: true, computerHours: null, voiceMinutes: null, marketplace: 'all',
@@ -132,7 +133,7 @@ export function assertComputerAllowed(userId: string) {
   // The local/container desktop is one machine shared by the server's bots, so on a public server only the owner uses it.
   if (env.computerProvider !== 'orgo' && !usesServerResources(userId)) throw new PlanLimitError('The bot computer isn’t available on your account yet. Your bots can still chat and use your connected apps.', 'computer');
   const plan = planOf(userId);
-  if (!plan.computer) throw new PlanLimitError('Computer use is part of the Pro plan. Upgrade in Account → Plan to give your bots a computer.', 'computer');
+  if (!plan.computer) throw new PlanLimitError('Pick a plan to give your bots their own computer.', 'computer');
   if (trialUntil(userId) && computerMinutesThisMonth(userId) >= TRIAL.computerMinutes)
     throw new PlanLimitError(`The free trial day includes ${TRIAL.computerMinutes} minutes of computer use. Your full ${plan.computerHours} hours start when the trial ends.`, 'computer');
   if (plan.computerHours !== null && computerMinutesThisMonth(userId) >= plan.computerHours * 60)

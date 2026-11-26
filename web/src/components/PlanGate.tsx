@@ -95,7 +95,9 @@ export function PlanGate({ children }: { children: ReactNode }) {
                   <span className="gate__price"><b>${p.priceUsd}</b><small>{t('/month')}</small></span>
                 </span>
                 <ul className="gate__feats">
-                  {p.highlights.map((h) => <li key={h}><span className="gate__tick" aria-hidden><Check size={12} strokeWidth={3.4} /></span>{t(h)}</li>)}
+                  {p.highlights.map((h) => h.startsWith('Everything in ')
+                    ? <li key={h} className="gate__plus">{t(h)}</li>
+                    : <li key={h}><span className="gate__tick" aria-hidden><Check size={12} strokeWidth={3.4} /></span>{t(h)}</li>)}
                 </ul>
               </label>
             );

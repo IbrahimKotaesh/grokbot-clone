@@ -23,9 +23,9 @@ export const COMPUTER_STRONG = process.env.OR_COMPUTER_STRONG ?? 'deepseek/deeps
  * Monthly computer-work AI budget (USD, at cost) per plan. Past it, work continues on the cheap model only,
  * so a heavy user never pushes a plan below its margin. null = no cap.
  */
-const COMPUTER_CAP: Record<PlanId, number | null> = { free: 0, starter: 0.5, pro: 8, max: 22, ultra: 55, enterprise: null };
+const COMPUTER_CAP: Record<PlanId, number | null> = { free: 0, starter: 1, pro: 6, max: 14, ultra: 35, enterprise: null };
 /** Monthly chat AI budget (USD, at cost). Past it replies use the cheapest model; past twice it, they stop. */
-const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 3, pro: 5, max: 10, ultra: 20, enterprise: null };
+const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 1.5, pro: 4, max: 8, ultra: 15, enterprise: null };
 
 /** The models Fino includes, and the lowest plan that unlocks each. The first one is everyone's default. */
 export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId }[] = [

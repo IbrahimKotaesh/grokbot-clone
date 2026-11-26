@@ -1,5 +1,17 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Badr + 5 bots": "بدر + 5 بوتات",
+  "Badr + 15 bots": "بدر + 15 بوت",
+  "Badr + 40 bots": "بدر + 40 بوت",
+  "Ready-to-work bots with superpowers": "بوتات بذكاء خارق جاهزة للعمل",
+  "Their own computer · 3 h a month": "كمبيوترهم الخاص · 3 ساعات شهريًا",
+  "Use your own Claude Code and ChatGPT": "استخدم Claude Code وChatGPT تبعك",
+  "Everything in Starter, plus": "كل شي بـ Starter، وكمان:",
+  "Everything in Pro, plus": "كل شي بـ Pro، وكمان:",
+  "Everything in Max, plus": "كل شي بـ Max، وكمان:",
+  "Stronger AI models included": "نماذج ذكاء اصطناعي أقوى مشمولة",
+  "Early access to new features": "توصلك الميزات الجديدة قبل الكل",
+  "Pick a plan to give your bots their own computer.": "اختر باقة ليصير لبوتاتك كمبيوترهم الخاص.",
   "You’re in!": "صرت معنا!",
   "Your plan is active. Say hi to your team.": "باقتك شغّالة. سلّم على فريقك.",
   "Pick your plan": "اختر باقتك",

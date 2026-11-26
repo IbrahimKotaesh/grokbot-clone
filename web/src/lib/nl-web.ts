@@ -1,5 +1,17 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Badr + 5 bots": "Badr + 5 bots",
+  "Badr + 15 bots": "Badr + 15 bots",
+  "Badr + 40 bots": "Badr + 40 bots",
+  "Ready-to-work bots with superpowers": "Bots met superkrachten, klaar om te werken",
+  "Their own computer · 3 h a month": "Hun eigen computer · 3 uur per maand",
+  "Use your own Claude Code and ChatGPT": "Gebruik je eigen Claude Code en ChatGPT",
+  "Everything in Starter, plus": "Alles van Starter, plus:",
+  "Everything in Pro, plus": "Alles van Pro, plus:",
+  "Everything in Max, plus": "Alles van Max, plus:",
+  "Stronger AI models included": "Sterkere AI-modellen inbegrepen",
+  "Early access to new features": "Als eerste nieuwe functies",
+  "Pick a plan to give your bots their own computer.": "Kies een abonnement om je bots hun eigen computer te geven.",
   "You’re in!": "Je bent binnen!",
   "Your plan is active. Say hi to your team.": "Je abonnement is actief. Zeg hoi tegen je team.",
   "Pick your plan": "Kies je abonnement",
