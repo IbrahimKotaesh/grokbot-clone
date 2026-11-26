@@ -30,14 +30,13 @@ const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 1.5, pro:
 /** The models Fino includes, and the lowest plan that unlocks each. The first one is everyone's default. */
 export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId }[] = [
   // Fino's own names for the open-source models it hosts (built on DeepSeek and GLM; see the privacy page).
-  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 1', note: 'Fast everyday model', tier: 'free' },
-  { id: 'z-ai/glm-5.3-flash', name: 'Badr 2', note: 'Careful with numbers and logic', tier: 'starter' },
-  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 3', note: 'Deeper reasoning', tier: 'pro' },
-  { id: 'openai/gpt-5.4-mini', name: 'GPT-5.4 mini', note: 'Balanced model from OpenAI', tier: 'pro' },
-  { id: 'x-ai/grok-4.3', name: 'Grok 4.3', note: 'Sharp and up to date, from xAI', tier: 'pro' },
-  { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', note: 'Top writing and reasoning', tier: 'max' },
-  { id: 'openai/gpt-5.4', name: 'GPT-5.4', note: "OpenAI's flagship", tier: 'max' },
+  // Two Badr models, open to every plan: the smart one and the fast everyday one (the default).
+  // Each plan's monthly AI budget (CHAT_CAP) still applies; past it, replies use Badr 4.8.
+  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free' },
+  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Fast everyday model', tier: 'free' },
 ];
+/** Everyone's default, and what replies fall back to past the monthly budget. */
+export const DEFAULT_HOSTED = 'deepseek/deepseek-v4.1-flash';
 const RANK: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, max: 3, ultra: 4, enterprise: 5 };
 export const modelAllowed = (plan: PlanId, id: string) => {
   const m = HOSTED_MODELS.find((x) => x.id === id);
@@ -109,8 +108,8 @@ export function hostedChatModel(userId: string, wanted: string): string {
     throw Object.assign(new Error(trialUntil(userId)
       ? "The free trial day's included AI is used up. It refills when your plan starts, or connect your own ChatGPT in Settings → AI models."
       : "This month's included AI is used up. Upgrade your plan, or add your own AI key in Settings → AI models."), { status: 402 });
-  if (cap !== null && spent >= cap) return HOSTED_MODELS[0].id;
-  return modelAllowed(plan, wanted) ? wanted : HOSTED_MODELS[0].id;
+  if (cap !== null && spent >= cap) return DEFAULT_HOSTED;
+  return modelAllowed(plan, wanted) ? wanted : DEFAULT_HOSTED;
 }
 
 /** What the app shows in the model picker: every included model, which ones this plan unlocks, and usage. */

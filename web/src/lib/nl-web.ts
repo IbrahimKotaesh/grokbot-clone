@@ -1,5 +1,9 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Smartest, for long and hard tasks": "Het slimst, voor lange en lastige taken",
+  "Nothing to sign in to. Badr 4.8 and Badr 5.1, included in your plan.": "Nergens voor inloggen. Badr 4.8 en Badr 5.1 zitten in je abonnement.",
+  "Badr 5.1 and Badr 4.8, part of your plan": "Badr 5.1 en Badr 4.8, onderdeel van je abonnement",
+  "Fino Browser": "Badr Browser",
   "Work out this year’s taxes": "Bereken de belasting van dit jaar",
   "Find cheap flights to Barcelona": "Zoek goedkope vluchten naar Barcelona",
   "Find cheap flights to Lisbon": "Zoek goedkope vluchten naar Lissabon",

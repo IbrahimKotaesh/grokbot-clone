@@ -47,8 +47,10 @@ if (typeof document !== 'undefined') {
 }
 
 /** Translate an English UI string. `{name}` placeholders are filled from `vars`. */
+// The product is called Badr in every language (بدر in Arabic); older source strings still say "Fino".
+const BRAND = isArabic ? 'بدر' : 'Badr';
 export function t(text: string, vars?: Record<string, string | number>) {
-  let out = dict[text] ?? text;
+  let out = (dict[text] ?? text).replace(/\bFino\b/g, BRAND);
   if (vars) for (const k in vars) out = out.split(`{${k}}`).join(String(vars[k]));
   return out;
 }

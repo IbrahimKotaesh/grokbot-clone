@@ -743,3 +743,22 @@
 /* Arabic: arrows point the way Arabic reads; the headline fits two or three lines on phones. */
 :root:lang(ar) .lp .lucide-arrow-right { transform: scaleX(-1); }
 @media (max-width: 560px) { :root:lang(ar) .lp .lp-open .lp-h1 { font-size: 2.7rem; max-width: 12ch; } }
+
+/* ===== Smooth everywhere: no sharp corners on any frame ===== */
+.lp .lp-plans__row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; background: none; box-shadow: none; border-radius: 0; }
+.lp .lp-plans__row > li { border-radius: 26px; border: 1.5px solid var(--lp-line); background: var(--lp-card); overflow: hidden; }
+.lp .lp-plans__row > li.is-pick { border-radius: 26px; background: var(--lp-blue); border-color: var(--lp-blue); color: #fff; }
+@media (max-width: 860px) { .lp .lp-plans__row { grid-template-columns: 1fr; } }
+.lp .lp-rules { border-top: 0; gap: 16px; }
+.lp .lp-rules li, .lp .lp-rules li + li { padding: 26px 24px; border: 1.5px solid var(--lp-line); border-radius: 26px; background: var(--lp-card); }
+.lp .lp-cost__out { border-top: 0; padding-top: 10px; }
+.lp .lp-slipdoc, .lp .lp-jobs__chat, .lp .lp-steps__row li, .lp .lp-close__panel, .lp .lp-mac__window, .lp .lp-desk { border-radius: 28px; }
+.lp .lp-scr { border-radius: 16px; }
+.lp .lp-scr__find, .lp .lp-scr__task s, .lp .lp-scr__grid, .lp .lp-scr__slot, .lp .lp-scr__hit s { border-radius: 8px; }
+.lp .lp-kb { border-radius: 10px; }
+.lp .lp-deskbar { border-radius: 0; }
+.lp .lp-bot:first-of-type .lp-deskbar { border-start-start-radius: 99px; border-end-start-radius: 99px; }
+.lp .lp-bot:last-of-type .lp-deskbar { border-start-end-radius: 99px; border-end-end-radius: 99px; }
+.lp .lp-mac__browser div { border-radius: 12px; }
+.lp .lp-site__results li, .lp .lp-site__field, .lp .lp-site__search { border-radius: 14px; }
+.lp .lp-stepper, .lp .lp-stepper button { border-radius: 999px; }

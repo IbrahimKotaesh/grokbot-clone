@@ -1,5 +1,6 @@
 // Arabic translations shared by the phone, web and Mac apps. Keys are the exact English strings used in the apps.
 export const ar: Record<string, string> = {
+  "Badr 5.1 and Badr 4.8, part of your plan": "بدر 5.1 وبدر 4.8، ضمن باقتك",
   // Tabs & common
   Account: "الحساب",
   Bots: "البوتات",

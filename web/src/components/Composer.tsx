@@ -236,11 +236,11 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
           <span className="composer__setting-anchor composer__model-picker">
             <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${brainLabel(bot)}`} aria-expanded={settingsMenu==='model'} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><BrainLogo bot={bot}/><span>{brainLabel(bot)}</span><ChevronDown size={12}/></button>
             {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
-              {section:t('Your own subscription'),label:'ChatGPT',description:t('Your ChatGPT subscription'),icon:<ProviderLogo provider="codex"/>,selected:bot.agentProvider==='codex'||!bot.agentProvider,hint:bot.agentProvider==='codex'||!bot.agentProvider?'✓':undefined,onSelect:()=>void changeProvider('codex')},
+              {label:'ChatGPT',description:t('Your ChatGPT subscription'),icon:<ProviderLogo provider="codex"/>,selected:bot.agentProvider==='codex'||!bot.agentProvider,hint:bot.agentProvider==='codex'||!bot.agentProvider?'✓':undefined,onSelect:()=>void changeProvider('codex')},
               {label:'Claude Code',description:t('Your Claude subscription'),icon:<ProviderLogo provider="claude"/>,selected:bot.agentProvider==='claude',hint:bot.agentProvider==='claude'?'✓':undefined,onSelect:()=>void changeProvider('claude')},
-              ...(hosted?.available?hosted.models.map((m,i)=>{
+              ...(hosted?.available?hosted.models.map((m)=>{
                 const on=included&&(bot.model||DEFAULT_MODEL)===m.id;
-                return {section:i===0?t('Included in your plan'):undefined,label:m.name,description:m.allowed?t(m.note):t('Included in {name}',{name:tierName(m.tier)}),icon:<ModelLogo model={m.id} dim={!m.allowed}/>,selected:on,locked:!m.allowed,hint:on?'✓':m.allowed?undefined:'🔒',onSelect:()=>{if(!m.allowed){setError(t('{model} is included in the {name} plan. Upgrade in the Fino app.',{model:m.name,name:tierName(m.tier)}));return;}void changeProvider('openrouter',m.id);}};
+                return {label:m.name,description:m.allowed?t(m.note):t('Included in {name}',{name:tierName(m.tier)}),icon:<ModelLogo model={m.id} dim={!m.allowed}/>,selected:on,locked:!m.allowed,hint:on?'✓':m.allowed?undefined:'🔒',onSelect:()=>{if(!m.allowed){setError(t('{model} is included in the {name} plan. Upgrade in the Fino app.',{model:m.name,name:tierName(m.tier)}));return;}void changeProvider('openrouter',m.id);}};
               }):[]),
             ]}/>}
           </span>

@@ -85,8 +85,8 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
   return (
     <div className="lp" ref={root}>
       <section className="lp-open">
-        <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Fino">
-          <a className="lp-mark" href="/welcome" aria-label="Fino"><img src={MARK} alt="" width={36} height={36} /><span>{t('Badr')}</span></a>
+        <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Badr">
+          <a className="lp-mark" href="/welcome" aria-label="Badr"><img src={MARK} alt="" width={36} height={36} /><span>{t('Badr')}</span></a>
           <div className="lp-nav__links">
             <a href="#demo">{t('See it work')}</a>
             <a href="#plans">{t('Plans')}</a>
@@ -368,7 +368,7 @@ function MacBand() {
           <div className="lp-mac__panes">
             <div className="lp-mac__side">{TEAM.slice(0, 4).map((b) => <span key={b.id}><img src={b.img} alt="" />{t(b.name)}</span>)}</div>
             <div className="lp-mac__chat"><p /><p /><p className="me" /><p /></div>
-            <div className="lp-mac__browser"><em>Fino Browser</em><div /><div /><div /><span className="lp-cursor lp-cursor--still" style={{ '--x': 0.56, '--y': 0.5 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span></div>
+            <div className="lp-mac__browser"><em>{t('Fino Browser')}</em><div /><div /><div /><span className="lp-cursor lp-cursor--still" style={{ '--x': 0.56, '--y': 0.5 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span></div>
           </div>
         </div>
       </div>
@@ -402,7 +402,7 @@ const PLAN_BY_ID = {
   max: { name: 'Max', price: 99.99, bots: 'Badr + 40 bots', hours: 60, lines: ['Everything in Pro, plus', 'Their own computer · 60 h a month', 'Top AI models included', 'Priority support'] },
   ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Everything in Max, plus', 'Their own computer · 150 h a month', 'Early access to new features'] },
 } as const;
-const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : roles <= 3 ? PLAN_BY_ID.max : PLAN_BY_ID.ultra);
+const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : PLAN_BY_ID.max);
 const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: n % 1 ? 2 : 0, minimumFractionDigits: n % 1 ? 2 : 0 })}`;
 
 function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
@@ -438,7 +438,7 @@ function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean })
           </article>
 
           <article className="lp-slipdoc lp-slipdoc--fino" data-reveal style={{ '--i': 4 } as CSSProperties} aria-label={t('Fino {plan} plan', { plan: plan.name })}>
-            <header><b>Fino {plan.name}</b><span>{usd(plan.price)} · {t('per month')}</span></header>
+            <header><b>{t('Badr')} {plan.name}</b><span>{usd(plan.price)} · {t('per month')}</span></header>
             <dl>
               <div><dt>{t('Bots')}</dt><dd>{t(plan.bots)}</dd></div>
               <div><dt>{t('Their own computer')}</dt><dd>{t('{n} h a month', { n: plan.hours })}</dd></div>
@@ -539,7 +539,7 @@ function FirstSteps() {
 
 /* ---- Plans ---- */
 function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
-  const list = [PLAN_BY_ID.starter, PLAN_BY_ID.pro, PLAN_BY_ID.max, PLAN_BY_ID.ultra];
+  const list = [PLAN_BY_ID.starter, PLAN_BY_ID.pro, PLAN_BY_ID.max];
   return (
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">

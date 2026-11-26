@@ -49,7 +49,7 @@ export function attachDesktopDevices(server:Server){
   const user=userFromCookieHeader(req.headers.cookie),mode=url.searchParams.get('mode');
   if(!user||!allowedOrigin(req.headers.origin)||!['browser','mac'].includes(mode??'')||activeDesktop(user.id)){socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');socket.destroy();return;}
   wss.handleUpgrade(req,socket,head,ws=>{
-   const d:Device={id:randomUUID(),userId:user.id,mode:mode as 'browser'|'mac',name:'Fino Mac',expires:Date.now()+30*60_000,socket:ws};devices.set(user.id,d);
+   const d:Device={id:randomUUID(),userId:user.id,mode:mode as 'browser'|'mac',name:'Badr Mac',expires:Date.now()+30*60_000,socket:ws};devices.set(user.id,d);
    ws.send(JSON.stringify({type:'connected',mode:d.mode,expires:d.expires}));
    const check=setInterval(()=>{if(Date.now()>d.expires||userFromCookieHeader(req.headers.cookie)?.id!==user.id)ws.close(1008,'Local control expired');else ws.ping();},15_000);check.unref();
    ws.on('message',data=>{try{const result=JSON.parse(data.toString()),p=pending.get(result.id);if(!p||p.deviceId!==d.id)return;pending.delete(result.id);clearTimeout(p.timer);if(result.error)p.reject(Error(String(result.error).slice(0,250)));else p.resolve(result.result);}catch{ws.close(1008,'Invalid response');}});

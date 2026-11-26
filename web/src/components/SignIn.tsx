@@ -37,7 +37,7 @@ export function SignIn({ initial = 'signin' }: { initial?: 'signin' | 'signup' }
         <div className="signin__hero">
           <Badr mood="peek" size={112} className="signin__mascot signin__mascot--badr" />
         </div>
-        <h1 className="signin__title">Fino</h1>
+        <h1 className="signin__title">{t('Badr')}</h1>
         <p className="signin__sub">{t("A little company. A lot done. Your AI team, tools and ideas in one place.")}</p>
         {/* The Mac app catches the Google link and signs in natively; email + password works the same everywhere. */}
         <AuthPanel initial={initial} />

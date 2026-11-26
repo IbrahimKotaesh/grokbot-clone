@@ -1,5 +1,11 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Badr 5.1": "بدر 5.1",
+  "Badr 4.8": "بدر 4.8",
+  "Smartest, for long and hard tasks": "الأذكى، للمهام الطويلة والصعبة",
+  "Nothing to sign in to. Badr 4.8 and Badr 5.1, included in your plan.": "ما في شي تسجّل فيه. بدر 4.8 وبدر 5.1 ضمن باقتك.",
+  "Badr 5.1 and Badr 4.8, part of your plan": "بدر 5.1 وبدر 4.8، ضمن باقتك",
+  "Fino Browser": "متصفح بدر",
   "Work out this year’s taxes": "احسب ضرائب هذه السنة",
   "Find cheap flights to Barcelona": "أوجد لي رحلات رخيصة إلى برشلونة",
   "Find cheap flights to Lisbon": "أوجد لي رحلات رخيصة إلى لشبونة",
