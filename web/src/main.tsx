@@ -23,11 +23,16 @@ import './styles/fino.css';
 import './styles/phone-look.css';
 import './styles/workspace.css';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+const root = createRoot(document.getElementById('root')!);
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('badr-preview')) {
+  void import('./dev/BadrPreview').then(({ BadrPreview }) => root.render(<BadrPreview />));
+} else {
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
 
 keepFresh();
 if ('serviceWorker' in navigator) {

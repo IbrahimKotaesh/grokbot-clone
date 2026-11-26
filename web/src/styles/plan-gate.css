@@ -7,9 +7,7 @@
   --gate-card: var(--p-surface);
   position: fixed; inset: 0; z-index: 50; overflow-y: auto; -webkit-overflow-scrolling: touch;
   color: var(--p-text);
-  background:
-    radial-gradient(1100px 520px at 50% -180px, color-mix(in srgb, var(--p-sun) 26%, transparent), transparent 70%),
-    var(--p-bg);
+  background: var(--p-bg);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .gate { --gate-accent-ink: #ff8a6b; } }
 :root[data-theme="dark"] .gate { --gate-accent-ink: #ff8a6b; }
@@ -27,52 +25,58 @@
 .gate__head h1 span, .gate__head h1 em { display: block; }
 .gate__head h1 em { font-style: normal; color: var(--gate-accent-ink); }
 
-/* Plans: a radio group of cards, each in its own color (Starter sun, Pro tomato, Max deep blue).
-   The chosen one lifts and gets an ink ring; the button below takes its color. */
-.gate__plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 40px; }
-.gate__plan--starter { --card: #ffcf3a; --on-card: #211c17; --card-shade: #c79a16; }
-.gate__plan--pro { --card: #c13f22; --on-card: #ffffff; --card-shade: #8e2c16; }
-.gate__plan--max { --card: #2f63b8; --on-card: #ffffff; --card-shade: #1f4787; }
-.gate__plan {
-  position: relative; display: flex; flex-direction: column; padding: 22px 22px 24px; border-radius: 24px; cursor: pointer;
-  background: var(--card); color: var(--on-card); border: 0;
-  box-shadow: inset 0 -4px 0 #0000001f, 0 14px 28px -18px var(--card-shade);
-  transition: box-shadow .25s, transform .3s cubic-bezier(.16, 1, .3, 1);
+/* Plans: flat cards, each in its own soft color (Starter sun, Pro tomato, Max blue), no shadows.
+   The chosen one gets a solid border in its own strong color; the button below takes that color. */
+.gate__plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 40px; }
+.gate__plan--starter { --card: #fff1c2; --accent: #b98600; --accent-strong: #ffcf3a; --accent-ink: #211c17; }
+.gate__plan--pro { --card: #ffe2d8; --accent: #c13f22; --accent-strong: #c13f22; --accent-ink: #ffffff; }
+.gate__plan--max { --card: #dde8fb; --accent: #2f63b8; --accent-strong: #2f63b8; --accent-ink: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .gate__plan--starter { --card: #3a3016; --accent: #ffcf3a; }
+  :root:not([data-theme="light"]) .gate__plan--pro { --card: #3e2018; --accent: #ff8a6b; }
+  :root:not([data-theme="light"]) .gate__plan--max { --card: #1b2840; --accent: #8fb6ff; }
 }
-.gate__plan:hover { transform: translateY(-3px); }
-.gate__plan.is-on { transform: translateY(-6px); box-shadow: inset 0 -4px 0 #0000001f, 0 0 0 3px var(--p-bg), 0 0 0 6px var(--p-text), 0 22px 36px -18px var(--card-shade); }
+:root[data-theme="dark"] .gate__plan--starter { --card: #3a3016; --accent: #ffcf3a; }
+:root[data-theme="dark"] .gate__plan--pro { --card: #3e2018; --accent: #ff8a6b; }
+:root[data-theme="dark"] .gate__plan--max { --card: #1b2840; --accent: #8fb6ff; }
+.gate__plan {
+  position: relative; display: flex; flex-direction: column; padding: 22px; border-radius: 22px; cursor: pointer;
+  background: var(--card); color: var(--p-text); border: 2.5px solid transparent;
+  transition: border-color .2s, transform .3s cubic-bezier(.16, 1, .3, 1);
+}
+.gate__plan:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.gate__plan.is-on { border-color: var(--accent); }
 .gate__plan input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-.gate__plan:has(input:focus-visible) { outline: 3px dashed var(--p-text); outline-offset: 8px; }
+.gate__plan:has(input:focus-visible) { outline: 3px dashed var(--accent); outline-offset: 5px; }
 
 .gate__row { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "name tag dot" "price price price"; align-items: center; row-gap: 14px; }
 .gate__name { grid-area: name; font-family: "Fraunces", Georgia, serif; font-weight: 900; font-size: 1.6rem; line-height: 1; }
 [dir='rtl'] .gate__name { font-family: inherit; font-weight: 800; }
-.gate__tag { grid-area: tag; justify-self: start; margin-inline-start: 10px; padding: 3px 10px 4px; border-radius: 999px; background: #ffcf3a; color: #211c17; font-size: 12.5px; font-weight: 800; line-height: 1.3; white-space: nowrap; box-shadow: 0 2px 0 #0000002e; }
-.gate__dot { grid-area: dot; width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--on-card) 70%, transparent); transition: background-color .2s, box-shadow .2s; }
-.is-on .gate__dot { border-color: var(--on-card); background: var(--on-card); box-shadow: inset 0 0 0 4px var(--card); }
+.gate__tag { grid-area: tag; justify-self: start; margin-inline-start: 10px; padding: 3px 10px 4px; border-radius: 999px; background: var(--accent-strong); color: var(--accent-ink); font-size: 12.5px; font-weight: 800; line-height: 1.3; white-space: nowrap; }
+.gate__dot { grid-area: dot; width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--accent) 55%, transparent); transition: background-color .2s, box-shadow .2s, border-color .2s; }
+.is-on .gate__dot { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 4px var(--card); }
 .gate__price { grid-area: price; display: flex; align-items: baseline; gap: 4px; }
 .gate__price b { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
-.gate__price small { opacity: .82; font-size: .95rem; font-weight: 700; }
+.gate__price small { color: var(--p-muted); font-size: .95rem; font-weight: 700; }
 
-.gate__feats { list-style: none; margin: 18px 0 0; padding: 16px 0 0; border-top: 2px dashed color-mix(in srgb, var(--on-card) 30%, transparent); display: flex; flex-direction: column; gap: 11px; }
-.gate__feats li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.4; font-weight: 700; }
-.gate__tick { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: color-mix(in srgb, var(--on-card) 20%, transparent); color: var(--on-card); }
+.gate__feats { list-style: none; margin: 18px 0 0; padding: 16px 0 0; border-top: 2px dashed color-mix(in srgb, var(--accent) 30%, transparent); display: flex; flex-direction: column; gap: 11px; }
+.gate__feats li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.4; font-weight: 600; }
+.gate__tick { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: var(--accent); color: var(--card); }
 
 /* The one button */
 .gate__cta { max-width: 440px; margin: 34px auto 0; text-align: center; }
 .gate__go {
   display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 58px; padding: 0 28px;
   border: 0; border-radius: 999px; background: var(--gate-accent); color: #ffffff; font: inherit; font-size: 17.5px; font-weight: 800; cursor: pointer;
-  box-shadow: inset 0 -3px 0 #00000026, 0 14px 26px -12px #c13f22b3;
-  transition: background-color .2s, transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s;
+    transition: background-color .2s, transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s;
 }
-.gate__go--starter { --go: #ffcf3a; --go-ink: #211c17; --go-hover: #f2bf1f; --go-glow: #c79a16b3; }
-.gate__go--pro { --go: #c13f22; --go-ink: #ffffff; --go-hover: #a9361c; --go-glow: #c13f22b3; }
-.gate__go--max { --go: #2f63b8; --go-ink: #ffffff; --go-hover: #27539c; --go-glow: #2f63b8b3; }
-.gate__go[class*="gate__go--"] { background: var(--go); color: var(--go-ink); box-shadow: inset 0 -3px 0 #00000026, 0 14px 26px -12px var(--go-glow); }
+.gate__go--starter { --go: #ffcf3a; --go-ink: #211c17; --go-hover: #f2bf1f; }
+.gate__go--pro { --go: #c13f22; --go-ink: #ffffff; --go-hover: #a9361c; }
+.gate__go--max { --go: #2f63b8; --go-ink: #ffffff; --go-hover: #27539c; }
+.gate__go[class*="gate__go--"] { background: var(--go); color: var(--go-ink); }
 .gate__go[class*="gate__go--"]:hover:not(:disabled) { background: var(--go-hover); }
-.gate__go:hover:not(:disabled) { background: #a9361c; transform: translateY(-1px); box-shadow: inset 0 -3px 0 #00000026, 0 18px 30px -12px #c13f22cc; }
-.gate__go:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 -1px 0 #00000026, 0 8px 16px -10px #c13f22b3; }
+.gate__go:hover:not(:disabled) { background: #a9361c; }
+.gate__go:active:not(:disabled) { transform: scale(.98); }
 .gate__go:focus-visible { outline: 3px solid var(--p-sun); outline-offset: 3px; }
 .gate__go:disabled { opacity: .7; cursor: progress; }
 .gate__go svg { transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
@@ -97,7 +101,7 @@
   .gate__head h1 { font-size: 1.95rem; }
   .gate__head p { font-size: 1rem; margin-top: 12px; }
   .gate__plans { grid-template-columns: 1fr; gap: 12px; margin-top: 26px; }
-  .gate__plan, .gate__plan.is-on { padding: 16px 16px; border-radius: 20px; }
+  .gate__plan, .gate__plan.is-on { padding: 16px; border-radius: 20px; }
   .gate__plan:hover, .gate__plan.is-on { transform: none; }
   .gate__row { grid-template-areas: "dot name price"; column-gap: 12px; row-gap: 0; }
   .gate__name { font-size: 1.3rem; }
@@ -116,7 +120,7 @@
 @media (prefers-reduced-motion: reduce) { .is-on .gate__feats { animation: none; } .gate__plan, .gate__go, .gate__go svg { transition: none; } }
 
 /* "You're in": a sticker card that drops in over the team after the first plan starts. */
-.cheer { position: fixed; z-index: 60; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 14px; width: min(440px, calc(100% - 32px)); padding: 14px 18px 14px 14px; border-radius: 22px; background: #c13f22; color: #ffffff; box-shadow: inset 0 -4px 0 #0000001f, 0 22px 40px -16px #8e2c16; transform: translateX(-50%); animation: cheer-in .6s cubic-bezier(.16, 1, .3, 1) both; }
+.cheer { position: fixed; z-index: 60; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 14px; width: min(440px, calc(100% - 32px)); padding: 14px 18px 14px 14px; border-radius: 22px; background: #c13f22; color: #ffffff; transform: translateX(-50%); animation: cheer-in .6s cubic-bezier(.16, 1, .3, 1) both; }
 .cheer > div { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .cheer b { font-family: "Fraunces", Georgia, serif; font-weight: 900; font-size: 1.35rem; line-height: 1.1; }
 [dir='rtl'] .cheer b { font-family: inherit; }
