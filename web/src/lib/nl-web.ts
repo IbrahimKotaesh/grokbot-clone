@@ -1,5 +1,10 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Try {plan} free for 1 day": "Probeer {plan} 1 dag gratis",
+  "Continue with {plan}": "Doorgaan met {plan}",
+  "Nothing to pay today. From {date}, {price} a month. Cancel anytime in one click.": "Vandaag betaal je niets. Vanaf {date}: {price} per maand. Met één klik opzeggen, wanneer je wilt.",
+  "{price} a month. Cancel anytime in one click.": "{price} per maand. Met één klik opzeggen, wanneer je wilt.",
+  "Secure payment by Stripe. Your plan works on the web, Mac and iPhone.": "Veilig betalen via Stripe. Je abonnement werkt op het web, de Mac en de iPhone.",
   "Pick your plan. The first day is free.": "Kies je abonnement. De eerste dag is gratis.",
   "Pick a plan to keep working with your team.": "Kies een abonnement om verder te werken met je team.",
   "Your team is ready. Choose a plan to meet them; you pay nothing today, and you can cancel before the day ends in one click.": "Je team staat klaar. Kies een abonnement om ze te ontmoeten; je betaalt vandaag niets en je zegt met één klik op voordat de dag om is.",
