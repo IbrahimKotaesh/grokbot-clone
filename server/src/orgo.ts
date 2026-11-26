@@ -65,6 +65,8 @@ const cloudComputer = {
   start: (id: string) => call<any>('POST', `/computers/${id}/start`, {}, { timeoutMs: 320_000 }),
   resume: (id: string) => call<any>('POST', `/computers/${id}/resume`, {}, { timeoutMs: 200_000 }),
   suspend: (id: string) => call<any>('POST', `/computers/${id}/suspend`, {}),
+  /** Hourly computers can't suspend; they stop instead (disk kept, memory lost, cold boot on start). */
+  stop: (id: string) => call<any>('POST', `/computers/${id}/stop`, {}),
   vncPassword: (id: string) => call<{ password: string; desktop_api_token: string }>('GET', `/computers/${id}/vnc-password`),
 
   listScreens: (id: string) => call<{ screens: OrgoScreen[] } | OrgoScreen[]>('GET', `/computers/${id}/screens`).then((r) => (Array.isArray(r) ? r : r.screens ?? [])),

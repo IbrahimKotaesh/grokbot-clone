@@ -14,6 +14,14 @@ import type { ComputerState } from './types.js';
  */
 
 const MAX_SCREENS = 4;
+
+// Moving from the built-in local desktop to Orgo: the local box ("local") means nothing to Orgo,
+// so those users simply get a fresh Orgo computer the first time a bot needs one.
+if (env.computerProvider !== 'local') {
+  const moved = db.prepare("SELECT user_id FROM computers WHERE orgo_id='local'").all() as { user_id: string }[];
+  for (const m of moved) db.prepare('DELETE FROM screens WHERE user_id=?').run(m.user_id);
+  if (moved.length) db.prepare("UPDATE computers SET orgo_id=NULL, status='absent', error=NULL WHERE orgo_id='local'").run();
+}
 const inflight = new Map<string, Promise<string>>();
 
 function rowFor(userId: string) {
@@ -260,9 +268,18 @@ export function suspendComputer(userId: string, reason = 'manual'): Promise<void
     console.log(`[computer] suspend user=${userId} computer=${r.orgo_id} reason=${reason}`);
     setStatus(userId, 'suspending');
     try {
-      await orgo.suspend(r.orgo_id);
-      setStatus(userId, 'suspended');
-      console.log(`[computer] suspended user=${userId}`);
+      try {
+        await orgo.suspend(r.orgo_id);
+        setStatus(userId, 'suspended');
+        console.log(`[computer] suspended user=${userId}`);
+      } catch (e) {
+        // Orgo computers billed by the hour can't suspend: stop them instead so they cost only disk while idle.
+        if (!(e instanceof OrgoError && e.code === 'HOURLY_USE_STOP') || !('stop' in orgo)) throw e;
+        await (orgo as { stop: (id: string) => Promise<unknown> }).stop(r.orgo_id);
+        db.prepare('DELETE FROM screens WHERE user_id=?').run(userId); // a cold boot brings back only the default screen
+        setStatus(userId, 'stopped');
+        console.log(`[computer] stopped (hourly) user=${userId}`);
+      }
     } catch (e: any) {
       console.warn(`[computer] suspend failed user=${userId}: ${e?.message ?? e}`);
       setStatus(userId, 'running', { error: String(e?.message ?? e) });
