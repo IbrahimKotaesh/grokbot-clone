@@ -5,10 +5,10 @@ import { CLAY, characterDataUri } from '../../../packages/contracts/src/characte
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import { lang, setLangChoice, t } from '../lib/i18n';
 import '../styles/landing.css';
-import { BlurWords, ScrollContainer, ScrollFade } from '../lib/motion';
+import { BlurWords, ScrollContainer } from '../lib/motion';
 
 /** A section headline: words arrive out of a blur, and it fades away as it scrolls off the top. */
-const Headline = ({ text }: { text: string }) => <ScrollFade fadeIn={false}><BlurWords as="h2" className="lp-h2" when="view" text={text} /></ScrollFade>;
+const Headline = ({ text }: { text: string }) => <BlurWords as="h2" className="lp-h2" when="view" fadeOut text={text} />;
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
 

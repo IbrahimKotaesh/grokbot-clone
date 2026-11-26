@@ -23,18 +23,25 @@ const tags = new Map<ElementType, any>();
 const motionTag = (as: ElementType) => { let c = tags.get(as); if (!c) { c = motion.create(as as any); tags.set(as, c); } return c; };
 
 /** Text that appears word by word out of a blur. `when="view"` waits until it scrolls into view. */
-export function BlurWords({ text, as = 'span', className, delay = 0, stagger = 0.06, when = 'mount' }: {
+export function BlurWords({ text, as = 'span', className, delay = 0, stagger = 0.06, when = 'mount', fadeOut = false }: {
   text: string; as?: ElementType; className?: string; delay?: number; stagger?: number; when?: 'mount' | 'view';
+  /** Also fade softly away as it scrolls off the top (Apple's product pages). */
+  fadeOut?: boolean;
 }) {
   const reduce = useReducedMotion();
   const root = useContext(ScrollRoot);
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, container: root ?? undefined, offset: ['start end', 'end start'] });
+  const outOpacity = useTransform(scrollYProgress, [0, 0.8, 1], [1, 1, 0]);
+  const outBlur = useTransform(scrollYProgress, [0, 0.82, 1], [0, 0, reduce ? 0 : 6]);
+  const outFilter = useTransform(outBlur, (b: number) => (b > 0.05 ? `blur(${b}px)` : 'none'));
   const Tag = motionTag(as);
   const words = text.split(/(\s+)/);
   const hidden = reduce ? { opacity: 0 } : { opacity: 0, y: '0.32em', filter: 'blur(10px)' };
   const shown = { opacity: 1, y: 0, filter: 'blur(0px)' };
   let n = 0;
   return (
-    <Tag className={className} dir={rtl(text) ? 'rtl' : undefined} aria-label={text}
+    <Tag ref={ref} className={className} dir={rtl(text) ? 'rtl' : undefined} aria-label={text} style={fadeOut ? { opacity: outOpacity, filter: outFilter } : undefined}
       initial="hidden" {...(when === 'view' ? { whileInView: 'shown', viewport: { once: true, amount: 0.6, root: root ?? undefined } } : { animate: 'shown' })}>
       {words.map((w, i) => /^\s+$/.test(w) ? w : (
         <motion.span key={i} aria-hidden style={{ display: 'inline-block', willChange: 'transform, filter, opacity' }}
@@ -55,7 +62,7 @@ export function ScrollFade({ children, className, as = 'div', fadeIn = true, out
   const opacity = useTransform(scrollYProgress, [0, 0.22, 0.8, 1], [fadeIn ? 0 : 1, 1, 1, out ? 0 : 1]);
   const y = useTransform(scrollYProgress, [0, 0.25], [reduce || !fadeIn ? 0 : 40, 0]);
   const blur = useTransform(scrollYProgress, [0, 0.2, 0.82, 1], [reduce || !fadeIn ? 0 : 8, 0, 0, reduce || !out ? 0 : 6]);
-  const filter = useTransform(blur, (b) => (b > 0.05 ? `blur(${b}px)` : 'none'));
+  const filter = useTransform(blur, (b: number) => (b > 0.05 ? `blur(${b}px)` : 'none'));
   const Tag = motionTag(as);
   return <Tag ref={ref} className={className} style={{ opacity, y, filter }}>{children}</Tag>;
 }
