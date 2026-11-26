@@ -12,6 +12,7 @@ import { appendRow, emitBot, getBotRow, getLive, listRoutines, listTasks, update
 import { enqueue } from './agent/loop.js';
 import { computerState } from './computer.js';
 import { falSpeak, falVoiceReady, mintRelayTicket } from './fal-voice.js';
+import { CAST } from './voice-cast.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
 export const voiceApi = new Hono<AuthVars>();
@@ -42,23 +43,6 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: 'es-MX', name: 'Spanish (Mexico)' }, { code: 'es-ES', name: 'Spanish (Spain)' }, { code: 'tr', name: 'Turkish' }, { code: 'vi', name: 'Vietnamese' },
 ];
 export const SPEEDS = [0.7, 0.85, 1, 1.15, 1.3, 1.5];
-
-let voiceCache: { at: number; voices: VoiceOption[] } | null = null;
-async function listVoices(): Promise<VoiceOption[]> {
-  if (voiceCache && Date.now() - voiceCache.at < 3600_000) return voiceCache.voices;
-  try {
-    const r = await fetch(`${XAI}/tts/voices`, { headers: xaiHeaders(), signal: AbortSignal.timeout(8000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const j = (await r.json()) as { voices?: { voice_id: string; name?: string; gender?: string }[] };
-    const voices = (j.voices ?? []).map((v) => ({ id: v.voice_id, name: v.name ?? v.voice_id, gender: v.gender }));
-    if (!voices.length) throw new Error('empty list');
-    voiceCache = { at: Date.now(), voices };
-  } catch (e: any) {
-    console.warn('[voice] voice list unavailable, using static list:', e?.message);
-    voiceCache = { at: Date.now() - 3000_000, voices: FALLBACK_VOICES }; // retry in ~10 min
-  }
-  return voiceCache.voices;
-}
 
 const clampSpeed = (s: unknown) => {
   const n = Number(s);
@@ -174,9 +158,10 @@ function voiceInstructions(userId: string, bot: any, language: string): string {
   const routines = listRoutines(bot.id).filter((r) => r.enabled).slice(0, 6).map((r) => `- ${r.name}: ${r.description}`).join('\n');
   const recent = recentMessages(bot.id, 14).map((m) => `[${ago(m.at)}] ${m.who}: ${clip(m.text.replace(/\s+/g, ' '), 400)}`).join('\n');
   const lang = language !== 'auto' ? langName(language) : null;
+  const voiceGender = (CAST.find((v) => v.id === bot.voice) ?? FALLBACK_VOICES.find((v) => v.id === bot.voice))?.gender;
 
   return `# Who you are
-You are ${bot.name}, on a live voice call with ${firstName}, the person you work for. You are an AI Bot on their Grokbot team${bot.label ? `, and your job is: ${bot.label}` : ''}.${bot.description ? ` ${bot.description}` : ''}${bot.is_primary ? ` You are ${firstName}'s primary Bot and main point of contact.` : ''}
+You are ${bot.name}, on a live voice call with ${firstName}, the person you work for. You are an AI Bot on their Badr team${bot.label ? `, and your job is: ${bot.label}` : ''}.${bot.description ? ` ${bot.description}` : ''}${bot.is_primary ? ` You are ${firstName}'s primary Bot and main point of contact.` : ''}
 You are the same ${bot.name} they text with: the same memory, the same computer, the same connected apps. This call is just another way to talk to you.
 
 # How to get things done
@@ -205,7 +190,8 @@ Only report a task as done once its result has actually come back. If you handed
 # Voice
 - Speak naturally, like a sharp colleague on the phone. Contractions are good.
 - Spoken words only: no markdown, lists, URLs, file paths, IDs or code. Say numbers and dates the way people say them.
-- Summarise; don't read long text verbatim.${lang ? `\n- Speak ${lang} unless ${firstName} clearly switches language.` : `\n- Reply in the language ${firstName} speaks.`}
+- Summarise; don't read long text verbatim.${lang?.startsWith('Arabic') ? `\n- Speak Arabic unless ${firstName} clearly switches language.` : lang ? `\n- Speak ${lang} unless ${firstName} clearly switches language.` : `\n- Reply in the language ${firstName} speaks.`}
+- In Arabic, talk the way ${firstName} talks: the same dialect (Levantine/Shami, Egyptian, Gulf, Maghrebi…), everyday spoken Arabic with its natural words and rhythm. Never formal Fusha unless they use it.${voiceGender ? `\n- Your voice is a ${voiceGender === 'female' ? "woman's" : "man's"}. Speak of yourself as a ${voiceGender === 'female' ? 'woman' : 'man'} (in Arabic: ${voiceGender === 'female' ? 'أنا جاهزة، رح شوف' : 'أنا جاهز، رح شوف'}).` : ''}
 
 # Ground rules
 - Stay in persona as ${bot.name}. Never say you are a separate voice assistant, model or relay.
@@ -236,7 +222,8 @@ const fmtDuration = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 };
 
-voiceApi.get('/options', async (c) => c.json({ voices: await listVoices(), languages: LANGUAGES, speeds: SPEEDS }));
+// Settings offers the shortlist (four women's, four men's voices); older picks outside it still work.
+voiceApi.get('/options', (c) => c.json({ voices: CAST, languages: LANGUAGES, speeds: SPEEDS }));
 
 voiceApi.post('/session', async (c) => {
   const user = c.get('user');

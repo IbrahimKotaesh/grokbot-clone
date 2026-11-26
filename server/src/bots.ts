@@ -1,4 +1,5 @@
 import { db, now } from './db.js';
+import { castVoice } from './voice-cast.js';
 import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
 import { getBot } from './store.js';
@@ -21,5 +22,6 @@ export function createBot(userId: string, b: { name: string; label?: string; des
     'INSERT INTO bots(id,user_id,name,label,description,instructions,avatar_shape,avatar_color,mode,is_primary,voice_language,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
   ).run(id, userId, b.name.trim().slice(0, 60) || 'New Bot', b.label ?? '', b.description ?? '', b.instructions ?? '', shape, color, b.mode === 'teammate' ? 'teammate' : 'personal', b.isPrimary ? 1 : 0, 'ar-SA', now(), now());
   hub.emit(userId, { type: 'roster' });
+  void castVoice(id).catch(() => {});
   return getBot(id)!;
 }

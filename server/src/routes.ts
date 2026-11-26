@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { markVoiceChosen } from './voice-cast.js';
 import { falVoiceReady } from './fal-voice.js';
 import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
@@ -283,6 +284,8 @@ api.patch('/bots/:id', async (c) => {
   if ((p.agentProvider !== undefined || p.model !== undefined) && getLive(b.id).isRunning) return c.json({error:'Wait for the current turn to finish before changing models.'},409);
   if(p.agentProvider!==undefined&&p.agentProvider!==(b.agent_provider??env.agentProvider))invalidateProviderSession(b.id,p.agentProvider);
   const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
+  if (p.voice !== undefined && (typeof p.voice !== 'string' || !/^[a-z0-9_-]{1,40}$/i.test(p.voice))) return c.json({ error: 'Choose a voice from the list.' }, 400);
+  if (p.voice !== undefined) markVoiceChosen(b.id);
   for (const [k, col] of Object.entries(cols)) {
     if (p[k] !== undefined) db.prepare(`UPDATE bots SET ${col}=?, updated_at=? WHERE id=?`).run(typeof p[k] === 'boolean' ? (p[k] ? 1 : 0) : p[k], now(), b.id);
   }
