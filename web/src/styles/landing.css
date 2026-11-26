@@ -688,3 +688,4 @@
 @media (min-width: 1081px) {
   .lp-bubble-slot { right: 0; bottom: calc(100% + 18px); width: min(340px, 30vw); }
 }
+@media (max-width: 560px) { .lp-team { margin-top: 96px; } }
