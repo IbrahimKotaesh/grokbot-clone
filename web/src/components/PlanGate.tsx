@@ -69,7 +69,9 @@ export function PlanGate({ children }: { children: ReactNode }) {
       <main className="gate__in">
         <header className="gate__head">
           <img className="gate__badr" src={BADR} alt="" width={76} height={76} />
-          <h1>{trial ? t('Pick your plan. The first day is free.') : t('Pick a plan to keep working with your team.')}</h1>
+          <h1>{trial
+            ? <><span>{t('Pick your plan.')}</span> <em>{t('The first day is free.')}</em></>
+            : t('Pick a plan to keep working with your team.')}</h1>
           <p>{trial
             ? t('Your team is ready. Choose a plan to meet them; you pay nothing today, and you can cancel before the day ends in one click.')
             : t('Your free day or plan has ended. Choose a plan and your bots pick up right where they left off.')}</p>
@@ -102,13 +104,13 @@ export function PlanGate({ children }: { children: ReactNode }) {
             {!busy && <ArrowRight size={20} strokeWidth={2.6} aria-hidden />}
           </button>
           <p className="gate__then">{trial
-            ? t('Nothing to pay today. From {date}, {price} a month. Cancel anytime in one click.', { date: tomorrow, price })
-            : t('{price} a month. Cancel anytime in one click.', { price })}</p>
+            ? t('Free today, then {price} a month from {date}. Cancel anytime.', { date: tomorrow, price })
+            : t('{price} a month. Cancel anytime.', { price })}</p>
           {error && <p className="gate__error" role="alert">{error}</p>}
         </div>
 
         <footer className="gate__foot">
-          <span><Lock size={13} strokeWidth={2.4} aria-hidden /> {t('Secure payment by Stripe. Your plan works on the web, Mac and iPhone.')}</span>
+          <p><Lock size={13} strokeWidth={2.4} aria-hidden /> {t('Secure payment by Stripe. Your plan works on the web, Mac and iPhone.')}</p>
           <button type="button" onClick={() => void api.logout().finally(() => location.assign('/welcome'))}>{t('Sign out')}</button>
         </footer>
       </main>

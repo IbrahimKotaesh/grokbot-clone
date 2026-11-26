@@ -1,5 +1,9 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Pick your plan.": "Kies je abonnement.",
+  "The first day is free.": "De eerste dag is gratis.",
+  "Free today, then {price} a month from {date}. Cancel anytime.": "Vandaag gratis, daarna {price} per maand vanaf {date}. Altijd opzegbaar.",
+  "{price} a month. Cancel anytime.": "{price} per maand. Altijd opzegbaar.",
   "Try {plan} free for 1 day": "Probeer {plan} 1 dag gratis",
   "Continue with {plan}": "Doorgaan met {plan}",
   "Nothing to pay today. From {date}, {price} a month. Cancel anytime in one click.": "Vandaag betaal je niets. Vanaf {date}: {price} per maand. Met één klik opzeggen, wanneer je wilt.",

@@ -1,5 +1,9 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Pick your plan.": "اختر باقتك.",
+  "The first day is free.": "اليوم الأول مجاني.",
+  "Free today, then {price} a month from {date}. Cancel anytime.": "مجاني اليوم، وبعدين ‏{price} بالشهر من {date}. فيك تلغي بأي وقت.",
+  "{price} a month. Cancel anytime.": "‏{price} بالشهر. فيك تلغي بأي وقت.",
   "Try {plan} free for 1 day": "جرّب {plan} مجاناً ليوم كامل",
   "Continue with {plan}": "كمّل مع {plan}",
   "Nothing to pay today. From {date}, {price} a month. Cancel anytime in one click.": "ما في شي تدفعه اليوم. من {date}: ‏{price} بالشهر. فيك تلغي بأي وقت بكبسة وحدة.",
