@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { falVoiceReady } from './fal-voice.js';
 import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
 import { accountApi } from './account.js';
@@ -752,7 +753,8 @@ api.delete('/policies/:tool', (c) => {
 // Private transcription works with either subscription provider.
 api.route('/voice', transcriptionApi);
 api.use('/voice/*', async (c, next) => {
-  if (env.agentProvider !== 'xai') return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
+  // Grok Voice needs either the xAI runtime or the fal relay (fal-voice.ts).
+  if (env.agentProvider !== 'xai' && !falVoiceReady()) return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
   await next();
 });
 api.route('/voice', voiceApi);
