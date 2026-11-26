@@ -631,11 +631,11 @@
 .lp-s4 { top: 72%; left: 27%; width: 34%; background: #7b68d6; }
 
 /* The desk: one cream bar across the team (each station draws its own piece), keyboards and hands on top. */
-.lp-deskbar { position: relative; z-index: 3; display: block; width: 101%; height: 13cqw; margin-top: -17cqw; border-block: 2.5px solid #211c17; background: #fff8ee; box-shadow: 0 4px 0 #211c17; }
+.lp-deskbar { position: relative; z-index: 3; display: block; width: 101%; --desk: clamp(12px, 1.5vw, 20px); height: var(--desk); margin-top: calc(-4cqw - var(--desk) - 5px); border-block: 2.5px solid #211c17; background: #fff8ee; box-shadow: 0 4px 0 #211c17; }
 .lp-bot:first-of-type .lp-deskbar { border-left: 2.5px solid #211c17; border-radius: 12px 0 0 12px; }
 .lp-bot:last-of-type .lp-deskbar { border-right: 2.5px solid #211c17; border-radius: 0 12px 12px 0; }
 .lp-kb { position: absolute; left: 50%; top: -4cqw; width: 54cqw; height: 9cqw; margin-left: -27cqw; border: 2px solid #211c17; border-radius: 5px; background: #3a322b radial-gradient(circle, #fff8ee88 1.1px, transparent 1.6px) 0 0 / 6cqw 3.6cqw; }
-.lp-hand { position: absolute; top: -5cqw; left: 12%; width: 13cqw; height: 11cqw; border: 2px solid #211c17; border-radius: 50% 50% 45% 45%; background: var(--c); animation: lp-tap .34s var(--k, 0s) ease-in-out infinite alternate; }
+.lp-hand { position: absolute; top: -1.5cqw; left: 14%; width: 12cqw; height: 9cqw; box-shadow: inset 0 -2.5cqw 0 #0000002e; border: 2px solid #211c17; border-radius: 50% 50% 45% 45%; background: var(--c); animation: lp-tap .34s var(--k, 0s) ease-in-out infinite alternate; }
 .lp-hand--r { left: auto; right: 12%; animation-delay: calc(var(--k, 0s) - .17s); }
 @keyframes lp-tap { from { transform: translateY(0); } to { transform: translateY(-3.5cqw) rotate(-6deg); } }
 /* Every few seconds a bot stops typing for a breath, so the four hands don't look like a machine. */
@@ -657,7 +657,7 @@
 @keyframes lp-sway-r { from { transform: rotate(26deg); } to { transform: rotate(36deg); } }
 
 .lp-bot figcaption { position: relative; z-index: 4; margin-top: 12px; }
-.lp-team { align-items: flex-start; }
+.lp-team { align-items: flex-end; }
 .lp-bubble-slot { bottom: 120px; }
 
 /* Arabic reads from the right: the scene moves to the left of the opening and the bubble to its right. */
