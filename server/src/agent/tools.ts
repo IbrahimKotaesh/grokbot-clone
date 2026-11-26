@@ -18,6 +18,7 @@ import { orgo } from '../orgo.js';
 import { restartBotComputer, screenFor } from '../computer.js';
 import { OFFICE_TOOLS, OFFICE_READS } from './office-tools.js';
 import { EMAIL_TOOLS, EMAIL_SAFE } from './email-tools.js';
+import { IMAGE_TOOLS, IMAGE_SAFE } from './image-tools.js';
 import { browserTools, BROWSER_READS } from './browser-tools.js';
 import { appendRow, updateRow, getBotRow, listRows, listRoutines, toRoutine, describeCron } from '../store.js';
 import { readPage } from './read-page.js';
@@ -880,6 +881,7 @@ print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()
 
 TOOLS.push(...(OFFICE_TOOLS as ToolDef[]));
 TOOLS.push(...(EMAIL_TOOLS as ToolDef[]));
+TOOLS.push(...(IMAGE_TOOLS as ToolDef[]));
 // browser_navigate opens Chrome through open_browser when it isn't running yet.
 TOOLS.push(...(browserTools((url, ctx) => TOOLS.find((t) => t.name === 'open_browser')!.impl({ url }, ctx), (ctx, x, y, action) => pointer(ctx, x, y, action)) as ToolDef[]));
 export const toolMap = new Map(TOOLS.map((t) => [t.name, t]));
@@ -910,7 +912,7 @@ export function policyKeys(toolName: string, args: any): string[] {
 /** Sites that block plain page fetches for bots; read_page opens these in the bot's browser straight away. */
 const BROWSER_FIRST = /^https?:\/\/([a-z0-9-]+\.)*(linkedin\.com|indeed\.(com|nl)|glassdoor\.[a-z.]+|facebook\.com|instagram\.com|x\.com|twitter\.com)(\/|$)/i;
 
-const SAFE_LOCAL = new Set([...OFFICE_READS,...EMAIL_SAFE,...BROWSER_READS,'react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
+const SAFE_LOCAL = new Set([...OFFICE_READS,...EMAIL_SAFE,...IMAGE_SAFE,...BROWSER_READS,'react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {
