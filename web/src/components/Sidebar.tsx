@@ -59,9 +59,12 @@ const readFolded = (): string[] => { try { return JSON.parse(localStorage.getIte
 /** A name field for a new or renamed folder: Enter saves, Escape or leaving empty cancels. */
 function FolderName({ initial, onSave, onCancel }: { initial: string; onSave: (name: string) => void; onCancel: () => void }) {
   const [v, setV] = useState(initial);
+  const input = useRef<HTMLInputElement>(null);
+  // Focus after the drawer (phones) has opened and moved focus itself.
+  useEffect(() => { const id = setTimeout(() => { input.current?.focus(); input.current?.select(); }, 80); return () => clearTimeout(id); }, []);
   return (
     <form className="folder__form" onSubmit={(e) => { e.preventDefault(); v.trim() ? onSave(v.trim()) : onCancel(); }}>
-      <input autoFocus value={v} maxLength={60} placeholder={t('Folder name, like YouTube team')} aria-label={t('Folder name')}
+      <input ref={input} value={v} maxLength={60} placeholder={t('Folder name, like YouTube team')} aria-label={t('Folder name')}
         onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }} onBlur={() => (v.trim() && v.trim() !== initial ? onSave(v.trim()) : onCancel())} />
     </form>
   );

@@ -71,7 +71,7 @@ export function ChatView() {
               items={[
                 ...folders.map((f) => ({ label: f.name, selected: bot.folderId === f.id, onSelect: () => void foldersApi.move(bot.id, f.id).catch((e) => flash(e.message)) })),
                 { label: t("No folder"), selected: !bot.folderId || !folders.some((f) => f.id === bot.folderId), onSelect: () => void foldersApi.move(bot.id, null).catch((e) => flash(e.message)) },
-                { label: t("New folder…"), onSelect: () => { useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false }); window.dispatchEvent(new CustomEvent('badr:new-folder', { detail: { botId: bot.id } })); } },
+                { label: t("New folder…"), onSelect: () => { useStore.getState().set(matchMedia('(max-width: 900px)').matches ? { mobileNavOpen: true } : { sidebarCollapsed: false }); window.dispatchEvent(new CustomEvent('badr:new-folder', { detail: { botId: bot.id } })); } },
               ]}
             />
           )}
