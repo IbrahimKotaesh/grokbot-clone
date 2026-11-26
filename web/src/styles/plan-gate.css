@@ -79,7 +79,7 @@
 .gate__error { margin: 12px 0 0; color: var(--p-red); font-weight: 700; font-size: 14.5px; }
 
 .gate__foot { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 20px; margin-top: 26px; color: var(--p-faint); font-size: 13px; font-weight: 600; text-align: center; }
-.gate__foot p { margin: 0; max-width: 46ch; line-height: 1.5; }
+.gate__foot p { margin: 0; line-height: 1.5; }
 .gate__foot p svg { display: inline-block; vertical-align: -2px; margin-inline-end: 4px; }
 .gate__foot button { border: 0; padding: 4px 2px; background: none; color: var(--p-muted); font: inherit; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .gate__foot button:focus-visible { outline: 2px solid var(--p-sun); outline-offset: 2px; border-radius: 4px; }

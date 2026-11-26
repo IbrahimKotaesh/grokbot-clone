@@ -73,7 +73,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
             ? <><span>{t('Pick your plan.')}</span> <em>{t('The first day is free.')}</em></>
             : t('Pick a plan to keep working with your team.')}</h1>
           <p>{trial
-            ? t('Your team is ready. Choose a plan to meet them; you pay nothing today, and you can cancel before the day ends in one click.')
+            ? t('Your team is ready and waiting. Pick a plan to meet them.')
             : t('Your free day or plan has ended. Choose a plan and your bots pick up right where they left off.')}</p>
           {billingReturn === 'cancel' && <p className="gate__note" role="status">{t('No problem. Pick a plan whenever you’re ready.')}</p>}
         </header>
@@ -87,7 +87,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
                 <span className="gate__row">
                   <span className="gate__dot" aria-hidden />
                   <span className="gate__name">{t(p.name)}</span>
-                  {p.id === 'pro' && <span className="gate__tag">{t('Most teams')}</span>}
+                  {p.id === 'pro' && <span className="gate__tag">{t('Best fit')}</span>}
                   <span className="gate__price"><b>${p.priceUsd}</b><small>{t('/month')}</small></span>
                 </span>
                 <ul className="gate__feats">
