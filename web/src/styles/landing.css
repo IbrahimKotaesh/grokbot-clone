@@ -745,7 +745,7 @@
 @media (max-width: 560px) { :root:lang(ar) .lp .lp-open .lp-h1 { font-size: 2.7rem; max-width: 12ch; } }
 
 /* ===== Smooth everywhere: no sharp corners on any frame ===== */
-.lp .lp-plans__row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; background: none; box-shadow: none; border-radius: 0; }
+.lp .lp-plans__row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; background: none !important; box-shadow: none !important; border: 0 !important; border-radius: 0; }
 .lp .lp-plans__row > li { border-radius: 26px; border: 1.5px solid var(--lp-line); background: var(--lp-card); overflow: hidden; }
 .lp .lp-plans__row > li.is-pick { border-radius: 26px; background: var(--lp-blue); border-color: var(--lp-blue); color: #fff; }
 @media (max-width: 860px) { .lp .lp-plans__row { grid-template-columns: 1fr; } }
