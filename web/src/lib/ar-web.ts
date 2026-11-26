@@ -1,5 +1,7 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Find five flats near work": "ابحث عن 5 شقق قرب عملي",
+  "Answer my new emails": "ردّ على رسائلي الجديدة",
   // Landing page, sign-in and setup (added with the Arabic landing).
   "40 a week each": "40 ساعة أسبوعيًا لكل واحد",
   "A team for less than one day of wages.": "فريق بأقل من أجر يوم واحد",

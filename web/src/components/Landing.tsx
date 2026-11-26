@@ -31,10 +31,35 @@ const QUINN = TEAM[1];
 const MARK = characterDataUri('accountant', 'yellow');
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
+// Short jobs that type themselves into the empty task box, one after another; each fits the box on a phone.
+const HINTS = ['Find five flats near work', 'Answer my new emails', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
+
+/** The task box's placeholder, typed and erased like someone trying ideas. Still with reduced motion. */
+function useTypedHint() {
+  const [hint, setHint] = useState(() => t(HINTS[0]));
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let i = 0, n = t(HINTS[0]).length, dir = -1;
+    let timer = 0;
+    const tick = () => {
+      const full = t(HINTS[i]);
+      n += dir;
+      setHint(full.slice(0, Math.max(0, n)));
+      let wait = dir > 0 ? 60 + Math.random() * 50 : 26;
+      if (dir > 0 && n >= full.length) { dir = -1; wait = 2200; }
+      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % HINTS.length; wait = 380; }
+      timer = window.setTimeout(tick, wait);
+    };
+    timer = window.setTimeout(tick, 2600);
+    return () => clearTimeout(timer);
+  }, []);
+  return hint;
+}
 
 export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (mode: 'signin' | 'signup') => void }) {
   const [task, setTask] = useState('');
   const [said, setSaid] = useState<Bot | null>(null);
+  const hint = useTypedHint();
   const root = useRef<HTMLDivElement>(null);
   useReveal(root);
   const start = (mode: 'signin' | 'signup' = 'signup') => {
@@ -80,7 +105,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
           <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
             <label htmlFor="lp-task" className="lp-sr">{t('What should your team do?')}</label>
-            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={t('Find five flats near my office and compare the rent…')} autoComplete="off" maxLength={2000} />
+            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={hint} autoComplete="off" maxLength={2000} />
             <button type="submit" className="lp-slip__go">{t(signedIn ? 'Open Fino' : 'Get started')} <ArrowRight size={20} strokeWidth={2.4} aria-hidden /></button>
           </form>
           <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label={t('Example jobs')}>

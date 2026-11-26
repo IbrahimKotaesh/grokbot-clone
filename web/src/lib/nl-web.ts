@@ -1,5 +1,7 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Find five flats near work": "Vind vijf flats bij mijn werk",
+  "Answer my new emails": "Beantwoord mijn nieuwe mails",
   "Automatic": "Automatisch",
   "Your choice is saved on this device. Automatic picks by where you are: Dutch in the Netherlands, Arabic in the Arab world, English everywhere else.": "Je keuze wordt op dit apparaat bewaard. Automatisch kiest op basis van waar je bent: Nederlands in Nederland, Arabisch in de Arabische wereld, en verder Engels.",
   " as const, label: ": " als const, label: ",
