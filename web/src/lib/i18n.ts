@@ -39,9 +39,11 @@ export const isArabic = lang === 'ar';
 export const locale = lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-GB';
 const dict: Record<string, string> = isArabic ? { ...phone, ...arWeb } : lang === 'nl' ? { ...phoneNl, ...nlWeb } : {};
 
+// In Arabic the layout stays exactly like English (left to right): menus, sidebar, bubbles and buttons don't move.
+// Only Arabic text itself runs right to left (see the :lang(ar) rule in styles/polish.css).
 if (typeof document !== 'undefined') {
   document.documentElement.lang = lang;
-  document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
+  document.documentElement.dir = 'ltr';
 }
 
 /** Translate an English UI string. `{name}` placeholders are filled from `vars`. */
