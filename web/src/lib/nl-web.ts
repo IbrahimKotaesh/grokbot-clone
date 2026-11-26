@@ -1,5 +1,10 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Work out this year’s taxes": "Bereken de belasting van dit jaar",
+  "Find cheap flights to Barcelona": "Zoek goedkope vluchten naar Barcelona",
+  "Find cheap flights to Lisbon": "Zoek goedkope vluchten naar Lissabon",
+  "What’s on my plate today?": "Wat staat er vandaag op mijn lijst?",
+  "Write an email for me": "Schrijf een e-mail voor me",
   "Meet your team": "Ontmoet je team",
   "Badr + 5 bots": "Badr + 5 bots",
   "Badr + 15 bots": "Badr + 15 bots",

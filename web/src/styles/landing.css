@@ -709,3 +709,6 @@
 
 /* "Everything in Starter, plus": a small lead-in line above what the plan adds. */
 .lp-plans__plus { font-weight: 800; opacity: .8; }
+
+/* Arabic: the page keeps its left-to-right layout, but Arabic headings and paragraphs read and line up from the right. */
+:root:lang(ar) .lp :is(h1, h2, h3, p:not(.lp-models), li, dt, dd, blockquote) { direction: rtl; text-align: right; }

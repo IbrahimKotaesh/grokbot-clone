@@ -30,9 +30,9 @@ const QUINN = TEAM[1];
 // Badr, Fino's main character, is the logo: yellow on the tomato header.
 const MARK = characterDataUri('accountant', 'yellow');
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
-const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
+const EXAMPLES = ['Summarize this report', 'Work out this year’s taxes', 'Find cheap flights to Barcelona', 'What’s on my plate today?', 'Write an email for me'];
 // Short jobs that type themselves into the empty task box, one after another; each fits the box on a phone.
-const HINTS = ['Find five flats near work', 'Answer my new emails', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
+const HINTS = ['Write an email for me', 'Find cheap flights to Lisbon', 'What’s on my plate today?', 'Work out this year’s taxes', 'Summarize this report'];
 
 /** The task box's placeholder, typed and erased like someone trying ideas. Still with reduced motion. */
 function useTypedHint() {
