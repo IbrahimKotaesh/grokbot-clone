@@ -727,7 +727,8 @@
 
 /* Section openings: heading and intro on the center line */
 .lp :is(.lp-demo, .lp-jobs, .lp-steps, .lp-charge, .lp-plans, .lp-cost) > .lp-wrap > :is(.lp-h2, .lp-copy, .lp-fine) { margin-inline: auto; text-align: center; }
-.lp .lp-cost .lp-stepper, .lp .lp-cost .lp-stepper-row { margin-inline: auto; }
+.lp .lp-cost .lp-cost__ask { justify-content: center; text-align: center; }
+.lp .lp-cost .lp-cost__out { flex-direction: column; justify-content: center; text-align: center; }
 
 /* Arabic: a rounded Arabic display face that matches Badr (Baloo Bhaijaan 2), Tajawal for body text.
    Two-column blocks stack on the center line, and text inside cards reads right to left. */
