@@ -166,3 +166,9 @@
   .cal-nav__range { width: 100%; margin: 4px 0 0; order: 4; }
   .cal-nav { flex-wrap: wrap; }
 }
+@media (max-width: 900px) {
+  .page-view__title { display: none; } /* the top bar already names the page */
+  .page-view__sub { margin-top: 0; }
+  .cal-day { scroll-margin-top: 8px; }
+}
+@media (hover: none), (max-width: 900px) { .side-search kbd { display: none; } }

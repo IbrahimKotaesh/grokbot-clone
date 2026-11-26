@@ -49,6 +49,10 @@ export function CalendarView() {
       .then((r) => (r.ok ? r.json() : { events: [] })).then((d) => on && setEvents(d.events ?? [])).catch(() => on && setEvents([]));
     return () => { on = false; };
   }, [offset, v]);
+  // On a phone the week is a list: open it at today instead of Monday.
+  useEffect(() => {
+    if (events && offset === 0 && matchMedia('(max-width: 900px)').matches) document.querySelector('.cal-day.is-today')?.scrollIntoView({ block: 'start' });
+  }, [events === null, offset]);
 
   const today = new Date();
   const range = `${start.toLocaleDateString(loc, { day: 'numeric', month: 'short' })} – ${new Date(end.getTime() - DAY).toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}`;
