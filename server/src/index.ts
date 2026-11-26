@@ -1,3 +1,4 @@
+import { recoverInterruptedTurns } from './agent/loop.js';
 import { allowedOrigin } from './lib/origin.js';
 import { revenueCatWebhook } from './billing.js';
 import { stripeWebhook } from './stripe.js';
@@ -84,4 +85,6 @@ if (process.env.GROKBOT_NO_SCHEDULER !== '1') {
 initProactive(enqueue);
 } else console.log('[grokbot] scheduler disabled (GROKBOT_NO_SCHEDULER=1)');
 startIdleWatcher();
+// Bots cut off by the restart pick their work up again once everything is running.
+setTimeout(() => { try { recoverInterruptedTurns(); } catch (e) { console.error('[agent] resume after restart failed', e); } }, 8000);
 if (env.agentProvider === 'xai') startMemoryConsolidation();

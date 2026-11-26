@@ -82,6 +82,28 @@ export function enqueue(botId: string, trigger: Trigger) {
   next.finally(() => { if (queues.get(botId) === next) queues.delete(botId); });
 }
 
+/**
+ * After a restart (a deploy, a crash), steps that were running when the server stopped stay "running" forever and the
+ * bot never answers. On startup: mark those steps stopped, and let each bot that was cut off in the last 6 hours pick
+ * the task up again from where it was, in the same chat.
+ */
+export function recoverInterruptedTurns() {
+  const cutoff = now() - 6 * 3600_000;
+  const stale = db.prepare("SELECT bot_id, generation, seq, body, created_at FROM rows WHERE kind='tool-call' AND json_extract(body,'$.status')='running'").all() as { bot_id: string; generation: number; seq: number; body: string; created_at: number }[];
+  const resume = new Map<string, { generation: number; step: string }>();
+  for (const r of stale) {
+    let body: ToolCallBody;
+    try { body = JSON.parse(r.body); } catch { continue; }
+    inChat(r.bot_id, r.generation, () => updateRow(r.bot_id, r.seq, { ...body, status: 'error', summary: 'Stopped: Badr restarted during this step.' }));
+    if (r.created_at >= cutoff) resume.set(r.bot_id, { generation: r.generation, step: body.label || body.name });
+  }
+  for (const [botId, { generation, step }] of resume) {
+    if (!getBotRow(botId)) continue;
+    console.log(`[agent] resuming ${botId} after a restart (cut off at: ${step})`);
+    enqueue(botId, { type: 'system', generation, text: `Badr restarted while you were working, so your last step ("${step}") was cut off before it finished. Look at what you already did, then finish the owner's last request from there. Don't start over unless you must, and keep any note about the restart to one short line.` });
+  }
+}
+
 export function interrupt(botId: string) {
   aborts.get(botId)?.abort();
 }
