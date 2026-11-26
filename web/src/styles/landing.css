@@ -663,7 +663,7 @@
 /* Arabic reads from the right: the scene moves to the left of the opening and the bubble to its right. */
 @media (min-width: 1081px) {
   [dir='rtl'] .lp-team { right: auto; left: clamp(16px, 4vw, 64px); }
-  [dir='rtl'] .lp-bubble-slot { right: auto; left: calc(100% + 20px); }
+  [dir='rtl'] .lp-bubble-slot { right: auto; left: 0; }
   [dir='rtl'] .lp-bubble { border-radius: 20px 20px 20px 6px; transform-origin: left bottom; }
 }
 @media (max-width: 560px) {
@@ -683,4 +683,8 @@
   .lp-open { --text: calc(100vw - var(--scene) - 2 * clamp(16px, 4vw, 64px) - 56px); }
   .lp-slip, .lp-chips, .lp-models { max-width: min(680px, var(--text)); }
   .lp-lede { max-width: min(46ch, var(--text)); }
+}
+/* The answering bot's bubble floats above the scene, clear of the chips. */
+@media (min-width: 1081px) {
+  .lp-bubble-slot { right: 0; bottom: calc(100% + 18px); width: min(340px, 30vw); }
 }
