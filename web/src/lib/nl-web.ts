@@ -1,5 +1,11 @@
 // Dutch for words that appear only on the web and Mac app (and the public landing page). The shared dictionary covers the rest.
 export const nlWeb: Record<string, string> = {
+  "Pick your plan. The first day is free.": "Kies je abonnement. De eerste dag is gratis.",
+  "Pick a plan to keep working with your team.": "Kies een abonnement om verder te werken met je team.",
+  "Your team is ready. Choose a plan to meet them; you pay nothing today, and you can cancel before the day ends in one click.": "Je team staat klaar. Kies een abonnement om ze te ontmoeten; je betaalt vandaag niets en je zegt met één klik op voordat de dag om is.",
+  "Your free day or plan has ended. Choose a plan and your bots pick up right where they left off.": "Je gratis dag of abonnement is afgelopen. Kies een abonnement en je bots gaan verder waar ze gebleven waren.",
+  "No problem. Pick a plan whenever you’re ready.": "Geen probleem. Kies een abonnement wanneer je er klaar voor bent.",
+  "Pick a plan to start. Every plan begins with a free day.": "Kies een abonnement om te beginnen. Elk abonnement begint met een gratis dag.",
   "Find five flats near work": "Vind vijf flats bij mijn werk",
   "Answer my new emails": "Beantwoord mijn nieuwe mails",
   "Automatic": "Automatisch",

@@ -110,10 +110,22 @@ export function computerMinutesThisMonth(userId: string) {
 }
 
 export class PlanLimitError extends Error {
-  constructor(message: string, readonly feature: 'computer' | 'bots' | 'voice') {
+  constructor(message: string, readonly feature: 'computer' | 'bots' | 'voice' | 'plan') {
     super(message);
   }
 }
+
+/**
+ * Web sign-ups pick a plan before anything else (every plan starts with a free day). Until they do, or after a
+ * trial or subscription ends, their bots don't run. Off when Stripe isn't set up (nowhere to pay), and never for
+ * the server's owner.
+ */
+export function planRequired(userId: string | undefined | null): boolean {
+  if (!userId || !process.env.STRIPE_SECRET_KEY?.trim()) return false;
+  if (usesServerResources(userId)) return false;
+  return planOf(userId).id === 'free';
+}
+export const PLAN_REQUIRED_MESSAGE = 'Pick a plan to start. Every plan begins with a free day.';
 
 /** Throws before the computer wakes if the plan has no computer or this month's hours are used up. */
 export function assertComputerAllowed(userId: string) {

@@ -23,6 +23,7 @@ import { Onboarding, onboardingDone } from './components/Onboarding';
 import { Landing, MacOffer } from './components/Landing';
 import { ResizeHandle, restoreColumnWidths } from './components/ResizeHandle';
 import { FinishToast } from './components/FinishToast';
+import { PlanGate, cameFromGate } from './components/PlanGate';
 restoreColumnWidths();
 
 function Shell() {
@@ -53,7 +54,8 @@ function Shell() {
   }, [bots.length]);
   const view = useConfigUI((s) => s.view);
   // Back from Stripe Checkout: show the Plan page, which says whether the payment went through.
-  useEffect(() => { if (billingReturn) useConfigUI.getState().openAppSettings('plan'); }, []);
+  // A first plan picked on the plan screen goes straight to the team instead.
+  useEffect(() => { if (billingReturn && !cameFromGate) useConfigUI.getState().openAppSettings('plan'); }, []);
   const screenOnly=new URLSearchParams(location.search).get('desktop_view')==='1';
   useEffect(()=>notifyDesktopContext(selectedBot?.id),[selectedBot?.id]);
   useEffect(()=>{if(viewerOpen&&isMacDesktop()&&openDesktopComputer(selectedBot?.id))useStore.getState().set({viewerOpen:false});},[viewerOpen,selectedBot?.id]);
@@ -159,7 +161,7 @@ export function App() {
   const web = !isMacDesktop();
   // /welcome shows the landing page to signed-in people too (its buttons then open the workspace).
   if (web && user && location.pathname === '/welcome') return <Landing signedIn onSignIn={() => {}} />;
-  if (user) return <Shell />;
+  if (user) return <PlanGate><Shell /></PlanGate>;
   if (web && !signingIn) return <Landing signedIn={false} onSignIn={(mode) => {
     history.replaceState(null, '', '/');
     setSignInMode(mode);

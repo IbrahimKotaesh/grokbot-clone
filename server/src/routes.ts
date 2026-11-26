@@ -3,7 +3,7 @@ import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
-import { assertCanCreateBot, PlanLimitError } from './plans.js';
+import { assertCanCreateBot, PLAN_REQUIRED_MESSAGE, PlanLimitError, planRequired } from './plans.js';
 import { billingApi } from './billing.js';
 import { credentialsApi } from './credentials.js';
 import {resolveDesktopTarget,type DesktopTarget} from './desktop-device.js';
@@ -352,6 +352,7 @@ api.get('/hosted-models', (c) => c.json(hostedSummary(c.get('user').id)));
 api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json({error:'Attachments are too large. Files: 10 MB each, 20 MB total; photos: 3 MB each.'},413)}), async (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));
   if (!b) return c.json({ error: 'not found' }, 404);
+  if (planRequired(c.get('user').id)) return c.json({ error: PLAN_REQUIRED_MESSAGE, code: 'plan_required' }, 402);
   let body;
   try { body=await c.req.json(); } catch { return c.json({error:'Invalid message.'},400); }
   if(!body || typeof body !== 'object' || Array.isArray(body)) return c.json({error:'Invalid message.'},400);
@@ -381,6 +382,7 @@ api.post('/bots/:id/regenerate', async (c) => {
   const user = c.get('user');
   const b = ownBot(user.id, c.req.param('id'));
   if (!b || b.kind === 'room') return c.json({ error: 'not found' }, 404);
+  if (planRequired(user.id)) return c.json({ error: PLAN_REQUIRED_MESSAGE, code: 'plan_required' }, 402);
   const input = await c.req.json().catch(() => ({}));
   const generation = input.generation ?? b.generation;
   if (!validChat(b.id, generation)) return c.json({ error: 'Chat not found.' }, 404);

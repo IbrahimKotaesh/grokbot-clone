@@ -1,5 +1,11 @@
 // Arabic for words that appear only on the web and Mac app. The phone's dictionary covers the rest.
 export const arWeb: Record<string, string> = {
+  "Pick your plan. The first day is free.": "اختر باقتك. اليوم الأول مجاني.",
+  "Pick a plan to keep working with your team.": "اختر باقة لتكمل الشغل مع فريقك.",
+  "Your team is ready. Choose a plan to meet them; you pay nothing today, and you can cancel before the day ends in one click.": "فريقك جاهز. اختر باقة لتتعرّف عليه؛ ما بتدفع شي اليوم، وفيك تلغي قبل ما يخلص اليوم بكبسة وحدة.",
+  "Your free day or plan has ended. Choose a plan and your bots pick up right where they left off.": "خلص يومك المجاني أو باقتك. اختر باقة، وبوتاتك بيكمّلوا من وين ما وقفوا.",
+  "No problem. Pick a plan whenever you’re ready.": "ولا يهمك. اختر باقة لما تكون جاهز.",
+  "Pick a plan to start. Every plan begins with a free day.": "اختر باقة لتبلّش. كل باقة بتبلّش بيوم مجاني.",
   "Find five flats near work": "ابحث عن 5 شقق قرب عملي",
   "Answer my new emails": "ردّ على رسائلي الجديدة",
   // Landing page, sign-in and setup (added with the Arabic landing).

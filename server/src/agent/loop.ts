@@ -16,6 +16,7 @@ import { TurnMeter } from '../usage-meter.js';
 import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
+import { planRequired } from '../plans.js';
 import { env } from '../env.js';
 import { newId, sha256 } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
@@ -71,6 +72,8 @@ const queues = new Map<string, Promise<void>>();
 const aborts = new Map<string, AbortController>();
 
 export function enqueue(botId: string, trigger: Trigger) {
+  // No plan yet (or it ended): nothing runs, including check-ins, routines and messages from other bots.
+  if (planRequired(getBotRow(botId)?.user_id)) return;
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
   const prev = queues.get(botId) ?? Promise.resolve();
