@@ -911,4 +911,7 @@ export const arWeb: Record<string, string> = {
   "End call": "إنهاء المكالمة",
   "Mute": "كتم",
   "Unmute": "إلغاء الكتم",
+  "How {name} sounds when you call.": "صوت {name} عندما تتصل به.",
+  "Listen": "استمع",
+  "Playing…": "يُشغَّل…",
 };

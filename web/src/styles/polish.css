@@ -67,3 +67,8 @@
 @media (prefers-reduced-motion: reduce) {
   .chat .bubble.is-agent, .composer .menu, .composer .menu__item, .composer .menu-scrim { animation: none !important; }
 }
+
+/* Bot settings: the call voice, a select with a Listen button beside it */
+.cfg-voice { display: flex; gap: 8px; align-items: center; }
+.cfg-voice select { flex: 1; min-width: 0; }
+.cfg-voice .cfg-btn { flex: none; }

@@ -69,7 +69,7 @@ export function ChatView() {
                 description: v.gender === 'female' ? t("Female voice") : v.gender === 'male' ? t("Male voice") : undefined,
                 selected: (bot.voice || 'luna') === v.id,
                 onSelect: () => {
-                  configApi.updateBot(bot.id, { voice: v.id }).catch((e) => flash(e.message));
+                  configApi.updateBot(bot.id, { voice: v.id }).then(({ bot: next }) => useStore.setState((st) => ({ bots: st.bots.map((b) => (b.id === next.id ? next : b)) }))).catch((e) => flash(e.message));
                   previewVoice({ botId: bot.id, voice: v.id }).catch(() => flash(t("Preview unavailable")));
                 },
               }))}

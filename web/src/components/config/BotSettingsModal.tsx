@@ -1,6 +1,8 @@
 import { t } from '../../lib/i18n';
 import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { BrainPicker } from './BrainPicker';
+import { voiceApi, type VoiceOptions } from '../../voice/api';
+import { previewVoice } from '../../voice/call';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AvatarColor, AvatarShape, Bot, Memory, Routine, Skill } from '@shared/types';
 import { BotAvatar, BotAvatarFor, PICKER_SHAPES } from '../../avatar/BotAvatar';
@@ -98,6 +100,30 @@ export function BotSettingsModal() {
 type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'>;
 const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '' });
 
+/** Picks the call voice: saves right away and plays a short sample. */
+function VoicePicker({ bot }: { bot: Bot }) {
+  const [voices, setVoices] = useState<VoiceOptions['voices']>([]);
+  const [playing, setPlaying] = useState(false);
+  const current = bot.voice || 'luna';
+  useEffect(() => { voiceApi.options().then((o) => setVoices(o.voices)).catch(() => setVoices([])); }, []);
+  const play = (voice: string) => { setPlaying(true); previewVoice({ botId: bot.id, voice }).catch(() => {}).finally(() => setPlaying(false)); };
+  const pick = async (voice: string) => {
+    play(voice);
+    const { bot: next } = await configApi.updateBot(bot.id, { voice });
+    useStore.setState((s) => ({ bots: s.bots.map((b) => (b.id === next.id ? next : b)) }));
+  };
+  return (
+    <div className="cfg-voice">
+      <select id="cfg-voice" className="text-input" value={current} onChange={(e) => void pick(e.target.value)}>
+        {(voices.length ? voices : [{ id: current, name: current.replace(/^./, (c) => c.toUpperCase()), gender: undefined }]).map((v) => (
+          <option key={v.id} value={v.id}>{v.name}{v.gender ? ` · ${v.gender === 'female' ? t("Female voice") : t("Male voice")}` : ''}</option>
+        ))}
+      </select>
+      <button type="button" className="cfg-btn cfg-btn--secondary" disabled={playing} onClick={() => play(current)}>{playing ? t("Playing…") : t("Listen")}</button>
+    </div>
+  );
+}
+
 function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(bot));
   const [picker, setPicker] = useState(false);
@@ -169,6 +195,9 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         <Field label={t("Thinking effort")} hint={EFFORT_HINT[draft.effort]}>
           <Segmented label={t("Thinking effort")} value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />
         </Field>
+        {bot.kind !== 'room' && <Field label={t("Voice")} htmlFor="cfg-voice" hint={t("How {name} sounds when you call.", { name: draft.name || 'Badr' })}>
+          <VoicePicker bot={bot} />
+        </Field>}
         <Field label={t("Used as")}>
           <Segmented label={t("Bot type")} value={draft.mode} options={[{ value: 'personal', label: t("Personal assistant") }, { value: 'teammate', label: t("Teammate") }]} onChange={(v) => put('mode', v)} />
         </Field>

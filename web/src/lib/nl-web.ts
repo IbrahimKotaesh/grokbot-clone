@@ -829,4 +829,7 @@ export const nlWeb: Record<string, string> = {
   "End call": "Ophangen",
   "Mute": "Dempen",
   "Unmute": "Dempen opheffen",
+  "How {name} sounds when you call.": "Zo klinkt {name} als je belt.",
+  "Listen": "Luister",
+  "Playing…": "Speelt af…",
 };
