@@ -2,6 +2,8 @@
    so Arabic reads right to left (and lines up on the right) while English and numbers stay as they are. */
 :root:lang(ar) :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, label, dd, dt, figcaption, small, td, th, textarea, input, .md, .bubble, .empty-chat__sub, .empty-chat__title, .cfg-row__title, .cfg-row__sub, .cfg-field__hint, .menu__label > span, .notice) { unicode-bidi: plaintext; }
 :root:lang(ar) :is(textarea, input)::placeholder { unicode-bidi: plaintext; }
+/* Short mixed labels (buttons, links, chips: "افتح Fino", "بدر · رئيس الفريق") read in Arabic order too. */
+:root:lang(ar) :is(button, a, span, em, strong, b, option, summary) { unicode-bidi: plaintext; }
 
 /* Chat polish: replies fade in, the composer's model and permission chips, and their menus.
    Flat (no shadows), in Fino's cream / ink / tomato. */
