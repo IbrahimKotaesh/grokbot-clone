@@ -5,13 +5,15 @@ import { useStore } from './store';
 /** UI state for bot settings, app settings, the Tasks view and the theme. Kept apart from store.ts on purpose. */
 
 export type Theme = 'system' | 'light' | 'dark';
+/** The main column: a chat, the team's Workflow board, or the week's Calendar of routines. */
+export type View = 'chat' | 'workflow' | 'calendar';
 export type BotSettingsTab = 'general' | 'skills' | 'memories' | 'routines' | 'library' | 'members';
 export type AppSection = 'notifications' | 'general' | 'computer' | 'permissions' | 'apps' | 'plan' | 'account';
 
 interface ConfigUI {
   botSettings: { botId: string; tab: BotSettingsTab } | null;
   appSettings: AppSection | null;
-  view: 'chat' | 'tasks';
+  view: View;
   theme: Theme;
   /** Bumped by server events (tasks, memories) so open views refetch. Keys: 'tasks', 'memories:<botId>'. */
   versions: Record<string, number>;
@@ -19,7 +21,7 @@ interface ConfigUI {
   closeBotSettings(): void;
   openAppSettings(section?: AppSection): void;
   closeAppSettings(): void;
-  setView(v: 'chat' | 'tasks'): void;
+  setView(v: View): void;
   setTheme(t: Theme): void;
   bump(key: string): void;
 }
@@ -66,6 +68,7 @@ window.addEventListener('grokbot:event', (e) => {
   const { bump } = useConfigUI.getState();
   if (ev.type === 'tasks') { bump('tasks'); bump(`tasks:${ev.botId}`); }
   if (ev.type === 'memories') bump(`memories:${ev.botId}`);
+  if (ev.type === 'routines') bump('routines');
 });
 
 // Picking a bot anywhere (sidebar, search) goes back to its chat.

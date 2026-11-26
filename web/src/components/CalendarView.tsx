@@ -1,0 +1,95 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { lang, t } from '../lib/i18n';
+import { BotAvatarFor } from '../avatar/BotAvatar';
+import { useStore } from '../store';
+import { useConfigUI, useVersion } from '../configStore';
+import { clock } from '../lib/time';
+import { botVars } from '../lib/colors';
+import { BlurWords } from '../lib/motion';
+
+interface CalEvent { routineId: string; botId: string; name: string; description: string; at: number }
+const DAY = 86_400_000;
+const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar' : 'en-GB';
+
+/** Monday 00:00 of the week `offset` weeks from this one. */
+function weekStart(offset: number) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7);
+  return d;
+}
+const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+/** The week ahead: every routine run by every Bot, day by day. */
+export function CalendarView() {
+  const bots = useStore((s) => s.bots);
+  const byId = useMemo(() => new Map(bots.map((b) => [b.id, b])), [bots]);
+  const [offset, setOffset] = useState(0);
+  const [events, setEvents] = useState<CalEvent[] | null>(null);
+  const v = useVersion('routines');
+  const start = weekStart(offset);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * DAY));
+  const end = new Date(start.getTime() + 7 * DAY);
+
+  useEffect(() => {
+    let on = true; setEvents(null);
+    fetch(`/api/calendar?from=${start.getTime()}&to=${end.getTime()}`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : { events: [] })).then((d) => on && setEvents(d.events ?? [])).catch(() => on && setEvents([]));
+    return () => { on = false; };
+  }, [offset, v]);
+
+  const today = new Date();
+  const range = `${start.toLocaleDateString(loc, { day: 'numeric', month: 'short' })} – ${new Date(end.getTime() - DAY).toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const open = (e: CalEvent) => useConfigUI.getState().openBotSettings(e.botId, 'routines');
+
+  return (
+    <main className="chat page-view">
+      <header className="page-view__head page-view__head--row">
+        <div>
+          <BlurWords as="h1" className="page-view__title" text={t('Calendar')} />
+          <p className="page-view__sub">{t('Your team’s routines for the week.')}</p>
+        </div>
+        <div className="cal-nav">
+          <button type="button" className="icon-btn" aria-label={t('Previous week')} onClick={() => setOffset(offset - 1)}><ChevronLeft size={18} /></button>
+          <button type="button" className="cal-nav__today" disabled={offset === 0} onClick={() => setOffset(0)}>{t('This week')}</button>
+          <button type="button" className="icon-btn" aria-label={t('Next week')} onClick={() => setOffset(offset + 1)}><ChevronRight size={18} /></button>
+          <span className="cal-nav__range">{range}</span>
+        </div>
+      </header>
+      <div className="page-view__scroll">
+        <div className="page-view__inner page-view__inner--wide">
+          {events !== null && events.length === 0 && (
+            <div className="cal-empty">
+              <b>{t('No routines this week')}</b>
+              <span>{t('Ask any Bot for something on a schedule, like “every weekday at 8, send me the news”, and it shows up here.')}</span>
+            </div>
+          )}
+          <div className="cal-week" aria-busy={events === null}>
+            {days.map((d) => {
+              const list = (events ?? []).filter((e) => sameDay(new Date(e.at), d));
+              const isToday = sameDay(d, today);
+              return (
+                <section key={d.toDateString()} className={`cal-day${isToday ? ' is-today' : ''}${d < today && !isToday ? ' is-past' : ''}`} aria-label={d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}>
+                  <header className="cal-day__head"><span>{d.toLocaleDateString(loc, { weekday: 'short' })}</span><b>{d.getDate()}</b></header>
+                  <div className="cal-day__list">
+                    {list.map((e) => {
+                      const bot = byId.get(e.botId);
+                      return (
+                        <button key={`${e.routineId}-${e.at}`} type="button" className={`cal-event${e.at < Date.now() ? ' is-done' : ''}`} style={botVars(bot?.avatarColor)} onClick={() => open(e)} title={e.description || e.name}>
+                          <time>{clock(e.at)}</time>
+                          <span className="cal-event__name" dir="auto">{e.name}</span>
+                          {bot && <span className="cal-event__bot"><BotAvatarFor bot={bot} size={16} /><span dir="auto">{bot.name}</span></span>}
+                        </button>
+                      );
+                    })}
+                    {events !== null && list.length === 0 && <span className="cal-day__free">{t('Free')}</span>}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

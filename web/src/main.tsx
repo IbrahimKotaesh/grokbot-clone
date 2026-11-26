@@ -27,6 +27,7 @@ import '@fontsource/tajawal/arabic-500.css';
 import '@fontsource/tajawal/arabic-700.css';
 import './styles/workspace.css';
 import './styles/polish.css';
+import './styles/rail.css';
 import { MotionRoot } from './lib/motion';
 
 const root = createRoot(document.getElementById('root')!);

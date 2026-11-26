@@ -24,6 +24,7 @@ import { validateImages, saveImages } from './images.js';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db, now } from './db.js';
+import { Cron } from 'croner';
 import { env } from './env.js';
 import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
@@ -465,6 +466,24 @@ api.post('/bots/:id/cards/:seq/dismiss',async c=>{
 });
 
 // ---------- routines / tasks / memories ----------
+
+/** Every routine run in a time window (the Calendar's week), across all of this owner's Bots. */
+api.get('/calendar', (c) => {
+  const from = Number(c.req.query('from')), to = Number(c.req.query('to'));
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > 42 * 86_400_000) return c.json({ error: 'Bad range' }, 400);
+  const rows = db.prepare("SELECT r.* FROM routines r JOIN bots b ON b.id=r.bot_id WHERE b.user_id=? AND r.enabled=1 AND r.schedule NOT LIKE 'event:%' AND COALESCE(b.hidden,0)=0").all(c.get('user').id) as any[];
+  const events: { routineId: string; botId: string; name: string; description: string; at: number }[] = [];
+  for (const r of rows) {
+    try {
+      const cron = new Cron(r.schedule, { timezone: r.timezone || 'UTC', paused: true });
+      const description = toRoutine(r).description ?? '';
+      for (const d of cron.nextRuns(300, new Date(from - 1))) { const at = d.getTime(); if (at >= to) break; events.push({ routineId: r.id, botId: r.bot_id, name: r.name, description, at }); }
+      cron.stop();
+    } catch { /* an unreadable schedule is skipped */ }
+  }
+  events.sort((a, b) => a.at - b.at);
+  return c.json({ events: events.slice(0, 1000) });
+});
 
 api.get('/bots/:id/routines', (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));

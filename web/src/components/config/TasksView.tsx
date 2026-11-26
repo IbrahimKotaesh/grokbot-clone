@@ -10,8 +10,6 @@ import { useStore } from '../../store';
 import { Glyph } from './glyphs';
 import './ui';
 
-type Filter = 'all' | 'open' | 'done';
-
 const STATE_LABEL: Record<Task['state'], string> = { working: t("Working on it"), needs_input: t('Waiting on you'), done: t("Done") };
 /** A task still "in progress" with no update for a day has stalled; say so instead of a cheerful "Working on it". */
 const STALL_MS = 24 * 3600 * 1000;
@@ -24,7 +22,7 @@ function when(t: Task): string {
   return t.state === 'done' ? tr('Completed {time}', { time: ago }) : t.state === 'needs_input' ? tr('Asked {time}', { time: ago }) : tr('Updated {time}', { time: ago });
 }
 
-function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) {
+export function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) {
   const open = () => { if (bot) { useStore.getState().selectBot(bot.id); useConfigUI.getState().setView('chat'); } };
   return (
     <button type="button" className={`task-row is-${t.state}${isStalled(t) ? ' is-stalled' : ''}`} onClick={open} disabled={!bot} title={bot ? `Open ${bot.name}` : undefined}>
@@ -44,7 +42,7 @@ function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) 
   );
 }
 
-function useTasks(botId?: string): Task[] | null {
+export function useTasks(botId?: string): Task[] | null {
   const v = useVersion(botId ? `tasks:${botId}` : 'tasks');
   const [tasks, setTasks] = useState<Task[] | null>(null);
   useEffect(() => {
@@ -55,13 +53,13 @@ function useTasks(botId?: string): Task[] | null {
   return tasks;
 }
 
-function sortTasks(list: Task[]) {
+export function sortTasks(list: Task[]) {
   const rank = { needs_input: 0, working: 1, done: 2 } as const;
   return [...list].sort((a, b) => rank[a.state] - rank[b.state] || b.updatedAt - a.updatedAt);
 }
 
 /** "Your team saved you about N hours this week", with what it's based on. */
-function WeekSaved() {
+export function WeekSaved() {
   const v = useVersion('tasks');
   const [stats, setStats] = useState<{ steps: number; replies: number; tasksDone: number; minutes: number } | null>(null);
   const [how, setHow] = useState(false);
@@ -84,57 +82,6 @@ function WeekSaved() {
   );
 }
 
-/** Full Tasks view in the main column (sidebar → Tasks). */
-export function TasksView() {
-  const bots = useStore((s) => s.bots);
-  const tasks = useTasks();
-  const [filter, setFilter] = useState<Filter>('open');
-  const byId = useMemo(() => new Map(bots.map((b) => [b.id, b])), [bots]);
-  const counts = useMemo(() => ({ open: tasks?.filter((t) => t.state !== 'done').length ?? 0, done: tasks?.filter((t) => t.state === 'done').length ?? 0 }), [tasks]);
-  const shown = useMemo(() => sortTasks((tasks ?? []).filter((t) => filter === 'all' || (filter === 'done' ? t.state === 'done' : t.state !== 'done'))), [tasks, filter]);
-
-  return (
-    <main className="chat tasks-view">
-      <header className="tasks-view__header">
-        <div className="tasks-view__title">{t("Tasks")}</div>
-        <div className="segmented" role="tablist" aria-label={t("Filter tasks")}>
-          {([['open', `${t('In progress')}${counts.open ? ` ${counts.open}` : ''}`], ['done', t("Done")], ['all', t("All")]] as [Filter, string][]).map(([f, label]) => (
-            <button key={f} type="button" role="tab" aria-selected={filter === f} className={filter === f ? 'is-active' : ''} onClick={() => setFilter(f)}>{label}</button>
-          ))}
-        </div>
-      </header>
-      <div className="tasks-view__scroll">
-        <div className="tasks-view__inner">
-          <WeekSaved />
-          {tasks === null ? <div className="cfg-empty">{t("Loading…")}</div> : shown.length === 0 ? (
-            <div className="tasks-empty">
-              <Glyph name="tasks" size={28} opacity={0.35} />
-              <div className="tasks-empty__title">{filter === 'done' ? t("Nothing finished yet") : t("Nothing in progress")}</div>
-              <div className="tasks-empty__sub">{t("Give a Bot a multi-part request and every piece gets its own row here, so progress is easy to follow.")}</div>
-            </div>
-          ) : (
-            <div className="task-list">{shown.map((t) => <TaskRow key={t.id} t={t} bot={byId.get(t.botId)} showBot />)}</div>
-          )}
-        </div>
-      </div>
-    </main>
-  );
-}
-
-/** Sidebar entry for the Tasks view, with a count of tasks waiting on the user. */
-export function TasksIsland() {
-  const view = useConfigUI((s) => s.view);
-  const tasks = useTasks();
-  const waiting = tasks?.filter((t) => t.state === 'needs_input').length ?? 0;
-  return (
-    <button type="button" className={`sidebar-island${view === 'tasks' ? ' is-active' : ''}`} onClick={() => useConfigUI.getState().setView(view === 'tasks' ? 'chat' : 'tasks')} title={t("Tasks")} aria-pressed={view === 'tasks'}>
-      <span className="sidebar-island__icon"><Glyph name="tasks" size={18} /></span>
-      <span className="sidebar-island__label">{t("Tasks")}</span>
-      {waiting > 0 && <span className="sidebar-island__count" aria-label={`${waiting} waiting on you`}>{waiting}</span>}
-    </button>
-  );
-}
-
 /** Tasks for one bot (details panel → Tasks tab). */
 export function BotTasks({ bot }: { bot: Bot }) {
   const tasks = useTasks(bot.id);
@@ -144,7 +91,7 @@ export function BotTasks({ bot }: { bot: Bot }) {
       <section>
         <div className="section-label section-label--row">
           <span>{t("Tasks")}</span>
-          <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().setView('tasks')}>{t("See all")}</button>
+          <button type="button" className="link-btn link-btn--small" onClick={() => useConfigUI.getState().setView('workflow')}>{t("See all")}</button>
         </div>
         {tasks === null ? <div className="panel-card"><div className="panel-empty">{t("Loading…")}</div></div> : sorted.length === 0 ? (
           <div className="panel-card"><div className="panel-empty">No tasks yet. Ask {bot.name} for a few things at once and they’ll be tracked here.</div></div>

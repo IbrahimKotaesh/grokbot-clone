@@ -205,6 +205,7 @@ export const useStore = create<State>((set, get) => ({
         return;
       case 'routines':
         if (s.routines[ev.botId] || ev.botId === s.selectedBotId) s.loadRoutines(ev.botId).catch(console.error);
+        window.dispatchEvent(new CustomEvent('grokbot:event', { detail: ev })); // the Calendar refreshes
         return;
       case 'notifications':
       case 'tasks':
