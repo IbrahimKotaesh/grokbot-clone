@@ -22,7 +22,7 @@
 .gate__plan li { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; line-height: 1.4; font-weight: 600; }
 .gate__plan li svg { flex: none; margin-top: 2px; color: var(--p-green); }
 .gate__plan.is-pick li svg { color: var(--p-sun); }
-.gate__go { height: 50px; border: 2.5px solid #211c17; border-radius: 16px; background: var(--p-surface); color: var(--p-text); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 3px 3px 0 #211c17; transition: transform .15s, box-shadow .15s; }
+.gate__go { display: flex; align-items: center; justify-content: center; text-align: center; height: 50px; border: 2.5px solid #211c17; border-radius: 16px; background: var(--p-surface); color: var(--p-text); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 3px 3px 0 #211c17; transition: transform .15s, box-shadow .15s; }
 .gate__plan.is-pick .gate__go { background: var(--p-sun); color: #211c17; }
 .gate__go:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #211c17; }
 .gate__go:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #211c17; }
