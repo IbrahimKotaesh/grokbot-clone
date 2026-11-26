@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { t } from './i18n';
 
 /** Fino's included models (paid by Fino through OpenRouter); the server decides which a plan may use. */
 export interface HostedModels {
@@ -15,7 +16,8 @@ export function loadHostedModels(fresh = false): Promise<HostedModels | null> {
   if (cache && !fresh) return Promise.resolve(cache);
   pending ??= fetch('/api/hosted-models', { credentials: 'include' })
     .then((r) => (r.ok ? (r.json() as Promise<HostedModels>) : null))
-    .then((d) => (cache = d))
+    // Model names in the reader's language (Badr 1 → بدر 1).
+    .then((d) => (cache = d && { ...d, models: d.models.map((m) => ({ ...m, name: t(m.name) })) }))
     .catch(() => null)
     .finally(() => { pending = null; });
   return pending;
@@ -30,16 +32,16 @@ export function useHostedModels() {
 export const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
 const NAMES: Record<string, string> = {
   // Fino's own names for the open-source models it hosts.
-  'deepseek/deepseek-v4.1-flash': 'Bart Flash',
-  'z-ai/glm-5.3-flash': 'Bart Logic',
-  'deepseek/deepseek-v4-pro': 'Bart Deep',
+  'deepseek/deepseek-v4.1-flash': 'Badr 1',
+  'z-ai/glm-5.3-flash': 'Badr 2',
+  'deepseek/deepseek-v4-pro': 'Badr 3',
   'openai/gpt-5.4-mini': 'GPT-5.4 mini',
   'x-ai/grok-4.3': 'Grok 4.3',
   'anthropic/claude-sonnet-5.5': 'Claude Sonnet 5.5',
   'openai/gpt-5.4': 'GPT-5.4',
 };
-/** "deepseek/deepseek-v4.1-flash" → "Bart Flash"; the default model when none is set. */
-export const modelName = (id?: string) => (id ? NAMES[id] ?? id.split('/').pop() ?? id : NAMES[DEFAULT_MODEL]);
+/** "deepseek/deepseek-v4.1-flash" → "Badr 1"; the default model when none is set. */
+export const modelName = (id?: string) => t(id ? NAMES[id] ?? id.split('/').pop() ?? id : NAMES[DEFAULT_MODEL]);
 
 /** What the bot runs on, as one label: an included model's name, or the user's own subscription. */
 export function brainLabel(bot: { agentProvider?: string; model?: string }) {

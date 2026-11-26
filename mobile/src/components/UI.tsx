@@ -500,7 +500,7 @@ export function ProviderMark({ provider, size = 22 }: { provider: string; size?:
 
 /** The logo of the company behind a model id like "deepseek/deepseek-v4.1-flash". */
 const MODEL_LOGOS: { prefix: string; source: number; tint?: string }[] = [
-  // Fino's included models (Bart Flash, Logic, Deep) carry Bart's face.
+  // Fino's included models (Badr 1, 2, 3) carry Badr's face.
   { prefix: "deepseek/", source: require("../../assets/models/bart.png") },
   { prefix: "z-ai/", source: require("../../assets/models/bart.png") },
   { prefix: "qwen/", source: require("../../assets/models/bart.png") },

@@ -342,7 +342,7 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
               subtitle={plan && !plan.computer ? t("Pro · runs on your computer") : t("Use your Claude subscription on your computer")}
               onPress={openClaudeCode}
             />
-            <ListRow icon="sparkles-outline" title={t("Bots")} value={plan?.bots && billing ? `${billing.usage.bots} / ${plan.bots} + Bart` : String(bots.length)} chevron={false} />
+            <ListRow icon="sparkles-outline" title={t("Bots")} value={plan?.bots && billing ? `${billing.usage.bots} / ${plan.bots} + Badr` : String(bots.length)} chevron={false} />
             <ListRow icon="apps-outline" title={t("Connected apps")} subtitle={t("Gmail, GitHub, Slack and more")} onPress={openApps} />
             <ListRow
               icon="flash-outline"

@@ -20,6 +20,7 @@ jobs:
       - run: node tests/smooth-text.mjs
       - run: node tests/camera-lifecycle.mjs
       - run: node tests/message-rendering.mjs
+      - run: node tests/place.mjs
       - run: node tests/approval-display.mjs
       - run: npm run build
       - run: node tests/desktop-device.mjs

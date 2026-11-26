@@ -6,16 +6,20 @@ import { ar as phone } from '../../../packages/contracts/src/ar';
 import { nl as phoneNl } from '../../../packages/contracts/src/nl';
 import { arWeb } from './ar-web';
 import { nlWeb } from './nl-web';
+import { deviceTimeZone, languageForPlace } from '../../../packages/contracts/src/place';
 
 export type LangChoice = 'system' | 'en' | 'ar' | 'nl';
 const KEY = 'fino.lang';
 
 export function langChoice(): LangChoice {
+  // Outside a browser (tests, tools) there is no visitor to place: plain English.
+  if (typeof localStorage === 'undefined') return 'en';
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'ar' || v === 'nl' || v === 'system' ? v : 'en';
+    // Nothing saved yet means "Automatic": the language follows where the visitor is.
+    return v === 'ar' || v === 'nl' || v === 'en' ? v : 'system';
   } catch {
-    return 'en';
+    return 'system';
   }
 }
 
@@ -25,11 +29,11 @@ export function setLangChoice(v: LangChoice) {
   location.reload();
 }
 
-const browserLang = () => (typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? 'en' : 'en').slice(0, 2).toLowerCase();
+const browserLang = () => (typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? 'en' : 'en');
 const choice = langChoice();
-// English unless the user picks Arabic or Dutch (or picks "System" on an Arabic or Dutch device) in Settings > General.
-const sys = browserLang();
-export const lang: 'ar' | 'en' | 'nl' = choice === 'system' ? (sys === 'ar' || sys === 'nl' ? sys : 'en') : choice;
+// "Automatic" (the default) picks by place: the Netherlands → Dutch, the Arab world → Arabic, elsewhere English.
+// A language picked on the landing page or in Settings > General always wins.
+export const lang: 'ar' | 'en' | 'nl' = choice === 'system' ? languageForPlace(deviceTimeZone(), browserLang()) : choice;
 export const isArabic = lang === 'ar';
 /** The locale for dates and times in the chosen language. */
 export const locale = lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-GB';

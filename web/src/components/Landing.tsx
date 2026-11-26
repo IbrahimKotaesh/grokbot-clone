@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
-import { ArrowRight, Check, Download, Eye, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Check, Download, Eye, Globe, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
 import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
@@ -19,15 +19,15 @@ const store = {
 export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => store.drop(FIRST_TASK) };
 
 type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
-// An example team. Every new account starts with Bart; people add the others themselves.
+// An example team. Every new account starts with Badr; people add the others themselves.
 const TEAM: Bot[] = [
   { id: 'nour', name: 'Nour', role: 'Research', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'quinn', name: 'Bart', role: 'Chief of Staff', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'quinn', name: 'Badr', role: 'Chief of Staff', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
   { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
   { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
-// Bart, Fino's main character, is the logo: yellow on the tomato header.
+// Badr, Fino's main character, is the logo: yellow on the tomato header.
 const MARK = characterDataUri('accountant', 'yellow');
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Clear my inbox', 'Plan my week', 'Compare flights to Lisbon', 'Summarize this report'];
@@ -94,11 +94,11 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </div>
 
         <div className="lp-team">
-          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{said.name} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
+          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{t(said.name)} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
           {TEAM.map((b, i) => (
             <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s` } as CSSProperties}>
               <span className="lp-bot__pop"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
-              <figcaption><b>{b.name}</b> <span>{t(b.role)}</span></figcaption>
+              <figcaption><b>{t(b.name)}</b> <span>{t(b.role)}</span></figcaption>
             </figure>
           ))}
         </div>
@@ -143,7 +143,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         <div className="lp-wrap lp-close__in">
           <div className="lp-close__copy" data-reveal>
             <h2 className="lp-h2">{t('Meet your team today.')}</h2>
-            <p className="lp-copy">{t('Create your account with Google or your email. Bart, your Chief of Staff, is waiting in the first chat.')}</p>
+            <p className="lp-copy">{t('Create your account with Google or your email. Badr, your Chief of Staff, is waiting in the first chat.')}</p>
           </div>
           <div className="lp-close__panel" data-reveal style={{ '--i': 2 } as CSSProperties}>
             {signedIn ? <div className="auth"><h2 className="auth__title">{t('You’re signed in.')}</h2><a className="auth__submit" href="/">{t('Open Fino')}</a></div> : <AuthPanel initial="signup" />}
@@ -240,9 +240,10 @@ function Demo() {
         <h2 className="lp-h2" data-reveal>{t('Watch it work.')}</h2>
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Ask in chat. The bot opens its own browser, and you see every move it makes.')}</p>
       </div>
-      <div className={`lp-desk${fade ? ' is-fading' : ''}`} data-reveal style={{ '--i': 2 } as CSSProperties} aria-label={t('Demo: a bot searching a jobs site in its browser')}>
+      {/* Fading is a data attribute, not a class: a changing className would wipe the reveal's is-in class and hide the demo. */}
+      <div className="lp-desk" data-fading={fade || undefined} data-reveal style={{ '--i': 2 } as CSSProperties} aria-label={t('Demo: a bot searching a jobs site in its browser')}>
         <div className="lp-desk__chat">
-          <div className="lp-desk__head"><img src={TEAM[0].img} alt="" width={28} height={28} /> Nour <span>{t('Research')}</span></div>
+          <div className="lp-desk__head"><img src={TEAM[0].img} alt="" width={28} height={28} /> {t('Nour')} <span>{t('Research')}</span></div>
           <div className="lp-msgs">
             {msgs.map((m) => <p key={m.id} className={m.who === 'me' ? 'lp-msg lp-msg--me' : m.who === 'bot' ? 'lp-msg' : 'lp-step'}>{t(m.text)}</p>)}
             {thinking && <p className="lp-msg lp-typing" aria-label={t('Nour is typing')}><i /><i /><i /></p>}
@@ -303,7 +304,7 @@ function MacBand() {
         <div className="lp-mac__window" data-reveal style={{ '--i': 2 } as CSSProperties} aria-hidden>
           <div className="lp-mac__lights"><i /><i /><i /></div>
           <div className="lp-mac__panes">
-            <div className="lp-mac__side">{TEAM.slice(0, 4).map((b) => <span key={b.id}><img src={b.img} alt="" />{b.name}</span>)}</div>
+            <div className="lp-mac__side">{TEAM.slice(0, 4).map((b) => <span key={b.id}><img src={b.img} alt="" />{t(b.name)}</span>)}</div>
             <div className="lp-mac__chat"><p /><p /><p className="me" /><p /></div>
             <div className="lp-mac__browser"><em>Fino Browser</em><div /><div /><div /><span className="lp-cursor lp-cursor--still" style={{ '--x': 0.56, '--y': 0.5 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span></div>
           </div>
@@ -334,9 +335,9 @@ const ASSISTANT_SALARY = 2500;
 const ASSISTANT_EXTRA = 500;
 // The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
 const PLAN_BY_ID = {
-  starter: { name: 'Starter', price: 14.99, bots: 'Bart + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
-  pro: { name: 'Pro', price: 49.99, bots: 'Bart + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
-  max: { name: 'Max', price: 99.99, bots: 'Bart + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
+  starter: { name: 'Starter', price: 14.99, bots: 'Badr + 3 bots', hours: 0, lines: ['Chat, voice messages and files', 'Use your own AI model', 'Personal marketplace bots'] },
+  pro: { name: 'Pro', price: 49.99, bots: 'Badr + 10 bots', hours: 20, lines: ['Their own computer · 20 h a month', 'Every marketplace bot', 'Claude Code on your computer'] },
+  max: { name: 'Max', price: 99.99, bots: 'Badr + 30 bots', hours: 60, lines: ['Their own computer · 60 h a month', 'Top AI models included', 'Every marketplace bot'] },
   ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Their own computer · 150 h a month', 'Top AI models included', 'Priority support'] },
 } as const;
 const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : roles <= 3 ? PLAN_BY_ID.max : PLAN_BY_ID.ultra);
@@ -431,7 +432,7 @@ function Jobs() {
             <div className="lp-jobs__chat" role="tabpanel" id="lp-job-panel" aria-labelledby={`lp-tab-${job.id}`} key={job.id}>
               <div className="lp-jobs__head">
                 <img src={img} alt="" width={44} height={44} draggable={false} />
-                <div><b>{job.name}</b><span>{t(job.title)}</span></div>
+                <div><b>{t(job.name)}</b><span>{t(job.title)}</span></div>
                 <dl><div><dt>{t('Runs')}</dt><dd>{t(story.runs)}</dd></div><div><dt>{t('Uses')}</dt><dd>{t(story.uses)}</dd></div></dl>
               </div>
               <div className="lp-jobs__msgs">
@@ -457,7 +458,7 @@ function Jobs() {
 function FirstSteps() {
   const steps = [
     { t: 'Sign up', d: 'With Google or your email. No AI account or setup needed.' },
-    { t: 'Meet Bart', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
+    { t: 'Meet Badr', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
     { t: 'Give a job', d: 'Type or say it. Watch the bot work, and approve what matters.' },
   ];
   return (
@@ -481,7 +482,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">
         <h2 className="lp-h2" data-reveal>{t('Simple plans. No hiring.')}</h2>
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Every plan includes Bart, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.')}</p>
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Every plan includes Badr, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.')}</p>
         <ul className="lp-plans__row">
           {list.map((p, i) => (
             <li key={p.name} className={p.name === 'Max' ? 'is-pick' : ''} data-reveal style={{ '--i': 2 + i } as CSSProperties}>
@@ -500,8 +501,21 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
 }
 
 /** English or Dutch for the public page; the app follows the same choice. */
+const LANGS = [
+  { code: 'en', label: 'English', short: 'EN' },
+  { code: 'nl', label: 'Nederlands', short: 'NL' },
+  { code: 'ar', label: 'العربية', short: 'عربي' },
+] as const;
+/** The language picker: a pill showing the current language over a native select (a real picker on phones). */
 function LangSwitch() {
-  const other = lang === 'nl' ? { code: 'en' as const, label: 'English' } : { code: 'nl' as const, label: 'Nederlands' };
-  // Phones show the short code so the header still fits next to the sign-in buttons.
-  return <button type="button" className="lp-lang" onClick={() => setLangChoice(other.code)} lang={other.code} aria-label={other.label}><span className="lp-lang__long">{other.label}</span><span className="lp-lang__short" aria-hidden>{other.code.toUpperCase()}</span></button>;
+  const now = LANGS.find((l) => l.code === lang) ?? LANGS[0];
+  return (
+    <label className="lp-lang">
+      <Globe size={15} strokeWidth={2.4} aria-hidden />
+      <span className="lp-lang__long" aria-hidden>{now.label}</span><span className="lp-lang__short" aria-hidden>{now.short}</span>
+      <select value={now.code} aria-label={t('Language')} onChange={(e) => setLangChoice(e.target.value as 'en' | 'nl' | 'ar')}>
+        {LANGS.map((l) => <option key={l.code} value={l.code} lang={l.code}>{l.label}</option>)}
+      </select>
+    </label>
+  );
 }

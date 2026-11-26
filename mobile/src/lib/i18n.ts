@@ -1,8 +1,10 @@
-// The app follows the phone's language (iPhone Settings → Fino → Language also works).
+// The app follows the phone's language (iPhone Settings → Fino → Language also works), and where the phone is:
+// the Netherlands → Dutch, the Arab world → Arabic, elsewhere English. See packages/contracts/src/place.ts.
 // English text is the key, so a missing translation simply shows the English.
 import { I18nManager } from "react-native";
 import { ar } from "./ar";
 import { nl } from "../../../packages/contracts/src/nl";
+import { deviceTimeZone, languageForPlace } from "../../../packages/contracts/src/place";
 
 function phoneLanguage() {
   try {
@@ -14,9 +16,11 @@ function phoneLanguage() {
     return Intl.DateTimeFormat().resolvedOptions().locale.slice(0, 2);
   }
 }
-// English is the main language; Arabic and Dutch follow the phone when it speaks them.
-const phoneLang = phoneLanguage();
-export const lang: "ar" | "en" | "nl" = phoneLang === "ar" || phoneLang === "nl" ? phoneLang : "en";
+// English is the main language. Arabic by place only when the layout already runs right-to-left
+// (an English phone in Dubai keeps English rather than Arabic text in a left-to-right layout).
+const phoneLang = phoneLanguage().slice(0, 2).toLowerCase();
+const placeLang = languageForPlace(deviceTimeZone(), phoneLang);
+export const lang: "ar" | "en" | "nl" = placeLang === "ar" && phoneLang !== "ar" && !I18nManager.isRTL ? "en" : placeLang;
 export const isArabic = lang === "ar";
 /** True when the layout runs right-to-left (mirror arrows and chevrons with this). */
 export const isRTL = I18nManager.isRTL;

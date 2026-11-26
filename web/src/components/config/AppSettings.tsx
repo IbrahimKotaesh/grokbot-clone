@@ -166,8 +166,8 @@ function GeneralSection() {
       </section>
       <section className="cfg-section">
         <div className="cfg-section__label">{t('Language')}</div>
-        <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('System') }, { value: 'en', label: t("English") }, { value: 'nl', label: 'Nederlands' }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
-        <div className="cfg-field__hint">{t('Your choice is saved on this device. System follows your browser’s language.')}</div>
+        <Segmented label={t('Language')} value={langChoice()} options={[{ value: 'system', label: t('Automatic') }, { value: 'en', label: t("English") }, { value: 'nl', label: 'Nederlands' }, { value: 'ar', label: 'العربية' }]} onChange={(v) => { if (v !== langChoice()) setLangChoice(v); }} />
+        <div className="cfg-field__hint">{t('Your choice is saved on this device. Automatic picks by where you are: Dutch in the Netherlands, Arabic in the Arab world, English everywhere else.')}</div>
       </section>
       <MorningBriefSettings />
       <FinishSettings />

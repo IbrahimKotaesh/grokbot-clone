@@ -40,7 +40,7 @@ let botId = null;
 
 await step('app loads with sidebar', async () => {
   await page.goto(BASE);
-  await page.getByText('Bart').first().waitFor({ timeout: 15000 });
+  await page.getByText('Badr').first().waitFor({ timeout: 15000 });
   await shot('01-loaded');
 });
 
@@ -98,11 +98,11 @@ await step('computer viewer: watch, take control, hand back', async () => {
   await page.keyboard.press('Escape');
 });
 
-await step('search palette opens Bart', async () => {
+await step('search palette opens Badr', async () => {
   await page.keyboard.press('Control+k');
-  await page.getByPlaceholder(/Search Bots/).fill('Bart');
+  await page.getByPlaceholder(/Search Bots/).fill('Badr');
   await page.keyboard.press('Enter');
-  await page.getByPlaceholder(/Message Bart/).first().waitFor({ timeout: 10000 });
+  await page.getByPlaceholder(/Message Badr/).first().waitFor({ timeout: 10000 });
   await shot('07-search');
 });
 
@@ -160,7 +160,7 @@ await step('group chat: members reply via @mention', async () => {
 });
 
 await step('bot settings: general, skills, memories, routines', async () => {
-  await page.getByText('Bart').first().click();
+  await page.getByText('Badr').first().click();
   await page.getByLabel('Bot settings').click();
   const nav = page.getByLabel('Bot settings sections');
   await nav.waitFor({ timeout: 10000 });

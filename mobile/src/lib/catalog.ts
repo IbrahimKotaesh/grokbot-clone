@@ -304,7 +304,7 @@ export const catalog: BotTemplate[] = [
 
 export const templateById = (id: string) => catalog.find((t) => t.id === id);
 
-/** Starter teams for onboarding. Bart (the primary bot) always exists already. */
+/** Starter teams for onboarding. Badr (the primary bot) always exists already. */
 export const starterTeams: Record<"personal" | "accounting" | "hr" | "other", string[]> = {
   personal: ["inbox-watcher", "day-planner", "researcher"],
   accounting: ["accounts-payable", "accounts-receivable", "payroll-cash"],

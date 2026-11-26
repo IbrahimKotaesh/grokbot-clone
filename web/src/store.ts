@@ -1,4 +1,4 @@
-import { t } from './lib/i18n';
+import { isArabic, t } from './lib/i18n';
 import { create } from 'zustand';
 import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, ServerEvent, User } from '@shared/types';
 import { api } from './lib/api';
@@ -226,6 +226,15 @@ export const useStore = create<State>((set, get) => ({
     set(p);
   },
 }));
+
+// In Arabic, Fino's main character is called بدر: the primary bot still named "Badr" shows its Arabic name,
+// however the bot list arrives (first load, live updates, reordering).
+if (isArabic) {
+  const arabic = (b: Bot) => b.isPrimary && b.name === 'Badr';
+  useStore.subscribe((s) => {
+    if (s.bots.some(arabic)) useStore.setState({ bots: s.bots.map((b) => (arabic(b) ? { ...b, name: 'بدر' } : b)) });
+  });
+}
 
 /** Rows for a bot, ordered by seq. */
 export function sortedRows(t: Transcript | undefined): Row[] {

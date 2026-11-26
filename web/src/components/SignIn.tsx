@@ -35,7 +35,7 @@ export function SignIn({ initial = 'signin' }: { initial?: 'signin' | 'signup' }
       <div className="signin__chrome"><TrafficLights /></div>
       <div className="signin__card">
         <div className="signin__hero">
-          <img className="signin__mascot" src={characterDataUri('accountant', 'yellow')} alt="Bart, Fino's main character" />
+          <img className="signin__mascot" src={characterDataUri('accountant', 'yellow')} alt="Badr, Fino's main character" />
         </div>
         <h1 className="signin__title">Fino</h1>
         <p className="signin__sub">{t("A little company. A lot done. Your AI team, tools and ideas in one place.")}</p>
