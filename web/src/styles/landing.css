@@ -739,3 +739,6 @@
 :root:lang(ar) .lp :is(.lp-apps__in, .lp-mac__in, .lp-close__in) :is(.lp-h2, .lp-copy) { margin-inline: auto; text-align: center; }
 :root:lang(ar) .lp .lp-logos { justify-content: center; }
 :root:lang(ar) .lp :is(.lp-slipdoc, .lp-jobs__chat, .lp-jobs__list, .lp-steps__row li, .lp-plans__row > li, .lp-rules li, .lp-close__panel, .lp-desk__chat) { direction: rtl; text-align: right; }
+/* Arabic: arrows point the way Arabic reads; the headline fits two or three lines on phones. */
+:root:lang(ar) .lp .lucide-arrow-right { transform: scaleX(-1); }
+@media (max-width: 560px) { :root:lang(ar) .lp .lp-open .lp-h1 { font-size: 2.7rem; max-width: 12ch; } }
