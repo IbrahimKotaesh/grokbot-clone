@@ -72,7 +72,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
     <div className="gate">
       <main className="gate__in">
         <header className="gate__head">
-          <Badr mood="wave" size={84} className="gate__badr" />
+          <Badr mood="wave" size={116} className="gate__badr" />
           <h1>{trial
             ? <><span>{t('Pick your plan')}</span> <em>{t('Your first day is free')}</em></>
             : t('Pick a plan to keep working with your team.')}</h1>
