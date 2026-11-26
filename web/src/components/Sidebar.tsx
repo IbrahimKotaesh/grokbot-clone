@@ -2,10 +2,11 @@ import { t } from '../lib/i18n';
 import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useConfigUI } from '../configStore';
 import { useTasks } from './config/TasksView';
-import { CalendarDays, LayoutGrid, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { CalendarDays, ChevronRight, FolderPlus, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { foldersApi } from '../lib/folders';
 import { relativeShort } from '../lib/time';
 import type { Bot } from '@shared/types';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -51,6 +52,50 @@ const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect
     </button>
   );
 });
+
+const LS_FOLDED = 'badr.foldersClosed';
+const readFolded = (): string[] => { try { return JSON.parse(localStorage.getItem(LS_FOLDED) ?? '[]'); } catch { return []; } };
+
+/** A name field for a new or renamed folder: Enter saves, Escape or leaving empty cancels. */
+function FolderName({ initial, onSave, onCancel }: { initial: string; onSave: (name: string) => void; onCancel: () => void }) {
+  const [v, setV] = useState(initial);
+  return (
+    <form className="folder__form" onSubmit={(e) => { e.preventDefault(); v.trim() ? onSave(v.trim()) : onCancel(); }}>
+      <input autoFocus value={v} maxLength={60} placeholder={t('Folder name, like YouTube team')} aria-label={t('Folder name')}
+        onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }} onBlur={() => (v.trim() && v.trim() !== initial ? onSave(v.trim()) : onCancel())} />
+    </form>
+  );
+}
+
+/** One folder in the sidebar: a header that folds, with its Bots beneath. Bots can be dragged onto the header. */
+function Folder({ folder, bots, open, onToggle, children }: { folder: { id: string; name: string }; bots: Bot[]; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  const live = useStore((s) => s.live);
+  const [menu, setMenu] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const busy = bots.some((b) => live[b.id]?.isRunning), waiting = bots.some((b) => live[b.id]?.awaiting), unread = bots.some((b) => b.unread > 0);
+  return (
+    <section className={`folder${open ? ' is-open' : ''}`} aria-label={folder.name}>
+      <div className="folder__head" data-folder-drop={folder.id}>
+        {renaming ? <FolderName initial={folder.name} onSave={(n) => { setRenaming(false); void foldersApi.rename(folder.id, n).catch(() => {}); }} onCancel={() => setRenaming(false)} /> : (
+          <button type="button" className="folder__toggle" aria-expanded={open} onClick={onToggle}>
+            <ChevronRight size={15} strokeWidth={2.2} className="folder__chev" />
+            <span className="folder__name" dir="auto">{folder.name}</span>
+            <span className="folder__count">{bots.length}</span>
+            {!open && (waiting || busy || unread) && <i className={`status-dot ${waiting ? 'is-attention' : busy ? 'is-working' : 'is-unread'}`} aria-hidden />}
+          </button>
+        )}
+        {!renaming && <span className="folder__more-anchor">
+          <button type="button" className="folder__more" aria-label={t('Folder options')} aria-expanded={menu} onClick={() => setMenu(!menu)}><MoreHorizontal size={16} /></button>
+          {menu && <Menu align="right" onClose={() => setMenu(false)} items={[
+            { label: t('Rename'), onSelect: () => setRenaming(true) },
+            { label: t('Delete folder'), description: t('Its Bots stay, back in the main list'), danger: true, onSelect: () => void foldersApi.remove(folder.id).catch(() => {}) },
+          ]} />}
+        </span>}
+      </div>
+      {open && (bots.length ? <div className="folder__bots">{children}</div> : <div className="folder__empty">{t('Drag a Bot here by its handle, or pick “Move to folder” in its menu.')}</div>)}
+    </section>
+  );
+}
 
 /** The slim rail on the far left: the team, its Workflow and the week's Calendar; apps, alerts, settings and you below. */
 function NavRail({ collapsed }: { collapsed: boolean }) {
@@ -115,6 +160,14 @@ export function Sidebar() {
   // Picking a bot (even the one already selected) leaves the Tasks view.
   const selectBot = useCallback((id: string) => { useConfigUI.getState().setView('chat'); storeSelectBot(id); }, [storeSelectBot]);
   const setModal = useStore((s) => s.setModal);
+  const folders = useStore((s) => s.folders);
+  const [folded, setFolded] = useState<string[]>(readFolded);
+  const toggleFolder = (id: string) => setFolded((cur) => { const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]; try { localStorage.setItem(LS_FOLDED, JSON.stringify(next)); } catch { /* private window */ } return next; });
+  const [naming, setNaming] = useState<{ botId?: string } | null>(null);
+  const [newMenu, setNewMenu] = useState(false);
+  // "Move to folder → New folder…" in a Bot's menu asks for the name here.
+  useEffect(() => { const on = (e: Event) => setNaming({ botId: (e as CustomEvent).detail?.botId }); window.addEventListener('badr:new-folder', on); return () => window.removeEventListener('badr:new-folder', on); }, []);
+  const createFolder = (name: string) => { const botId = naming?.botId; setNaming(null); void foldersApi.create(name).then(({ folder }) => (botId ? foldersApi.move(botId, folder.id) : undefined)).catch(() => {}); };
 
   const primary = bots.find((b) => b.isPrimary);
   // A bot with a reply you haven't read rises to the top, newest first, like a messaging app.
@@ -129,6 +182,13 @@ export function Sidebar() {
   const rest = bots.filter((b) => !b.isPrimary);
   const fresh = rest.filter((b) => keepUp.current.has(b.id)).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   const others = [...fresh, ...rest.filter((b) => !keepUp.current.has(b.id)).sort(byOrder)];
+  const known = new Set(folders.map((f) => f.id));
+  const loose = others.filter((b) => !b.folderId || !known.has(b.folderId));
+  // Reordering inside one folder saves the order of every Bot: the folder's new order takes its members' places.
+  const saved = [...rest].sort(byOrder).map((b) => b.id);
+  const fullOrder = (subset: string[]) => { const inSet = new Set(subset); let k = 0; return saved.map((id) => (inSet.has(id) ? subset[k++] : id)); };
+  const dropToFolder = (botId: string, folderId: string | null) => void foldersApi.move(botId, folderId).catch(() => {});
+  const row = (b: Bot) => <BotConversations key={b.id} bot={b} collapsed={false}><BotRow bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} /></BotConversations>;
 
   return (
     <aside id="workspace-sidebar" aria-label={t("Conversations")} className={`sidebar sidebar--rail${collapsed ? ' is-collapsed' : ''}`}>
@@ -137,7 +197,13 @@ export function Sidebar() {
         <div className="side-panel">
           <div className="side-panel__head">
             <button type="button" className="side-search" onClick={() => setModal('search')} title="Search (⌘K)"><Search size={15} strokeWidth={2} /><span>{t('Search')}</span><kbd>⌘K</kbd></button>
-            <button type="button" className="icon-btn side-panel__new" onClick={() => setModal('create')} aria-label={t("New Bot")} title={t("New Bot")}><Icon name="plus" opacity={0.7} /></button>
+            <span className="side-panel__new-anchor">
+              <button type="button" className="icon-btn side-panel__new" onClick={() => setNewMenu(!newMenu)} aria-label={t("New")} aria-expanded={newMenu} title={t("New Bot or folder")}><Icon name="plus" opacity={0.7} /></button>
+              {newMenu && <Menu align="right" onClose={() => setNewMenu(false)} items={[
+                { label: t('New Bot'), icon: <Icon name="plus" size={16} opacity={0.7} />, onSelect: () => setModal('create') },
+                { label: t('New folder'), description: t('Group Bots, like a YouTube team'), icon: <FolderPlus size={16} strokeWidth={1.8} />, onSelect: () => setNaming({}) },
+              ]} />}
+            </span>
           </div>
           <div className="sidebar__scroll">
             {primary && (
@@ -151,11 +217,18 @@ export function Sidebar() {
                 </button>
               </BotConversations></div>
             )}
-            {others.length > 0 && <div className="sidebar__team-label">{t("Your team")}</div>}
+            {naming && <div className="folder folder--new"><FolderName initial="" onSave={createFolder} onCancel={() => setNaming(null)} /></div>}
+            {folders.map((f) => {
+              const members = others.filter((b) => b.folderId === f.id);
+              return (
+                <Folder key={f.id} folder={f} bots={members} open={!folded.includes(f.id)} onToggle={() => toggleFolder(f.id)}>
+                  <BotRoster bots={members} collapsed={false} fullOrder={fullOrder} onDropToFolder={dropToFolder} render={row} />
+                </Folder>
+              );
+            })}
+            {loose.length > 0 && <div className="sidebar__team-label" data-folder-drop="">{folders.length ? t("Other Bots") : t("Your team")}</div>}
             <div className="bot-list">
-              <BotRoster bots={others} collapsed={false} render={(b) =>
-                <BotConversations key={b.id} bot={b} collapsed={false}><BotRow bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} /></BotConversations>
-              }/>
+              <BotRoster bots={loose} collapsed={false} fullOrder={fullOrder} onDropToFolder={folders.length ? dropToFolder : undefined} render={row} />
               {others.length === 0 && (
                 <button type="button" className="bot-list__empty" onClick={() => setModal('create')}>
                   <span className="bot-list__empty-plus"><Icon name="plus" size={14} opacity={0.66} /></span>

@@ -16,6 +16,8 @@ interface State {
   accessLocked: boolean;
 
   bots: Bot[];
+  /** Sidebar folders the owner groups Bots into. */
+  folders: { id: string; name: string; sort: number }[];
   live: Record<string, LiveState>;
   /** Where each bot last pointed on its cloud computer, to draw its mouse over the live screen. */
   pointer: Record<string, { x: number; y: number; action: string; at: number }>;
@@ -69,6 +71,7 @@ export const useStore = create<State>((set, get) => ({
   authChecked: false,
   accessLocked:false,
   bots: [],
+  folders: [],
   live: {},
   pointer: {},
   selectedBotId: lsGet(LS_SELECTED),
@@ -96,7 +99,10 @@ export const useStore = create<State>((set, get) => ({
   },
 
   async loadBots() {
-    const { bots, live } = await api.bots();
+    const [{ bots, live }, folders] = await Promise.all([
+      api.bots(),
+      fetch('/api/folders', { credentials: 'include' }).then((r) => (r.ok ? r.json() : { folders: [] })).then((d) => d.folders ?? []).catch(() => get().folders),
+    ]);
     const liveMap: Record<string, LiveState> = {};
     for (const l of live) liveMap[l.botId] = l;
     const params=new URLSearchParams(location.search);
@@ -105,7 +111,7 @@ export const useStore = create<State>((set, get) => ({
     if(params.has('notification')){void fetch('/api/push/notifications/read',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:params.get('notification')})});}
     if(params.has('bot')||params.has('notification')){params.delete('bot');params.delete('notification');params.delete('chat');history.replaceState(null,'',location.pathname+(params.size?'?'+params.toString():'')+location.hash);}
     const selectedBotId = sel && bots.some((b) => b.id === sel) ? sel : (bots.find((b) => b.isPrimary) ?? bots[0])?.id ?? null;
-    set({ bots, live: liveMap });
+    set({ bots, live: liveMap, folders });
     if (selectedBotId !== get().selectedBotId || !get().transcripts[transcriptKey(selectedBotId??'',get().selectedChats[selectedBotId??'']??bots.find(b=>b.id===selectedBotId)?.generation??1)]) {
       if (selectedBotId) get().selectBot(selectedBotId);
     }

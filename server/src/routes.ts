@@ -4,6 +4,7 @@ import { falVoiceReady } from './fal-voice.js';
 import { verifyAppleIdentityToken } from './apple-auth.js';
 import { hostedSummary } from './hosted-models.js';
 import { subscriptionModels } from './subscription-models.js';
+import { createFolder, deleteFolder, listFolders, moveBotToFolder, renameFolder } from './bot-folders.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
 import { assertCanCreateBot, PLAN_REQUIRED_MESSAGE, PlanLimitError, planRequired } from './plans.js';
@@ -263,6 +264,14 @@ const ownBot = (userId: string, id: string) => {
 api.get('/bots', (c) => c.json({ bots: listBots(c.get('user').id), live: allLive(c.get('user').id) }));
 
 api.post('/bots/reorder',async c=>{const body=await c.req.json().catch(()=>({}));if(!Array.isArray(body.ids)||body.ids.length>1000||body.ids.some((id:unknown)=>typeof id!=='string'))return c.json({error:'Invalid bot order.'},400);try{return c.json({bots:reorderBots(c.get('user').id,body.ids)});}catch{return c.json({error:'The bot list changed. Refresh and try again.'},409);}});
+
+// Sidebar folders
+const folderError = (c: any, e: unknown) => c.json({ error: (e as Error).message }, 400);
+api.get('/folders', (c) => c.json({ folders: listFolders(c.get('user').id) }));
+api.post('/folders', async (c) => { const b = await c.req.json().catch(() => ({})); try { return c.json({ folder: createFolder(c.get('user').id, b.name) }); } catch (e) { return folderError(c, e); } });
+api.patch('/folders/:id', async (c) => { const b = await c.req.json().catch(() => ({})); try { renameFolder(c.get('user').id, c.req.param('id'), b.name); return c.json({ ok: true }); } catch (e) { return folderError(c, e); } });
+api.delete('/folders/:id', (c) => { deleteFolder(c.get('user').id, c.req.param('id')); return c.json({ ok: true }); });
+api.post('/bots/:id/folder', async (c) => { const b = await c.req.json().catch(() => ({})); try { moveBotToFolder(c.get('user').id, c.req.param('id'), typeof b.folderId === 'string' && b.folderId ? b.folderId : null); return c.json({ ok: true }); } catch (e) { return folderError(c, e); } });
 
 api.post('/bots', async (c) => {
   try {

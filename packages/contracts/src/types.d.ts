@@ -85,6 +85,8 @@ export interface Bot {
   /** 'room' = group chat (members answer instead of the bot itself). */
   kind?: "agent" | "room";
   pinned: boolean;
+  /** The sidebar folder this Bot sits in, or null for the main list. */
+  folderId?: string | null;
   permissionMode?: PermissionMode;
   agentProvider?: "codex" | "claude" | "claude-code" | "openrouter" | "xai" | "groq";
   model?: string;

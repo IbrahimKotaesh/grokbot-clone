@@ -1,6 +1,7 @@
 import { t } from '../../lib/i18n';
 import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { BrainPicker } from './BrainPicker';
+import { foldersApi } from '../../lib/folders';
 import { subscriptionModelName, useSubscriptionModels, type SubscriptionKind } from '../../lib/models';
 import { voiceApi, type VoiceOptions } from '../../voice/api';
 import { previewVoice } from '../../voice/call';
@@ -198,6 +199,9 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         </Field>
         {bot.kind !== 'room' && <Field label={t("Voice")} htmlFor="cfg-voice" hint={t("How {name} sounds when you call.", { name: draft.name || 'Badr' })}>
           <VoicePicker bot={bot} />
+        </Field>}
+        {bot.kind !== 'room' && !bot.isPrimary && <Field label={t("Folder")} htmlFor="cfg-folder" hint={t("Groups this Bot in the sidebar, like a YouTube team or Accounting.")}>
+          <FolderPicker bot={bot} />
         </Field>}
         <Field label={t("Used as")}>
           <Segmented label={t("Bot type")} value={draft.mode} options={[{ value: 'personal', label: t("Personal assistant") }, { value: 'teammate', label: t("Teammate") }]} onChange={(v) => put('mode', v)} />
@@ -488,5 +492,23 @@ function SubscriptionModelSelect({ kind, value, onChange }: { kind: Subscription
       {(list ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.note ? ` — ${t(m.note)}` : ''}</option>)}
       {!list && <option disabled>{t('Loading models…')}</option>}
     </select>
+  );
+}
+
+/** Which sidebar folder this Bot sits in; saves at once. */
+function FolderPicker({ bot }: { bot: Bot }) {
+  const folders = useStore((s) => s.folders);
+  const current = useStore((s) => s.bots.find((b) => b.id === bot.id)?.folderId ?? '');
+  const [error, setError] = useState('');
+  const value = folders.some((f) => f.id === current) ? current : '';
+  return (
+    <>
+      <select id="cfg-folder" className="text-input" value={value} onChange={(e) => { setError(''); void foldersApi.move(bot.id, e.target.value || null).catch((x) => setError(x.message)); }}>
+        <option value="">{t('No folder')}</option>
+        {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+      </select>
+      {!folders.length && <small className="cfg-hint">{t('Make folders with + at the top of the Bot list.')}</small>}
+      {error && <small className="cfg-error" role="alert">{error}</small>}
+    </>
   );
 }

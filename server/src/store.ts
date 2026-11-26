@@ -33,6 +33,7 @@ export function toBot(r: any): Bot {
     isPrimary: !!r.is_primary,
     kind: r.kind === 'room' ? 'room' : 'agent',
     pinned: !!r.pinned,
+    folderId: r.folder_id ?? null,
     permissionMode: r.permission_mode ?? 'balanced',
     agentProvider: r.agent_provider ?? (env.agentProvider === 'claude' ? 'claude' : 'codex'),
     model: r.model ?? '',

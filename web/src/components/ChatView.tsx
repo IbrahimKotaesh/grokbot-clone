@@ -8,6 +8,7 @@ import { Composer } from './Composer';
 import { isMacDesktop } from '../lib/desktop';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
+import { foldersApi } from '../lib/folders';
 import { Transcript } from './Transcript';
 import { VoiceCallBar } from './VoiceCallBar';
 import { Phone } from 'lucide-react';
@@ -24,6 +25,8 @@ export function ChatView() {
   const set = useStore((s) => s.set);
   const [menu, setMenu] = useState(false);
   const [voices, setVoices] = useState<VoiceOptions['voices'] | null>(null);
+  const [folderMenu, setFolderMenu] = useState(false);
+  const folders = useStore((s) => s.folders);
   const calling = useVoice((s) => isCallActive(s));
   const [toast, setToast] = useState<string | null>(null);
   const rows = useMemo(() => sortedRows(transcript), [transcript]);
@@ -56,7 +59,19 @@ export function ChatView() {
               items={[
                 { label: t("New chat"), onSelect: () => useStore.getState().newChat(bot.id).then(() => flash(t("Started a new chat"))).catch((e) => flash(e.message)) },
                 ...(bot.kind !== 'room' ? [{ label: t("Voice"), hint: (bot.voice || 'luna').replace(/^./, (c) => c.toUpperCase()), onSelect: () => { voiceApi.options().then((o) => setVoices(o.voices)).catch(() => flash(t("Voices are unavailable right now"))); } }] : []),
+                ...(bot.kind !== 'room' && !bot.isPrimary ? [{ label: t("Move to folder"), hint: folders.find((f) => f.id === bot.folderId)?.name, onSelect: () => setFolderMenu(true) }] : []),
                 { label: t("Bot settings"), onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
+              ]}
+            />
+          )}
+          {folderMenu && (
+            <Menu
+              align="center"
+              onClose={() => setFolderMenu(false)}
+              items={[
+                ...folders.map((f) => ({ label: f.name, selected: bot.folderId === f.id, onSelect: () => void foldersApi.move(bot.id, f.id).catch((e) => flash(e.message)) })),
+                { label: t("No folder"), selected: !bot.folderId || !folders.some((f) => f.id === bot.folderId), onSelect: () => void foldersApi.move(bot.id, null).catch((e) => flash(e.message)) },
+                { label: t("New folder…"), onSelect: () => { useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false }); window.dispatchEvent(new CustomEvent('badr:new-folder', { detail: { botId: bot.id } })); } },
               ]}
             />
           )}
