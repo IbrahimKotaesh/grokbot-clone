@@ -246,6 +246,8 @@ export const nlWeb: Record<string, string> = {
   "Drag a Bot here, or pick “Move to folder” in its menu.": "Sleep een Bot hierheen, of kies “Naar map verplaatsen” in het menu.",
   "Write to everyone, or type @ to ask one Bot.": "Schrijf iedereen, of typ @ om één Bot te vragen.",
   "and": "en",
+  "Voice call with {name} started": "Spraakgesprek met {name} gestart",
+  "Voice call ended": "Spraakgesprek beëindigd",
   "Check your email": "Controleer je e-mail",
   "Checking with another Bot": "Controleren met een andere Bot",
   "Checking with {name}": "Controleren met {name}",

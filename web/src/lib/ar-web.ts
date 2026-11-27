@@ -174,6 +174,8 @@ export const arWeb: Record<string, string> = {
   "Drag a Bot here, or pick “Move to folder” in its menu.": "اسحب بوت لهون، أو اختار «نقل إلى مجلد» من قائمته.",
   "Write to everyone, or type @ to ask one Bot.": "اكتب للكل، أو اكتب @ لتسأل بوت واحد.",
   "and": "و",
+  "Voice call with {name} started": "بلّشت مكالمة صوتية مع {name}",
+  "Voice call ended": "انتهت المكالمة الصوتية",
   "Check your email": "تفقد بريدك",
   "Choose a new password": "اختر كلمة مرور جديدة",
   "City": "المدينة",

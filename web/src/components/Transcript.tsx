@@ -181,7 +181,7 @@ function Steps({ rows }: { rows: Row[] }) {
 
 function SystemRow({ row, running }: { row: Row; running: boolean }) {
   const b = row.body;
-  if (b.type === 'event') return <div className="system-event">{b.text}</div>;
+  if (b.type === 'event') return <div className="system-event">{eventLabel(b.text)}</div>;
   if (b.type === 'notice') return <div className={`notice is-${b.tone ?? 'info'}`}>{b.text}</div>;
   if (b.type === 'card') return <CardRow row={row} />;
   if (b.type === 'plan') return <PlanCard body={b} running={running} />;
@@ -325,6 +325,15 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
       )}
     </div>
   );
+}
+
+/** Call notes are written by the server in English; show their fixed words in the reader's language (the summary keeps the call's own language). */
+function eventLabel(text: string): string {
+  const started = /^Voice call with (.+) started$/.exec(text);
+  if (started) return t('Voice call with {name} started', { name: started[1] });
+  const ended = /^Voice call ended( · [^.·]+)?(?: · ([^.]+))?(\. [\s\S]*)?$/.exec(text);
+  if (ended) return `${t('Voice call ended')}${ended[1] ?? ''}${ended[2] ? ` · ${ended[2]}` : ''}${ended[3] ?? ''}`;
+  return text;
 }
 
 /** Who's in the group, and how to talk to it. */
