@@ -1,0 +1,13 @@
+{
+  "name": "badr-windows",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Badr for Windows (Tauri). Built and tested on GitHub Actions: .github/workflows/windows.yml",
+  "scripts": {
+    "build": "tauri build",
+    "icons": "tauri icon ../../docs/app-store/app-icon-1024.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}

@@ -1,0 +1,84 @@
+name: Badr for Windows
+# Builds the Windows app on a real Windows machine, installs it, opens it and takes a screenshot to prove it
+# runs, then publishes the installer to web/public/downloads (the site's "Download for Windows" button)
+# and the screenshot to desktop/windows/test/. Runs when the Windows app changes, or by hand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/windows/**'
+      - '!desktop/windows/test/**'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: windows-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/windows/src-tauri
+      - name: Build
+        working-directory: desktop/windows
+        run: |
+          npm ci --no-audit --no-fund
+          npx tauri build
+      - name: Install, open and screenshot
+        id: smoke
+        run: |
+          $installer = Get-ChildItem desktop/windows/src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $installer) { throw "No installer was built" }
+          Write-Host "Installer: $($installer.FullName) ($([math]::Round($installer.Length/1MB,1)) MB)"
+          Start-Process $installer.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter 'badr.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter 'Badr.exe' -ErrorAction SilentlyContinue | Select-Object -First 1 }
+          if (-not $exe) { throw "Badr.exe was not installed" }
+          Write-Host "Installed: $($exe.FullName)"
+          $proc = Start-Process $exe.FullName -PassThru
+          Start-Sleep -Seconds 30
+          $running = -not $proc.HasExited
+          Write-Host "Still running after 30 s: $running"
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          New-Item -ItemType Directory -Force desktop/windows/test | Out-Null
+          $bmp.Save("desktop/windows/test/screenshot.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          $title = (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue).MainWindowTitle
+          $report = @{ running = $running; windowTitle = $title; installer = $installer.Name; bytes = $installer.Length; checkedAt = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json
+          Set-Content desktop/windows/test/report.json $report
+          Write-Host $report
+          if (-not $running) { throw "Badr closed right after opening" }
+          Stop-Process -Id $proc.Id -Force
+          Copy-Item $installer.FullName web/public/downloads/Badr-windows-setup.exe -Force
+          $sha = (Get-FileHash web/public/downloads/Badr-windows-setup.exe -Algorithm SHA256).Hash.ToLower()
+          $build = (Get-Date).ToUniversalTime().ToString('yyyyMMddHHmm')
+          $version = (Get-Content desktop/windows/src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          Set-Content web/public/downloads/Badr-windows.json (@{ version = $version; build = $build; sha256 = $sha } | ConvertTo-Json -Compress)
+      - name: Keep the screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: badr-windows-test
+          path: desktop/windows/test/
+      - name: Publish the installer and the test screenshot
+        run: |
+          git config user.name "Badr Windows build"
+          git config user.email "actions@users.noreply.github.com"
+          git add web/public/downloads/Badr-windows-setup.exe web/public/downloads/Badr-windows.json desktop/windows/test
+          git commit -m "Windows app: new installer and test screenshot"
+          git pull --rebase origin main
+          git push origin HEAD:main

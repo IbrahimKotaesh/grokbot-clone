@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Badr",
+  "version": "1.0.0",
+  "identifier": "com.ibkopixels.badr.desktop",
+  "build": {
+    "frontendDist": "../offline"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "IBKO Pixels",
+    "copyright": "© 2026 IBKO Pixels",
+    "category": "Productivity",
+    "shortDescription": "Badr, your AI team",
+    "longDescription": "Badr gives you a team of AI teammates that get real work done.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["fino"]
+      }
+    }
+  }
+}
