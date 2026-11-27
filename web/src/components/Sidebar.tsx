@@ -1,4 +1,5 @@
 import { t } from '../lib/i18n';
+import { eventLabel } from './Transcript';
 import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
 import { Collapse } from './Collapse';
@@ -34,7 +35,7 @@ function previewFor(bot: Bot, running: boolean, awaiting: string | null) {
   if (awaiting) return t('Waiting for you: {what}', { what: awaiting });
   if (bot.paused) return t('Paused');
   if (running && !bot.lastPreview) return 'Working…';
-  return bot.lastPreview ?? t("No messages yet");
+  return bot.lastPreview ? eventLabel(bot.lastPreview.replace(/^Waiting for you: /, `${t('Waiting for you')}: `)) : t("No messages yet");
 }
 
 const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect }: { bot: Bot; selected: boolean; running: boolean; awaiting: string | null; onSelect: (id: string) => void }) {

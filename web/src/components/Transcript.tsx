@@ -356,7 +356,7 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
 }
 
 /** Call notes are written by the server in English; show their fixed words in the reader's language (the summary keeps the call's own language). */
-function eventLabel(text: string): string {
+export function eventLabel(text: string): string {
   const started = /^Voice call with (.+) started$/.exec(text);
   if (started) return t('Voice call with {name} started', { name: t(started[1]) });
   const ended = /^Voice call ended( · [^.·]+)?(?: · ([^.]+))?(\. [\s\S]*)?$/.exec(text);

@@ -11,6 +11,7 @@ import { Badr } from './Badr';
 import { activityPhrase } from '../lib/phrases';
 import { relativeShort } from '../lib/time';
 import { BlurWords } from '../lib/motion';
+import { eventLabel } from './Transcript';
 
 type Status = { tone: 'paused' | 'needs' | 'working' | 'ready'; text: string };
 function statusOf(bot: Bot, live: LiveState | undefined): Status {
@@ -122,7 +123,7 @@ export function HomeView() {
                     <Face bot={b} size={32} />
                     <span className="home__item-name" dir="auto">{b.name}</span>
                     {b.unread > 0 && <span className="home__dot" aria-label={t('Unread activity')} />}
-                    <span className="home__item-text" dir="auto">{b.lastPreview!.replace(/^Waiting for you: /, `${t('Waiting for you')}: `).replace(/[#*_`>|]/g, '')}</span>
+                    <span className="home__item-text" dir="auto">{eventLabel(b.lastPreview!).replace(/^Waiting for you: /, `${t('Waiting for you')}: `).replace(/[#*_`>|]/g, '')}</span>
                     <time className="home__time">{relativeShort(b.lastActivityAt)}</time>
                   </button>
                 ))}
