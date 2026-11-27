@@ -146,7 +146,6 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
   };
 
   const stop = () => api.interrupt(bot.id,generation).catch((e) => setError(e.message));
-  const fresh = () => useStore.getState().newChat(bot.id).catch((e) => setError(e.message));
 
   const hosted = useHostedModels();
   const included = bot.agentProvider === 'openrouter';
@@ -230,7 +229,6 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
                   { label: t("Choose files"), onSelect: () => documentRef.current?.click() },
                   { label: t("Choose photo"), onSelect: () => fileRef.current?.click() },
                   { label: t("Take photo"), onSelect: openCamera },
-                  { label: t("New chat"), onSelect: fresh },
                   { label: t("Connect apps"), onSelect: () => setModal('apps') },
                 ]}
               />

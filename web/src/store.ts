@@ -147,8 +147,9 @@ export const useStore = create<State>((set, get) => ({
 
   async loadChats(id){
     const {chats}=await api.chats(id);set(s=>({chats:{...s.chats,[id]:chats}}));
-    const selected=get().selectedChats[id],fallback=chats.find(c=>c.isMain)??chats[0];
-    if(fallback&&(!selected||!chats.some(c=>c.generation===selected)))get().selectChat(id,fallback.generation);
+    // One conversation per bot: always the main one (older side chats stay saved on the server, out of sight).
+    const selected=get().selectedChats[id],main=chats.find(c=>c.isMain)??chats[0];
+    if(main&&selected!==main.generation)get().selectChat(id,main.generation);
   },
   selectChat(id,generation){
     const selectedChats={...get().selectedChats,[id]:generation};set({selectedChats});lsSet(LS_CHATS,JSON.stringify(selectedChats));

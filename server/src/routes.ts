@@ -7,7 +7,7 @@ import { subscriptionModels } from './subscription-models.js';
 import { createFolder, deleteFolder, listFolders, moveBotToFolder, renameFolder } from './bot-folders.js';
 import { accountApi } from './account.js';
 import { claudeCodeApi } from './claude-code.js';
-import { assertCanCreateBot, PLAN_REQUIRED_MESSAGE, PlanLimitError, planRequired } from './plans.js';
+import { assertCanCreateBot, computerMinutesThisMonth, monthStart, planOf, PLAN_REQUIRED_MESSAGE, PlanLimitError, planRequired } from './plans.js';
 import { billingApi } from './billing.js';
 import { credentialsApi } from './credentials.js';
 import {resolveDesktopTarget,type DesktopTarget} from './desktop-device.js';
@@ -498,6 +498,33 @@ api.get('/calendar', (c) => {
   }
   events.sort((a, b) => a.at - b.at);
   return c.json({ events: events.slice(0, 1000) });
+});
+
+// Workflow page: everything the user's Bots do on their own (schedules and app triggers), across all Bots.
+api.get('/automations', (c) => {
+  const rows = db.prepare("SELECT r.* FROM routines r JOIN bots b ON b.id=r.bot_id WHERE b.user_id=? AND COALESCE(b.hidden,0)=0 ORDER BY r.created_at").all(c.get('user').id) as any[];
+  return c.json({ automations: rows.map(toRoutine) });
+});
+
+// Usage page: this month, per Bot. Counts only (never content): turns, tokens, what Badr's own models cost,
+// computer steps and time spent working, images made; plus the computer hours the plan includes.
+api.get('/usage', (c) => {
+  const userId = c.get('user').id, since = monthStart();
+  const perBot = db.prepare(`SELECT bot_id, COUNT(*) turns, SUM(input_tokens) input, SUM(output_tokens) output, SUM(CASE WHEN hosted=1 THEN cost_usd ELSE 0 END) cost,
+    SUM(computer_steps) steps, SUM(MAX(0, ended_at-started_at)) busy_ms, MAX(ended_at) last_at FROM model_usage WHERE user_id=? AND started_at>=? GROUP BY bot_id`).all(userId, since) as any[];
+  let images = new Map<string, number>();
+  try { images = new Map((db.prepare('SELECT bot_id, SUM(units) n FROM image_usage WHERE user_id=? AND created_at>=? GROUP BY bot_id').all(userId, since) as any[]).map((r) => [r.bot_id, r.n])); } catch { /* no images made on this server yet */ }
+  const bots = new Map((db.prepare('SELECT id, name FROM bots WHERE user_id=?').all(userId) as any[]).map((b) => [b.id, b.name]));
+  const plan = planOf(userId);
+  return c.json({
+    since,
+    plan: { id: plan.id, name: plan.name, computerHours: plan.computerHours },
+    computerMinutes: computerMinutesThisMonth(userId),
+    bots: perBot.filter((r) => bots.has(r.bot_id)).map((r) => ({
+      botId: r.bot_id, turns: r.turns, tokens: (r.input ?? 0) + (r.output ?? 0), costUsd: Math.round((r.cost ?? 0) * 100) / 100,
+      computerSteps: r.steps ?? 0, busyMinutes: Math.round((r.busy_ms ?? 0) / 60000), images: images.get(r.bot_id) ?? 0, lastAt: r.last_at,
+    })).sort((a, b) => b.tokens - a.tokens),
+  });
 });
 
 api.get('/bots/:id/routines', (c) => {

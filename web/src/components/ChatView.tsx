@@ -57,7 +57,6 @@ export function ChatView() {
               align="center"
               onClose={() => setMenu(false)}
               items={[
-                { label: t("New chat"), onSelect: () => useStore.getState().newChat(bot.id).then(() => flash(t("Started a new chat"))).catch((e) => flash(e.message)) },
                 ...(bot.kind !== 'room' ? [{ label: t("Voice"), hint: (bot.voice || 'luna').replace(/^./, (c) => c.toUpperCase()), onSelect: () => { voiceApi.options().then((o) => setVoices(o.voices)).catch(() => flash(t("Voices are unavailable right now"))); } }] : []),
                 ...(bot.kind !== 'room' && !bot.isPrimary ? [{ label: t("Move to folder"), hint: folders.find((f) => f.id === bot.folderId)?.name, onSelect: () => setFolderMenu(true) }] : []),
                 { label: t("Bot settings"), onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },

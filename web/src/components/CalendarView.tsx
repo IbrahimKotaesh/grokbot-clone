@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 import { lang, t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { useStore } from '../store';
@@ -38,6 +38,12 @@ export function CalendarView() {
   const byId = useMemo(() => new Map(bots.map((b) => [b.id, b])), [bots]);
   const [offset, setOffset] = useState(0);
   const [events, setEvents] = useState<CalEvent[] | null>(null);
+  // Compact by default: each day shows its first few runs and folds the rest; "Expand all" shows everything.
+  const [expanded, setExpanded] = useState(() => { try { return localStorage.getItem('badr.calExpanded') === '1'; } catch { return false; } });
+  const [openDays, setOpenDays] = useState<string[]>([]);
+  const toggleAll = () => { const next = !expanded; setExpanded(next); setOpenDays([]); try { localStorage.setItem('badr.calExpanded', next ? '1' : '0'); } catch { /* private window */ } };
+  const toggleDay = (key: string) => setOpenDays((cur) => (cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key]));
+  const SHOWN = 3;
   const v = useVersion('routines');
   const start = weekStart(offset);
   const days = Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * DAY));
@@ -70,6 +76,7 @@ export function CalendarView() {
           <button type="button" className="cal-nav__today" disabled={offset === 0} onClick={() => setOffset(0)}>{t('This week')}</button>
           <button type="button" className="icon-btn" aria-label={t('Next week')} onClick={() => setOffset(offset + 1)}><ChevronRight size={18} /></button>
           <span className="cal-nav__range">{range}</span>
+          <button type="button" className="cal-nav__today cal-nav__size" onClick={toggleAll} aria-pressed={expanded}>{expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}{expanded ? t('Compact') : t('Expand all')}</button>
         </div>
       </header>
       <div className="page-view__scroll">
@@ -84,11 +91,13 @@ export function CalendarView() {
             {days.map((d) => {
               const list = foldRepeats((events ?? []).filter((e) => sameDay(new Date(e.at), d)));
               const isToday = sameDay(d, today);
+              const key = d.toDateString(), dayOpen = expanded || openDays.includes(key);
+              const shown = dayOpen ? list : list.slice(0, SHOWN), hidden = list.length - shown.length;
               return (
                 <section key={d.toDateString()} className={`cal-day${isToday ? ' is-today' : ''}${d < today && !isToday ? ' is-past' : ''}`} aria-label={d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}>
                   <header className="cal-day__head"><span>{d.toLocaleDateString(loc, { weekday: 'short' })}</span><b>{d.getDate()}</b></header>
                   <div className="cal-day__list">
-                    {list.map((e) => {
+                    {shown.map((e) => {
                       const bot = byId.get(e.botId);
                       return (
                         <button key={`${e.routineId}-${e.at}`} type="button" className={`cal-event${(e.last ?? e.at) < Date.now() ? ' is-done' : ''}`} style={botVars(bot?.avatarColor)} onClick={() => open(e)} title={e.description || e.name}>
@@ -98,6 +107,8 @@ export function CalendarView() {
                         </button>
                       );
                     })}
+                    {hidden > 0 && <button type="button" className="cal-day__more" onClick={() => toggleDay(key)}>{t('+{n} more', { n: hidden })}</button>}
+                    {!expanded && openDays.includes(key) && list.length > SHOWN && <button type="button" className="cal-day__more" onClick={() => toggleDay(key)}>{t('Show less')}</button>}
                     {events !== null && list.length === 0 && <span className="cal-day__free">{t('Free')}</span>}
                   </div>
                 </section>

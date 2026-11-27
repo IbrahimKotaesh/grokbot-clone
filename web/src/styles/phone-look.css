@@ -36,19 +36,19 @@
   --p-on-sun: #211c17;
 }
 :root[data-theme='dark'] {
-  /* dark — warm night: cocoa grounds, cream ink */
-  --p-bg: #15110e;
-  --p-sidebar: #110e0b;
-  --p-surface: #1e1915;
-  --p-raised: #28221d;
-  --p-elevated: #332b25;
-  --p-line: #2d2620;
-  --p-line-strong: #43392f;
-  --p-text: #ffffff;
-  --p-muted: #cfc3b6;
-  --p-faint: #85786b;
+  /* dark — black and graphite: neutral grays, no warm tint; yellow and tomato stay as accents */
+  --p-bg: #0d0d0e;
+  --p-sidebar: #09090a;
+  --p-surface: #161618;
+  --p-raised: #212124;
+  --p-elevated: #2b2b2f;
+  --p-line: #252528;
+  --p-line-strong: #38383d;
+  --p-text: #f5f5f6;
+  --p-muted: #b4b4ba;
+  --p-faint: #77777f;
   --p-primary: #ffffff;
-  --p-on-primary: #15110e;
+  --p-on-primary: #0d0d0e;
   --p-blue: #ff8a6b;
   --p-red: #ff6e63;
   --p-green: #74d57d;
@@ -123,16 +123,21 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
   border-top: 13px solid var(--bot-bubble, var(--chat-blue)); border-right: 10px solid transparent; border-left: 0;
 }
 .chat .bubble.is-agent {
-  background: transparent !important;
+  background: var(--p-surface) !important;
   color: var(--p-text) !important;
-  border: 0 !important;
+  border: 1px solid var(--p-line) !important;
+  border-radius: 20px;
   box-shadow: none;
-  padding: 2px 0;
+  padding: 11px 16px;
   max-width: 720px;
   font-size: 16px;
   line-height: 1.6;
 }
-.chat .group.is-left .bubble-wrap { width: 100%; }
+/* The bot's replies: a bubble on the left with its picture beside the first one; yours stay on the right. */
+.chat .group.is-left { position: relative; padding-inline-start: 42px; }
+.chat .group__avatar { position: absolute; left: 0; top: 2px; }
+.chat .group.is-left .bubble-wrap { width: fit-content; max-width: min(760px, 100%); }
+.chat .group.is-left .bubble-wrap:first-of-type .bubble.is-agent, .chat .group.is-left > .bubble-wrap:nth-child(2) .bubble.is-agent { border-top-left-radius: 6px; }
 .chat .bubble .md a { color: var(--p-blue); text-decoration: none; }
 .chat .bubble .md a:hover { text-decoration: underline; }
 .chat .bubble .md code { background: var(--p-raised); border-radius: 6px; padding: 1px 5px; }

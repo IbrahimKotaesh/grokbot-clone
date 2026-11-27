@@ -4,8 +4,7 @@ import {BotRoster} from './BotRoster';
 import {NotificationBell} from './config/NotificationsSection';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useConfigUI } from '../configStore';
-import { useTasks } from './config/TasksView';
-import { CalendarDays, ChevronRight, FolderPlus, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronRight, FolderPlus, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
 import { foldersApi } from '../lib/folders';
 import { relativeShort } from '../lib/time';
 import type { Bot } from '@shared/types';
@@ -106,17 +105,15 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
   const set = useStore((s) => s.set);
   const setModal = useStore((s) => s.setModal);
   const user = useStore((s) => s.user);
-  const tasks = useTasks();
-  const waiting = tasks?.filter((x) => x.state === 'needs_input').length ?? 0;
   const [accountMenu, setAccountMenu] = useState(false);
   const logout = async () => { await api.logout().catch(() => {}); location.reload(); };
-  const go = (v: 'chat' | 'workflow' | 'calendar') => {
+  const go = (v: 'chat' | 'workflow' | 'calendar' | 'usage') => {
     useConfigUI.getState().setView(v);
     // On phones the page opens straight away; the bot list stays one tap away.
     if (v !== 'chat' && matchMedia('(max-width: 900px)').matches) set({ mobileNavOpen: false });
     if (v === 'chat' && collapsed) set({ sidebarCollapsed: false });
   };
-  const item = (v: 'chat' | 'workflow' | 'calendar', label: string, icon: React.ReactNode, badge = 0) => (
+  const item = (v: 'chat' | 'workflow' | 'calendar' | 'usage', label: string, icon: React.ReactNode, badge = 0) => (
     <button type="button" className={`rail__item${view === v ? ' is-active' : ''}`} aria-current={view === v ? 'page' : undefined} aria-label={badge ? `${label}, ${badge}` : label} title={label} onClick={() => go(v)}>
       {icon}{badge > 0 && <span className="rail__badge">{badge > 9 ? '9+' : badge}</span>}
     </button>
@@ -127,8 +124,9 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
       <button type="button" className="rail__item rail__toggle" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? t('Expand sidebar') : t('Collapse sidebar')} title="Toggle sidebar (⌘B)"><PanelLeft size={19} strokeWidth={1.8} /></button>
       <div className="rail__group">
         {item('chat', t('Bots'), <Users size={20} strokeWidth={1.8} />)}
-        {item('workflow', t('Workflow'), <Workflow size={20} strokeWidth={1.8} />, waiting)}
+        {item('workflow', t('Workflow'), <Workflow size={20} strokeWidth={1.8} />)}
         {item('calendar', t('Calendar'), <CalendarDays size={20} strokeWidth={1.8} />)}
+        {item('usage', t('Usage'), <BarChart3 size={20} strokeWidth={1.8} />)}
       </div>
       <div className="rail__spacer" />
       <div className="rail__group">
@@ -182,7 +180,8 @@ export function Sidebar() {
     if (!b || (b.unread === 0 && id !== storeSelectedBotId)) keepUp.current.delete(id);
   }
   const byOrder = (a: Bot, b: Bot) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) || b.lastActivityAt - a.lastActivityAt;
-  const rest = bots.filter((b) => !b.isPrimary);
+  const rest = bots.filter((b) => !b.isPrimary && b.kind !== 'room');
+  const groups = bots.filter((b) => b.kind === 'room').sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   const fresh = rest.filter((b) => keepUp.current.has(b.id)).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   const others = [...fresh, ...rest.filter((b) => !keepUp.current.has(b.id)).sort(byOrder)];
   const known = new Set(folders.map((f) => f.id));
@@ -205,6 +204,7 @@ export function Sidebar() {
               {newMenu && <Menu align="right" onClose={() => setNewMenu(false)} items={[
                 { label: t('New Bot'), icon: <Icon name="plus" size={16} opacity={0.7} />, onSelect: () => setModal('create') },
                 { label: t('New folder'), description: t('Group Bots, like a YouTube team'), icon: <FolderPlus size={16} strokeWidth={1.8} />, onSelect: () => setNaming({}) },
+                { label: t('New group chat'), description: t('Talk to 2 or more Bots together'), icon: <Users size={16} strokeWidth={1.8} />, onSelect: () => setModal('group') },
               ]} />}
             </span>
           </div>
@@ -229,6 +229,19 @@ export function Sidebar() {
                 </Folder>
               );
             })}
+            {groups.length > 0 && (
+              <section className={`folder folder--groups${!folded.includes('groups') ? ' is-open' : ''}`} aria-label={t('Groups')}>
+                <div className="folder__head">
+                  <button type="button" className="folder__toggle" aria-expanded={!folded.includes('groups')} onClick={() => toggleFolder('groups')}>
+                    <ChevronRight size={15} strokeWidth={2.2} className="folder__chev" />
+                    <span className="folder__name">{t('Groups')}</span>
+                    <span className="folder__count">{groups.length}</span>
+                  </button>
+                  <button type="button" className="folder__more folder__add" aria-label={t('New group chat')} title={t('New group chat')} onClick={() => setModal('group')}><Icon name="plus" size={14} opacity={0.7} /></button>
+                </div>
+                {!folded.includes('groups') && <div className="folder__bots">{groups.map((g) => <BotRow key={g.id} bot={g} selected={selectedBotId === g.id} running={!!live[g.id]?.isRunning} awaiting={live[g.id]?.awaiting?.reason ?? null} onSelect={selectBot} />)}</div>}
+              </section>
+            )}
             {loose.length > 0 && <div className="sidebar__team-label" data-folder-drop="">{folders.length ? t("Other Bots") : t("Your team")}</div>}
             <div className="bot-list">
               <BotRoster bots={loose} collapsed={false} fullOrder={fullOrder} onDropToFolder={folders.length ? dropToFolder : undefined} render={row} />

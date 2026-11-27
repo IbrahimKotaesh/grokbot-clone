@@ -303,6 +303,8 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
             case 'group':
               return (
                 <div key={it.key} className={`group is-${it.side}`}>
+                  {/* The bot's picture beside its replies, like a messaging app (group chats name each sender instead). */}
+                  {it.side === 'left' && bot.kind !== 'room' && <span className="group__avatar" aria-hidden><BotAvatarFor bot={bot} size={30} /></span>}
                   {it.from && <SenderLabel from={it.from} />}
                   {it.rows.map((r, i) => (
                     <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} quietTime={quiet.has(r.seq)} /></Fragment>

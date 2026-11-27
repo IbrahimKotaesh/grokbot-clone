@@ -85,7 +85,7 @@ export function setPlan(userId: string, plan: PlanId, renewsAt: number | null = 
   db.prepare('UPDATE users SET plan=?, plan_renews_at=? WHERE id=?').run(plan, renewsAt, userId);
 }
 
-const monthStart = () => {
+export const monthStart = () => {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 };

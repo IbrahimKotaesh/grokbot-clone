@@ -20,6 +20,7 @@ import { SearchModal } from './components/modals/SearchModal';
 import { ConfigLayer } from './components/config/ConfigLayer';
 import { WorkflowView } from './components/WorkflowView';
 import { CalendarView } from './components/CalendarView';
+import { UsageView } from './components/UsageView';
 import { useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
@@ -142,7 +143,7 @@ function Shell() {
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
       {!collapsed && <ResizeHandle edge="sidebar" />}
-      {view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : <ChatView />}
+      {view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : view === 'usage' ? <UsageView /> : <ChatView />}
       {showPanel && view === 'chat' && <ResizeHandle edge="panel" />}
       {showPanel && view === 'chat' && <ComputerPanel />}
       {modal === 'create' && <CreateBotModal />}
