@@ -6,7 +6,7 @@ import { useStore } from './store';
 
 export type Theme = 'system' | 'light' | 'dark';
 /** The main column: a chat, the team's Workflow board, or the week's Calendar of routines. */
-export type View = 'home' | 'chat' | 'workflow' | 'calendar' | 'usage';
+export type View = 'home' | 'chat' | 'groups' | 'workflow' | 'calendar' | 'usage';
 export type BotSettingsTab = 'general' | 'skills' | 'memories' | 'routines' | 'library' | 'members';
 export type AppSection = 'notifications' | 'general' | 'computer' | 'permissions' | 'apps' | 'plan' | 'account';
 
@@ -71,9 +71,21 @@ window.addEventListener('grokbot:event', (e) => {
   if (ev.type === 'routines') bump('routines');
 });
 
-// Picking a bot anywhere (sidebar, search) goes back to its chat.
+// Picking a Bot anywhere (sidebar, search, Home) opens its chat; picking a group chat opens it under Groups.
+/** The last Bot (not group) and the last group you had open, so Bots and Groups each come back where you were. */
+export const lastOpen: { agent: string | null; group: string | null } = { agent: null, group: null };
 useStore.subscribe((s, prev) => {
-  if (s.selectedBotId !== prev.selectedBotId && useConfigUI.getState().view !== 'chat') useConfigUI.getState().setView('chat');
+  if (s.selectedBotId === prev.selectedBotId) return;
+  const room = s.bots.find((b) => b.id === s.selectedBotId)?.kind === 'room';
+  // Remember what you're leaving too: the Bot open when the page loaded never "changed" to get recorded.
+  const kindOf = (id: string) => (s.bots.find((b) => b.id === id)?.kind === 'room' ? 'group' : 'agent');
+  if (prev.selectedBotId) lastOpen[kindOf(prev.selectedBotId)] = prev.selectedBotId;
+  if (s.selectedBotId) lastOpen[room ? 'group' : 'agent'] = s.selectedBotId;
+  const view = useConfigUI.getState().view;
+  if (room && view !== 'groups') useConfigUI.getState().setView('groups');
+  else if (!room && view !== 'chat') useConfigUI.getState().setView('chat');
 });
+/** The view a Bot's chat opens in: Groups for group chats, Bots for everyone else. */
+export const chatViewFor = (botId: string | null) => (useStore.getState().bots.find((b) => b.id === botId)?.kind === 'room' ? 'groups' : 'chat');
 
 export const useVersion = (key: string) => useConfigUI((s) => s.versions[key] ?? 0);

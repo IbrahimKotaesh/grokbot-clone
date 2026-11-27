@@ -24,7 +24,7 @@ function modelLabel(provider: string, model: string | null, hosted: boolean): { 
   return { label: 'Your own AI key', kind: 'key' };
 }
 
-interface Row { bot_id: string; provider: string; model: string | null; hosted: number; input_tokens: number; cached_tokens: number; output_tokens: number; cost_usd: number; computer_steps: number; started_at: number; ended_at: number }
+interface Row { id: number; turn_id: string | null; bot_id: string; provider: string; model: string | null; hosted: number; input_tokens: number; cached_tokens: number; output_tokens: number; cost_usd: number; computer_steps: number; started_at: number; ended_at: number }
 /** At API prices: Badr's own models at what they really cost; the rest at the vendor's list price. */
 const costOf = (r: Row) => {
   if (r.hosted) return r.cost_usd ?? 0;
@@ -35,7 +35,7 @@ const round = (n: number) => Math.round(n * 10000) / 10000;
 
 export function usageReport(userId: string, range: UsageRange) {
   const from = startOf(range), now = Date.now();
-  const rows = db.prepare('SELECT bot_id, provider, model, hosted, input_tokens, cached_tokens, output_tokens, cost_usd, computer_steps, started_at, ended_at FROM model_usage WHERE user_id=? AND started_at>=? ORDER BY started_at').all(userId, Math.min(from, monthStart())) as Row[];
+  const rows = db.prepare('SELECT id, turn_id, bot_id, provider, model, hosted, input_tokens, cached_tokens, output_tokens, cost_usd, computer_steps, started_at, ended_at FROM model_usage WHERE user_id=? AND started_at>=? ORDER BY started_at').all(userId, Math.min(from, monthStart())) as Row[];
   const inRange = rows.filter((r) => r.started_at >= from);
   let images = new Map<string, number>();
   try { images = new Map((db.prepare('SELECT bot_id, SUM(units) n FROM image_usage WHERE user_id=? AND created_at>=? GROUP BY bot_id').all(userId, from) as any[]).map((r) => [r.bot_id, r.n])); } catch { /* no images made on this server yet */ }
@@ -48,18 +48,27 @@ export function usageReport(userId: string, range: UsageRange) {
   const totals = { turns: 0, tokens: 0, input: 0, output: 0, cost: 0, busyMinutes: 0, computerSteps: 0, images: [...images.values()].reduce((a, b) => a + b, 0) };
   const bots = new Map<string, { botId: string; turns: number; tokens: number; cost: number; busyMs: number; computerSteps: number; lastAt: number }>();
   const models = new Map<string, { label: string; kind: string; turns: number; tokens: number; cost: number }>();
-  for (const r of inRange) {
-    const tokens = (r.input_tokens ?? 0) + (r.output_tokens ?? 0), cost = costOf(r), busy = Math.max(0, r.ended_at - r.started_at);
-    const b = buckets[Math.min(count - 1, Math.max(0, Math.floor((r.started_at - from) / size)))];
-    b.turns++; b.tokens += tokens; b.cost += cost;
-    totals.turns++; totals.tokens += tokens; totals.input += r.input_tokens ?? 0; totals.output += r.output_tokens ?? 0; totals.cost += cost; totals.busyMinutes += busy / 60000; totals.computerSteps += r.computer_steps ?? 0;
-    if (names.has(r.bot_id)) {
-      const x = bots.get(r.bot_id) ?? { botId: r.bot_id, turns: 0, tokens: 0, cost: 0, busyMs: 0, computerSteps: 0, lastAt: 0 };
-      x.turns++; x.tokens += tokens; x.cost += cost; x.busyMs += busy; x.computerSteps += r.computer_steps ?? 0; x.lastAt = Math.max(x.lastAt, r.ended_at);
-      bots.set(r.bot_id, x);
+  // One message can take several model calls: they share a turn id, count as one message, and its working time
+  // runs from the first call to the last. (Older rows have no turn id and count one each.)
+  const turns = new Map<string, Row[]>();
+  for (const r of inRange) { const k = r.turn_id ?? `row:${r.id}`; (turns.get(k) ?? turns.set(k, []).get(k)!).push(r); }
+  for (const calls of turns.values()) {
+    const started = Math.min(...calls.map((r) => r.started_at)), ended = Math.max(...calls.map((r) => r.ended_at));
+    const busy = Math.max(0, ended - started), botId = calls[0].bot_id;
+    const b = buckets[Math.min(count - 1, Math.max(0, Math.floor((started - from) / size)))];
+    const seen = new Set<string>();
+    b.turns++; totals.turns++; totals.busyMinutes += busy / 60000;
+    const x = names.has(botId) ? bots.get(botId) ?? { botId, turns: 0, tokens: 0, cost: 0, busyMs: 0, computerSteps: 0, lastAt: 0 } : null;
+    if (x) { x.turns++; x.busyMs += busy; x.lastAt = Math.max(x.lastAt, ended); bots.set(botId, x); }
+    for (const r of calls) {
+      const tokens = (r.input_tokens ?? 0) + (r.output_tokens ?? 0), cost = costOf(r);
+      b.tokens += tokens; b.cost += cost;
+      totals.tokens += tokens; totals.input += r.input_tokens ?? 0; totals.output += r.output_tokens ?? 0; totals.cost += cost; totals.computerSteps += r.computer_steps ?? 0;
+      if (x) { x.tokens += tokens; x.cost += cost; x.computerSteps += r.computer_steps ?? 0; }
+      const m = modelLabel(r.provider, r.model, !!r.hosted), mx = models.get(m.label) ?? { ...m, turns: 0, tokens: 0, cost: 0 };
+      if (!seen.has(m.label)) { mx.turns++; seen.add(m.label); }
+      mx.tokens += tokens; mx.cost += cost; models.set(m.label, mx);
     }
-    const m = modelLabel(r.provider, r.model, !!r.hosted), mx = models.get(m.label) ?? { ...m, turns: 0, tokens: 0, cost: 0 };
-    mx.turns++; mx.tokens += tokens; mx.cost += cost; models.set(m.label, mx);
   }
 
   // This month against the plan: what's left, and where the month is heading.
@@ -69,8 +78,8 @@ export function usageReport(userId: string, range: UsageRange) {
   return {
     range, from, to: now, hourly,
     buckets: buckets.map((b) => ({ ...b, cost: round(b.cost) })),
-    totals: { ...totals, cost: round(totals.cost), busyMinutes: Math.round(totals.busyMinutes) },
-    bots: [...bots.values()].map((x) => ({ botId: x.botId, turns: x.turns, tokens: x.tokens, cost: round(x.cost), busyMinutes: Math.round(x.busyMs / 60000), computerSteps: x.computerSteps, images: images.get(x.botId) ?? 0, lastAt: x.lastAt })),
+    totals: { ...totals, cost: round(totals.cost), busyMinutes: Math.round(totals.busyMinutes * 10) / 10 },
+    bots: [...bots.values()].map((x) => ({ botId: x.botId, turns: x.turns, tokens: x.tokens, cost: round(x.cost), busyMinutes: Math.round(x.busyMs / 6000) / 10, computerSteps: x.computerSteps, images: images.get(x.botId) ?? 0, lastAt: x.lastAt })),
     models: [...models.values()].map((m) => ({ ...m, cost: round(m.cost) })),
     month: {
       cost: round(monthCost), projected: round((monthCost / elapsed) * daysIn),

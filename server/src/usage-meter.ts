@@ -9,7 +9,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS model_usage (
   model_calls INTEGER NOT NULL DEFAULT 0, computer_steps INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0,
   started_at INTEGER NOT NULL, ended_at INTEGER NOT NULL)`);
 
-for (const [col, def] of [['kind', "TEXT NOT NULL DEFAULT 'chat'"], ['hosted', 'INTEGER NOT NULL DEFAULT 0'], ['cost_usd', 'REAL NOT NULL DEFAULT 0']] as const)
+for (const [col, def] of [['kind', "TEXT NOT NULL DEFAULT 'chat'"], ['hosted', 'INTEGER NOT NULL DEFAULT 0'], ['cost_usd', 'REAL NOT NULL DEFAULT 0'], ['turn_id', 'TEXT']] as const)
   if (!(db.prepare('PRAGMA table_info(model_usage)').all() as { name: string }[]).some((c) => c.name === col)) db.exec(`ALTER TABLE model_usage ADD COLUMN ${col} ${def}`);
 
 const COMPUTER_TOOLS = /^(computer_|open_browser)/;
@@ -25,8 +25,13 @@ export class TurnMeter {
   /** True when Fino's own key paid for this (so it counts against the plan's budget). */
   hosted = false;
   toolCalls = 0;
-  private started = now();
-  constructor(private userId: string, private botId: string, private provider: string, public model: string | null) {}
+  private started: number;
+  private turnId: string | null;
+  /** `turnId` groups the model calls of one message; `startedAt` is when the call (or turn) began. */
+  constructor(private userId: string, private botId: string, private provider: string, public model: string | null, opts: { turnId?: string; startedAt?: number } = {}) {
+    this.started = opts.startedAt ?? now();
+    this.turnId = opts.turnId ?? null;
+  }
   /** Add one model call's usage (Responses API shape). */
   add(u: Usage | undefined) {
     if (!u) return;
@@ -52,8 +57,8 @@ export class TurnMeter {
     if (!this.input && !this.output && !this.cost) return;
     try {
       db.prepare(
-        'INSERT INTO model_usage (user_id,bot_id,provider,model,input_tokens,cached_tokens,output_tokens,model_calls,computer_steps,tool_calls,started_at,ended_at,kind,hosted,cost_usd) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      ).run(this.userId, this.botId, this.provider, this.model, this.input, this.cached, this.output, this.calls, this.computerSteps, this.toolCalls, this.started, now(), this.computerSteps ? 'computer' : 'chat', this.hosted ? 1 : 0, this.cost);
+        'INSERT INTO model_usage (user_id,bot_id,provider,model,input_tokens,cached_tokens,output_tokens,model_calls,computer_steps,tool_calls,started_at,ended_at,kind,hosted,cost_usd,turn_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      ).run(this.userId, this.botId, this.provider, this.model, this.input, this.cached, this.output, this.calls, this.computerSteps, this.toolCalls, this.started, now(), this.computerSteps ? 'computer' : 'chat', this.hosted ? 1 : 0, this.cost, this.turnId);
       console.log(
         `[usage] ${this.provider}/${this.model ?? 'default'} in=${this.input} cached=${this.cached} out=${this.output} calls=${this.calls} computer_steps=${this.computerSteps} cost=${this.cost.toFixed(4)}${this.hosted ? ' hosted' : ''} ${Math.round((now() - this.started) / 1000)}s per_call=${this.perCall.join(',')}`,
       );

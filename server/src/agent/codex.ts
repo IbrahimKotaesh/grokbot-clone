@@ -1,4 +1,5 @@
 import { TurnMeter } from '../usage-meter.js';
+import { currentTurn } from '../lib/turn-id.js';
 import { codexHomeIfConnected, sharedLoginAllowed } from '../credentials.js';
 import {localDesktopTarget} from '../desktop-device.js';
 import {nativeImageReceiver} from './native-images.js';
@@ -34,7 +35,8 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
   if (!userHome && !sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Fino and connect your ChatGPT or Claude subscription.');
   const codexHome = userHome ?? process.env.CODEX_HOME ?? path.join(os.homedir(),'.codex');
   const proc = spawn(env.codexBin, ['app-server', '-c', 'features.shell_tool=false', '-c', 'features.apply_patch_freeform=false', '-c', 'features.skip_host_skill_discovery=true', '-c', 'features.omit_skill_descriptions=true', '-c', `features.image_generation=${nativeImagesAllowed}`, '-c', 'web_search="disabled"'], { cwd, stdio: ['pipe', 'pipe', 'pipe'], env: userHome ? { ...process.env, CODEX_HOME: userHome } : process.env });
-  const meter=new TurnMeter(bot.user_id,botId,'codex',(bot.agent_provider==='codex'&&bot.model)||env.codexModel||null);
+  const turn=currentTurn(botId);
+  const meter=new TurnMeter(bot.user_id,botId,'codex',(bot.agent_provider==='codex'&&bot.model)||env.codexModel||null,{turnId:turn?.id,startedAt:turn?.startedAt});
   const imageReceiver=nativeImageReceiver(bot.user_id,botId,[cwd,path.join(codexHome,'generated_images')]);
   const rl = createInterface({ input: proc.stdout });
   let nextId = 0, seq: number | null = null, answer = '', completed = false;

@@ -5,7 +5,7 @@ import { BotAvatarFor } from '../../avatar/BotAvatar';
 import { configApi } from '../../lib/configApi';
 import { api } from '../../lib/api';
 import { relativeShort } from '../../lib/time';
-import { useConfigUI, useVersion } from '../../configStore';
+import { chatViewFor, useConfigUI, useVersion } from '../../configStore';
 import { useStore } from '../../store';
 import { Glyph } from './glyphs';
 import './ui';
@@ -23,7 +23,7 @@ function when(t: Task): string {
 }
 
 export function TaskRow({ t, bot, showBot }: { t: Task; bot?: Bot; showBot: boolean }) {
-  const open = () => { if (bot) { useStore.getState().selectBot(bot.id); useConfigUI.getState().setView('chat'); } };
+  const open = () => { if (bot) { useStore.getState().selectBot(bot.id); useConfigUI.getState().setView(chatViewFor(bot.id)); } };
   return (
     <button type="button" className={`task-row is-${t.state}${isStalled(t) ? ' is-stalled' : ''}`} onClick={open} disabled={!bot} title={bot ? `Open ${bot.name}` : undefined}>
       <span className={`task-row__check is-${t.state}`} aria-hidden>{t.state === 'done' ? <Glyph name="check_circle" size={18} /> : <span className="task-row__ring" />}</span>

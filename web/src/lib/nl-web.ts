@@ -1114,4 +1114,9 @@ export const nlWeb: Record<string, string> = {
   "Download it instead": "Download het",
   "This sheet is empty.": "Dit blad is leeg.",
   "Showing the first 2,000 rows. Download the file to see everything.": "De eerste 2.000 rijen worden getoond. Download het bestand voor alles.",
+  "Pick a group to talk to several Bots at once.": "Kies een groep om met meerdere Bots tegelijk te praten.",
+  "Put 2 or more Bots in one chat. Write to everyone, or type @ to ask one Bot.": "Zet 2 of meer Bots in één chat. Schrijf iedereen, of typ @ om één Bot te vragen.",
+  "In this period": "In deze periode",
+  "{s} sec": "{s} sec",
+  "{h} h": "{h} u",
 };

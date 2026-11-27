@@ -1193,4 +1193,9 @@ export const arWeb: Record<string, string> = {
   "Download it instead": "نزّله بدالها",
   "This sheet is empty.": "هالورقة فاضية.",
   "Showing the first 2,000 rows. Download the file to see everything.": "عم نعرض أول 2,000 سطر. نزّل الملف لتشوف كل شي.",
+  "Pick a group to talk to several Bots at once.": "اختار مجموعة لتحكي مع كذا بوت بنفس الوقت.",
+  "Put 2 or more Bots in one chat. Write to everyone, or type @ to ask one Bot.": "حط بوتين أو أكتر بمحادثة وحدة. اكتب للكل، أو اكتب @ لتسأل بوت واحد.",
+  "In this period": "بهالفترة",
+  "{s} sec": "{s} ثانية",
+  "{h} h": "{h} س",
 };

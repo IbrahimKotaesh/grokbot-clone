@@ -1,4 +1,5 @@
 import { userInControl, noteWaitingForHandback } from '../vnc.js';
+import { beginTurn, currentTurn, endTurn } from '../lib/turn-id.js';
 import { raceAbort } from '../lib/abort.js';
 import { availableProviders, isQuotaError, markExhausted, pickProvider, PROVIDER_NAMES } from './fallback.js';
 import { claudeCodeTurn } from './claude-code-turn.js';
@@ -247,6 +248,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   routes.set(botId, newRoute());
   const ctrl = new AbortController();
   aborts.set(botId, ctrl);
+  const turn = beginTurn(botId);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
   const ctx: ToolCtx = { userId, botId, signal: ctrl.signal, desktopProof:{used:false},desktopTarget:localDesktopTarget(), enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
@@ -386,6 +388,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (pending) await finishPending(ctx, JSON.parse(pending.state), 'turn-ended');
     }
     aborts.delete(botId);
+    endTurn(botId, turn.id);
     routes.delete(botId);
     turnPrompts.delete(botId);
     const stillPending = db.prepare('SELECT 1 FROM pending_turns WHERE bot_id=?').get(botId);
@@ -626,6 +629,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   };
 
   let stream: any;
+  const callStart = now();
   try {
     try {
       stream = await llm.client.responses.create(body, { signal });
@@ -689,7 +693,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   if (msgSeq !== null) flush(false);
   if (!final) throw new Error('model stream ended without a response');
   if (final.usage?.input_tokens) noteUsage(botId, final.usage.input_tokens, history.length);
-  const meter = new TurnMeter(userId, botId, provider, model);
+  const meter = new TurnMeter(userId, botId, provider, model, { turnId: currentTurn(botId)?.id, startedAt: callStart });
   meter.hosted = llm.hosted;
   meter.add(final.usage);
   for (const o of final.output ?? []) if (o.type === 'function_call') meter.tool(o.name);

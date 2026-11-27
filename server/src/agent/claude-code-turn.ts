@@ -3,6 +3,8 @@
 // approvals; whatever Claude Code says or does is shown in the chat. It runs on the user's own computer
 // with the user's own Claude sign-in (made once in the Claude Code terminal).
 import { db, now } from '../db.js';
+import { currentTurn } from '../lib/turn-id.js';
+import { TurnMeter } from '../usage-meter.js';
 import { appendRow, getBotRow, getRow, setLive, updateRow } from '../store.js';
 import type { ToolCallBody } from '../types.js';
 import { asUser, botWorkspace, claudeEnv, prepareClaude, q, vmShell, CLAUDE } from '../vm-claude.js';
@@ -92,6 +94,13 @@ export async function claudeCodeTurn(botId: string, text: string, signal: AbortS
         }
         if (ev.type === 'result') {
           sawResult = true;
+          try {
+            const turn = currentTurn(botId), u = ev.usage ?? {}, bot = getBotRow(botId);
+            const cached = (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+            const meter = new TurnMeter(bot.user_id, botId, 'claude-code', bot.model || null, { turnId: turn?.id, startedAt: turn?.startedAt });
+            meter.setTotals((u.input_tokens ?? 0) + cached, u.cache_read_input_tokens ?? 0, u.output_tokens ?? 0, ev.num_turns ?? 1);
+            meter.save();
+          } catch { /* usage is best effort */ }
           if (ev.is_error || ev.subtype !== 'success') {
             const msg = String(ev.result ?? ev.errors?.join('; ') ?? 'Claude Code reported an error.');
             throw new Error(/login|authenticat|api key|credit/i.test(msg) ? 'Sign in to Claude Code first: Account → Claude Code, then type /login.' : msg);

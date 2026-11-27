@@ -1,4 +1,6 @@
 import { apiKeyFor, sharedLoginAllowed } from '../credentials.js';
+import { currentTurn } from '../lib/turn-id.js';
+import { TurnMeter } from '../usage-meter.js';
 import { raceAbort } from '../lib/abort.js';
 import { claudeHomeIfConnected } from '../claude-login.js';
 import {localDesktopTarget} from '../desktop-device.js';
@@ -114,6 +116,14 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
         if(full) {answer=full;flush(false);seq=null;answer='';}
       }
       if(message.type==='result') {
+        // Count Claude work on the Usage page too (tokens only; priced at Anthropic's list price as an estimate).
+        try {
+          const turn = currentTurn(botId), u: any = (message as any).usage ?? {};
+          const cached = (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+          const meter = new TurnMeter(bot.user_id, botId, 'claude', (bot.agent_provider==='claude'&&bot.model) || env.claudeModel || null, { turnId: turn?.id, startedAt: turn?.startedAt });
+          meter.setTotals((u.input_tokens ?? 0) + cached, u.cache_read_input_tokens ?? 0, u.output_tokens ?? 0, (message as any).num_turns ?? 1);
+          meter.save();
+        } catch { /* usage is best effort */ }
         if(message.subtype!=='success') throw new Error(message.errors?.join('; ') || `Claude: ${message.subtype}`);
         if(!wrote && message.result) {answer=message.result;flush(false);seq=null;answer='';}
         completed=true;

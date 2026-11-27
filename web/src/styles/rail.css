@@ -558,3 +558,28 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
   .sheetv__head { padding-top: max(12px, env(safe-area-inset-top)); }
 }
 @media (prefers-reduced-motion: reduce) { .sheetv, .sheetv__panel { animation: none !important; } }
+
+/* Groups page with no group open. */
+.groups-empty { display: grid; place-items: center; }
+.groups-empty__inner { width: min(440px, 100%); padding: 32px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.groups-empty__icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: color-mix(in srgb, var(--p-text) 6%, transparent); color: var(--p-muted); animation: home-pop .45s var(--ease-out, cubic-bezier(.22,1,.36,1)) both; }
+.groups-empty__title { margin: 6px 0 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: var(--p-text); }
+.groups-empty__sub { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--p-muted); }
+.groups-empty__list { width: 100%; margin-top: 10px; display: flex; flex-direction: column; border-radius: 18px; border: 1px solid var(--p-line); background: var(--p-surface); overflow: hidden; }
+.groups-empty__item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; text-align: start; transition: background-color .15s; }
+.groups-empty__item + .groups-empty__item { border-top: 1px solid var(--p-line); }
+.groups-empty__item:hover { background: color-mix(in srgb, var(--p-text) 4%, transparent); }
+.groups-empty__name { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--p-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.groups-empty__new { margin-top: 12px; }
+.groups-new { margin-top: 6px; }
+
+/* Usage: the month at the top, then the period you pick (the filter sits right above what it changes). */
+.use-month-title { margin: 0 2px -14px; }
+.use-period { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 2px -10px; }
+.use-tiles, .use-box { transition: opacity .2s; }
+.use-tiles.is-loading, .use-box.is-loading { opacity: .5; }
+.use-compare { display: block; height: 8px; margin: 8px 0 4px; border-radius: 99px; background: color-mix(in srgb, var(--p-text) 9%, transparent); overflow: hidden; }
+.use-compare i { display: block; height: 100%; border-radius: inherit; background: var(--p-sun); transition: width .5s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
+/* Numbers keep the page's side in Arabic instead of jumping left ("99%", "134k" have no Arabic letters). */
+:root:lang(ar) :is(.use-hero b, .use-left b, .use-tile b, .use-tile em, .use-hero span, .use-left small) { text-align: right; }
+@media (max-width: 640px) { .use-period .seg { overflow-x: auto; max-width: 100%; } }

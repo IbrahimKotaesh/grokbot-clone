@@ -5,8 +5,8 @@ import {BotRoster} from './BotRoster';
 import { Collapse } from './Collapse';
 import { GroupAvatar } from './GroupAvatar';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useConfigUI, type View } from '../configStore';
-import { BarChart3, CalendarDays, ChevronRight, FolderPlus, House, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { lastOpen, useConfigUI, type View } from '../configStore';
+import { BarChart3, CalendarDays, ChevronRight, FolderPlus, House, LayoutGrid, MessagesSquare, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
 import { foldersApi } from '../lib/folders';
 import { relativeShort } from '../lib/time';
 import type { Bot } from '@shared/types';
@@ -110,11 +110,25 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
   const user = useStore((s) => s.user);
   const [accountMenu, setAccountMenu] = useState(false);
   const logout = async () => { await api.logout().catch(() => {}); location.reload(); };
+  const bots = useStore((s) => s.bots);
+  const groupsUnread = bots.filter((b) => b.kind === 'room' && b.unread > 0).length;
   const go = (v: View) => {
+    // Bots and Groups each reopen the chat you last had there (a group can't stay open under Bots, and back).
+    const st = useStore.getState();
+    const isRoom = (id: string | null) => st.bots.find((b) => b.id === id)?.kind === 'room';
+    if (v === 'chat' && isRoom(st.selectedBotId)) {
+      const back = st.bots.find((b) => b.id === lastOpen.agent && b.kind !== 'room') ?? st.bots.find((b) => b.isPrimary) ?? st.bots.find((b) => b.kind !== 'room');
+      if (back) st.selectBot(back.id);
+    }
+    if (v === 'groups' && !isRoom(st.selectedBotId) && !matchMedia('(max-width: 900px)').matches) {
+      const rooms = st.bots.filter((b) => b.kind === 'room').sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+      const back = rooms.find((b) => b.id === lastOpen.group) ?? rooms[0];
+      if (back) st.selectBot(back.id);
+    }
     useConfigUI.getState().setView(v);
-    // On phones the page opens straight away; the bot list stays one tap away.
-    if (v !== 'chat' && matchMedia('(max-width: 900px)').matches) set({ mobileNavOpen: false });
-    if (v === 'chat' && collapsed) set({ sidebarCollapsed: false });
+    // On phones a page opens straight away; the Bot and group lists stay one tap away.
+    if (v !== 'chat' && v !== 'groups' && matchMedia('(max-width: 900px)').matches) set({ mobileNavOpen: false });
+    if ((v === 'chat' || v === 'groups') && collapsed) set({ sidebarCollapsed: false });
   };
   const item = (v: View, label: string, icon: React.ReactNode, badge = 0) => (
     <button type="button" className={`rail__item${view === v ? ' is-active' : ''}`} aria-current={view === v ? 'page' : undefined} aria-label={badge ? `${label}, ${badge}` : label} title={label} onClick={() => go(v)}>
@@ -131,6 +145,7 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
         {item('workflow', t('Workflow'), <Workflow size={20} strokeWidth={1.8} />)}
         {item('calendar', t('Calendar'), <CalendarDays size={20} strokeWidth={1.8} />)}
         {item('usage', t('Usage'), <BarChart3 size={20} strokeWidth={1.8} />)}
+        {item('groups', t('Groups'), <MessagesSquare size={20} strokeWidth={1.8} />, groupsUnread)}
       </div>
       <div className="rail__spacer" />
       <div className="rail__group">
@@ -157,12 +172,14 @@ export function Sidebar() {
   const bots = useStore((s) => s.bots);
   const live = useStore((s) => s.live);
   const storeSelectedBotId = useStore((s) => s.selectedBotId);
-  const inPage = useConfigUI((s) => s.view !== 'chat');
+  const view = useConfigUI((s) => s.view);
+  const groupsMode = view === 'groups';
+  const inPage = view !== 'chat' && view !== 'groups';
   const selectedBotId = inPage ? null : storeSelectedBotId; // nothing highlighted while Workflow or Calendar is open
   const collapsed = useStore((s) => s.sidebarCollapsed);
   const storeSelectBot = useStore((s) => s.selectBot);
   // Picking a bot (even the one already selected) leaves the Tasks view.
-  const selectBot = useCallback((id: string) => { useConfigUI.getState().setView('chat'); storeSelectBot(id); }, [storeSelectBot]);
+  const selectBot = useCallback((id: string) => { useConfigUI.getState().setView(useStore.getState().bots.find((b) => b.id === id)?.kind === 'room' ? 'groups' : 'chat'); storeSelectBot(id); }, [storeSelectBot]);
   const setModal = useStore((s) => s.setModal);
   const folders = useStore((s) => s.folders);
   const [folded, setFolded] = useState<string[]>(readFolded);
@@ -204,7 +221,7 @@ export function Sidebar() {
           <div className="side-panel__head">
             <button type="button" className="side-search" onClick={() => setModal('search')} title="Search (⌘K)"><Search size={15} strokeWidth={2} /><span>{t('Search')}</span><kbd>⌘K</kbd></button>
             <span className="side-panel__new-anchor">
-              <button type="button" className="icon-btn side-panel__new" onClick={() => setNewMenu(!newMenu)} aria-label={t("New")} aria-expanded={newMenu} title={t("New Bot or folder")}><Icon name="plus" opacity={0.7} /></button>
+              <button type="button" className="icon-btn side-panel__new" onClick={() => (groupsMode ? setModal('group') : setNewMenu(!newMenu))} aria-label={groupsMode ? t('New group chat') : t("New")} aria-expanded={groupsMode ? undefined : newMenu} title={groupsMode ? t('New group chat') : t("New Bot or folder")}><Icon name="plus" opacity={0.7} /></button>
               {newMenu && <Menu align="right" onClose={() => setNewMenu(false)} items={[
                 { label: t('New Bot'), icon: <Icon name="plus" size={16} opacity={0.7} />, onSelect: () => setModal('create') },
                 { label: t('New folder'), description: t('Group Bots, like a YouTube team'), icon: <FolderPlus size={16} strokeWidth={1.8} />, onSelect: () => setNaming({}) },
@@ -212,6 +229,21 @@ export function Sidebar() {
               ]} />}
             </span>
           </div>
+          {groupsMode ? (
+          <div className="sidebar__scroll">
+            <div className="sidebar__team-label">{t('Groups')}</div>
+            <div className="bot-list">
+              {groups.map((g) => <BotRow key={g.id} bot={g} selected={selectedBotId === g.id} running={!!live[g.id]?.isRunning} awaiting={live[g.id]?.awaiting?.reason ?? null} onSelect={selectBot} />)}
+              <button type="button" className="bot-list__empty groups-new" onClick={() => setModal('group')}>
+                <span className="bot-list__empty-plus"><Icon name="plus" size={14} opacity={0.66} /></span>
+                <span>
+                  <span className="bot-row__name">{t('New group chat')}</span>
+                  <span className="bot-row__preview">{t('Talk to 2 or more Bots together')}</span>
+                </span>
+              </button>
+            </div>
+          </div>
+          ) : (
           <div className="sidebar__scroll">
             {primary && (
               <div className="pinned"><BotConversations bot={primary} collapsed={false}>
@@ -233,19 +265,6 @@ export function Sidebar() {
                 </Folder>
               );
             })}
-            {groups.length > 0 && (
-              <section className={`folder folder--groups${!folded.includes('groups') ? ' is-open' : ''}`} aria-label={t('Groups')}>
-                <div className="folder__head">
-                  <button type="button" className="folder__toggle" aria-expanded={!folded.includes('groups')} onClick={() => toggleFolder('groups')}>
-                    <ChevronRight size={15} strokeWidth={2.2} className="folder__chev" />
-                    <span className="folder__name">{t('Groups')}</span>
-                    <span className="folder__count">{groups.length}</span>
-                  </button>
-                  <button type="button" className="folder__more folder__add" aria-label={t('New group chat')} title={t('New group chat')} onClick={() => setModal('group')}><Icon name="plus" size={14} opacity={0.7} /></button>
-                </div>
-                <Collapse open={!folded.includes('groups')}><div className="folder__bots">{groups.map((g) => <BotRow key={g.id} bot={g} selected={selectedBotId === g.id} running={!!live[g.id]?.isRunning} awaiting={live[g.id]?.awaiting?.reason ?? null} onSelect={selectBot} />)}</div></Collapse>
-              </section>
-            )}
             {loose.length > 0 && <div className="sidebar__team-label" data-folder-drop="">{folders.length ? t("Other Bots") : t("Your team")}</div>}
             <div className={`bot-list${loose.length ? '' : ' is-empty'}`} {...(folders.length ? { 'data-folder-drop': '' } : {})}>
               {folders.length > 0 && loose.length === 0 && <span className="bot-list__drop">{t('Drop here to take a Bot out of its folder')}</span>}
@@ -261,6 +280,7 @@ export function Sidebar() {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </aside>

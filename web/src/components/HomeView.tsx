@@ -4,7 +4,7 @@ import type { Bot, LiveState } from '@shared/types';
 import { t } from '../lib/i18n';
 import { api } from '../lib/api';
 import { useStore } from '../store';
-import { useConfigUI } from '../configStore';
+import { chatViewFor, useConfigUI } from '../configStore';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { GroupAvatar } from './GroupAvatar';
 import { Badr } from './Badr';
@@ -23,7 +23,7 @@ function statusOf(bot: Bot, live: LiveState | undefined): Status {
 
 const open = (botId: string) => {
   const st = useStore.getState();
-  if (st.selectedBotId === botId) useConfigUI.getState().setView('chat');
+  if (st.selectedBotId === botId) useConfigUI.getState().setView(chatViewFor(botId));
   else st.selectBot(botId);
 };
 

@@ -3,7 +3,6 @@ import { Cpu, Sparkles, Timer } from 'lucide-react';
 import { lang, t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { useStore, displayName } from '../store';
-import { relativeShort } from '../lib/time';
 import { BlurWords } from '../lib/motion';
 
 type Range = 'today' | '7d' | '30d' | 'month';
@@ -18,14 +17,18 @@ interface Report {
   month: { cost: number; projected: number; plan: { id: string; name: string; priceUsd: number; computerHours: number | null }; computer: { usedMinutes: number; limitMinutes: number | null }; includedUsed: { chat: number | null; computer: number | null } };
 }
 
-const loc = lang === 'nl' ? 'nl-NL' : 'en-US';
+const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
 const num = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
 const usd = (n: number) => {
   if (n > 0 && n < 0.01) return '<$0.01';
   const digits = n < 100 ? 2 : 0;
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
-const dur = (min: number) => (min >= 60 ? t('{h} h {m} min', { h: Math.floor(min / 60), m: Math.round(min % 60) }) : t('{m} min', { m: Math.round(min) }));
+const dur = (min: number) => {
+  if (min > 0 && min < 1) return t('{s} sec', { s: Math.max(1, Math.round(min * 60)) });
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return min >= 60 ? (m ? t('{h} h {m} min', { h, m }) : t('{h} h', { h })) : t('{m} min', { m: Math.round(min) });
+};
 const value = (x: { cost: number; tokens: number; turns: number }, m: Metric) => (m === 'cost' ? x.cost : m === 'tokens' ? x.tokens : x.turns);
 const show = (v: number, m: Metric) => (m === 'cost' ? usd(v) : num(v));
 
@@ -84,9 +87,10 @@ export function UsageView() {
   const remember = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private window */ } };
   const [r, setR] = useState<Report | null>(null);
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    let live = true; setFailed(false);
-    fetch(`/api/usage?range=${range}`, { credentials: 'include' }).then((x) => (x.ok ? x.json() : Promise.reject())).then((d) => live && setR(d)).catch(() => live && setFailed(true));
+    let live = true; setFailed(false); setLoading(true);
+    fetch(`/api/usage?range=${range}`, { credentials: 'include' }).then((x) => (x.ok ? x.json() : Promise.reject())).then((d) => live && setR(d)).catch(() => live && setFailed(true)).finally(() => live && setLoading(false));
     return () => { live = false; };
   }, [range]);
 
@@ -107,12 +111,12 @@ export function UsageView() {
           <BlurWords as="h1" className="page-view__title" text={t('Usage')} />
           <p className="page-view__sub">{failed ? t('Usage is unavailable right now.') : t('What your team used, what it would cost at API prices, and what’s left this month.')}</p>
         </div>
-        <Seg value={range} label={t('Period')} onPick={(v) => { setRange(v); remember('badr.usageRange', v); }} options={[['today', t('Today')], ['7d', t('7 days')], ['30d', t('30 days')], ['month', t('This month')]]} />
       </header>
       <div className="page-view__scroll">
         <div className="page-view__inner">
           {r && m && (
             <>
+              <h2 className="use-box__title use-month-title">{t('This month')}</h2>
               <section className="use-hero">
                 <div className="use-hero__main">
                   <small>{t('This month at API prices')}</small>
@@ -122,10 +126,8 @@ export function UsageView() {
                 <div className="use-hero__plan">
                   <small>{t('Your plan')}</small>
                   <b>{m.plan.name} · {usd(m.plan.priceUsd)}<em>/{t('month')}</em></b>
-                  <div className="use-compare" aria-hidden>
-                    <span style={{ width: `${Math.min(100, (m.plan.priceUsd / Math.max(m.plan.priceUsd, m.projected, 0.01)) * 100)}%` }} className="use-compare__plan" />
-                    <span style={{ width: `${Math.min(100, (m.projected / Math.max(m.plan.priceUsd, m.projected, 0.01)) * 100)}%` }} className="use-compare__api" />
-                  </div>
+                  {/* One track: the plan's price is the full bar, the fill is where API prices would land this month. */}
+                  <div className="use-compare" aria-hidden><i style={{ width: `${m.plan.priceUsd > 0 ? Math.min(100, Math.max(m.projected > 0 ? 2 : 0, (m.projected / m.plan.priceUsd) * 100)) : 0}%` }} /></div>
                   <span>{m.plan.priceUsd > 0 && worth > 0 ? t('Paying per token would cost about {amount} more.', { amount: usd(worth) }) : t('Well within what your plan includes.')}</span>
                 </div>
               </section>
@@ -140,14 +142,18 @@ export function UsageView() {
                   left={m.includedUsed.computer === null ? t('Unlimited') : `${Math.max(0, 100 - m.includedUsed.computer)}%`} of={t('Of what your plan includes this month')} />
               </section>
 
-              <section className="use-tiles">
+              <div className="use-period">
+                <h2 className="use-box__title">{t('In this period')}</h2>
+                <Seg value={range} label={t('Period')} onPick={(v) => { setRange(v); remember('badr.usageRange', v); }} options={[['today', t('Today')], ['7d', t('7 days')], ['30d', t('30 days')], ['month', t('This month')]]} />
+              </div>
+              <section className={`use-tiles${loading ? ' is-loading' : ''}`}>
                 <div className="use-tile"><small>{t('Cost at API prices')}</small><b>{usd(r.totals.cost)}</b></div>
                 <div className="use-tile"><small>{t('Messages handled')}</small><b>{num(r.totals.turns)}</b></div>
                 <div className="use-tile"><small>{t('Tokens')}</small><b>{num(r.totals.tokens)}</b><em>{t('{i} in · {o} out', { i: num(r.totals.input), o: num(r.totals.output) })}</em></div>
                 <div className="use-tile"><small>{t('Time working')}</small><b>{dur(r.totals.busyMinutes)}</b>{r.totals.computerSteps > 0 && <em>{t('{n} computer steps', { n: num(r.totals.computerSteps) })}</em>}</div>
               </section>
 
-              <section className="use-box">
+              <section className={`use-box${loading ? ' is-loading' : ''}`}>
                 <div className="use-box__head">
                   <h2 className="use-box__title">{t('Over time')}</h2>
                   <Seg value={metric} label={t('Show')} onPick={(v) => { setMetric(v); remember('badr.usageMetric', v); }} options={[['cost', t('Cost')], ['tokens', t('Tokens')], ['turns', t('Messages')]]} />
@@ -155,7 +161,7 @@ export function UsageView() {
                 <Chart buckets={r.buckets} metric={metric} hourly={r.hourly} />
               </section>
 
-              <section className="use-box">
+              <section className={`use-box${loading ? ' is-loading' : ''}`}>
                 <div className="use-box__head">
                   <h2 className="use-box__title">{t('Breakdown')}</h2>
                   <Seg value={by} label={t('Group by')} onPick={(v) => { setBy(v); remember('badr.usageBy', v); }} options={[['bot', t('By Bot')], ['model', t('By model')]]} />
@@ -173,11 +179,10 @@ export function UsageView() {
                             <span className="use-row__top"><b dir="auto">{name}</b><strong>{show(value(x, metric), metric)}</strong></span>
                             <span className="use-meter use-meter--thin" aria-hidden><i style={{ width: `${Math.max(2, (value(x, metric) / topRow) * 100)}%` }} /></span>
                             <small>
-                              {usd(x.cost)} · {t('{n} messages', { n: num(x.turns) })} · {t('{n} tokens', { n: num(x.tokens) })}
+                              {[metric !== 'cost' && usd(x.cost), metric !== 'turns' && t('{n} messages', { n: num(x.turns) }), metric !== 'tokens' && t('{n} tokens', { n: num(x.tokens) })].filter(Boolean).join(' · ')}
                               {by === 'bot' && b.busyMinutes > 0 ? ` · ${dur(b.busyMinutes)}` : ''}
                               {by === 'bot' && b.computerSteps ? ` · ${t('{n} computer steps', { n: num(b.computerSteps) })}` : ''}
                               {by === 'bot' && b.images ? ` · ${t('{n} images', { n: b.images })}` : ''}
-                              {by === 'bot' && b.lastAt ? ` · ${relativeShort(b.lastAt)}` : ''}
                             </small>
                           </span>
                         </li>

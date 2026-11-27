@@ -1,4 +1,5 @@
 import { billingReturn } from './components/config/PlanSection';
+import { GroupsEmpty } from './components/GroupsEmpty';
 import { Phone } from 'lucide-react';
 import { isCallActive, startCall, useVoice } from './voice/call';
 import { t } from './lib/i18n';
@@ -22,7 +23,7 @@ import { WorkflowView } from './components/WorkflowView';
 import { CalendarView } from './components/CalendarView';
 import { UsageView } from './components/UsageView';
 import { HomeView } from './components/HomeView';
-import { useConfigUI } from './configStore';
+import { chatViewFor, useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
 import { Landing, MacOffer } from './components/Landing';
@@ -82,7 +83,7 @@ function Shell() {
     const onNotification=(event:MessageEvent)=>{
       if(event.data?.type!=='fino-open-notification')return;
       try{const url=new URL(event.data.url,location.origin);if(url.origin!==location.origin)return;const botId=url.searchParams.get('bot'),id=url.searchParams.get('notification');
-        if(botId&&useStore.getState().bots.some(b=>b.id===botId)){const generation=Number(url.searchParams.get('chat'));if(Number.isSafeInteger(generation)&&generation>0)useStore.getState().selectChat(botId,generation);useStore.getState().selectBot(botId);useConfigUI.getState().closeAppSettings();useConfigUI.getState().setView('chat');useStore.getState().set({viewerOpen:false});}
+        if(botId&&useStore.getState().bots.some(b=>b.id===botId)){const generation=Number(url.searchParams.get('chat'));if(Number.isSafeInteger(generation)&&generation>0)useStore.getState().selectChat(botId,generation);useStore.getState().selectBot(botId);useConfigUI.getState().closeAppSettings();useConfigUI.getState().setView(chatViewFor(botId));useStore.getState().set({viewerOpen:false});}
         if(id)void fetch('/api/push/notifications/read',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
       }catch{/* Ignore malformed notification links. */}
     };
@@ -133,7 +134,7 @@ function Shell() {
     <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${showPanel && view === 'chat' ? ' has-computer' : ''}`}>
       <div className="mobile-topbar">
         <button ref={navButton} type="button" className="icon-btn" aria-label={t("Open conversations")} aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
-        {view !== 'chat' ? <span className="mobile-brand"><span>{view === 'home' ? t('Home') : view === 'workflow' ? t('Workflow') : view === 'usage' ? t('Usage') : t('Calendar')}</span></span> : <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>}
+        {view !== 'chat' && !(view === 'groups' && selectedBot?.kind === 'room') ? <span className="mobile-brand"><span>{view === 'groups' ? t('Groups') : view === 'home' ? t('Home') : view === 'workflow' ? t('Workflow') : view === 'usage' ? t('Usage') : t('Calendar')}</span></span> : <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>}
         {view === 'chat' && selectedBot && selectedBot.kind !== 'room' ? <span className="mobile-topbar__right">
           {/* Only Badr takes calls: one round sun button, like the desktop header. */}
           {!calling && selectedBot.isPrimary && <button type="button" className="chat__call" aria-label={t("Call {name}", { name: selectedBot.name })} title={t("Call {name}", { name: selectedBot.name })} onClick={() => startCall(selectedBot.id)}><Phone size={19} strokeWidth={2.2} /></button>}
@@ -143,7 +144,7 @@ function Shell() {
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
       {!collapsed && <ResizeHandle edge="sidebar" />}
-      {view === 'home' ? <HomeView /> : view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : view === 'usage' ? <UsageView /> : <ChatView />}
+      {view === 'groups' ? (selectedBot?.kind === 'room' ? <ChatView /> : <GroupsEmpty />) : view === 'home' ? <HomeView /> : view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : view === 'usage' ? <UsageView /> : <ChatView />}
       {showPanel && view === 'chat' && <ResizeHandle edge="panel" />}
       {showPanel && view === 'chat' && <ComputerPanel />}
       {modal === 'create' && <CreateBotModal />}
