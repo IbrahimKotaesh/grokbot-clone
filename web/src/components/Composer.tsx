@@ -145,7 +145,14 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
     }
   };
 
-  const stop = () => api.interrupt(bot.id,generation).catch((e) => setError(e.message));
+  // One press is enough: the button shows it's stopping at once (the server stops the current step right away).
+  const [stopping, setStopping] = useState(false);
+  useEffect(() => { if (!running) setStopping(false); }, [running]);
+  const stop = () => {
+    if (stopping) return;
+    setStopping(true);
+    api.interrupt(bot.id, generation).catch((e) => { setStopping(false); setError(e.message); });
+  };
 
   const hosted = useHostedModels();
   const included = bot.agentProvider === 'openrouter';
@@ -262,8 +269,8 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
         <div className="composer__right">
           <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError} onText={transcript=>setText(current=>`${current.trimEnd()}${current.trim()?"\n":""}${transcript}`)}/>
           {running && !hasText ? (
-            <button type="button" className="composer__cta" onClick={stop} aria-label={t("Stop")} title={t("Stop")}>
-              <Icon name="stop" size={14} />
+            <button type="button" className={`composer__cta${stopping ? ' is-stopping' : ''}`} onClick={stop} disabled={stopping} aria-label={stopping ? t("Stopping…") : t("Stop")} title={stopping ? t("Stopping…") : t("Stop")}>
+              {stopping ? <span className="composer__stopping" aria-hidden /> : <Icon name="stop" size={14} />}
             </button>
           ) : (
             <button

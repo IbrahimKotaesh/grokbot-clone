@@ -1107,4 +1107,5 @@ export const nlWeb: Record<string, string> = {
   "Keep the action under 200 characters.": "Houd de actie onder de 200 tekens.",
   "Pick what the Bot should do.": "Kies wat de Bot moet doen.",
   "You can have up to 40 rules.": "Je kunt maximaal 40 regels hebben.",
+  "Stopping…": "Stoppen…",
 };

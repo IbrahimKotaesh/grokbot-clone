@@ -42,6 +42,8 @@ export interface ToolCtx {
   directUserRequest?: string;
   desktopProof?:DesktopProof;
   desktopTarget?:DesktopTarget;
+  /** Aborts when the owner presses Stop. */
+  signal?: AbortSignal;
 }
 
 export interface ToolResult {

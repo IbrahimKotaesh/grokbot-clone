@@ -511,3 +511,8 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
   .home__time { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .home__stage, .home__section, .home__card { animation: none; } }
+
+/* Stop pressed: a small ring spins until the Bot has stopped (one press is enough). */
+.composer__cta.is-stopping { opacity: 1; cursor: default; }
+.composer__stopping { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: badr-spin .7s linear infinite; }
+@keyframes badr-spin { to { transform: rotate(360deg); } }

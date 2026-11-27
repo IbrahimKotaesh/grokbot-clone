@@ -1186,4 +1186,5 @@ export const arWeb: Record<string, string> = {
   "Keep the action under 200 characters.": "خلّي العمل أقل من 200 حرف.",
   "Pick what the Bot should do.": "اختار شو لازم يعمل البوت.",
   "You can have up to 40 rules.": "فيك تعمل لحد 40 قاعدة.",
+  "Stopping…": "جاري الإيقاف…",
 };

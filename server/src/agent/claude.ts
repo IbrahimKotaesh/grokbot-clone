@@ -1,4 +1,5 @@
 import { apiKeyFor, sharedLoginAllowed } from '../credentials.js';
+import { raceAbort } from '../lib/abort.js';
 import { claudeHomeIfConnected } from '../claude-login.js';
 import {localDesktopTarget} from '../desktop-device.js';
 import { type SDKUserMessage, query, createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
@@ -54,7 +55,7 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
     const schema = z.fromJSONSchema(t.parameters) as z.ZodObject<any>;
     return tool(t.name,t.description,schema.shape,async (args) => {
       if (controller.signal.aborted) throw new Error('Stopped.');
-      const r = await execute(t.name,args,randomUUID());
+      const r = await raceAbort(execute(t.name,args,randomUUID()), controller.signal);
       const content: any[] = typeof r.output === 'string' ? [{type:'text',text:r.output}] : r.output.map((c:any) => {
         if (c.type !== 'input_image') return {type:'text',text:c.text ?? JSON.stringify(c)};
         const match = /^data:([^;]+);base64,(.*)$/s.exec(c.image_url);
@@ -97,7 +98,12 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
     canUseTool:async () => ({behavior:'deny',message:'Use the supplied Grokbot tools.'}),
   }});
   try {
-    for await(const message of run) {
+    // Stop ends the turn at once: don't wait for Claude's current step (a slow tool, a long answer) to finish first.
+    const messages = run[Symbol.asyncIterator]();
+    while (true) {
+      const next = await raceAbort(messages.next(), controller.signal);
+      if (next.done) break;
+      const message = next.value;
       if (message.type==='system' && message.subtype==='init') db.prepare('INSERT OR REPLACE INTO claude_sessions VALUES (?,?,?)').run(botId,bot.generation,message.session_id);
       if(message.type==='stream_event' && message.event.type==='content_block_delta' && message.event.delta.type==='text_delta') {
         answer+=message.event.delta.text;

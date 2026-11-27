@@ -1,4 +1,5 @@
 import { userInControl, noteWaitingForHandback } from '../vnc.js';
+import { raceAbort } from '../lib/abort.js';
 import { availableProviders, isQuotaError, markExhausted, pickProvider, PROVIDER_NAMES } from './fallback.js';
 import { claudeCodeTurn } from './claude-code-turn.js';
 import { loopClient, LOOP_PROVIDERS, type LoopProvider } from './model-clients.js';
@@ -73,6 +74,8 @@ const KEEP_IMAGES = 3;
 
 const queues = new Map<string, Promise<void>>();
 const aborts = new Map<string, AbortController>();
+/** Bumped by Stop: work queued before it (Bot messages, routines, check-ins) is dropped; the owner's own messages still run. */
+const stopEpoch = new Map<string, number>();
 
 export function enqueue(botId: string, trigger: Trigger) {
   // No plan yet (or it ended): nothing runs, including check-ins, routines and messages from other bots.
@@ -87,7 +90,8 @@ export function enqueue(botId: string, trigger: Trigger) {
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
   const prev = queues.get(botId) ?? Promise.resolve();
-  const next = prev.then(() => runTurn(botId, trigger)).catch((e) => console.error('[agent] turn failed', botId, e)).finally(() => { try { trigger.afterTurn?.(); } catch { /* best effort */ } });
+  const epoch = stopEpoch.get(botId) ?? 0;
+  const next = prev.then(() => (trigger.type !== 'user' && (stopEpoch.get(botId) ?? 0) !== epoch ? undefined : runTurn(botId, trigger))).catch((e) => console.error('[agent] turn failed', botId, e)).finally(() => { try { trigger.afterTurn?.(); } catch { /* best effort */ } });
   queues.set(botId, next);
   next.finally(() => { if (queues.get(botId) === next) queues.delete(botId); });
 }
@@ -115,6 +119,7 @@ export function recoverInterruptedTurns() {
 }
 
 export function interrupt(botId: string) {
+  stopEpoch.set(botId, (stopEpoch.get(botId) ?? 0) + 1);
   aborts.get(botId)?.abort();
 }
 
@@ -244,7 +249,7 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
   aborts.set(botId, ctrl);
   let depth = trigger.type === 'bot' ? trigger.depth : 0;
 
-  const ctx: ToolCtx = { userId, botId, desktopProof:{used:false},desktopTarget:localDesktopTarget(), enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
+  const ctx: ToolCtx = { userId, botId, signal: ctrl.signal, desktopProof:{used:false},desktopTarget:localDesktopTarget(), enqueueBotMessage:(from,to,text,level)=>enqueueBotMessage(from,to,text,level,trigger.type==='bot'&&to===trigger.fromBotId?trigger.fromGeneration:undefined), depth, directUserRequest: trigger.type === 'user' ? trigger.text : undefined };
   let completed=false;
   const firstSeq = (db.prepare('SELECT next_seq FROM bots WHERE id=?').get(botId) as any)?.next_seq ?? 0;
   setLive(botId, { isRunning: true, activity: { kind: 'thinking', since: now() }, awaiting: null, startedAt: now() });
@@ -419,6 +424,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
   if(st.generation&&st.generation!==getBotRow(botId).generation)return inChat(botId,st.generation,()=>processCalls(ctx,st));
   st.generation??=getBotRow(botId).generation;
   while (st.calls.length) {
+    if (ctx.signal?.aborted) throw new Error('Stopped.');
     const c = st.calls[0];
     const args = safeParse(c.arguments) ?? {};
     const row = getRow(botId, c.rowSeq);
@@ -509,7 +515,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         if (REPEAT_LIMITS[c.name] && used > REPEAT_LIMITS[c.name])
           res = { output: `You already used ${c.name} ${used - 1} times for this request. Stop searching and answer now with what you found; say clearly what you could not find.`, summary: 'Stopped repeating' };
         else if(ctx.desktopTarget&&DESKTOP_TOOLS.has(c.name)){res=await runDesktopTool(userId,ctx.desktopTarget,c.name,args);if(ctx.desktopProof)ctx.desktopProof.used=true;}
-        else res = impl ? await impl.impl(args, { ...ctx, depth: st.depth }) : await runComposioTool(ctx, c.name, args);
+        else res = await raceAbort(impl ? impl.impl(args, { ...ctx, depth: st.depth }) : runComposioTool(ctx, c.name, args), ctx.signal);
         if(res.endTurn&&ctx.desktopProof)ctx.desktopProof.deferred=true;
         if(!toolMap.has(c.name)||[...BROWSER_TOOL_NAMES,'connected_apps','read_file','read_page','team_updates','search_email','read_email','view_photo','computer_screenshot','computer_click','computer_type','computer_key','computer_scroll','computer_drag','shell','open_browser','recall','search_conversation'].includes(c.name))res={...res,output:externalToolOutput(userId,botId,c.name,res.output)};
         updateRow(botId, c.rowSeq, { ...body, status: 'done', summary: res.summary });
