@@ -210,4 +210,4 @@
 }
 .chat__call:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--p-edge, #211c17); }
 :root[data-theme='dark'] .chat__call { border-color: #000; box-shadow: 2px 2px 0 #000; }
-@media (max-width: 900px) { .chat__header-right .chat__call { width: 44px; height: 44px; } }
+@media (max-width: 900px) { .chat__header-right .chat__call { width: 44px; height: 44px; } .mobile-topbar__right .chat__call { width: 42px; height: 42px; margin-right: 4px; } .mobile-topbar__right { align-items: center; gap: 8px; } }
