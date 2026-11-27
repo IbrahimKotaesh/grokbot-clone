@@ -1,5 +1,6 @@
 import { recoverInterruptedTurns } from './agent/loop.js';
 import { allowedOrigin } from './lib/origin.js';
+import { contentSecurityPolicy } from './lib/csp.js';
 import { revenueCatWebhook } from './billing.js';
 import { stripeWebhook } from './stripe.js';
 import {attachDesktopDevices} from './desktop-device.js';
@@ -37,6 +38,11 @@ initSubagents();
 initRooms();
 
 const app = new Hono();
+// Every page gets the Content-Security-Policy (lib/csp.ts), unless a route already set its own (with a nonce).
+app.use('*', async (c, next) => {
+  await next();
+  if (/text\/html/i.test(c.res.headers.get('content-type') ?? '') && !c.res.headers.has('Content-Security-Policy')) c.res.headers.set('Content-Security-Policy', contentSecurityPolicy());
+});
 app.use('/api/*', async (c, next) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
     const origin = c.req.header('origin');

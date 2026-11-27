@@ -29,6 +29,7 @@ import { Cron } from 'croner';
 import { env } from './env.js';
 import { newId } from './lib/ids.js';
 import { hub } from './lib/hub.js';
+import { contentSecurityPolicy, newNonce } from './lib/csp.js';
 import { createSession, destroySession, requireUser, userFromRequest, userFromCookieHeader, type AuthVars } from './lib/auth.js';
 import { reorderBots, allLive, appendRow, clearConversation, emitBot, getLive, getBot, getBotRow, getRow, listBots, listRoutines, listRows, listTasks, toRoutine, updateRow } from './store.js';
 import { enqueue, interrupt, isBotBusy, resolveApproval } from './agent/loop.js';
@@ -747,7 +748,9 @@ api.get('/apps/:slug/connect/go', async (c) => {
     return c.redirect(r.redirectUrl, 302);
   } catch (e: any) {
     const msg = String(e?.message ?? 'Something went wrong.').replace(/[<>&"]/g, '');
-    return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Badr</title><body style="font-family:-apple-system,system-ui,sans-serif;padding:40px 24px;text-align:center;color:#1f1e1d;background:#faf9f5"><h2 style="font-weight:600">Couldn’t start the connection</h2><p style="color:#6f6d66">${msg}</p><p><button onclick="window.close()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#2f6fe0;color:#fff">Close</button></p></body>`, e?.status === 404 ? 404 : 502);
+    const nonce = newNonce();
+    c.header('Content-Security-Policy', contentSecurityPolicy(nonce));
+    return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Badr</title><body style="font-family:-apple-system,system-ui,sans-serif;padding:40px 24px;text-align:center;color:#1f1e1d;background:#faf9f5"><h2 style="font-weight:600">Couldn’t start the connection</h2><p style="color:#6f6d66">${msg}</p><p><button id="close" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#2f6fe0;color:#fff">Close</button></p><script nonce="${nonce}">document.getElementById('close').onclick=()=>window.close()</script></body>`, e?.status === 404 ? 404 : 502);
   }
 });
 
@@ -782,7 +785,9 @@ api.get('/apps/callback', async (c) => {
   // JSON inside <script>: "<" is escaped so no value can close the script tag; only Badr's own page hears the message.
   const js = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c').replace(/\u2028|\u2029/g, '');
   const target = new URL(env.appUrl).origin;
-  return c.html(`<!doctype html><meta charset="utf-8"><title>Badr</title><body style="font-family:system-ui;padding:40px;text-align:center">${ok ? 'Connected. You can close this window.' : 'Connection failed.'}<script>try{window.opener&&window.opener.postMessage({type:'grokbot-connected',slug:${js(slug)},ok:${ok}},${js(target)})}catch(e){};setTimeout(()=>window.close(),800)</script></body>`);
+  const nonce = newNonce();
+  c.header('Content-Security-Policy', contentSecurityPolicy(nonce));
+  return c.html(`<!doctype html><meta charset="utf-8"><title>Badr</title><body style="font-family:system-ui;padding:40px;text-align:center">${ok ? 'Connected. You can close this window.' : 'Connection failed.'}<script nonce="${nonce}">try{window.opener&&window.opener.postMessage({type:'grokbot-connected',slug:${js(slug)},ok:${ok}},${js(target)})}catch(e){};setTimeout(()=>window.close(),800)</script></body>`);
 });
 
 api.delete('/apps/:slug', async (c) => {

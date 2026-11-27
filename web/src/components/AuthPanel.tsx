@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { t } from '../lib/i18n';
 import { useStore } from '../store';
 
-type Mode = 'signin' | 'signup' | 'forgot' | 'sent' | 'reset';
+type Mode = 'signin' | 'signup' | 'forgot' | 'sent' | 'reset' | 'confirm-sent' | 'confirming';
 
 const loginError = (status: string | null) => {
   if (status === 'not-allowed') return t('This account is not allowed on this server.');
@@ -24,7 +24,8 @@ export function AuthPanel({ initial = 'signin' }: { initial?: 'signin' | 'signup
   const checkAuth = useStore((s) => s.checkAuth);
   const params = new URLSearchParams(location.search);
   const resetToken = params.get('reset');
-  const [mode, setMode] = useState<Mode>(resetToken ? 'reset' : initial);
+  const confirmToken = params.get('confirm');
+  const [mode, setMode] = useState<Mode>(confirmToken ? 'confirming' : resetToken ? 'reset' : initial);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -34,13 +35,26 @@ export function AuthPanel({ initial = 'signin' }: { initial?: 'signin' | 'signup
 
   const go = (m: Mode) => { setMode(m); setError(null); setExists(false); setPassword(''); };
 
+  // The link from the confirmation email: finish the account and sign in (once, even in React's double effects).
+  const confirming = useRef(false);
+  useEffect(() => {
+    if (!confirmToken || confirming.current) return;
+    confirming.current = true;
+    post('confirm', { token: confirmToken })
+      .then(async () => { history.replaceState(null, '', '/'); await checkAuth(); })
+      .catch((err) => { history.replaceState(null, '', location.pathname); setError((err as Error).message); setMode('signin'); });
+  }, [confirmToken, checkAuth]);
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true); setError(null); setExists(false);
     try {
       if (mode === 'forgot') { await post('forgot', { email }); setMode('sent'); return; }
       if (mode === 'reset') await post('reset', { token: resetToken, password });
-      else await post(mode === 'signup' ? 'signup' : 'login', { email, password, name });
+      else {
+        const res = await post(mode === 'signup' ? 'signup' : 'login', { email, password, name });
+        if (res.confirm) { setPassword(''); setMode('confirm-sent'); return; }
+      }
       history.replaceState(null, '', '/');
       await checkAuth();
     } catch (err) {
@@ -48,6 +62,20 @@ export function AuthPanel({ initial = 'signin' }: { initial?: 'signin' | 'signup
       setExists((err as { code?: string }).code === 'exists');
     } finally { setBusy(false); }
   };
+
+  if (mode === 'confirming') return (
+    <div className="auth" aria-live="polite">
+      <h2 className="auth__title">{t('Confirming your email…')}</h2>
+    </div>
+  );
+
+  if (mode === 'confirm-sent') return (
+    <div className="auth" aria-live="polite">
+      <h2 className="auth__title">{t('Check your email')}</h2>
+      <p className="auth__note">{t('We sent a link to')} <b>{email}</b>{t('. Open it to finish creating your account. It works for one day.')}</p>
+      <button type="button" className="auth__link" onClick={() => go('signin')}>{t('Back to sign in')}</button>
+    </div>
+  );
 
   if (mode === 'sent') return (
     <div className="auth" aria-live="polite">

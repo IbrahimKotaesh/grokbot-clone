@@ -165,7 +165,7 @@ export function App() {
   const user = useStore((s) => s.user);
   // The public landing page greets web visitors; the Mac app keeps its own sign-in screen.
   // A sign-in error from Google, or a password-reset link, opens the sign-in screen directly.
-  const [signingIn, setSigningIn] = useState(() => (p => p.has('login') || p.has('reset'))(new URLSearchParams(location.search)));
+  const [signingIn, setSigningIn] = useState(() => (p => p.has('login') || p.has('reset') || p.has('confirm'))(new URLSearchParams(location.search)));
   const [signInMode, setSignInMode] = useState<'signin' | 'signup'>('signin');
   useEffect(() => { useStore.getState().checkAuth(); }, []);
   if (!authChecked) return <div className="boot"><Badr mood="hop" size={64} /></div>;
