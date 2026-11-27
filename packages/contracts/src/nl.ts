@@ -272,6 +272,7 @@ export const nl: Record<string, string> = {
   "{n}+ more bots are waiting in the Marketplace.": "{n}+ andere bots wachten in de Marktplaats.",
   "From {name}": "Van {name}",
   "Routine · {name}": "Routine · {name}",
+  "Try another word.": "Probeer een ander woord.",
   "Meet your team": "Ontmoet je team",
   "Meet {name}": "Ontmoet {name}",
   "Memory": "Geheugen",

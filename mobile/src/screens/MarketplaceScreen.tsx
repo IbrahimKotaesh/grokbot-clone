@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, Chip, EmptyState, ErrorText, Header, IconButton, styles as s } from "../components/UI";
 import { FadeIn, PressableScale, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius, accentFor, fw } from "../theme";
+import { palette as p, type, space, radius, accentFor, fw, sticker } from "../theme";
 import { catalog, categories, templateById, type BotTemplate, type CategoryId } from "../lib/catalog";
 import { installTemplate, isInstalled } from "../lib/install";
 import { handlePlanLimit } from "../lib/billing";
@@ -52,15 +52,11 @@ export function MarketplaceScreen({ done, openBot }: { done?: () => void; openBo
     <View style={s.screen}>
       {done ? <Header large={false} title={tr("Marketplace")} left={<IconButton name="chevron-back" label={tr("Back")} onPress={done} />} /> : <Header title={tr("Marketplace")} />}
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxxl + (done ? 0 : TAB_BAR_SPACE) }} keyboardShouldPersistTaps="handled">
-        <FadeIn style={{ paddingHorizontal: space.xl, paddingTop: space.sm, gap: space.xs }}>
-          <Text style={[type.largeTitle, { color: p.text }]}>{tr("Hire a bot")}</Text>
-          <Text style={[type.body, { color: p.muted }]}>{tr("Ready-made specialists with skills built in. Add one and it starts working right away.")}</Text>
-        </FadeIn>
-        <View style={[s.row, { gap: space.sm, backgroundColor: p.raised, borderRadius: radius.md, paddingHorizontal: space.md, height: 44, marginHorizontal: space.xl, marginTop: space.lg }]}>
+        <View style={[s.row, { gap: space.sm, backgroundColor: p.raised, borderRadius: radius.full, paddingHorizontal: space.lg, height: 44, marginHorizontal: space.xl, marginTop: space.xs }]}>
           <Ionicons name="search" size={17} color={p.faint} />
           <TextInput
             accessibilityLabel={tr("Search bots")}
-            placeholder={tr("Search bots or skills")}
+            placeholder={tr("Search")}
             placeholderTextColor={p.faint}
             selectionColor={p.text}
             value={query}
@@ -72,90 +68,73 @@ export function MarketplaceScreen({ done, openBot }: { done?: () => void; openBo
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.xl, paddingVertical: space.lg }}>
           <Chip label={tr("All")} selected={category === "all"} onPress={() => setCategory("all")} />
           {categories.map((c) => (
-            <Chip key={c.id} label={tr(c.label)} icon={c.icon as never} selected={category === c.id} onPress={() => setCategory(c.id)} />
+            <Chip key={c.id} label={tr(c.label)} selected={category === c.id} onPress={() => setCategory(c.id)} />
           ))}
         </ScrollView>
-        <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
+        <View style={{ paddingHorizontal: space.xl, gap: space.md }}>
           <ErrorText error={error} />
-          {pack && pack.length > 1 && !query && (
-            <FadeIn key={`pack-${category}`}>
-              <View style={[s.card, { padding: space.lg, gap: space.md, borderColor: p.lineStrong }]}>
-                <View style={s.row}>
-                  <View style={{ flexDirection: "row" }}>
-                    {pack.map((t, i) => (
-                      <View key={t.id} style={{ marginLeft: i ? -12 : 0 }}>
-                        <Avatar shape={t.shape} size={38} color={t.color} />
-                      </View>
-                    ))}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[type.headline, { color: p.text }]}>{tr("{name} team", { name: tr(categories.find((c) => c.id === category)?.label ?? "") })}</Text>
-                    <Text style={[type.footnote, { color: p.muted }]}>{tr(categories.find((c) => c.id === category)?.blurb ?? "")}</Text>
-                  </View>
-                </View>
-                <Button
-                  title={packLeft.length ? tr("Add all {n}", { n: packLeft.length }) : tr("Whole team added")}
-                  icon={packLeft.length ? "add" : "checkmark"}
-                  compact
-                  disabled={!packLeft.length || Object.keys(busy).length > 0}
-                  onPress={() => void (async () => {
-                    for (const t of packLeft) await install(t);
-                  })()}
-                />
-              </View>
-            </FadeIn>
+          {pack && pack.length > 1 && !query && packLeft.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              disabled={Object.keys(busy).length > 0}
+              onPress={() => void (async () => {
+                for (const t of packLeft) await install(t);
+              })()}
+              style={({ pressed }) => [s.row, { alignSelf: "flex-start", gap: 6, opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Ionicons name="add-circle" size={18} color={p.text} />
+              <Text style={[type.subhead, { color: p.text, ...fw("700") }]}>{tr("Add all {n}", { n: packLeft.length })}</Text>
+            </Pressable>
           )}
-          {list.map((t, i) => (
-            <FadeIn key={`${category}-${t.id}`} delay={Math.min(i, 8) * 50}>
-              <BotCard t={t} added={installed(t)} progress={busy[t.id]} onOpen={() => openBot(t.id)} onAdd={() => void install(t)} />
-            </FadeIn>
-          ))}
-          {!list.length && <EmptyState icon="search-outline" title={tr("No bots match")} detail={tr("Try another word, or create your own bot from the Bots tab.")} />}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP }}>
+            {list.map((t, i) => (
+              <FadeIn key={`${category}-${t.id}`} delay={Math.min(i, 8) * 40}>
+                <BotTile t={t} added={installed(t)} progress={busy[t.id]} onOpen={() => openBot(t.id)} onAdd={() => void install(t)} />
+              </FadeIn>
+            ))}
+          </View>
+          {!list.length && <EmptyState icon="search-outline" title={tr("No bots match")} detail={tr("Try another word.")} />}
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function BotCard({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added: boolean; progress?: string; onOpen: () => void; onAdd: () => void }) {
+const TILE_GAP = 12;
+
+/** One teammate: a big face on its own color, the job, and a round add button. Nothing else. */
+function BotTile({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added: boolean; progress?: string; onOpen: () => void; onAdd: () => void }) {
+  const { width } = useWindowDimensions();
+  const w = Math.floor((width - space.xl * 2 - TILE_GAP) / 2);
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={`${t.name}, ${t.label}`} onPress={onOpen} scaleTo={0.985} style={[s.card, { gap: space.md }]}>
-      <View style={s.row}>
-        <Avatar shape={t.shape} size={52} color={t.color} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[type.headline, { color: p.text }]}>{tr(t.label)}</Text>
-          <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>
-            {t.name} · {tr(t.tagline)}
-          </Text>
+    <PressableScale accessibilityRole="button" accessibilityLabel={`${t.name}, ${tr(t.label)}`} onPress={onOpen} scaleTo={0.97} style={{ width: w, gap: space.sm }}>
+      <View style={{ height: w, borderRadius: 26, backgroundColor: accentFor(t.color) + "26", alignItems: "center", justifyContent: "center" }}>
+        <Avatar shape={t.shape} size={Math.round(w * 0.5)} color={t.color} />
+        <View style={{ position: "absolute", top: 10, right: 10 }}>
+          {added ? (
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: p.surface, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="checkmark" size={18} color={p.green} />
+            </View>
+          ) : progress ? (
+            <View style={{ height: 32, paddingHorizontal: 10, borderRadius: 16, backgroundColor: p.surface, alignItems: "center", justifyContent: "center" }}>
+              <TypingDots color={p.text} size={4} />
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={tr("Add {name}", { name: tr(t.label) })}
+              onPress={onAdd}
+              hitSlop={10}
+              style={({ pressed }) => [{ width: 32, height: 32, borderRadius: 16, backgroundColor: p.sun, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.92 : 1 }] }, sticker(), { borderWidth: 1.5, shadowOffset: { width: 2, height: 2 } }]}
+            >
+              <Ionicons name="add" size={20} color={p.onSun} />
+            </Pressable>
+          )}
         </View>
-        {added ? (
-          <View style={[s.row, { gap: 4 }]}>
-            <Ionicons name="checkmark-circle" size={18} color={p.green} />
-            <Text style={[type.caption, { color: p.muted }]}>{tr("Added")}</Text>
-          </View>
-        ) : progress ? (
-          <View style={{ alignItems: "center", gap: 4, minWidth: 64 }}>
-            <TypingDots color={p.text} size={4} />
-            <Text style={[type.caption, { color: p.faint, ...fw("400") }]}>{progress}</Text>
-          </View>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr("Add {name}", { name: tr(t.label) })}
-            onPress={onAdd}
-            hitSlop={8}
-            style={({ pressed }) => ({ backgroundColor: pressed ? p.elevated : p.raised, borderRadius: radius.full, paddingHorizontal: 16, height: 32, justifyContent: "center" })}
-          >
-            <Text style={[type.subhead, { color: p.text, ...fw("700") }]}>{tr("Get")}</Text>
-          </Pressable>
-        )}
       </View>
-      <Text style={[type.callout, { color: p.muted }]} numberOfLines={2}>
-        {tr(t.description)}
-      </Text>
-      <View style={[s.row, { gap: 6 }]}>
-        <Ionicons name="flash" size={12} color={p.amber} />
-        <Text style={[type.caption, { color: p.faint, ...fw("500") }]}>{tr("{n} skills", { n: t.skills.length })} · {t.skills.map((x) => tr(x.name)).slice(0, 2).join(", ")}{t.skills.length > 2 ? "…" : ""}</Text>
+      <View style={{ paddingHorizontal: 4, gap: 1 }}>
+        <Text style={[type.headline, { color: p.text }]} numberOfLines={1}>{tr(t.label)}</Text>
+        <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>{t.name}</Text>
       </View>
     </PressableScale>
   );
@@ -178,9 +157,7 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
             <Avatar shape={t.shape} size={96} color={t.color} />
           </View>
           <Text style={[type.largeTitle, { color: p.text, marginTop: space.sm }]}>{tr(t.label)}</Text>
-          <Text style={[type.callout, { color: p.muted }]}>
-            {tr("Meet {name}", { name: t.name })} · {tr(categories.find((c) => c.id === t.category)?.label ?? "")}
-          </Text>
+          <Text style={[type.callout, { color: p.muted }]}>{t.name}</Text>
         </FadeIn>
         <FadeIn delay={60}>
           {added ? (
@@ -191,10 +168,10 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
         </FadeIn>
         <ErrorText error={error} />
         <FadeIn delay={120} style={{ gap: space.sm }}>
-          <Text style={[type.body, { color: p.text }]}>{tr(t.description)}</Text>
+          <Text style={[type.body, { color: p.muted, textAlign: "center" }]}>{tr(t.description)}</Text>
         </FadeIn>
         <FadeIn delay={160} style={{ gap: space.sm }}>
-          <Text style={[s.label, { paddingHorizontal: space.xs }]}>{tr("Skills included")} · {t.skills.length}</Text>
+          <Text style={[s.label, { paddingHorizontal: space.xs }]}>{tr("Skills")}</Text>
           <View style={s.group}>
             {t.skills.map((sk, i) => {
               const expanded = open === sk.name;
@@ -214,8 +191,7 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
                       <Ionicons name="flash" size={16} color={p.amber} />
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[type.body, { color: p.text }]}>{sk.name}</Text>
-                      <Text style={[type.footnote, { color: p.muted }]}>{tr(sk.description)}</Text>
+                      <Text style={[type.body, { color: p.text }]}>{tr(sk.name)}</Text>
                     </View>
                     <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={15} color={p.faint} />
                   </Pressable>
@@ -228,17 +204,6 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
               );
             })}
           </View>
-        </FadeIn>
-        <FadeIn delay={200} style={[s.card, { gap: space.md }]}>
-          {[
-            ["desktop-outline", "Its own computer screen"],
-            ["shield-checkmark-outline", "Asks before sending, paying or deleting"],
-          ].map(([icon, label]) => (
-            <View key={label} style={[s.row, { gap: space.md }]}>
-              <Ionicons name={icon as never} size={18} color={p.muted} />
-              <Text style={[type.callout, { color: p.text }]}>{tr(label)}</Text>
-            </View>
-          ))}
         </FadeIn>
       </ScrollView>
     </View>

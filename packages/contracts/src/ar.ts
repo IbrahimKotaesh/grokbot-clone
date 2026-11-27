@@ -305,6 +305,8 @@ export const ar: Record<string, string> = {
   "{n}+ more bots are waiting in the Marketplace.": "أكثر من {n} بوت بانتظارك في المتجر.",
   "From {name}": "من {name}",
   "Routine · {name}": "مهمة دورية · {name}",
+  "Skills": "المهارات",
+  "Try another word.": "جرّب كلمة تانية.",
   "Meet your team": "تعرّف على فريقك",
   "On team": "في الفريق",
   "Say hi to Badr. It already knows who you are and who's on the team.": "سلّم على بدر. إنه يعرف من أنت ومن في الفريق.",
