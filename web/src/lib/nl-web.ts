@@ -185,6 +185,7 @@ export const nlWeb: Record<string, string> = {
   "{n} messages": "{n} berichten",
   "{n} computer steps": "{n} computerstappen",
   "{n} images": "{n} afbeeldingen",
+  "First time only: if macOS says it can’t check Badr, press Done (not Move to Trash), then open System Settings → Privacy & Security and choose Open Anyway.": "Alleen de eerste keer: zegt macOS dat het Badr niet kan controleren, druk dan op Gereed (niet op Verplaats naar prullenmand) en open Systeeminstellingen → Privacy en beveiliging → Toch openen.",
   "Check your email": "Controleer je e-mail",
   "Checking with another Bot": "Controleren met een andere Bot",
   "Checking with {name}": "Controleren met {name}",

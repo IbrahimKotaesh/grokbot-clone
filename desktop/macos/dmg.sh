@@ -58,7 +58,20 @@ rm -f "$dist/Badr.dmg"
 hdiutil convert -quiet "$work/rw.dmg" -format UDZO -imagekey zlib-level=9 -o "$dist/Badr.dmg"
 # Sign the disk image with the same identity as the app, when there is one.
 signer=$(codesign -dvv "$app" 2>&1 | awk -F= '/^Authority=/ && !done {print $2; done=1}')
-[ -n "$signer" ] && codesign --sign "$signer" "$dist/Badr.dmg" 2>/dev/null || true
+[ -n "$signer" ] && codesign --sign "$signer" --timestamp "$dist/Badr.dmg" 2>/dev/null || true
+
+# With a Developer ID certificate and the notary login saved as "fino-notary" (README.md), Apple checks the
+# installer too and its ticket is stapled on, so macOS opens it on any Mac without the "Move to Trash" warning.
+profile="${FINO_NOTARY_PROFILE:-fino-notary}"
+if [[ "$signer" == "Developer ID Application"* ]] && xcrun notarytool history --keychain-profile "$profile" >/dev/null 2>&1; then
+  echo "Sending Badr.dmg to Apple for notarization…" >&2
+  xcrun notarytool submit "$dist/Badr.dmg" --keychain-profile "$profile" --wait --timeout 30m | tee "$dist/notary-dmg.log" | grep -q "status: Accepted" \
+    || { echo "Apple did not accept Badr.dmg (details in $dist/notary-dmg.log)" >&2; exit 1; }
+  xcrun stapler staple "$dist/Badr.dmg" >&2
+  echo "Badr.dmg notarized and stapled ✓" >&2
+else
+  echo "Badr.dmg is not notarized: needs a Developer ID Application certificate and the '$profile' notary login (README.md)." >&2
+fi
 
 mkdir -p "$public"
 cp "$dist/Badr.dmg" "$public/Badr.dmg"

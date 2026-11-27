@@ -113,6 +113,7 @@ export const arWeb: Record<string, string> = {
   "{n} messages": "{n} رسالة",
   "{n} computer steps": "{n} خطوة على الكمبيوتر",
   "{n} images": "{n} صورة",
+  "First time only: if macOS says it can’t check Badr, press Done (not Move to Trash), then open System Settings → Privacy & Security and choose Open Anyway.": "أول مرة بس: إذا قال الماك إنه ما قدر يتحقق من بدر، اضغط «تم» (مش «نقل إلى المهملات»)، وبعدين افتح إعدادات النظام ← الخصوصية والأمان واختر «فتح على أي حال».",
   "Check your email": "تفقد بريدك",
   "Choose a new password": "اختر كلمة مرور جديدة",
   "City": "المدينة",

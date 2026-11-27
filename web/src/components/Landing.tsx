@@ -392,7 +392,7 @@ function DesktopBand() {
     windows: ['Open Badr-Setup.exe', 'It installs by itself in a few seconds', 'Badr opens on its own'],
   };
   const note = {
-    mac: 'The first time, if macOS asks, open System Settings → Privacy & Security and choose Open Anyway.',
+    mac: 'First time only: if macOS says it can’t check Badr, press Done (not Move to Trash), then open System Settings → Privacy & Security and choose Open Anyway.',
     windows: 'If Windows shows a blue warning, choose More info → Run anyway.',
   };
   return (
