@@ -37,15 +37,20 @@ export function BlurWords({ text, as = 'span', className, delay = 0, stagger = 0
   const outFilter = useTransform(outBlur, (b: number) => (b > 0.05 ? `blur(${b}px)` : 'none'));
   const Tag = motionTag(as);
   const words = text.split(/(\s+)/);
-  const hidden = reduce ? { opacity: 0 } : { opacity: 0, y: '0.32em', filter: 'blur(10px)' };
-  const shown = { opacity: 1, y: 0, filter: 'blur(0px)' };
+  // On scroll (when="view") words just rise in, quickly and without blur: blurring big text while the page
+  // scrolls is what made long pages feel heavy. On first load (mount) the soft blur stays, and is quicker.
+  const light = when === 'view';
+  const hidden = reduce ? { opacity: 0 } : light ? { opacity: 0, y: '0.22em' } : { opacity: 0, y: '0.32em', filter: 'blur(10px)' };
+  const shown = light ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, filter: 'blur(0px)' };
+  const duration = reduce ? 0.4 : light ? 0.5 : 0.7;
+  const step = light ? Math.min(stagger, 0.035) : stagger;
   let n = 0;
   return (
     <Tag ref={ref} className={className} dir={rtl(text) ? 'rtl' : undefined} aria-label={text} style={fadeOut ? { opacity: outOpacity, filter: outFilter } : undefined}
-      initial="hidden" {...(when === 'view' ? { whileInView: 'shown', viewport: { once: true, amount: 0.6, root: root ?? undefined } } : { animate: 'shown' })}>
+      initial="hidden" {...(when === 'view' ? { whileInView: 'shown', viewport: { once: true, amount: 0.2, root: root ?? undefined } } : { animate: 'shown' })}>
       {words.map((w, i) => /^\s+$/.test(w) ? w : (
-        <motion.span key={i} aria-hidden style={{ display: 'inline-block', willChange: 'transform, filter, opacity' }}
-          variants={{ hidden, shown: { ...shown, transition: { duration: reduce ? 0.4 : 0.9, ease: EASE, delay: delay + n++ * stagger } } }}>
+        <motion.span key={i} aria-hidden style={{ display: 'inline-block', willChange: light ? 'transform, opacity' : 'transform, filter, opacity' }}
+          variants={{ hidden, shown: { ...shown, transition: { duration, ease: EASE, delay: delay + n++ * step } } }}>
           {w}
         </motion.span>
       ))}

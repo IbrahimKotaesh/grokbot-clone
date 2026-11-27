@@ -8,7 +8,7 @@ import '../styles/landing.css';
 import { BlurWords, ScrollContainer } from '../lib/motion';
 
 /** A section headline: words arrive out of a blur, and it fades away as it scrolls off the top. */
-const Headline = ({ text }: { text: string }) => <BlurWords as="h2" className="lp-h2" when="view" fadeOut text={text} />;
+const Headline = ({ text }: { text: string }) => <BlurWords as="h2" className="lp-h2" when="view" text={text} />;
 
 /* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
 
@@ -348,9 +348,13 @@ function useReveal(root: RefObject<HTMLElement | null>) {
     el.classList.add('lp--reveal');
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
-    }, { root: el, rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    }, { root: el, rootMargin: '0px 0px 15% 0px', threshold: 0 });
     el.querySelectorAll('[data-reveal]').forEach((n) => io.observe(n));
-    return () => io.disconnect();
+    // The opening's bots keep moving only while you can see them; scrolled away, their animations rest.
+    const open = el.querySelector('.lp-open');
+    const idle = new IntersectionObserver(([e]) => open?.classList.toggle('is-away', !e.isIntersecting), { root: el });
+    if (open) idle.observe(open);
+    return () => { io.disconnect(); idle.disconnect(); };
   }, [root]);
 }
 
@@ -376,38 +380,51 @@ const AppleLogo = () => <svg width="17" height="17" viewBox="0 0 24 24" aria-hid
 const WindowsLogo = () => <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M3 5.1l7.4-1v7.2H3V5.1zm8.4-1.2L21 2.5v8.8h-9.6V3.9zM3 12.6h7.4v7.3L3 18.9v-6.3zm8.4 0H21v8.9l-9.6-1.4v-7.5z" /></svg>;
 function DesktopBand() {
   const os = useOs();
-  const [info, setInfo] = useState<Record<string, { available: boolean; bytes?: number }>>({});
+  const [info, setInfo] = useState<Record<string, { available: boolean; bytes?: number; installerBytes?: number | null }>>({});
   useEffect(() => {
     (['mac', 'windows'] as const).forEach((id) => fetch(DOWNLOADS[id].info).then((r) => r.json()).then((v) => setInfo((m) => ({ ...m, [id]: v }))).catch(() => setInfo((m) => ({ ...m, [id]: { available: false } }))));
   }, []);
-  // The visitor's own system comes first.
+  // The visitor's own computer comes first and gets the yellow button.
   const order: ('mac' | 'windows')[] = os === 'windows' ? ['windows', 'mac'] : ['mac', 'windows'];
+  const mine = os === 'other' ? 'mac' : os;
+  const steps = {
+    mac: ['Open Badr.dmg', 'Drag Badr into Applications', 'Open Badr from Applications'],
+    windows: ['Open Badr-Setup.exe', 'It installs by itself in a few seconds', 'Badr opens on its own'],
+  };
+  const note = {
+    mac: 'The first time, if macOS asks, open System Settings → Privacy & Security and choose Open Anyway.',
+    windows: 'If Windows shows a blue warning, choose More info → Run anyway.',
+  };
   return (
-    <section className="lp-mac" id="download">
-      <div className="lp-wrap lp-mac__in">
-        <div data-reveal>
+    <section className="lp-dl" id="download">
+      <div className="lp-wrap">
+        <div className="lp-dl__head" data-reveal>
           <h2 className="lp-h2">{t('Badr for Mac and Windows.')}</h2>
-          <p className="lp-copy">{t('The same workspace in its own window, with the Fino Browser docked beside your chat. Your bot drives it with a visible cursor; you can grab it any time.')}</p>
-          <div className="lp-mac__dls">
-            {order.map((id, i) => {
-              const d = DOWNLOADS[id], v = info[id];
-              const size = v?.bytes ? ` · ${(v.bytes / 1048576).toFixed(1)} MB` : '';
-              return v?.available === false
-                ? <span key={id} className="lp-pill lp-pill--line lp-mac__dl is-off">{id === 'mac' ? <AppleLogo /> : <WindowsLogo />}{t('Coming soon')}</span>
-                : <a key={id} className={`lp-pill ${i === 0 ? 'lp-pill--dark' : 'lp-pill--line'} lp-mac__dl`} href={d.href} download onClick={() => store.drop(OFFER_MAC)}>
-                    {id === 'mac' ? <AppleLogo /> : <WindowsLogo />}<span>{t(d.label)}<small dir="ltr">{t(d.needs)}{size}</small></span>
-                  </a>;
-            })}
-          </div>
-          <p className="lp-mac__fine">{t('Open the download and move Badr to Applications. The first time, if macOS can’t check it, open System Settings → Privacy & Security and choose Open Anyway.')} {t('Run the installer. If Windows shows “Windows protected your PC”, choose More info → Run anyway.')}</p>
+          <p className="lp-copy">{t('Your team in its own window, always one click away. Included in every plan.')}</p>
         </div>
-        <div className="lp-mac__window" data-reveal style={{ '--i': 2 } as CSSProperties} aria-hidden>
-          <div className="lp-mac__lights"><i /><i /><i /></div>
-          <div className="lp-mac__panes">
-            <div className="lp-mac__side">{TEAM.slice(0, 4).map((b) => <span key={b.id}><img src={b.img} alt="" />{t(b.name)}</span>)}</div>
-            <div className="lp-mac__chat"><p /><p /><p className="me" /><p /></div>
-            <div className="lp-mac__browser"><em>{t('Fino Browser')}</em><div /><div /><div /><span className="lp-cursor lp-cursor--still" style={{ '--x': 0.56, '--y': 0.5 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span></div>
-          </div>
+        <div className="lp-dl__grid">
+          {order.map((id, i) => {
+            const d = DOWNLOADS[id], v = info[id];
+            const bytes = id === 'mac' ? (v?.installerBytes ?? v?.bytes) : v?.bytes;
+            const size = bytes ? `${(bytes / 1048576).toFixed(1)} MB` : '';
+            const href = id === 'mac' ? '/api/download/mac/dmg' : d.href;
+            return (
+              <article key={id} className={`lp-dl__card${id === mine ? ' is-mine' : ''}`} data-reveal style={{ '--i': i + 1 } as CSSProperties}>
+                <header>
+                  <span className="lp-dl__logo" aria-hidden>{id === 'mac' ? <AppleLogo /> : <WindowsLogo />}</span>
+                  <div><b>{id === 'mac' ? 'Mac' : 'Windows'}</b><small dir={lang === 'ar' ? 'rtl' : undefined}>{t(d.needs)}{size && <span className="lp-dl__size" dir="ltr">{size}</span>}</small></div>
+                  {os === id && <em>{t('Your computer')}</em>}
+                </header>
+                {v?.available === false
+                  ? <span className="lp-pill lp-pill--line lp-dl__btn is-off">{t('Coming soon')}</span>
+                  : <a className={`lp-pill ${id === mine ? 'lp-pill--dark' : 'lp-pill--line'} lp-dl__btn`} href={href} download onClick={() => store.drop(OFFER_MAC)}>
+                      <Download size={18} strokeWidth={2.6} aria-hidden />{t(id === 'mac' ? 'Download for Mac' : 'Download for Windows')}
+                    </a>}
+                <ol className="lp-dl__steps">{steps[id].map((s) => <li key={s}>{t(s)}</li>)}</ol>
+                <p className="lp-dl__note">{t(note[id])}</p>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

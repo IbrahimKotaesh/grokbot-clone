@@ -6,7 +6,7 @@
 :root:lang(ar) :is(button, a, span, em, strong, b, option, summary) { unicode-bidi: plaintext; }
 /* Text marked right to left on purpose (headlines split into words for their animation) keeps that direction:
    'plaintext' would look for a first letter, find only the word boxes, and fall back to left to right. */
-:root:lang(ar) [dir="rtl"] { unicode-bidi: isolate; }
+:root:root:lang(ar) [dir="rtl"] { unicode-bidi: isolate; } /* :root twice outranks the list above, which holds ".menu__label > span" */
 
 /* Chat polish: replies fade in, the composer's model and permission chips, and their menus.
    Flat (no shadows), in Fino's cream / ink / tomato. */
