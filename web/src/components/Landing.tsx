@@ -66,7 +66,7 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
       <section className="lp2-hero">
         <div className="lp-wrap lp2-hero__in">
           <a className="lp2-note lp-in" style={{ '--d': '0ms' } as CSSProperties} href="#download">{t('New: Badr for Mac and Windows')} <ArrowRight size={14} strokeWidth={2.6} aria-hidden /></a>
-          <h1 className="lp2-h1 lp-in" style={{ '--d': '80ms' } as CSSProperties}>
+          <h1 className="lp2-h1 lp-in" dir={lang === 'ar' ? 'rtl' : undefined} style={{ '--d': '80ms' } as CSSProperties}>
             <span>{t('Meet')}</span> <img src="/icons/badr-app-512.png" alt="" width={84} height={84} /> <span>{t('Badr')}</span>
           </h1>
           <p className="lp2-lede lp-in" style={{ '--d': '200ms' } as CSSProperties}>{t('AI teammates you can give real work to. They sign in to your tools, use their own computer, and come back with finished work.')}</p>
@@ -238,7 +238,7 @@ function Downloads({ os, onWeb, signedIn }: { os: Os; onWeb: () => void; signedI
             return (
               <article key={d.id} className={`lp2-dl__card${os === d.id ? ' is-yours' : ''}`} data-reveal style={{ '--i': 2 + i } as CSSProperties}>
                 <span className="lp2-dl__os">{d.id === 'mac' ? <AppleLogo /> : <WindowsLogo />}{d.id === 'mac' ? 'macOS' : 'Windows'}{os === d.id && <em>{t('Your computer')}</em>}</span>
-                <p>{t(d.needs)}{size}</p>
+                <p>{t(d.needs)}{size && <span dir="ltr">{size}</span>}</p>
                 {ok ? <DownloadButton d={d} /> : <span className="lp2-btn lp2-btn--soft" aria-disabled="true">{t('Coming soon')}</span>}
                 <small>{d.id === 'mac' ? t('Open the download and move Badr to Applications. The first time, if macOS can’t check it, open System Settings → Privacy & Security and choose Open Anyway.') : t('Run the installer. If Windows shows “Windows protected your PC”, choose More info → Run anyway.')}</small>
               </article>

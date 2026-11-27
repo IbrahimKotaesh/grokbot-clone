@@ -905,3 +905,8 @@
 .lp2-faq__list p { margin: -6px 0 20px; max-width: 60ch; font-size: 16px; line-height: 1.6; color: var(--lp-ink-soft); }
 @media (max-width: 860px) { .lp2-faq__in { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
 .lp--v2 .lp-h2 { font-family: "Nunito", "Tajawal", -apple-system, sans-serif; font-weight: 800; letter-spacing: -.04em; }
+
+/* Arabic on the new front page: headings and cards read right to left, while the page layout itself stays left to right. */
+:root:lang(ar) .lp--v2 :is(.lp2-h1, .lp-h2) { direction: rtl; text-align: match-parent; }
+:root:lang(ar) .lp--v2 :is(.lp2-tile, .lp2-dl__card, .lp2-faq details) { direction: rtl; text-align: right; }
+:root:lang(ar) .lp--v2 .lp2-dl__card :is(p, small) { unicode-bidi: isolate; }
