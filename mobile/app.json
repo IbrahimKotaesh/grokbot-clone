@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ibkopixels.fino",
-      "buildNumber": "11",
+      "buildNumber": "12",
       "appleTeamId": "345F6K6X7N",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
