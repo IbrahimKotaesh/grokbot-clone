@@ -557,14 +557,16 @@ async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string):Pr
 }
 
 /** "Answer in English" when the owner's last typed message has no Arabic letters, "in Arabic" when it does. */
+/** Badr's chat voice, repeated next to each reply for the hosted models (they drift into report formatting). */
+const CHAT_STYLE = ' Write like a confident colleague texting: plain sentences and, when useful, a few simple bullets. No headings, no --- lines, no emojis, no bold on every line; a table only for many rows of numbers. Lead with the answer or the result, say plainly what you did and found, and ask at most one question at the end.';
 function replyLanguageNote(history: any[]): string {
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i];
     if (h?.role !== 'user') continue;
     const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
     if (!text.trim() || /^\[(?:From|Routine|Message from)/.test(text)) continue;
-    if (/[\u0600-\u06FF]/.test(text)) return '\nThe owner\'s last message is in Arabic: answer in Arabic, in their dialect.';
-    if (/[a-z]{3,}/i.test(text)) return '\nThe owner\'s last message is not in Arabic: answer in the language it is written in (usually English), never in Arabic.';
+    if (/[\u0600-\u06FF]/.test(text)) return `\nThe owner's last message is in Arabic: answer in Arabic, in their dialect.${CHAT_STYLE} In Arabic, start every sentence and every bullet with Arabic words and put English names or terms after them ("الفواتير من Wispr وSupabase…", not "Wispr, Supabase: …"), so each line reads right to left.`;
+    if (/[a-z]{3,}/i.test(text)) return `\nThe owner's last message is not in Arabic: answer in the language it is written in (usually English), never in Arabic.${CHAT_STYLE}`;
     return '';
   }
   return '';

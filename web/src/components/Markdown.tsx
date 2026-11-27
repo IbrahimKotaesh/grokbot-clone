@@ -21,7 +21,10 @@ const startsArabic = (t: string) => new RegExp(AR.source).test(/[A-Za-z\u00C0-\u
 export function lineDir(text: string, rtlMessage: boolean): 'rtl' | 'ltr' {
   const share = arabicShare(text);
   if (!/[A-Za-z\u00C0-\u024F\u0600-\u06FF]/.test(text)) return rtlMessage ? 'rtl' : 'ltr'; // numbers, emoji only
-  if (startsArabic(text)) return share > 0.15 || rtlMessage ? 'rtl' : 'ltr';
+  // An Arabic message: any line with Arabic in it reads right to left, even one that starts with an English name
+  // ("Wispr Flow, Supabase — هدول واضحات"). Only a line with no Arabic at all keeps left to right.
+  if (rtlMessage) return new RegExp(AR.source).test(text) ? 'rtl' : 'ltr';
+  if (startsArabic(text)) return share > 0.15 ? 'rtl' : 'ltr';
   // Starts in English: stays left-to-right unless it is mostly Arabic.
   return share > 0.5 ? 'rtl' : 'ltr';
 }
@@ -45,9 +48,16 @@ type Hast = { type?: string; value?: string; tagName?: string; children?: Hast[]
 const ownText = (n: Hast | undefined): string => !n ? '' : n.type === 'text' ? n.value ?? '' : (n.children ?? []).filter((c) => c.tagName !== 'ul' && c.tagName !== 'ol').map(ownText).join('');
 function Dir({ as: Tag, node, children, ...props }: { as: any; node?: Hast; children?: ReactNode; [k: string]: unknown }) {
   const rtl = useContext(RtlMessage);
-  return <Tag {...props} dir={lineDir(ownText(node), rtl)}>{children}</Tag>;
+  // In an Arabic message, list items and table cells keep the message's direction, so a bullet that is only a file
+  // name sits with the others instead of jumping to the left.
+  const dir = rtl && (Tag === 'li' || Tag === 'td' || Tag === 'th') ? 'rtl' : lineDir(ownText(node), rtl);
+  return <Tag {...props} dir={dir}>{children}</Tag>;
 }
 const dirOf = (tag: string) => ({ node, ...props }: any) => <Dir as={tag} node={node} {...props} />;
+function MdTable(props: Record<string, unknown>) {
+  const rtl = useContext(RtlMessage);
+  return <div className="md-table" role="region" aria-label="Scrollable table" tabIndex={0} dir={rtl ? 'rtl' : undefined}><table {...props} /></div>;
+}
 
 const components: Components = {
   p: dirOf('p'), h1: dirOf('h1'), h2: dirOf('h2'), h3: dirOf('h3'), h4: dirOf('h4'), h5: dirOf('h5'), h6: dirOf('h6'), blockquote: dirOf('blockquote'),
@@ -61,11 +71,9 @@ const components: Components = {
     : <a href={src} target="_blank" rel="noreferrer noopener">{alt?`Open external image: ${alt}`:'Open external image'}</a>,
   li: dirOf('li'),
   a: ({ node: _n, ...props }) => sheetId(props.href) ? <SheetLink href={props.href!}>{props.children}</SheetLink> : <a {...props} target="_blank" rel="noreferrer noopener" />,
-  td: ({node:_n,...props}) => <td {...props} dir="auto" />,
-  th: ({node:_n,...props}) => <th {...props} dir="auto" />,
-  table: ({ node: _n, ...props }) => (
-    <div className="md-table" role="region" aria-label="Scrollable table" tabIndex={0}><table {...props} /></div>
-  ),
+  td: dirOf('td'), th: dirOf('th'),
+  // An Arabic message's table runs right to left too (first column on the right).
+  table: ({ node: _n, ...props }) => <MdTable {...props} />,
 };
 
 /** Assistant message markdown: paragraphs, lists, blockquotes, inline code, code blocks (screen 02), tables. */
