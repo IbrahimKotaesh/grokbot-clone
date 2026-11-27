@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Fino",
+    "name": "Badr",
     "slug": "fino-native",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ibkopixels.fino",
-      "buildNumber": "7",
+      "buildNumber": "9",
       "appleTeamId": "345F6K6X7N",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -50,8 +50,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Choose photos to share with your Fino assistant.",
-          "cameraPermission": "Take a photo to share with your Fino assistant."
+          "photosPermission": "Choose photos to share with Badr.",
+          "cameraPermission": "Take a photo to share with Badr."
         }
       ],
       "./plugins/with-scene-delegate",
@@ -78,7 +78,8 @@
         {
           "supportsRTL": true
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "fino",
     "extra": {

@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Bot, PlanBody } from "../../../packages/contracts/src/types";
 import { useWorkspace } from "../lib/store";
 import { statusLine } from "../lib/format";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { t } from "../lib/i18n";
 
 function Spinner() {
@@ -55,7 +55,7 @@ export function PlanCard({ body, bot }: { body: PlanBody; bot: Bot }) {
     <View style={{ paddingHorizontal: space.lg, paddingVertical: space.xs }}>
       <View style={{ backgroundColor: p.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: p.line, padding: space.md, gap: space.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm }}>
-          <Text style={[type.footnote, { color: p.muted, fontWeight: "600", flex: 1 }]} numberOfLines={1}>
+          <Text style={[type.footnote, { color: p.muted, ...fw("600"), flex: 1 }]} numberOfLines={1}>
             {body.title || t("Plan")}
           </Text>
           <Text style={[type.caption, { color: p.faint }]}>{t("{done} of {total}", { done, total: body.steps.length })}</Text>
@@ -79,7 +79,7 @@ export function PlanCard({ body, bot }: { body: PlanBody; bot: Bot }) {
                     type.callout,
                     {
                       color: step.status === "done" ? p.muted : current ? p.text : p.faint,
-                      fontWeight: current ? "600" : "400",
+                      ...fw(current ? "600" : "400"),
                     },
                   ]}
                 >

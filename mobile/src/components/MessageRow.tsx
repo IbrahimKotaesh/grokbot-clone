@@ -10,7 +10,7 @@ import { Button, IconButton, styles as s } from "./UI";
 import { FadeIn, FlyIn } from "./motion";
 import { takeFlight } from "../lib/sendFlight";
 import { client, authHeaders, connectApp } from "../lib/session";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { bubbleFor } from "../../../packages/contracts/src/characters";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -54,7 +54,7 @@ function FitText({ text, color }: { text: string; color: string }) {
         const widest = Math.ceil(Math.max(...lines.map((l) => l.width))) + 1;
         if (widest !== width) setWidth(widest);
       }}
-      style={{ width, color, fontSize: 16, lineHeight: 23, writingDirection: right ? "rtl" : "ltr", textAlign: right ? "right" : "left" }}
+      style={{ ...fw("400"), width, color, fontSize: 16, lineHeight: 23, writingDirection: right ? "rtl" : "ltr", textAlign: right ? "right" : "left" }}
     >
       {text}
     </Text>
@@ -87,6 +87,9 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
   // Replies appear whole (with a short fade for new ones), never typed out word by word.
   const text = body.type === "message" ? body.text : "";
   const { width, height } = useWindowDimensions();
+  // Table columns share the screen: a 3-column table fits without sideways scrolling; wider tables scroll.
+  const tableCols = Math.max(1, ((text ?? "").split("\n").find((l) => /^\s*\|.*\|\s*$/.test(l))?.split("|").length ?? 3) - 2);
+  const colW = Math.round(Math.min(220, Math.max(112, (width - space.lg * 2 - 6) / tableCols)));
   const act = async (path: string, data: unknown) => {
     setBusy(true);
     setError("");
@@ -150,7 +153,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
               size={13}
               color={body.type === "notice" && body.tone === "warn" ? p.amber : p.muted}
             />
-            <Text style={[type.caption, { color: p.muted, fontWeight: "500", flexShrink: 1 }]} numberOfLines={2}>
+            <Text style={[type.caption, { color: p.muted, ...fw("500"), flexShrink: 1 }]} numberOfLines={2}>
               {body.text}
             </Text>
           </View>
@@ -184,7 +187,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
                   {!!body.reason && <Text style={[type.footnote, { color: p.muted }]}>{t(body.reason)}</Text>}
                   {!!body.technical && (
                     <Pressable accessibilityRole="button" onPress={() => setDetails((v) => !v)} hitSlop={6} style={[s.row, { gap: 4 }]}>
-                      <Text style={[type.footnote, { color: p.faint, fontWeight: "600" }]}>{details ? t("Hide details") : t("Show details")}</Text>
+                      <Text style={[type.footnote, { color: p.faint, ...fw("600") }]}>{details ? t("Hide details") : t("Show details")}</Text>
                       <Ionicons name={details ? "chevron-up" : "chevron-down"} size={13} color={p.faint} />
                     </Pressable>
                   )}
@@ -299,7 +302,10 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
       </Enter>
     );
   }
-  const user = body.role === "user";
+  // A teammate's or a routine's message sits on the bot's side with its sender named, like on the web;
+  // only what you typed or said gets your bubble.
+  const fromOther = body.role === "user" && !!body.from && body.from.kind !== "voice" ? body.from : null;
+  const user = body.role === "user" && !fromOther;
   const hasBody = !!text || !!body.files?.length;
   // Your bubble wears the bot's color, so every chat looks like that bot's own.
   const bubble = bubbleFor(bot.avatarColor);
@@ -329,16 +335,21 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
             // Plain text, not Markdown: Markdown paragraphs stretch to full width and puff the bubble up.
             <FitText text={text} color={bubble.ink} />
           )}
+          {!!fromOther && (
+            <Text style={[type.footnote, { color: p.muted, ...fw("600") }]}>
+              {fromOther.kind === "routine" ? t("Routine · {name}", { name: fromOther.name }) : t("From {name}", { name: fromOther.name })}
+            </Text>
+          )}
           {!!text && !user && (
             <Markdown
               style={{
-                body: { color: user ? "#fff" : p.text, fontSize: user ? 16 : 16.5, lineHeight: user ? 23 : 26, writingDirection: rtl(text) ? "rtl" : "auto" },
+                body: { ...fw("400"), color: user ? "#fff" : p.text, fontSize: user ? 16 : 16.5, lineHeight: user ? 23 : 26, writingDirection: rtl(text) ? "rtl" : "auto" },
                 paragraph: { marginTop: 0, marginBottom: user ? 0 : 10 },
                 textgroup: { width: "100%", writingDirection: rtl(text) ? "rtl" : "auto", textAlign: rtl(text) ? "right" : "left" },
-                heading1: { fontSize: 24, lineHeight: 31, fontWeight: "700", color: p.text, marginBottom: 8 },
-                heading2: { fontSize: 20, lineHeight: 27, fontWeight: "700", color: p.text, marginBottom: 6 },
-                heading3: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: p.text },
-                strong: { fontWeight: "700" },
+                heading1: { fontSize: 24, lineHeight: 31, ...fw("700"), color: p.text, marginBottom: 8 },
+                heading2: { fontSize: 20, lineHeight: 27, ...fw("700"), color: p.text, marginBottom: 6 },
+                heading3: { fontSize: 17, lineHeight: 24, ...fw("600"), color: p.text },
+                strong: { ...fw("700") },
                 bullet_list_icon: { color: p.muted },
                 ordered_list_icon: { color: p.muted },
                 link: { color: user ? "#fff" : p.blue, textDecorationLine: user ? "underline" : "none" },
@@ -347,8 +358,8 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
                 hr: { backgroundColor: p.line },
                 table: { borderColor: p.line },
                 tr: { borderColor: p.line },
-                th: { padding: 10, width: 160, minWidth: 160, maxWidth: 160, flexGrow: 0, flexShrink: 0 },
-                td: { padding: 10, width: 160, minWidth: 160, maxWidth: 160, flexGrow: 0, flexShrink: 0 },
+                th: { padding: 10, width: colW, minWidth: colW, maxWidth: colW, flexGrow: 0, flexShrink: 0 },
+                td: { padding: 10, width: colW, minWidth: colW, maxWidth: colW, flexGrow: 0, flexShrink: 0 },
                 blockquote: { backgroundColor: "transparent", borderLeftColor: p.lineStrong, borderLeftWidth: 3, paddingLeft: 12, marginLeft: 0 },
               }}
               rules={{
@@ -396,10 +407,10 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
                 <Ionicons name="document-text-outline" size={18} color={p.text} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[type.subhead, { color: p.text, fontWeight: "600" }]} numberOfLines={1}>
+                <Text style={[type.subhead, { color: p.text, ...fw("600") }]} numberOfLines={1}>
                   {file.name}
                 </Text>
-                <Text style={[type.caption, { color: p.muted, fontWeight: "400" }]}>{Math.ceil(file.size / 1024)} KB</Text>
+                <Text style={[type.caption, { color: p.muted, ...fw("400") }]}>{Math.ceil(file.size / 1024)} KB</Text>
               </View>
               <Ionicons name="share-outline" size={17} color={p.muted} />
             </Pressable>
@@ -413,7 +424,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
                   style={[s.row, { gap: 5, backgroundColor: p.surface, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: p.line }]}
                 >
                   <Ionicons name="globe-outline" size={12} color={p.muted} />
-                  <Text style={[type.caption, { color: p.muted, fontWeight: "500", maxWidth: 160 }]} numberOfLines={1}>
+                  <Text style={[type.caption, { color: p.muted, ...fw("500"), maxWidth: 160 }]} numberOfLines={1}>
                     {citation.title ?? new URL(citation.url).hostname}
                   </Text>
                 </Pressable>
@@ -447,7 +458,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
         ))}
         {(user || !body.streaming) && (
           <View style={[s.row, { gap: space.md, marginTop: user && body.reaction ? 14 : 4, marginHorizontal: 4 }]}>
-            <Text style={[type.caption, { color: p.faint, fontWeight: "400" }]}>{time(row.createdAt)}</Text>
+            <Text style={[type.caption, { color: p.faint, ...fw("400") }]}>{time(row.createdAt)}</Text>
             {canRetry && (
               <Pressable
                 accessibilityRole="button"
@@ -458,7 +469,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
                 style={({ pressed }) => [s.row, { gap: 4, opacity: pressed || busy ? 0.5 : 1 }]}
               >
                 <Ionicons name="refresh" size={13} color={p.muted} />
-                <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{t("Try again")}</Text>
+                <Text style={[type.caption, { color: p.muted, ...fw("500") }]}>{t("Try again")}</Text>
               </Pressable>
             )}
           </View>

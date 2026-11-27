@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import type { BottomTabBarProps } from "expo-router/build/layouts/Tabs";
-import { palette as p } from "../theme";
+import { palette as p, fw } from "../theme";
 import { isRTL } from "../lib/i18n";
 
 /** Extra bottom padding tab screens add so their last row isn't hidden behind the bar. */
@@ -86,7 +86,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab }: B
               style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8, gap: 3 }}
             >
               <Ionicons name={icon[focused ? 1 : 0] as never} size={21} color={focused ? p.text : p.faint} />
-              <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: "600", color: focused ? p.text : p.faint }}>
+              <Text numberOfLines={1} style={{ fontSize: 10.5, ...fw("600"), color: focused ? p.text : p.faint }}>
                 {label}
               </Text>
             </Pressable>

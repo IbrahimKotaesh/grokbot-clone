@@ -518,6 +518,20 @@ async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string):Pr
   db.prepare('DELETE FROM pending_turns WHERE bot_id=?').run(botId);
 }
 
+/** "Answer in English" when the owner's last typed message has no Arabic letters, "in Arabic" when it does. */
+function replyLanguageNote(history: any[]): string {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h?.role !== 'user') continue;
+    const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
+    if (!text.trim() || /^\[(?:From|Routine|Message from)/.test(text)) continue;
+    if (/[\u0600-\u06FF]/.test(text)) return '\nThe owner\'s last message is in Arabic: answer in Arabic, in their dialect.';
+    if (/[a-z]{3,}/i.test(text)) return '\nThe owner\'s last message is not in Arabic: answer in the language it is written in (usually English), never in Arabic.';
+    return '';
+  }
+  return '';
+}
+
 // ---------- model call with streaming into a message row ----------
 
 async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promise<{ output: any[] }> {
@@ -538,7 +552,8 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   const llm = loopClient(userId, provider, provider === bot.agent_provider ? bot.model : null);
   if (provider !== 'xai') input.splice(1, input.length - 1, ...imagesOutOfToolReplies(history2));
   // The clock goes last (to the minute), so everything before it is the same as the previous step and is read from cache.
-  input.push({ role: 'system', content: `Current time: ${new Date().toISOString().slice(0, 16)}Z` });
+  // The language goes last too: cheap models drift into Arabic (the product is called Badr) unless told plainly.
+  input.push({ role: 'system', content: `Current time: ${new Date().toISOString().slice(0, 16)}Z${replyLanguageNote(history2)}` });
   // On Fino's own key, screen steps run on a cheap vision model and move up only when it struggles.
   const route = routes.get(botId);
   let model = llm.model;

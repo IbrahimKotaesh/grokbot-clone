@@ -1,48 +1,61 @@
 import { CHARACTER_KINDS, characterKind, type CharacterKind } from "../../packages/contracts/src/characters";
-// Fino design tokens. Near-black canvas, neutral greys, white primary actions.
+// Badr design tokens, matched to the website.
 // Every screen reads colour, type, spacing and motion from here — no ad-hoc values.
 
 import { Appearance } from "react-native";
+import { isArabic } from "./lib/i18n";
 import * as SecureStore from "expo-secure-store";
 
+// Badr's look, the same as the website (web/src/styles/phone-look.css): warm cream paper and dark-brown
+// ink by day, cocoa grounds and cream ink by night, tomato for links, sticker edges on the main actions.
 const dark = {
-  background: "#000000",
-  surface: "#0f0f10", // cards, grouped lists
-  raised: "#1b1b1d", // inputs, user bubble, chips
-  elevated: "#262629", // pressed state, menus
-  line: "#232326",
-  lineStrong: "#323236",
-  text: "#f5f5f7",
-  muted: "#8e8e93",
-  faint: "#5c5c61",
-  onPrimary: "#000000",
-  primary: "#f5f5f7",
-  blue: "#7aa7ff", // links and the occasional accent only
-  red: "#ff5c5c",
-  redSoft: "#ff5c5c1f",
-  green: "#3ddc97",
-  amber: "#ffc04d",
+  background: "#15110e",
+  surface: "#1e1915", // cards, grouped lists
+  raised: "#28221d", // inputs, chips
+  elevated: "#332b25", // pressed state, menus
+  line: "#2d2620",
+  lineStrong: "#43392f",
+  text: "#ffffff",
+  muted: "#cfc3b6",
+  faint: "#85786b",
+  onPrimary: "#15110e",
+  primary: "#ffffff",
+  blue: "#ff8a6b", // links and the occasional accent (Badr tomato)
+  red: "#ff6e63",
+  redSoft: "#ff6e631f",
+  green: "#74d57d",
+  amber: "#ffcf3a",
   scrim: "#000000b3",
+  /** Sticker edge: the outline and hard shadow on the composer and main buttons. */
+  edge: "#000000",
+  /** The composer's outline (softer than the button edge at night, like the website). */
+  composerEdge: "#43392f",
+  sun: "#ffcf3a",
+  onSun: "#211c17",
 };
 
 const light: typeof dark = {
-  background: "#faf9f5",
+  background: "#fff8ee",
   surface: "#ffffff",
-  raised: "#efede5",
-  elevated: "#e6e3d9",
-  line: "#e6e3d9",
-  lineStrong: "#d3d0c4",
-  text: "#1f1e1d",
-  muted: "#6f6d66",
-  faint: "#a6a39a",
-  onPrimary: "#ffffff",
-  primary: "#1f1e1d",
-  blue: "#2f6fe0",
-  red: "#e5484d",
-  redSoft: "#e5484d1f",
-  green: "#1f9d6a",
-  amber: "#d99a00",
+  raised: "#f8ecdc",
+  elevated: "#f1e1cd",
+  line: "#eedfcc",
+  lineStrong: "#dcc8b0",
+  text: "#211c17",
+  muted: "#6c6056",
+  faint: "#9a8b7d",
+  onPrimary: "#fff8ee",
+  primary: "#211c17",
+  blue: "#c13f22",
+  red: "#d9342a",
+  redSoft: "#d9342a1f",
+  green: "#2f8a35",
+  amber: "#c98a00",
   scrim: "#00000066",
+  edge: "#211c17",
+  composerEdge: "#211c17",
+  sun: "#ffcf3a",
+  onSun: "#211c17",
 };
 
 /** Light, dark, or follow the phone. Saved on the device; applied live without a restart. */
@@ -90,16 +103,35 @@ Appearance.addChangeListener(() => {
   if (themeChoice === "system") apply();
 });
 
+/** Nunito like the website (Tajawal for Arabic). Each weight is its own font file, loaded in app/_layout. */
+type Weight = "400" | "500" | "600" | "700" | "800";
+const FAMILY: Record<Weight, string> = isArabic
+  ? { "400": "Tajawal_500Medium", "500": "Tajawal_500Medium", "600": "Tajawal_700Bold", "700": "Tajawal_700Bold", "800": "Tajawal_800ExtraBold" }
+  : { "400": "Nunito_500Medium", "500": "Nunito_600SemiBold", "600": "Nunito_700Bold", "700": "Nunito_800ExtraBold", "800": "Nunito_900Black" };
+/** The brand font at a weight: spread into a style, e.g. { ...fw("700"), fontSize: 18 }. */
+export const fw = (weight: Weight = "400") => ({ fontFamily: FAMILY[weight] });
+export const fontAssets = isArabic ? "tajawal" : "nunito";
+
 export const type = {
-  largeTitle: { fontSize: 32, lineHeight: 38, fontWeight: "700", letterSpacing: -0.6 },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: "700", letterSpacing: -0.3 },
-  headline: { fontSize: 17, lineHeight: 22, fontWeight: "600", letterSpacing: -0.2 },
-  body: { fontSize: 16, lineHeight: 23, fontWeight: "400" },
-  callout: { fontSize: 15, lineHeight: 20, fontWeight: "400" },
-  subhead: { fontSize: 14, lineHeight: 19, fontWeight: "400" },
-  footnote: { fontSize: 13, lineHeight: 18, fontWeight: "400" },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: "500", letterSpacing: 0.2 },
+  largeTitle: { fontSize: 32, lineHeight: 38, ...fw("800"), letterSpacing: -0.6 },
+  title: { fontSize: 22, lineHeight: 28, ...fw("700"), letterSpacing: -0.3 },
+  headline: { fontSize: 17, lineHeight: 22, ...fw("700"), letterSpacing: -0.2 },
+  body: { fontSize: 16, lineHeight: 23, ...fw("400") },
+  callout: { fontSize: 15, lineHeight: 20, ...fw("400") },
+  subhead: { fontSize: 14, lineHeight: 19, ...fw("400") },
+  footnote: { fontSize: 13, lineHeight: 18, ...fw("400") },
+  caption: { fontSize: 12, lineHeight: 16, ...fw("600"), letterSpacing: 0.2 },
 } as const;
+
+/** The website's sticker edge: an ink outline and a hard offset shadow (composer, primary buttons). */
+export const sticker = () => ({
+  borderWidth: 2,
+  borderColor: palette.edge,
+  shadowColor: palette.edge,
+  shadowOffset: { width: 3, height: 3 },
+  shadowOpacity: 1,
+  shadowRadius: 0,
+});
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 } as const;

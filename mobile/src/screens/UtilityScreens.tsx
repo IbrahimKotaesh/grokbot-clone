@@ -9,7 +9,7 @@ import { client, logout, connectApp } from "../lib/session";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, ErrorText, Header, IconButton, Group, ListRow, SectionLabel, EmptyState, ProviderMark, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius, themeChoice, setThemeChoice, type ThemeChoice } from "../theme";
+import { palette as p, type, space, radius, themeChoice, setThemeChoice, type ThemeChoice, fw } from "../theme";
 import { relativeTime } from "../lib/format";
 import { useBilling, currentPlan, type Plan } from "../lib/billing";
 import { resetPurchases } from "../lib/purchases";
@@ -58,7 +58,7 @@ export function AppsScreen({ done }: { done?: () => void }) {
           {app.logo ? (
             <Image source={{ uri: app.logo }} style={{ width: 24, height: 24 }} contentFit="contain" />
           ) : (
-            <Text style={{ fontWeight: "700", color: "#000" }}>{app.name[0]}</Text>
+            <Text style={{ ...fw("700"), color: "#000" }}>{app.name[0]}</Text>
           )}
         </View>
       }
@@ -246,7 +246,7 @@ export function AlertsScreen({ openChat }: { openChat: () => void }) {
                     <Text style={[type.headline, { color: p.text }]} numberOfLines={1}>
                       {item.title}
                     </Text>
-                    <Text style={[type.caption, { color: p.faint, fontWeight: "400" }]}>{relativeTime(item.createdAt)}</Text>
+                    <Text style={[type.caption, { color: p.faint, ...fw("400") }]}>{relativeTime(item.createdAt)}</Text>
                   </View>
                   {!item.readAt && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.blue }} />}
                 </View>
@@ -314,7 +314,7 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxxl + TAB_BAR_SPACE }}>
         <FadeIn style={[s.card, s.row, { padding: space.lg }]}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.text, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: p.onPrimary, fontSize: 22, fontWeight: "700" }}>{initial}</Text>
+            <Text style={{ color: p.onPrimary, fontSize: 22, ...fw("700") }}>{initial}</Text>
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
@@ -473,7 +473,7 @@ function PlanCard({ plan, usage, onPress }: { plan: Plan | null; usage?: { compu
           <Ionicons name="chevron-forward" size={16} color={p.faint} style={mirror("chevron-forward")} />
         ) : (
           <View style={{ backgroundColor: p.text, borderRadius: radius.full, paddingHorizontal: 12, height: 30, justifyContent: "center" }}>
-            <Text style={{ color: p.onPrimary, fontWeight: "700", fontSize: 13 }}>{t("Upgrade")}</Text>
+            <Text style={{ color: p.onPrimary, ...fw("700"), fontSize: 13 }}>{t("Upgrade")}</Text>
           </View>
         )}
       </View>

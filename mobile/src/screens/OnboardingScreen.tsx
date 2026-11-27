@@ -6,10 +6,11 @@ import * as Haptics from "expo-haptics";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, Chip, ErrorText, IconButton, KeyboardScreen, TextField, styles as s } from "../components/UI";
 import { FadeIn, TypingDots, useLoop } from "../components/motion";
-import { palette as p, type, space, radius, fruits } from "../theme";
+import { palette as p, type, space, radius, fruits, fw } from "../theme";
 import { catalog, starterTeams, templateById, type BotTemplate } from "../lib/catalog";
 import { installTemplate, isInstalled, markOnboarded, rememberProfile } from "../lib/install";
 import { t as tr, n, mirror } from "../lib/i18n";
+import { useBilling, currentPlan } from "../lib/billing";
 
 type Step = "welcome" | "about" | "use" | "team" | "pick" | "build";
 type Team = "accounting" | "hr" | "other";
@@ -46,7 +47,15 @@ export function OnboardingScreen({ done }: { done: () => void }) {
     await markOnboarded(user);
     done();
   };
-  const choosePack = (key: keyof typeof starterTeams) => setPicked(starterTeams[key].filter((id) => !bots.some((b) => b.label === templateById(id)?.label)));
+  // A new account's plan decides how many teammates fit next to Badr: pick only what can really be added.
+  const billing = useBilling((x) => x.summary);
+  useEffect(() => { void useBilling.getState().load().catch(() => {}); }, []);
+  const plan = currentPlan(billing);
+  const room = plan?.bots == null ? Infinity : Math.max(0, plan.bots - (billing?.usage.bots ?? 0));
+  const choosePack = (key: keyof typeof starterTeams) => setPicked(starterTeams[key].filter((id) => !bots.some((b) => b.label === templateById(id)?.label)).slice(0, room));
+  const togglePick = (id: string) => setPicked((old) => (old.includes(id) ? old.filter((x) => x !== id) : old.length >= room ? old : [...old, id]));
+  // The plan may load after the pack was chosen: trim anything that would not fit.
+  useEffect(() => { if (picked.length > room) setPicked((old) => old.slice(0, room)); }, [room]);
 
   return (
     <KeyboardScreen style={{ paddingTop: insets.top }}>
@@ -154,13 +163,18 @@ export function OnboardingScreen({ done }: { done: () => void }) {
                   t={t}
                   on={picked.includes(id)}
                   installed={isInstalled(t, bots)}
-                  onToggle={() => setPicked((old) => (old.includes(id) ? old.filter((x) => x !== id) : [...old, id]))}
+                  onToggle={() => togglePick(id)}
                 />
               </FadeIn>
             );
           })}
+          {room !== Infinity && (
+            <Text style={[type.footnote, { color: p.muted, textAlign: "center", marginTop: space.sm }]}>
+              {room === 1 ? tr("Your plan includes 1 teammate next to Badr. Upgrade anytime to add more.") : tr("Your plan includes {n} teammates next to Badr. Upgrade anytime to add more.", { n: room })}
+            </Text>
+          )}
           <Text style={[type.footnote, { color: p.faint, textAlign: "center", marginTop: space.sm }]}>
-            {catalog.length}+ more bots are waiting in the Marketplace.
+            {tr("{n}+ more bots are waiting in the Marketplace.", { n: catalog.length })}
           </Text>
         </StepShell>
       )}
@@ -195,7 +209,7 @@ function Welcome({ onNext }: { onNext: () => void }) {
                   transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0, -10] : [-10, 0] }) }, { scale: i === 1 || i === 2 ? 1.12 : 0.9 }],
                 }}
               >
-                <Avatar shape={f} size={80} />
+                <Avatar shape={f} size={80} primary={f === "accountant"} />
               </Animated.View>
             ))}
           </View>
@@ -295,10 +309,10 @@ export function TemplateToggle({ t, on, installed, onToggle }: { t: BotTemplate;
       style={({ pressed }) => [s.card, { backgroundColor: pressed ? p.raised : p.surface, borderColor: on ? p.lineStrong : p.line, gap: space.md }]}
     >
       <View style={s.row}>
-        <Avatar shape={t.shape} size={46} />
+        <Avatar shape={t.shape} size={46} color={t.color} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[type.headline, { color: p.text }]}>
-            {t.name} <Text style={{ color: p.muted, fontWeight: "400" }}>· {tr(t.label)}</Text>
+            {t.name} <Text style={{ color: p.muted, ...fw("400") }}>· {tr(t.label)}</Text>
           </Text>
           <Text style={[type.footnote, { color: p.muted }]} numberOfLines={2}>
             {tr(t.description)}
@@ -314,7 +328,7 @@ export function TemplateToggle({ t, on, installed, onToggle }: { t: BotTemplate;
         {t.skills.map((sk) => (
           <View key={sk.name} style={[s.row, { gap: 4, backgroundColor: p.raised, borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4 }]}>
             <Ionicons name="flash" size={10} color={p.amber} />
-            <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{sk.name}</Text>
+            <Text style={[type.caption, { color: p.muted, ...fw("500") }]}>{sk.name}</Text>
           </View>
         ))}
       </View>
@@ -377,7 +391,7 @@ function Build({ templates, onFinish }: { templates: BotTemplate[]; onFinish: ()
           const r = rows[i];
           return (
             <FadeIn key={t.id} delay={i * 90} style={[s.card, s.row, { opacity: r.phase === "waiting" ? 0.5 : 1 }]}>
-              <Avatar shape={t.shape} size={40} />
+              <Avatar shape={t.shape} size={40} color={t.color} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[type.headline, { color: p.text }]}>{t.name}</Text>
                 <Text style={[type.footnote, { color: r.phase === "error" ? p.red : p.muted }]}>

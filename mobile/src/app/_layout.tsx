@@ -10,6 +10,9 @@ import { AuthProvider, useAuth } from "../lib/auth-context";
 import { Button, styles as s } from "../components/UI";
 import { palette as p, type, scheme as initialScheme, onThemeChange } from "../theme";
 import { t } from "../lib/i18n";
+import { useFonts } from "expo-font";
+import { Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black } from "@expo-google-fonts/nunito";
+import { Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold } from "@expo-google-fonts/tajawal";
 const navTheme = (mode: "light" | "dark") => {
   const base = mode === "light" ? DefaultTheme : DarkTheme;
   return { ...base, colors: { ...base.colors, primary: p.text, background: p.background, card: p.background, text: p.text, border: p.line } };
@@ -18,14 +21,17 @@ export default function RootLayout() {
   // Switching light/dark swaps the palette's values; re-mounting the tree repaints every screen.
   const [mode, setMode] = useState(initialScheme);
   const [version, setVersion] = useState(0);
+  // Badr's type (Nunito, Tajawal for Arabic), the same as the website. The splash stays up until it loads.
+  const [fontsReady, fontError] = useFonts({ Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold });
   useEffect(
     () =>
       onThemeChange(() => {
-        setMode(p.background === "#000000" ? "dark" : "light");
+        setMode(p.background === "#15110e" ? "dark" : "light");
         setVersion((v) => v + 1);
       }),
     [],
   );
+  if (!fontsReady && !fontError) return null;
   return (
     <SafeAreaProvider key={version}>
       <ThemeProvider value={navTheme(mode)}>
@@ -54,6 +60,8 @@ function Routes() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: p.background },
+        // Native screens own the status bar: dark text on cream by day, light text at night.
+        statusBarStyle: p.background === "#15110e" ? "light" : "dark",
         animation: "slide_from_right",
       }}
     >

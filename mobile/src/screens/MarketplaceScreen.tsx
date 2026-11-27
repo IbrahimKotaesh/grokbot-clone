@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, Chip, EmptyState, ErrorText, Header, IconButton, styles as s } from "../components/UI";
 import { FadeIn, PressableScale, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius, accentFor } from "../theme";
+import { palette as p, type, space, radius, accentFor, fw } from "../theme";
 import { catalog, categories, templateById, type BotTemplate, type CategoryId } from "../lib/catalog";
 import { installTemplate, isInstalled } from "../lib/install";
 import { handlePlanLimit } from "../lib/billing";
@@ -84,7 +84,7 @@ export function MarketplaceScreen({ done, openBot }: { done?: () => void; openBo
                   <View style={{ flexDirection: "row" }}>
                     {pack.map((t, i) => (
                       <View key={t.id} style={{ marginLeft: i ? -12 : 0 }}>
-                        <Avatar shape={t.shape} size={38} />
+                        <Avatar shape={t.shape} size={38} color={t.color} />
                       </View>
                     ))}
                   </View>
@@ -121,7 +121,7 @@ function BotCard({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added:
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={`${t.name}, ${t.label}`} onPress={onOpen} scaleTo={0.985} style={[s.card, { gap: space.md }]}>
       <View style={s.row}>
-        <Avatar shape={t.shape} size={52} />
+        <Avatar shape={t.shape} size={52} color={t.color} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[type.headline, { color: p.text }]}>{tr(t.label)}</Text>
           <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>
@@ -136,7 +136,7 @@ function BotCard({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added:
         ) : progress ? (
           <View style={{ alignItems: "center", gap: 4, minWidth: 64 }}>
             <TypingDots color={p.text} size={4} />
-            <Text style={[type.caption, { color: p.faint, fontWeight: "400" }]}>{progress}</Text>
+            <Text style={[type.caption, { color: p.faint, ...fw("400") }]}>{progress}</Text>
           </View>
         ) : (
           <Pressable
@@ -146,7 +146,7 @@ function BotCard({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added:
             hitSlop={8}
             style={({ pressed }) => ({ backgroundColor: pressed ? p.elevated : p.raised, borderRadius: radius.full, paddingHorizontal: 16, height: 32, justifyContent: "center" })}
           >
-            <Text style={[type.subhead, { color: p.text, fontWeight: "700" }]}>{tr("Get")}</Text>
+            <Text style={[type.subhead, { color: p.text, ...fw("700") }]}>{tr("Get")}</Text>
           </Pressable>
         )}
       </View>
@@ -155,7 +155,7 @@ function BotCard({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added:
       </Text>
       <View style={[s.row, { gap: 6 }]}>
         <Ionicons name="flash" size={12} color={p.amber} />
-        <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>{tr("{n} skills", { n: t.skills.length })} · {t.skills.map((x) => tr(x.name)).slice(0, 2).join(", ")}{t.skills.length > 2 ? "…" : ""}</Text>
+        <Text style={[type.caption, { color: p.faint, ...fw("500") }]}>{tr("{n} skills", { n: t.skills.length })} · {t.skills.map((x) => tr(x.name)).slice(0, 2).join(", ")}{t.skills.length > 2 ? "…" : ""}</Text>
       </View>
     </PressableScale>
   );
@@ -175,7 +175,7 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: space.xxl, gap: space.lg }}>
         <FadeIn style={{ alignItems: "center", gap: space.sm }}>
           <View style={{ width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", backgroundColor: accent + "22" }}>
-            <Avatar shape={t.shape} size={96} />
+            <Avatar shape={t.shape} size={96} color={t.color} />
           </View>
           <Text style={[type.largeTitle, { color: p.text, marginTop: space.sm }]}>{tr(t.label)}</Text>
           <Text style={[type.callout, { color: p.muted }]}>

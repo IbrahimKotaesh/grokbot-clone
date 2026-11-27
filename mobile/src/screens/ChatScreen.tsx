@@ -23,7 +23,7 @@ import { useBilling, hasComputer } from "../lib/billing";
 import { MessageRow } from "../components/MessageRow";
 import { Composer, type ComposerHandle } from "../components/Composer";
 import { FadeIn, TypingDots, useLoop } from "../components/motion";
-import { palette as p, type, space } from "../theme";
+import { palette as p, type, space, fw } from "../theme";
 import { botStatus, statusLine, usesComputer } from "../lib/format";
 import { catalog } from "../lib/catalog";
 import { t } from "../lib/i18n";
@@ -73,6 +73,13 @@ export function ChatScreen({
     setShowLatest(false);
     list.current?.scrollToOffset({ offset: 0, animated: true });
   }, [marks.asked]);
+  const thinking = !!live?.isRunning;
+  // The "thinking" line appears under your message: keep it in view when you're at the latest.
+  useEffect(() => {
+    if (!stick.current) return;
+    const id = setTimeout(() => list.current?.scrollToOffset({ offset: 0, animated: true }), 60);
+    return () => clearTimeout(id);
+  }, [thinking]);
   const newChat = useWorkspace((x) => x.newChat);
   const [error, setError] = useState<string | null>(null),
     [loadingOlder, setLoadingOlder] = useState(false),
@@ -137,7 +144,7 @@ export function ChatScreen({
               {bot.name}
             </Text>
             <Text
-              style={[type.caption, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted, fontWeight: "500" }]}
+              style={[type.caption, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted, ...fw("500") }]}
               numberOfLines={1}
             >
               {statusLine(bot, live)}
@@ -199,9 +206,14 @@ export function ChatScreen({
         }}
         scrollEventThrottle={64}
         onContentSizeChange={() => {
-          if (stick.current) list.current?.scrollToOffset({ offset: 0, animated: true });
+          if (!stick.current) return;
+          list.current?.scrollToOffset({ offset: 0, animated: true });
+          // Once more after the list has settled its held position.
+          setTimeout(() => stick.current && list.current?.scrollToOffset({ offset: 0, animated: true }), 60);
         }}
-        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+        // Holding the position keeps older messages still while you read; near the latest it follows new rows
+        // (your message, the "thinking" line) instead of pushing them below the composer.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 120 }}
         ListFooterComponent={
           !exhausted[rowKey(bot.id, generation)] && rows.length >= 200 ? (
             <View style={{ padding: space.md, alignItems: "center" }}>

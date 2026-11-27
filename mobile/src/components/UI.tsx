@@ -18,7 +18,7 @@ import { SvgXml } from "react-native-svg";
 import { characterSvg } from "../../../packages/contracts/src/characters";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { palette as p, fruitColor, fruitFor, type, space, radius, accentFor, onThemeChange } from "../theme";
+import { palette as p, fruitColor, fruitFor, type, space, radius, accentFor, onThemeChange, fw, sticker } from "../theme";
 import { PressableScale, useLoop } from "./motion";
 import { mirror } from "../lib/i18n";
 
@@ -40,7 +40,7 @@ export function Avatar({
 }) {
   const pulse = useLoop(1600, status === "working");
   const kind = fruitFor(shape);
-  const xml = React.useMemo(() => characterSvg(kind, color ?? fruitColor[kind], false), [kind, color]);
+  const xml = React.useMemo(() => characterSvg(kind, color ?? (primary ? "yellow" : fruitColor[kind]), false), [kind, color, primary]);
   const dot = Math.max(10, size * 0.22);
   return (
     <View style={{ width: size, height: size }}>
@@ -138,8 +138,8 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const v = variant ?? (secondary ? "secondary" : "primary");
-  const bg = { primary: p.primary, secondary: p.raised, ghost: "transparent", danger: p.redSoft }[v];
-  const fg = { primary: p.onPrimary, secondary: p.text, ghost: p.text, danger: p.red }[v];
+  const bg = { primary: p.sun, secondary: p.raised, ghost: "transparent", danger: p.redSoft }[v];
+  const fg = { primary: p.onSun, secondary: p.text, ghost: p.text, danger: p.red }[v];
   const off = disabled || busy;
   return (
     <PressableScale
@@ -154,6 +154,8 @@ export function Button({
         styles.button,
         compact && { minHeight: 38, paddingHorizontal: space.lg, paddingVertical: 8 },
         { backgroundColor: bg },
+        // The main action wears the website's sticker edge: sun yellow, ink outline, hard shadow.
+        v === "primary" && !(disabled && !busy) && sticker(),
         disabled && !busy && { backgroundColor: v === "primary" ? p.raised : bg },
         style,
       ]}
@@ -415,7 +417,7 @@ const makeStyles = () => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonText: { color: p.onPrimary, fontSize: 16, fontWeight: "600", letterSpacing: -0.1 },
+  buttonText: { color: p.onPrimary, fontSize: 16, ...fw("700"), letterSpacing: -0.1 },
   error: { color: p.red, fontSize: 14, lineHeight: 20, padding: 12 },
   errorBox: {
     flexDirection: "row",
@@ -451,6 +453,7 @@ const makeStyles = () => StyleSheet.create({
   text: { ...type.body, color: p.text },
   muted: { ...type.subhead, color: p.muted },
   input: {
+    ...fw("400"),
     backgroundColor: p.raised,
     color: p.text,
     borderRadius: radius.md,

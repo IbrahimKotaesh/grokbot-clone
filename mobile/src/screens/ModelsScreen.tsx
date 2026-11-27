@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { client } from "../lib/session";
 import { Button, ErrorText, Header, IconButton, ProviderMark, KeyboardScreen, SectionLabel, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { t as tr } from "../lib/i18n";
 
 type Provider = "chatgpt" | "openai" | "anthropic" | "xai" | "openrouter" | "groq";
@@ -180,7 +180,7 @@ function ChatGPTCard({ connected, onConnected, onDisconnect }: { connected: bool
         <Animated.View style={{ gap: space.md, opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }] }}>
           <Text style={[type.subhead, { color: p.muted }]}>1. Open the sign-in page and log in to ChatGPT.{"\n"}2. Enter this code:</Text>
           <View style={{ backgroundColor: p.background, borderRadius: radius.md, paddingVertical: space.lg, alignItems: "center", borderWidth: 1, borderColor: p.lineStrong }}>
-            <Text selectable style={{ color: p.text, fontSize: 30, fontWeight: "700", letterSpacing: 4, fontFamily: "Menlo" }}>
+            <Text selectable style={{ color: p.text, fontSize: 30, ...fw("700"), letterSpacing: 4, fontFamily: "Menlo" }}>
               {login.code}
             </Text>
           </View>

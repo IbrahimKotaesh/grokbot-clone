@@ -33,7 +33,7 @@ import { IconButton, ModelMark, ProviderMark } from "./UI";
 import { router } from "expo-router";
 import { modelName } from "../lib/models";
 import { FadeIn, TypingDots, useLoop } from "./motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { t } from "../lib/i18n";
 
 export interface ComposerHandle {
@@ -384,7 +384,9 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </Text>
         </FadeIn>
       )}
-      <View style={{ backgroundColor: p.raised, borderRadius: 22, borderWidth: 1, borderColor: mode === "recording" ? "#ff5a5f55" : p.line, overflow: "hidden" }}>
+      {/* The website's composer: a white box with an ink outline and a hard offset shadow. */}
+      <View style={{ borderRadius: 24, backgroundColor: p.surface, shadowColor: p.edge, shadowOffset: { width: 3, height: 3 }, shadowOpacity: p.background === "#15110e" ? 0 : 1, shadowRadius: 0 }}>
+      <View style={{ backgroundColor: p.surface, borderRadius: 24, borderWidth: 2, borderColor: mode === "recording" ? p.red : p.composerEdge, overflow: "hidden" }}>
         {mode === "idle" ? (
           <>
             {!!attachments.length && (
@@ -434,6 +436,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                 onChangeText={setDraft}
                 onContentSizeChange={(e) => onInputSize(e.nativeEvent.contentSize.height)}
                 style={{
+                  ...fw("400"),
                   fontSize: 16,
                   lineHeight: 21,
                   color: p.text,
@@ -483,7 +486,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
                   onPress={() => void switchLanguage()}
                   style={{ minWidth: 34, height: 26, paddingHorizontal: 8, borderRadius: radius.full, backgroundColor: p.elevated, alignItems: "center", justifyContent: "center" }}
                 >
-                  <Text style={{ color: p.text, fontSize: 13, fontWeight: "700" }}>{langInfo.short}</Text>
+                  <Text style={{ color: p.text, fontSize: 13, ...fw("700") }}>{langInfo.short}</Text>
                 </Pressable>}
               </View>
             )}
@@ -504,8 +507,9 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
           </View>
         )}
       </View>
+      </View>
       {mode === "recording" && (
-        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400" }]}>{t("Tap ✓ to put the text in the box")}</Text>
+        <Text style={[type.caption, { color: p.faint, textAlign: "center", ...fw("400") }]}>{t("Tap ✓ to put the text in the box")}</Text>
       )}
     </View>
   );
@@ -542,10 +546,10 @@ function ModelChip({ bot }: { bot: Bot }) {
         router.push("/model");
       }}
       hitSlop={4}
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: pressed ? p.elevated : p.background, maxWidth: 210 })}
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: pressed ? p.elevated : p.raised, maxWidth: 210 })}
     >
       {mark}
-      <Text numberOfLines={1} style={{ color: p.text, fontSize: 14, fontWeight: "500", flexShrink: 1 }}>
+      <Text numberOfLines={1} style={{ color: p.text, fontSize: 14, ...fw("500"), flexShrink: 1 }}>
         {label}
       </Text>
       <Ionicons name="chevron-down" size={13} color={p.muted} />

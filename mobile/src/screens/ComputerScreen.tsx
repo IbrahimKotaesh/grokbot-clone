@@ -8,7 +8,7 @@ import { client, authHeaders } from "../lib/session";
 import { useWorkspace } from "../lib/store";
 import { Avatar, Button, ErrorText, Group, Header, IconButton, ListRow, ProviderMark, SectionLabel, styles as s } from "../components/UI";
 import { FadeIn, TypingDots, useLoop } from "../components/motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { statusLine, usesComputer } from "../lib/format";
 import { t } from "../lib/i18n";
 
@@ -131,7 +131,7 @@ export function ComputerScreen({ done, openClaudeCode }: { done: () => void; ope
                 />
                 <View style={[s.row, { position: "absolute", top: 10, left: 10, gap: 5, backgroundColor: "#000000b3", borderRadius: radius.full, paddingHorizontal: 8, height: 22 }]}>
                   <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: p.red, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
-                  <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 }}>LIVE</Text>
+                  <Text style={{ color: "#fff", fontSize: 10, ...fw("700"), letterSpacing: 0.6 }}>LIVE</Text>
                 </View>
                 <View style={{ position: "absolute", bottom: 10, right: 10, backgroundColor: "#000000b3", borderRadius: 14, padding: 5 }}>
                   <Ionicons name="expand" size={14} color="#fff" />

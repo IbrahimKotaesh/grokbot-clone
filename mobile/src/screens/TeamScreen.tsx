@@ -7,7 +7,7 @@ import { useWorkspace } from "../lib/store";
 import { Avatar, IconButton, ErrorText, Header, Button, EmptyState, SectionLabel, LockBadge, styles as s } from "../components/UI";
 import { useBilling, hasComputer } from "../lib/billing";
 import { FadeIn, PressableScale } from "../components/motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { botStatus, plainPreview, relativeTime, statusLine } from "../lib/format";
 import { TAB_BAR_SPACE } from "../components/FloatingTabBar";
 import { t, n } from "../lib/i18n";
@@ -153,7 +153,7 @@ function PrimaryCard({
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
             {bot.name}
-            {!!bot.label && statusLine(bot, live) !== t(bot.label) && <Text style={[type.subhead, { color: p.faint, fontWeight: "500" }]}>{`  ·  ${t(bot.label)}`}</Text>}
+            {!!bot.label && statusLine(bot, live) !== t(bot.label) && <Text style={[type.subhead, { color: p.faint, ...fw("500") }]}>{`  ·  ${t(bot.label)}`}</Text>}
           </Text>
           <Text style={[type.subhead, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted }]} numberOfLines={1}>
             {statusLine(bot, live)}
@@ -197,22 +197,22 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
       <Avatar shape={bot.avatarShape} size={50} status={status} color={bot.avatarColor} />
       <View style={{ flex: 1, gap: 3 }}>
         <View style={s.rowBetween}>
-          <Text style={[type.headline, { color: p.text, flex: 1, fontWeight: bot.unread > 0 ? "800" : type.headline.fontWeight }]} numberOfLines={1}>
+          <Text style={[type.headline, { color: p.text, flex: 1, ...(bot.unread > 0 ? fw("800") : {}) }]} numberOfLines={1}>
             {bot.name}
-            {!!bot.label && <Text style={[type.subhead, { color: p.faint, fontWeight: "400" }]}>{`  ·  ${t(bot.label)}`}</Text>}
+            {!!bot.label && <Text style={[type.subhead, { color: p.faint, ...fw("400") }]}>{`  ·  ${t(bot.label)}`}</Text>}
           </Text>
           <Text style={[type.caption, { color: bot.unread ? p.text : p.faint }]}>{relativeTime(bot.lastActivityAt)}</Text>
         </View>
         <View style={[s.row, { gap: space.sm }]}>
           <Text
-            style={[type.subhead, { color: status === "working" ? p.green : bot.unread > 0 ? p.text : p.muted, fontWeight: bot.unread > 0 ? "600" : type.subhead.fontWeight, flex: 1 }]}
+            style={[type.subhead, { color: status === "working" ? p.green : bot.unread > 0 ? p.text : p.muted, ...(bot.unread > 0 ? fw("600") : {}), flex: 1 }]}
             numberOfLines={1}
           >
             {live?.isRunning || live?.awaiting ? statusLine(bot, live) : plainPreview(bot.lastPreview) || t("Start a conversation")}
           </Text>
           {bot.unread > 0 && (
             <View style={{ backgroundColor: p.text, borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: p.onPrimary, fontSize: 12, fontWeight: "700" }}>{bot.unread}</Text>
+              <Text style={{ color: p.onPrimary, fontSize: 12, ...fw("700") }}>{bot.unread}</Text>
             </View>
           )}
         </View>

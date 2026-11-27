@@ -8,15 +8,18 @@ const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 // Colourful style: one bold gradient per slide, white headline, yellow accent words.
 const slides = [
-  { shot: "team", c1: "#ff8a1f", c2: "#ff3d6e", tilt: -4, px: 160,
-    fruits: "watermelon:40:860:330:-12;orange:1000:1180:300:14;olive:30:2050:290:-8;fig:1010:2380:300:10",
+  { shot: "home", c1: "#ffb020", c2: "#ff5a36", tilt: -4, px: 160,
+    fruits: "char-badr:30:900:330:-12;char-chef:1010:1250:270:12;char-architect:20:2120:270:-8;char-medic:1020:2420:260:10",
     en: "Your AI team.|*Ready to work.*", ar: "فريقك الذكي.|*جاهز للعمل.*" },
   { shot: "chat", c1: "#7b5cff", c2: "#2f6bff", tilt: 4, px: 170,
-    fruits: "orange:990:700:330:12;watermelon:-10:2560:290:-10",
+    fruits: "char-architect:1000:760:300:12;char-badr:-10:2520:280:-10",
     en: "Real work.|*Not just chat.*", ar: "عمل حقيقي.|*لا مجرد دردشة.*" },
-  { shot: "market", c1: "#14c38e", c2: "#0a8f9c", tilt: -3, px: 160,
-    fruits: "fig:20:720:310:-14;olive:1010:1560:290:12;orange:0:2580:280:-6",
-    en: "Hire a bot.|*In one tap.*", ar: "وظّف بوتًا.|*بلمسة واحدة.*" },
+  { shot: "team", c1: "#14c38e", c2: "#0a8f9c", tilt: -3, px: 160,
+    fruits: "char-badr:20:760:300:-12;char-medic:1010:1580:270:12;char-engineer:0:2560:260:-6",
+    en: "Badr leads.|*The team delivers.*", ar: "بدر يقود.|*والفريق يُنجز.*" },
+  { shot: "market", c1: "#ff5c8a", c2: "#ff8a3d", tilt: 3, px: 170,
+    fruits: "char-florist:1000:780:290:10;char-chef:-10:2480:270:-10",
+    en: "Hire a teammate.|*In one tap.*", ar: "وظّف زميلًا.|*بلمسة واحدة.*" },
 ];
 
 const only = process.argv[2];

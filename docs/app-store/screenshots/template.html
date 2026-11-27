@@ -2,8 +2,8 @@
 <html>
 <head>
 <meta charset="utf-8">
-<!-- 6.9" iPhone App Store screenshot, 1320 x 2868. Big two-line headline, big phone, the app's
-     fruit characters floating around it. No small labels. -->
+<!-- 6.9" iPhone App Store screenshot, 1320 x 2868. Big two-line headline, big phone, Badr and his
+     teammates floating around it. No small labels. -->
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@700&display=block" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,7 +40,9 @@
   .status .icons { display: flex; align-items: center; gap: 13px; }
   .island { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); width: 290px; height: 84px; border-radius: 50px; background: #000; z-index: 3; }
 
-  /* Fruit characters */
+  /* The screenshots carry their own status bar. */
+  .status { display: none; }
+  /* Characters */
   .fruit { position: absolute; z-index: 6; filter: drop-shadow(0 40px 40px rgba(0,0,0,.35)) drop-shadow(0 10px 12px rgba(0,0,0,.2)); }
 </style>
 </head>
@@ -72,7 +74,7 @@
     <div class="island"></div><div class="status"><span>9:41</span>${icons}</div><img src="${esc(q.get("shot") || "")}"></div></div></div>`;
   for (const f of (q.get("fruits") || "").split(";").filter(Boolean)) {
     const [name, x, y, size, rot] = f.split(":");
-    html += `<img class="fruit" src="assets/${esc(name)}.webp" style="left:${x}px;top:${y}px;width:${size}px;transform:rotate(${rot || 0}deg)">`;
+    html += `<img class="fruit" src="assets/${esc(name)}.${name.startsWith("char-") ? "svg" : "webp"}" style="left:${x}px;top:${y}px;width:${size}px;transform:rotate(${rot || 0}deg)">`;
   }
   $("stage").innerHTML = html;
   // Each headline line stays on one line: shrink until the widest line fits.

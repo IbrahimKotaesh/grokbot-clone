@@ -8,7 +8,7 @@ import { client } from "../lib/session";
 import { handlePlanLimit } from "../lib/billing";
 import { Button, ErrorText, Header, IconButton, KeyboardScreen, ProviderMark, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius } from "../theme";
+import { palette as p, type, space, radius, fw } from "../theme";
 import { t } from "../lib/i18n";
 
 const KEYS: { key: string; label: string }[] = [
@@ -143,7 +143,7 @@ export function ClaudeCodeScreen({ done }: { done: () => void }) {
           <FadeIn delay={200} style={{ gap: space.sm }}>
             <Button title={starting ? t("Starting… the first time takes a minute") : t("Start Claude Code")} icon={starting ? undefined : "play"} busy={starting} onPress={() => void start()} />
             {starting && (
-              <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400", opacity: 0.9 }]}>{t("Waking your computer and installing Claude Code")}</Text>
+              <Text style={[type.caption, { color: p.faint, textAlign: "center", ...fw("400"), opacity: 0.9 }]}>{t("Waking your computer and installing Claude Code")}</Text>
             )}
           </FadeIn>
         </View>

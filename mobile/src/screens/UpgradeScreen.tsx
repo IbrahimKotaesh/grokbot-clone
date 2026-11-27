@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Button, ErrorText, Header, IconButton, styles as s } from "../components/UI";
 import { FadeIn, TypingDots } from "../components/motion";
-import { palette as p, type, space, radius, motion } from "../theme";
+import { palette as p, type, space, radius, motion, fw } from "../theme";
 import { useBilling, purchase, restore, type Plan, type PlanId } from "../lib/billing";
 import * as WebBrowser from "expo-web-browser";
 import { client } from "../lib/session";
@@ -134,7 +134,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
           busy={busy}
           onPress={() => void buy()}
         />
-        <Text style={[type.caption, { color: p.faint, textAlign: "center", fontWeight: "400", lineHeight: 16 }]}>
+        <Text style={[type.caption, { color: p.faint, textAlign: "center", ...fw("400"), lineHeight: 16 }]}>
           Monthly subscription, renews automatically until cancelled. Payment is charged to your Apple ID at confirmation. Cancel anytime in your App Store
           settings at least 24 hours before renewal.
         </Text>
@@ -196,12 +196,12 @@ function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; pri
               <Text style={[type.title, { color: p.text }]}>{plan.name}</Text>
               {popular && (
                 <View style={{ backgroundColor: p.text, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ color: p.onPrimary, fontSize: 11, fontWeight: "700" }}>POPULAR</Text>
+                  <Text style={{ color: p.onPrimary, fontSize: 11, ...fw("700") }}>POPULAR</Text>
                 </View>
               )}
               {current && (
                 <View style={{ backgroundColor: p.raised, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ color: p.muted, fontSize: 11, fontWeight: "700" }}>CURRENT</Text>
+                  <Text style={{ color: p.muted, fontSize: 11, ...fw("700") }}>CURRENT</Text>
                 </View>
               )}
             </View>
@@ -209,7 +209,7 @@ function PlanCard({ plan, price, selected, current, onPress }: { plan: Plan; pri
           {price !== null ? (
             <Text style={[type.title, { color: p.text }]}>
               {price}
-              <Text style={[type.subhead, { color: p.muted, fontWeight: "400" }]}>/mo</Text>
+              <Text style={[type.subhead, { color: p.muted, ...fw("400") }]}>/mo</Text>
             </Text>
           ) : (
             <Text style={[type.headline, { color: p.muted }]}>{t("Custom")}</Text>

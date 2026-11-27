@@ -9,7 +9,7 @@ import Svg, {
   G,
 } from "react-native-svg";
 import { parseChart } from "../../../packages/client/src/chart";
-import { palette as p } from "../theme";
+import { palette as p, fw } from "../theme";
 import { styles as s } from "./UI";
 import { t } from "../lib/i18n";
 const colors = [
@@ -39,7 +39,7 @@ export function Chart({ raw }: { raw: string }) {
     );
   return (
     <View style={{ gap: 14, paddingVertical: 8 }}>
-      <Text style={[s.text, { fontWeight: "600" }]}>{c.title}</Text>
+      <Text style={[s.text, { ...fw("600") }]}>{c.title}</Text>
       {c.type === "pie" ? (
         <Svg width="100%" height={220} viewBox="0 0 280 220">
           {c.series[0].values.map((v, i) => {

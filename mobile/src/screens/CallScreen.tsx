@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useWorkspace } from "../lib/store";
 import { Avatar, IconButton } from "../components/UI";
 import { FadeIn, TypingDots, useLoop, useRipple } from "../components/motion";
-import { palette as p, type, space, accentFor } from "../theme";
+import { palette as p, type, space, accentFor, fw } from "../theme";
 import { startVoiceCall, type CallPhase, type VoiceCall } from "../lib/voice-call";
 import { t } from "../lib/i18n";
 
@@ -85,7 +85,7 @@ export function CallScreen({ done }: { done: () => void }) {
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingRight: space.md }}>
           <Ionicons name="lock-closed" size={11} color={p.faint} />
-          <Text style={[type.caption, { color: p.faint, fontWeight: "500" }]}>{t("Private call")}</Text>
+          <Text style={[type.caption, { color: p.faint, ...fw("500") }]}>{t("Private call")}</Text>
         </View>
       </View>
 
@@ -214,7 +214,7 @@ function Control({
       >
         <Ionicons name={icon} size={26} color={on ? p.onPrimary : p.text} />
       </Pressable>
-      <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{label}</Text>
+      <Text style={[type.caption, { color: p.muted, ...fw("500") }]}>{label}</Text>
     </View>
   );
 }
@@ -244,7 +244,7 @@ function EndButton({ onPress }: { onPress: () => void }) {
           <Ionicons name="call" size={26} color="#fff" />
         </Pressable>
       </Animated.View>
-      <Text style={[type.caption, { color: p.muted, fontWeight: "500" }]}>{t("End")}</Text>
+      <Text style={[type.caption, { color: p.muted, ...fw("500") }]}>{t("End")}</Text>
     </View>
   );
 }

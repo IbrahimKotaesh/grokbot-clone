@@ -14,7 +14,7 @@ export function StartupScreen() {
           transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.04] }) }],
         }}
       >
-        <Avatar shape="watermelon" size={72} />
+        <Avatar shape="accountant" size={72} primary />
       </Animated.View>
       <Text style={[type.footnote, { color: p.faint }]}>{t("Opening your workspace…")}</Text>
     </View>

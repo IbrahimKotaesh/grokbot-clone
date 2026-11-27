@@ -144,7 +144,7 @@ export function assertCanCreateBot(userId: string) {
   const plan = planOf(userId);
   if (plan.bots === null) return;
   const count = (db.prepare("SELECT COUNT(*) AS n FROM bots WHERE user_id=? AND is_primary=0 AND parent_bot_id IS NULL AND COALESCE(hidden,0)=0 AND COALESCE(kind,'agent')='agent'").get(userId) as { n: number }).n;
-  if (count >= plan.bots) throw new PlanLimitError(`Your ${plan.name} plan includes ${plan.bots} bots besides your main bot. Upgrade to add more.`, 'bots');
+  if (count >= plan.bots) throw new PlanLimitError(`Your ${plan.name} plan includes ${plan.bots} ${plan.bots === 1 ? "teammate" : "teammates"} besides Badr. Upgrade to add more.`, 'bots');
 }
 
 export function billingSummary(userId: string) {
