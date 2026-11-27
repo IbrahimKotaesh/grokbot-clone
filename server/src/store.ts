@@ -185,6 +185,7 @@ export function describeCron(expr: string): string {
   if (time && dom === '*' && mon === '*' && dow === '*') return `Every day at ${time}`;
   if (time && dom === '*' && mon === '*' && dow === '1-5') return `Weekdays at ${time}`;
   if (time && dom === '*' && mon === '*' && /^[0-6]$/.test(dow)) return `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][+dow]} at ${time}`;
+  if (time && /^\d+$/.test(dom) && mon === '*' && dow === '*') return `Monthly on day ${dom} at ${time}`;
   if (m === '0' && h === '*') return 'Every hour';
   if (/^\*\/\d+$/.test(m) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${m.slice(2)} minutes`;
   if (m === '0' && /^\*\/\d+$/.test(h) && dom === '*' && mon === '*' && dow === '*') return `Every ${h.slice(2)} hours`;

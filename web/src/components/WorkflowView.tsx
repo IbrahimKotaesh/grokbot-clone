@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Clock, Play, Zap } from 'lucide-react';
+import { ChevronRight, Clock, List, Network, Play, Zap } from 'lucide-react';
 import type { Bot, Routine } from '@shared/types';
 import { lang, t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -8,7 +8,9 @@ import { useConfigUI, useVersion } from '../configStore';
 import { configApi } from '../lib/configApi';
 import { clock, relativeShort } from '../lib/time';
 import { Switch } from './config/ui';
+import { scheduleText } from '../lib/schedule';
 import { BlurWords } from '../lib/motion';
+import { WorkflowDiagram } from './WorkflowDiagram';
 
 const LS_CLOSED = 'badr.workflowClosed';
 const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar' : 'en-GB';
@@ -40,7 +42,7 @@ function AutomationRow({ r, onChange }: { r: Routine; onChange: (r: Routine) => 
       <span className={`auto-row__icon${isEvent ? ' is-event' : ''}`} aria-hidden>{isEvent ? <Zap size={15} strokeWidth={2.2} /> : <Clock size={15} strokeWidth={2.2} />}</span>
       <span className="auto-row__text">
         <b dir="auto">{r.name}</b>
-        <small dir="auto">{r.description}{next ? ` · ${t('Next')}: ${next}` : ''}{r.lastRunAt ? ` · ${t('Last ran {time}', { time: relativeShort(r.lastRunAt) })}` : ''}</small>
+        <small dir="auto">{scheduleText(r)}{next ? ` · ${t('Next')}: ${next}` : ''}{r.lastRunAt ? ` · ${t('Last ran {time}', { time: relativeShort(r.lastRunAt) })}` : ''}</small>
       </span>
       <button type="button" className="auto-row__run" onClick={() => void run()} disabled={busy} title={t('Run now')} aria-label={t('Run {name} now', { name: r.name })}>
         {ran ? t('Started') : <><Play size={13} strokeWidth={2.4} /> {t('Run now')}</>}
@@ -77,6 +79,9 @@ export function WorkflowView() {
   const v = useVersion('routines');
   const [list, setList] = useState<Routine[] | null>(null);
   const [closed, setClosed] = useState<string[]>(readClosed);
+  // Two ways to look at it: a diagram of the flow, or the list of boxes. The choice is remembered.
+  const [mode, setMode] = useState<'diagram' | 'list'>(() => { try { return localStorage.getItem('badr.workflowMode') === 'list' ? 'list' : 'diagram'; } catch { return 'diagram'; } });
+  const pick = (m: 'diagram' | 'list') => { setMode(m); try { localStorage.setItem('badr.workflowMode', m); } catch { /* private window */ } };
   useEffect(() => {
     let live = true;
     fetch('/api/automations', { credentials: 'include' }).then((r) => (r.ok ? r.json() : { automations: [] })).then((d) => live && setList(d.automations ?? [])).catch(() => live && setList([]));
@@ -93,9 +98,17 @@ export function WorkflowView() {
 
   return (
     <main className="chat page-view">
-      <header className="page-view__head">
+      <header className="page-view__head page-view__head--row">
+        <div>
         <BlurWords as="h1" className="page-view__title" text={t('Workflow')} />
         <p className="page-view__sub">{list === null ? t('Loading…') : total ? t('{on} of {all} automations are on. Your Bots run them by themselves.', { on, all: total }) : t('Everything your Bots do on their own: on a schedule, or when something happens in your apps.')}</p>
+        </div>
+        {total > 0 && (
+          <div className="seg" role="tablist" aria-label={t('View')}>
+            <button type="button" role="tab" aria-selected={mode === 'diagram'} className={mode === 'diagram' ? 'is-on' : ''} onClick={() => pick('diagram')}><Network size={14} strokeWidth={2.2} />{t('Diagram')}</button>
+            <button type="button" role="tab" aria-selected={mode === 'list'} className={mode === 'list' ? 'is-on' : ''} onClick={() => pick('list')}><List size={14} strokeWidth={2.2} />{t('List')}</button>
+          </div>
+        )}
       </header>
       <div className="page-view__scroll">
         <div className="page-view__inner">
@@ -105,7 +118,9 @@ export function WorkflowView() {
               <span>{t('Ask any Bot, like “every weekday at 8, send me the news” or “when an email from my bank arrives, summarize it”. It shows up here.')}</span>
             </div>
           )}
-          {byBot.map(({ bot, items }) => <BotBox key={bot.id} bot={bot} items={items} open={!closed.includes(bot.id)} onToggle={() => toggleBox(bot.id)} onChange={change} />)}
+          {mode === 'diagram' && total > 0
+            ? <WorkflowDiagram lanes={byBot} />
+            : byBot.map(({ bot, items }) => <BotBox key={bot.id} bot={bot} items={items} open={!closed.includes(bot.id)} onToggle={() => toggleBox(bot.id)} onChange={change} />)}
         </div>
       </div>
     </main>
