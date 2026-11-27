@@ -60,6 +60,20 @@ const PRICES: Record<string, [number, number, number]> = {
   'openai/gpt-5.4-nano': [0.2, 0.02, 1.25],
 };
 
+/**
+ * Public API list price (USD per million tokens: input, cached input, output) for a model, for the Usage page's
+ * "at API prices" figures. Badr's own models use the table above; work done on the user's own subscriptions is
+ * priced at the matching vendor's API (an estimate: those users pay their subscription, not per token).
+ */
+export function listPrice(provider: string, model: string | null): [number, number, number] {
+  const m = (model ?? '').toLowerCase();
+  if (PRICES[m]) return PRICES[m];
+  if (provider === 'codex' || /^(gpt|o\d|codex)/.test(m)) return PRICES[/mini/.test(m) ? 'openai/gpt-5.4-mini' : /nano/.test(m) ? 'openai/gpt-5.4-nano' : 'openai/gpt-5.4'];
+  if (provider === 'claude' || provider === 'claude-code' || /claude|sonnet|opus|haiku/.test(m)) return PRICES['anthropic/claude-sonnet-5.5'];
+  if (provider === 'xai' || /grok/.test(m)) return PRICES['x-ai/grok-4.3'];
+  return [1, 0.1, 5];
+}
+
 export interface Usage {
   input_tokens?: number;
   output_tokens?: number;

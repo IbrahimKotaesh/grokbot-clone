@@ -76,8 +76,8 @@ function Folder({ folder, bots, open, onToggle, children }: { folder: { id: stri
   const [renaming, setRenaming] = useState(false);
   const busy = bots.some((b) => live[b.id]?.isRunning), waiting = bots.some((b) => live[b.id]?.awaiting), unread = bots.some((b) => b.unread > 0);
   return (
-    <section className={`folder${open ? ' is-open' : ''}`} aria-label={folder.name}>
-      <div className="folder__head" data-folder-drop={folder.id}>
+    <section className={`folder${open ? ' is-open' : ''}`} aria-label={folder.name} data-folder-drop={folder.id}>
+      <div className="folder__head">
         {renaming ? <FolderName initial={folder.name} onSave={(n) => { setRenaming(false); void foldersApi.rename(folder.id, n).catch(() => {}); }} onCancel={() => setRenaming(false)} /> : (
           <button type="button" className="folder__toggle" aria-expanded={open} onClick={onToggle}>
             <ChevronRight size={15} strokeWidth={2.2} className="folder__chev" />
@@ -187,7 +187,8 @@ export function Sidebar() {
   const known = new Set(folders.map((f) => f.id));
   const loose = others.filter((b) => !b.folderId || !known.has(b.folderId));
   // Reordering inside one folder saves the order of every Bot: the folder's new order takes its members' places.
-  const saved = [...rest].sort(byOrder).map((b) => b.id);
+  // The server saves the order of every Bot at once, group chats included, so they keep their places here too.
+  const saved = [...rest, ...groups].sort(byOrder).map((b) => b.id);
   const fullOrder = (subset: string[]) => { const inSet = new Set(subset); let k = 0; return saved.map((id) => (inSet.has(id) ? subset[k++] : id)); };
   const dropToFolder = (botId: string, folderId: string | null) => void foldersApi.move(botId, folderId).catch(() => {});
   const row = (b: Bot) => <BotConversations key={b.id} bot={b} collapsed={false}><BotRow bot={b} selected={selectedBotId === b.id} running={!!live[b.id]?.isRunning} awaiting={live[b.id]?.awaiting?.reason ?? null} onSelect={selectBot} /></BotConversations>;
@@ -225,7 +226,7 @@ export function Sidebar() {
               const members = others.filter((b) => b.folderId === f.id);
               return (
                 <Folder key={f.id} folder={f} bots={members} open={!folded.includes(f.id)} onToggle={() => toggleFolder(f.id)}>
-                  <BotRoster bots={members} collapsed={false} fullOrder={fullOrder} onDropToFolder={dropToFolder} render={row} />
+                  <BotRoster bots={members} collapsed={false} fullOrder={fullOrder} onDropToFolder={dropToFolder} render={row} zone={f.id} />
                 </Folder>
               );
             })}
@@ -243,8 +244,9 @@ export function Sidebar() {
               </section>
             )}
             {loose.length > 0 && <div className="sidebar__team-label" data-folder-drop="">{folders.length ? t("Other Bots") : t("Your team")}</div>}
-            <div className="bot-list">
-              <BotRoster bots={loose} collapsed={false} fullOrder={fullOrder} onDropToFolder={folders.length ? dropToFolder : undefined} render={row} />
+            <div className={`bot-list${loose.length ? '' : ' is-empty'}`} {...(folders.length ? { 'data-folder-drop': '' } : {})}>
+              {folders.length > 0 && loose.length === 0 && <span className="bot-list__drop">{t('Drop here to take a Bot out of its folder')}</span>}
+              <BotRoster bots={loose} collapsed={false} fullOrder={fullOrder} onDropToFolder={folders.length ? dropToFolder : undefined} render={row} zone="" />
               {others.length === 0 && (
                 <button type="button" className="bot-list__empty" onClick={() => setModal('create')}>
                   <span className="bot-list__empty-plus"><Icon name="plus" size={14} opacity={0.66} /></span>
