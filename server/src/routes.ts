@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { addRule, deleteRule, listRules, setPaused, updateRule } from './agent/rules.js';
 import { markVoiceChosen } from './voice-cast.js';
 import { falVoiceReady } from './fal-voice.js';
 import { verifyAppleIdentityToken } from './apple-auth.js';
@@ -444,6 +445,36 @@ api.post('/bots/:id/interrupt', async (c) => {
   interrupt(b.id);
   return c.json({ ok: true });
 });
+
+// Pause: stop what the Bot is doing and keep it quiet (no routines, triggers or messages of its own) until resumed.
+api.post('/bots/:id/pause', async (c) => {
+  const b = ownBot(c.get('user').id, c.req.param('id'));
+  if (!b || b.kind === 'room') return c.json({ error: 'not found' }, 404);
+  const input = await c.req.json().catch(() => ({}));
+  const paused = input?.paused !== false;
+  setPaused(b.id, paused);
+  if (paused) interrupt(b.id);
+  emitBot(b.id);
+  return c.json({ ok: true, paused });
+});
+
+// Approval rules in plain words: "When it wants to <action> → do it / ask first / never".
+api.get('/rules', (c) => {
+  const botId = c.req.query('botId');
+  if (botId && !ownBot(c.get('user').id, botId)) return c.json({ error: 'not found' }, 404);
+  return c.json({ rules: listRules(c.get('user').id, botId || undefined) });
+});
+api.post('/rules', async (c) => {
+  const input = await c.req.json().catch(() => ({}));
+  try { return c.json({ rule: addRule(c.get('user').id, typeof input?.botId === 'string' ? input.botId : null, input?.action, input?.decision) }); }
+  catch (e) { return c.json({ error: (e as Error).message }, 400); }
+});
+api.patch('/rules/:id', async (c) => {
+  const input = await c.req.json().catch(() => ({}));
+  try { const rule = updateRule(c.get('user').id, c.req.param('id'), input?.decision); return rule ? c.json({ rule }) : c.json({ error: 'not found' }, 404); }
+  catch (e) { return c.json({ error: (e as Error).message }, 400); }
+});
+api.delete('/rules/:id', (c) => deleteRule(c.get('user').id, c.req.param('id')) ? c.json({ ok: true }) : c.json({ error: 'not found' }, 404));
 
 api.post('/bots/:id/fresh', (c) => {
   const b = ownBot(c.get('user').id, c.req.param('id'));

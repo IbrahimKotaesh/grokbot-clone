@@ -1,4 +1,4 @@
-import { t } from '../lib/i18n';
+import { isArabic, t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { botVars } from '../lib/colors';
@@ -11,11 +11,25 @@ import { Menu } from './Menu';
 import { foldersApi } from '../lib/folders';
 import { Transcript } from './Transcript';
 import { VoiceCallBar } from './VoiceCallBar';
-import { Phone } from 'lucide-react';
+import { Pause, Phone } from 'lucide-react';
 import { isCallActive, previewVoice, startCall, useVoice } from '../voice/call';
 import { voiceApi, type VoiceOptions } from '../voice/api';
 import { configApi } from '../lib/configApi';
 import { GroupAvatar } from './GroupAvatar';
+import { setPaused } from '../lib/pause';
+import type { Bot } from '@shared/types';
+
+/** In place of the message box while a Bot is paused. */
+function PausedBar({ bot, onError }: { bot: Bot; onError: (msg: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="paused-bar" role="status">
+      <span className="paused-bar__icon" aria-hidden><Pause size={16} strokeWidth={2.4} /></span>
+      <span className="paused-bar__text" dir={isArabic ? 'rtl' : 'auto'}><b>{t('{name} is paused.', { name: bot.name })}</b> {t("It stopped what it was doing, and it won't do anything on its own until you resume it.")}</span>
+      <button type="button" className="btn btn--primary paused-bar__btn" disabled={busy} onClick={() => { setBusy(true); setPaused(bot, false).catch((e) => onError(e.message)).finally(() => setBusy(false)); }}>{t('Resume')}</button>
+    </div>
+  );
+}
 
 export function ChatView() {
   const bot = useSelectedBot();
@@ -46,12 +60,15 @@ export function ChatView() {
     <main className="chat" style={botVars(bot.avatarColor)}>
       <Transcript key={`transcript:${bot.id}:${generation}`} bot={bot} rows={rows} live={live&&(!live.generation||live.generation===generation)?live:undefined} loaded={!!transcript?.loaded} generation={generation} />
       <VoiceCallBar />
-      <Composer key={`composer:${bot.id}:${generation}`} bot={bot} generation={generation} running={!!live?.isRunning&&(!live.generation||live.generation===generation)} />
+      {bot.paused && bot.kind !== 'room'
+        ? <PausedBar bot={bot} onError={flash} />
+        : <Composer key={`composer:${bot.id}:${generation}`} bot={bot} generation={generation} running={!!live?.isRunning&&(!live.generation||live.generation===generation)} />}
       <header className="chat__header">
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
             {bot.kind === 'room' ? <GroupAvatar room={bot} size={26} /> : <BotAvatarFor bot={bot} size={24} />}
             <span className="chat__pill-name">{bot.name}</span>
+            {bot.paused && <span className="chat__pill-paused">{t('Paused')}</span>}
           </button>
           {menu && (
             <Menu
@@ -60,6 +77,7 @@ export function ChatView() {
               items={[
                 ...(bot.kind !== 'room' ? [{ label: t("Voice"), hint: (bot.voice || 'luna').replace(/^./, (c) => c.toUpperCase()), onSelect: () => { voiceApi.options().then((o) => setVoices(o.voices)).catch(() => flash(t("Voices are unavailable right now"))); } }] : []),
                 ...(bot.kind !== 'room' && !bot.isPrimary ? [{ label: t("Move to folder"), hint: folders.find((f) => f.id === bot.folderId)?.name, onSelect: () => setFolderMenu(true) }] : []),
+                ...(bot.kind !== 'room' ? [{ label: bot.paused ? t("Resume {name}", { name: bot.name }) : t("Pause {name}", { name: bot.name }), description: bot.paused ? undefined : t("Stops what it's doing. It won't do anything on its own until you resume it."), onSelect: () => void setPaused(bot, !bot.paused).catch((e) => flash(e.message)) }] : []),
                 { label: t("Bot settings"), onSelect: () => useConfigUI.getState().openBotSettings(bot.id) },
               ]}
             />

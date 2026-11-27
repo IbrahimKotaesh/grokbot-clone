@@ -41,5 +41,7 @@ export function activityPhrase(live: LiveState, rows: Row[], tick: number): stri
   }
   if (kind === 'connecting_service') return nice(a.detail) ? t('Working in {name}', { name: a.detail! }) : t('Working in a connected app');
   const list = PHRASES[kind] ?? PHRASES.working;
-  return t(list[tick % list.length]);
+  // The clock can lag the server by a moment (a step that started "in the future"): never index below zero.
+  const i = Number.isFinite(tick) ? ((Math.trunc(tick) % list.length) + list.length) % list.length : 0;
+  return t(list[i]);
 }

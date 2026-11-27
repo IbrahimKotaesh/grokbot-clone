@@ -8,6 +8,7 @@ import {inChat} from '../lib/chat-scope.js';
 import {finishDesktopWork} from './desktop-proof.js';
 import {externalToolOutput,hasSuspiciousContext,flagSuspiciousContent} from './trust.js';
 import { employeeGuard, type Guard } from './employee-rules.js';
+import { reviewAction, isPaused, setPaused } from './rules.js';
 import OpenAI from 'openai';
 import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
@@ -76,6 +77,13 @@ const aborts = new Map<string, AbortController>();
 export function enqueue(botId: string, trigger: Trigger) {
   // No plan yet (or it ended): nothing runs, including check-ins, routines and messages from other bots.
   if (planRequired(getBotRow(botId)?.user_id)) return;
+  // A paused Bot does nothing on its own: no routines, triggers, check-ins, group or Bot messages.
+  // A message from the owner wakes it up again.
+  if (isPaused(botId)) {
+    if (trigger.type !== 'user') return;
+    setPaused(botId, false);
+    emitBot(botId);
+  }
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
   const prev = queues.get(botId) ?? Promise.resolve();
@@ -429,6 +437,26 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
         (noteWaitingForHandback(userId, botId), guard = { block: 'The owner has taken control of your computer right now. Do not use it. Tell them briefly what you were about to do and that you will continue when they press "I\'m done".' });
     }
     let decision = policyFor(userId, c.name, args, botId).decision;
+    // The owner's own rules in plain words ("ask me before replying to an email"). They can make a Bot ask or stop,
+    // and can skip an ordinary question, but never the employee rules or a check that needs a fresh OK.
+    let ruleAsk: string | undefined, ruleNever: string | undefined;
+    if (!answered && !guard.block && decision !== 'block') {
+      const base = policyFor(userId, c.name, args, botId);
+      if (!base.safe) {
+        const tk = base.toolkit ? await toolkitInfo(base.toolkit) : undefined;
+        const verdict = await reviewAction(userId, botId, `${plainSummary(c.name, args, base.title, tk?.name)} [${base.title}]`);
+        if (verdict?.decision === 'never') ruleNever = verdict.rule!.action;
+        else if (verdict?.decision === 'ask' && decision === 'allow') ruleAsk = verdict.rule?.action ?? '';
+        else if (verdict?.decision === 'allow' && decision === 'ask' && !base.requiresFreshApproval && !guard.decide) decision = 'allow';
+      }
+    }
+    if (ruleNever !== undefined) {
+      const res = { output: `The owner's rule says never to do this ("${ruleNever}"). Do not retry it or work around it. Tell the owner briefly what you could not do because of their rule.`, summary: 'Not allowed by your rule' };
+      updateRow(botId, c.rowSeq, { ...body, status: 'denied', summary: 'Not allowed by your rule' });
+      st.outputs.push({ type: 'function_call_output', call_id: c.call_id, output: res.output });
+      st.calls.shift();
+      continue;
+    }
     if (guard.block) {
       decision = 'block';
     } else if (answered) {
@@ -436,26 +464,27 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       decision = ap.status === 'denied' || decision === 'block' ? 'block' : 'allow';
       st.approvalId = '';
       st.decisive = false;
-    } else if (decision === 'ask' || guard.decide) {
+    } else if (decision === 'ask' || guard.decide || ruleAsk !== undefined) {
       const base = policyFor(userId, c.name, args, botId);
-      const pol = guard.decide ? { ...base, safetyReason: guard.decide, requiresFreshApproval: true } : base;
+      const pol = guard.decide ? { ...base, safetyReason: guard.decide, requiresFreshApproval: true } : ruleAsk !== undefined ? { ...base, requiresFreshApproval: true } : base;
       const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       // A saved grant may have arrived while toolkit metadata was loading.
-      if(!guard.decide&&policyFor(userId,c.name,args,botId).decision!=='ask')continue;
+      if(!guard.decide&&ruleAsk===undefined&&policyFor(userId,c.name,args,botId).decision!=='ask')continue;
       const botName = getBotRow(botId).name;
       const summary = guard.decide && guard.title ? `Press “${guard.title}”` : plainSummary(c.name, args, pol.title, tk?.name);
       const technical = c.name === 'shell' ? String(args?.command ?? '') : describeArgs(approvalArgs);
       const card = appendRow(botId, 'card', {
         type: 'card', card: 'approval', approvalId, title: `${botName} wants to: ${summary}`,
         summary, reason: pol.safetyReason, technical,
-        detail: [summary, pol.safetyReason, technical].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, decisive: !!guard.decide, tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
+        detail: [summary, pol.safetyReason, technical].filter(Boolean).join('\n\n'), requiresFreshApproval:pol.requiresFreshApproval, decisive: !!guard.decide, ...(ruleAsk ? { rule: ruleAsk } : {}), tool: pol.key, toolkit: pol.toolkit, toolkitName: tk?.name, logo: tk?.logo, args: approvalArgs, policyKeys: policyKeys(c.name,args), status: 'pending',
       });
       db.prepare('INSERT INTO approvals(id,bot_id,row_seq,call_id,tool,status,created_at,generation) VALUES (?,?,?,?,?,?,?,?)').run(approvalId, botId, card.seq, c.call_id, pol.key, 'pending', now(),getBotRow(botId).generation);
       updateRow(botId, c.rowSeq, { ...body, status: 'awaiting-approval' });
       st.approvalId = approvalId;
-      st.decisive = !!guard.decide;
+      // A card a rule asked for waits for the owner too: a saved "Always allow" doesn't answer it.
+      st.decisive = !!guard.decide || ruleAsk !== undefined;
       db.prepare('INSERT OR REPLACE INTO pending_turns(bot_id,state) VALUES (?,?)').run(botId, JSON.stringify(st));
       setLive(botId, { isRunning: false, activity: { kind: 'waiting_for_you', since: now() }, awaiting: { reason: humanizeSlug(pol.key), since: now() } });
       hub.emit(userId, { type: 'tasks', botId });

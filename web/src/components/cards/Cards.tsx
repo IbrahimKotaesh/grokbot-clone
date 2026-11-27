@@ -45,6 +45,7 @@ export function ApprovalCard({ body }: { body: Card<'approval'> }) {
         <>
           <div className="card__body">{body.summary}</div>
           {body.reason && <div className="card__sub">{body.reason}</div>}
+          {body.rule && <div className="card__rule">{t('Your rule: ask first when it wants to “{action}”.', { action: body.rule })}</div>}
           {(body.technical || body.detail) && <details className="card__technical"><summary>{t("Show details")}</summary><pre>{body.technical || body.detail}</pre></details>}
         </>
       ) : body.detail && <div className="card__body">{body.detail}</div>}
@@ -55,7 +56,7 @@ export function ApprovalCard({ body }: { body: Card<'approval'> }) {
             {!body.requiresFreshApproval&&<button type="button" className="btn btn--secondary" disabled={!!busy} onClick={() => decide('always')} title={t("Remember these actions for this account, including future requests")}>{t("Always allow")}</button>}
             <button type="button" className="btn btn--primary" disabled={!!busy} onClick={() => decide('allow')}>{body.requiresFreshApproval?t("Allow once"):t("Allow")}</button>
           </div>
-          <div className="card__sub">{body.decisive?t("Final steps always wait for your OK, even on Autonomous."):body.requiresFreshApproval?t("This needs your OK each time. On Autonomous, the bot does it without asking."):t("Always allow remembers these specific actions. Other actions keep their own permissions.")}</div>
+          <div className="card__sub">{body.rule?t("You asked to approve these each time, so Always allow is off."):body.decisive?t("Final steps always wait for your OK, even on Autonomous."):body.requiresFreshApproval?t("This needs your OK each time. On Autonomous, the bot does it without asking."):t("Always allow remembers these specific actions. Other actions keep their own permissions.")}</div>
           {error && <div className="card__error">{error}</div>}
         </>
       ) : (

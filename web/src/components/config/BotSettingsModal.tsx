@@ -1,4 +1,6 @@
 import { t } from '../../lib/i18n';
+import { RulesEditor } from './RulesEditor';
+import { setPaused } from '../../lib/pause';
 import { CHARACTER_LABELS, CLAY, characterKind } from '../../../../packages/contracts/src/characters';
 import { BrainPicker } from './BrainPicker';
 import { foldersApi } from '../../lib/folders';
@@ -214,9 +216,24 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         <button type="button" className="cfg-btn cfg-btn--primary" disabled={!dirty || saving || !nameOk} onClick={()=>void save(true)}>{saving ? 'Saving…' : t("Save changes")}</button>
       </div>
 
+      {bot.kind !== 'room' && <section className="cfg-section">
+        <div className="cfg-section__label">{t("Rules")}</div>
+        <div className="cfg-section__sub">{t("Tell {name} in plain words when to just do it, when to ask you first, and what never to do.", { name: bot.name })}</div>
+        <RulesEditor botId={bot.id} name={bot.name} />
+      </section>}
+
       <section className="cfg-section">
         <div className="cfg-section__label">{t("Conversation")}</div>
         <div className="cfg-card">
+          {bot.kind !== 'room' && (
+            <div className="cfg-row">
+              <div className="cfg-row__text">
+                <div className="cfg-row__title">{bot.paused ? t("Resume {name}", { name: bot.name }) : t("Pause {name}", { name: bot.name })}</div>
+                <div className="cfg-row__sub">{bot.paused ? t("{name} is paused. Routines, triggers and group chats wait until you resume it.", { name: bot.name }) : t("Stops what it's doing. It won't do anything on its own until you resume it.")}</div>
+              </div>
+              <button type="button" className="cfg-btn cfg-btn--secondary" onClick={() => setPaused(bot, !bot.paused).catch((e) => flash(e.message, 'error'))}>{bot.paused ? t("Resume") : t("Pause")}</button>
+            </div>
+          )}
           <div className="cfg-row">
             <div className="cfg-row__text">
               <div className="cfg-row__title">{t("New conversation")}</div>

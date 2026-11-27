@@ -1,4 +1,5 @@
 import { db, now } from '../db.js';
+import { isPaused } from './rules.js';
 import { newId } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { appendRow } from '../store.js';
@@ -67,7 +68,8 @@ export function dispatchRoomMessage(roomId: string, text: string, enqueue: (botI
   }
   const lower = text.toLowerCase();
   const mentioned = members.filter((m) => lower.includes(`@${m.name.trim().toLowerCase()}`));
-  const responders = (mentioned.length ? mentioned : members).slice(0, MAX_RESPONDERS);
+  // Paused members sit the conversation out.
+  const responders = (mentioned.length ? mentioned : members).filter((m) => !isPaused(m.id)).slice(0, MAX_RESPONDERS);
   const recent = (db.prepare("SELECT body FROM rows WHERE bot_id=? AND generation=? AND kind='message' ORDER BY seq DESC LIMIT 12").all(roomId, room.generation) as any[])
     .reverse()
     .map((r) => {

@@ -4,8 +4,8 @@ import {BotRoster} from './BotRoster';
 import { Collapse } from './Collapse';
 import { GroupAvatar } from './GroupAvatar';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useConfigUI } from '../configStore';
-import { BarChart3, CalendarDays, ChevronRight, FolderPlus, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { useConfigUI, type View } from '../configStore';
+import { BarChart3, CalendarDays, ChevronRight, FolderPlus, House, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
 import { foldersApi } from '../lib/folders';
 import { relativeShort } from '../lib/time';
 import type { Bot } from '@shared/types';
@@ -31,14 +31,15 @@ export function TrafficLights() {
 }
 
 function previewFor(bot: Bot, running: boolean, awaiting: string | null) {
-  if (awaiting) return `Waiting for you: ${awaiting}`;
+  if (awaiting) return t('Waiting for you: {what}', { what: awaiting });
+  if (bot.paused) return t('Paused');
   if (running && !bot.lastPreview) return 'Working…';
   return bot.lastPreview ?? t("No messages yet");
 }
 
 const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect }: { bot: Bot; selected: boolean; running: boolean; awaiting: string | null; onSelect: (id: string) => void }) {
   return (
-    <button type="button" className={`bot-row${selected ? ' is-selected' : ''}${bot.unread > 0 && !selected && !running ? ' is-unread' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
+    <button type="button" className={`bot-row${selected ? ' is-selected' : ''}${bot.unread > 0 && !selected && !running ? ' is-unread' : ''}${bot.paused ? ' is-paused' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
       <span className="bot-row__avatar">
         {bot.kind === 'room' ? <GroupAvatar room={bot} size={44} /> : <BotAvatarFor bot={bot} size={44} />}
         {(running || awaiting || bot.unread > 0) && (
@@ -108,13 +109,13 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
   const user = useStore((s) => s.user);
   const [accountMenu, setAccountMenu] = useState(false);
   const logout = async () => { await api.logout().catch(() => {}); location.reload(); };
-  const go = (v: 'chat' | 'workflow' | 'calendar' | 'usage') => {
+  const go = (v: View) => {
     useConfigUI.getState().setView(v);
     // On phones the page opens straight away; the bot list stays one tap away.
     if (v !== 'chat' && matchMedia('(max-width: 900px)').matches) set({ mobileNavOpen: false });
     if (v === 'chat' && collapsed) set({ sidebarCollapsed: false });
   };
-  const item = (v: 'chat' | 'workflow' | 'calendar' | 'usage', label: string, icon: React.ReactNode, badge = 0) => (
+  const item = (v: View, label: string, icon: React.ReactNode, badge = 0) => (
     <button type="button" className={`rail__item${view === v ? ' is-active' : ''}`} aria-current={view === v ? 'page' : undefined} aria-label={badge ? `${label}, ${badge}` : label} title={label} onClick={() => go(v)}>
       {icon}{badge > 0 && <span className="rail__badge">{badge > 9 ? '9+' : badge}</span>}
     </button>
@@ -124,6 +125,7 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
       <button type="button" className="rail__item mobile-drawer-close" aria-label={t('Close conversations')} onClick={() => set({ mobileNavOpen: false })}><Icon name="close" size={20} /></button>
       <button type="button" className="rail__item rail__toggle" onClick={() => set({ sidebarCollapsed: !collapsed })} aria-label={collapsed ? t('Expand sidebar') : t('Collapse sidebar')} title="Toggle sidebar (⌘B)"><PanelLeft size={19} strokeWidth={1.8} /></button>
       <div className="rail__group">
+        {item('home', t('Home'), <House size={20} strokeWidth={1.8} />)}
         {item('chat', t('Bots'), <Users size={20} strokeWidth={1.8} />)}
         {item('workflow', t('Workflow'), <Workflow size={20} strokeWidth={1.8} />)}
         {item('calendar', t('Calendar'), <CalendarDays size={20} strokeWidth={1.8} />)}

@@ -21,6 +21,7 @@ import { ConfigLayer } from './components/config/ConfigLayer';
 import { WorkflowView } from './components/WorkflowView';
 import { CalendarView } from './components/CalendarView';
 import { UsageView } from './components/UsageView';
+import { HomeView } from './components/HomeView';
 import { useConfigUI } from './configStore';
 import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
@@ -132,7 +133,7 @@ function Shell() {
     <div className={`app${collapsed ? ' is-sidebar-collapsed' : ''}${navOpen ? ' is-nav-open' : ''}${showPanel && view === 'chat' ? ' has-computer' : ''}`}>
       <div className="mobile-topbar">
         <button ref={navButton} type="button" className="icon-btn" aria-label={t("Open conversations")} aria-expanded={navOpen} aria-controls="workspace-sidebar" onClick={() => useStore.getState().set({ mobileNavOpen: true, sidebarCollapsed: false })}><Icon name="sidebar" size={22} /></button>
-        {view !== 'chat' ? <span className="mobile-brand"><span>{view === 'workflow' ? t('Workflow') : view === 'usage' ? t('Usage') : t('Calendar')}</span></span> : <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>}
+        {view !== 'chat' ? <span className="mobile-brand"><span>{view === 'home' ? t('Home') : view === 'workflow' ? t('Workflow') : view === 'usage' ? t('Usage') : t('Calendar')}</span></span> : <button type="button" className="mobile-brand" onClick={()=>selectedBot&&useConfigUI.getState().openBotSettings(selectedBot.id)} aria-label={selectedBot?`${selectedBot.name} settings`:t("Conversations")}>{selectedBot&&<BotAvatarFor bot={selectedBot} size={28}/>}<span>{selectedBot?selectedBot.name:t("Conversations")}</span></button>}
         {view === 'chat' && selectedBot && selectedBot.kind !== 'room' ? <span className="mobile-topbar__right">
           {/* Only Badr takes calls: one round sun button, like the desktop header. */}
           {!calling && selectedBot.isPrimary && <button type="button" className="chat__call" aria-label={t("Call {name}", { name: selectedBot.name })} title={t("Call {name}", { name: selectedBot.name })} onClick={() => startCall(selectedBot.id)}><Phone size={19} strokeWidth={2.2} /></button>}
@@ -142,7 +143,7 @@ function Shell() {
       <button className="nav-backdrop" tabIndex={navOpen?0:-1} aria-hidden={!navOpen} aria-label={t("Close conversations")} onClick={() => useStore.getState().set({ mobileNavOpen: false })} />
       <Sidebar />
       {!collapsed && <ResizeHandle edge="sidebar" />}
-      {view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : view === 'usage' ? <UsageView /> : <ChatView />}
+      {view === 'home' ? <HomeView /> : view === 'workflow' ? <WorkflowView /> : view === 'calendar' ? <CalendarView /> : view === 'usage' ? <UsageView /> : <ChatView />}
       {showPanel && view === 'chat' && <ResizeHandle edge="panel" />}
       {showPanel && view === 'chat' && <ComputerPanel />}
       {modal === 'create' && <CreateBotModal />}

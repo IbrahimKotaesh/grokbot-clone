@@ -95,6 +95,8 @@ export interface Bot {
   voice: string;
   voiceSpeed: number;
   voiceLanguage: string;
+  /** Paused: stopped and quiet (no routines, triggers or messages of its own) until the owner resumes it or writes to it. */
+  paused?: boolean;
   generation: number;
   unread: number;
   lastPreview: string | null;
@@ -184,6 +186,8 @@ export type CardBody =
       args: unknown;
       policyKeys?: string[];
       requiresFreshApproval?: boolean;
+      /** The owner's plain-words rule that asked for this approval. */
+      rule?: string;
       /** An employee-rule final step: approval is needed even on Autonomous. */
       decisive?: boolean;
       status: "pending" | "allowed" | "always" | "denied" | "expired";

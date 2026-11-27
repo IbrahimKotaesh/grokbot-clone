@@ -2,7 +2,7 @@ import { land } from '../lib/sendFlight';
 import { t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
-import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
 import { BotAvatar, BotAvatarFor } from '../avatar/BotAvatar';
 import { dividerLabel, messageTimestamp } from '../lib/time';
@@ -18,6 +18,7 @@ import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
 import { BlurWords } from '../lib/motion';
 import { GroupAvatar, useRoomMembers } from './GroupAvatar';
+import { markSeen, seenAt } from '../lib/seen';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -196,6 +197,22 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
   const [showJump, setShowJump] = useState(false);
   const items = useMemo(() => buildItems(rows), [rows]);
   const quiet = useMemo(() => quietTimes(items), [items]);
+  // "New messages": what the Bot (or a group) wrote between your last look and opening this chat.
+  const [{ readAt, openedAt }] = useState(() => ({ readAt: seenAt(bot.id), openedAt: Date.now() }));
+  const newKey = useMemo(() => {
+    if (readAt === null) return undefined;
+    const i = items.findIndex((it) => {
+      const first = it.kind === 'group' ? (it.side === 'left' ? it.rows[0] : null) : it.kind === 'row' ? it.row : null;
+      return !!first && first.createdAt > readAt && first.createdAt <= openedAt;
+    });
+    return i > 0 ? items[i].key : undefined;
+  }, [items, readAt, openedAt]);
+  useEffect(() => {
+    const mark = () => { if (document.visibilityState === 'visible') markSeen(bot.id); };
+    mark();
+    document.addEventListener('visibilitychange', mark);
+    return () => { document.removeEventListener('visibilitychange', mark); markSeen(bot.id); };
+  }, [bot.id, rows.length]);
 
   const running = !!live?.isRunning;
   const waiting = !running && (!!live?.awaiting || live?.activity?.kind === 'waiting_for_you');
@@ -233,6 +250,12 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     if (!el) return;
     stick.current = true;
     el.scrollTop = el.scrollHeight;
+    // Messages came in while you were away: start at the "New messages" line when they don't all fit.
+    const line = el.querySelector<HTMLElement>('.new-divider');
+    if (line) {
+      const top = el.scrollTop + line.getBoundingClientRect().top - el.getBoundingClientRect().top - 12;
+      if (top < el.scrollTop) { el.scrollTop = top; stick.current = false; setShowJump(true); }
+    }
     positioned.current = true;
   });
 
@@ -288,31 +311,36 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   };
 
+  const renderItem = (it: Item) => {
+    switch (it.kind) {
+      case 'divider':
+        return <div key={it.key} className="divider">{dividerLabel(it.ts)}</div>;
+      case 'steps':
+        return <Steps key={it.key} rows={it.rows} />;
+      case 'row':
+        return <SystemRow key={it.key} row={it.row} running={running} />;
+      case 'group':
+        return (
+          <div key={it.key} className={`group is-${it.side}`}>
+            {/* The bot's picture beside its replies, like a messaging app (group chats name each sender instead). */}
+            {it.side === 'left' && bot.kind !== 'room' && <span className="group__avatar" aria-hidden><BotAvatarFor bot={bot} size={30} /></span>}
+            {it.from && <SenderLabel from={it.from} />}
+            {it.rows.map((r, i) => (
+              <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} quietTime={quiet.has(r.seq)} /></Fragment>
+            ))}
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="transcript-wrap">
     <div className="transcript" ref={scrollRef} onScroll={onScroll}>
       <div className="transcript__col">
         {loaded && rows.length === 0 && <EmptyChat bot={bot} generation={generation} />}
         {items.map((it) => {
-          switch (it.kind) {
-            case 'divider':
-              return <div key={it.key} className="divider">{dividerLabel(it.ts)}</div>;
-            case 'steps':
-              return <Steps key={it.key} rows={it.rows} />;
-            case 'row':
-              return <SystemRow key={it.key} row={it.row} running={running} />;
-            case 'group':
-              return (
-                <div key={it.key} className={`group is-${it.side}`}>
-                  {/* The bot's picture beside its replies, like a messaging app (group chats name each sender instead). */}
-                  {it.side === 'left' && bot.kind !== 'room' && <span className="group__avatar" aria-hidden><BotAvatarFor bot={bot} size={30} /></span>}
-                  {it.from && <SenderLabel from={it.from} />}
-                  {it.rows.map((r, i) => (
-                    <Fragment key={r.seq}><Bubble row={r} side={it.side} pos={cornerClass(i, it.rows.length)} fresh={writing.current.has(`${bot.id}:${r.seq}`)} onRetry={r.seq === retrySeq ? retry : undefined} quietTime={quiet.has(r.seq)} /></Fragment>
-                  ))}
-                </div>
-              );
-          }
+          const node = renderItem(it);
+          return it.key === newKey ? <Fragment key={it.key}><div className="new-divider" role="separator"><span>{t('New messages')}</span></div>{node}</Fragment> : node;
         })}
         {retryError && <div className="notice is-error" role="alert">{t(retryError)}</div>}
         {showActivity && live && <ActivityLine bot={bot} live={live} rows={shownRows} writing={streamingNow} />}

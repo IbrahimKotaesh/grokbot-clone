@@ -1,4 +1,5 @@
 import {AccessCodeSettings} from '../AccessCode';
+import { RulesEditor } from './RulesEditor';
 import { PlanSection } from './PlanSection';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -267,6 +268,10 @@ function PermissionsSection() {
             <Switch on={!!autoApprove} disabled={autoApprove === null} label={t("Don’t ask for approval")} onChange={toggleAuto} />
           </div>
         </div>
+      </section>
+      <section className="cfg-section">
+        <div className="cfg-section__label">{t("Rules")}</div>
+        <RulesEditor />
       </section>
       <section className="cfg-section">
         <div className="cfg-section__label">{t("Always allowed")}</div>

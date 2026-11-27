@@ -914,7 +914,7 @@ const BROWSER_FIRST = /^https?:\/\/([a-z0-9-]+\.)*(linkedin\.com|indeed\.(com|nl
 
 const SAFE_LOCAL = new Set([...OFFICE_READS,...EMAIL_SAFE,...IMAGE_SAFE,...BROWSER_READS,'react_to_message','search_email','read_email','team_updates','read_page','update_plan','report_suspicious_content','update_memory','search_conversation','notify_user','read_file','view_photo','computer_screenshot','recall','remember','list_routines','list_event_triggers','list_subagents','stay_silent','ask_user','request_app_connection']);
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
-export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string } {
+export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string; safe?: boolean } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {
     const call = appToolCall(args); return policyFor(userId,call.name,call.args,botId);
   }
@@ -923,10 +923,11 @@ export function policyFor(userId: string, toolName: string, args: any, botId?: s
   const level = bot?.permission_mode ?? 'balanced';
   const local = toolMap.has(toolName);
   const keys = policyKeys(toolName,args);
-  let decision: Decision = 'allow', key = keys[0];
+  let decision: Decision = 'allow', key = keys[0], allSafe = true;
   for (const slug of keys) {
     const saved = (db.prepare('SELECT mode FROM policies WHERE user_id=? AND tool=?').get(userId,slug) as any)?.mode;
     const safe = local ? SAFE_LOCAL.has(slug) || (slug === 'connected_apps' && args?.operation !== 'execute') : METADATA.has(slug) || isReadOnlySlug(slug);
+    if (!safe) allSafe = false;
     if (saved === 'blocked' || (level === 'read_only' && !safe)) return {decision:'block',key:slug,title:humanizeSlug(slug)};
     const ask = saved !== 'always_allow' && !safe && level !== 'autonomous' && (!local || level === 'ask');
     if (ask) {decision='ask';key=slug;}
@@ -939,7 +940,7 @@ export function policyFor(userId: string, toolName: string, args: any, botId?: s
     safetyReason = undefined;
   }
   if(safetyReason)decision='ask';
-  return {decision,key,requiresFreshApproval:!!safetyReason,safetyReason,toolkit:local || key.startsWith('COMPOSIO_') ? undefined : key.split('_')[0].toLowerCase(),title:local ? key.replaceAll('_',' ') : humanizeSlug(key)};
+  return {decision,key,safe:allSafe,requiresFreshApproval:!!safetyReason,safetyReason,toolkit:local || key.startsWith('COMPOSIO_') ? undefined : key.split('_')[0].toLowerCase(),title:local ? key.replaceAll('_',' ') : humanizeSlug(key)};
 }
 
 export function humanizeSlug(slug: string) {

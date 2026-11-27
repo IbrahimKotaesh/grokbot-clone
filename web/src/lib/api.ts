@@ -28,6 +28,9 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export interface AppsResponse { configured?: boolean; apps: Toolkit[]; connected: string[]; categories: string[]; total: number }
 
+export type RuleDecision = 'allow' | 'ask' | 'never';
+export interface ApprovalRule { id: string; botId: string | null; action: string; decision: RuleDecision; createdAt: number }
+
 export interface RoomMember { id: string; name: string; label: string; avatarShape: string; avatarColor: string }
 
 export const api = {
@@ -51,6 +54,11 @@ export const api = {
   morningBrief: () => req<{ available: boolean; enabled: boolean; hour: number }>('GET', '/morning-brief'),
   setMorningBrief: (enabled: boolean, hour: number) => req<{ enabled: boolean; hour: number }>('PUT', '/morning-brief', { enabled, hour, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   regenerate: (id: string, generation?: number) => req<{ ok: true }>('POST', `/bots/${id}/regenerate`, { generation, ...executionEnvironment() }),
+  pause: (id: string, paused: boolean) => req<{ ok: true; paused: boolean }>('POST', `/bots/${id}/pause`, { paused }),
+  rules: (botId?: string) => req<{ rules: ApprovalRule[] }>('GET', `/rules${botId ? `?botId=${encodeURIComponent(botId)}` : ''}`),
+  addRule: (r: { botId: string | null; action: string; decision: RuleDecision }) => req<{ rule: ApprovalRule }>('POST', '/rules', r),
+  setRule: (id: string, decision: RuleDecision) => req<{ rule: ApprovalRule }>('PATCH', `/rules/${id}`, { decision }),
+  deleteRule: (id: string) => req<{ ok: true }>('DELETE', `/rules/${id}`),
   interrupt: (id: string,generation?:number) => req<{ ok: true }>('POST', `/bots/${id}/interrupt`,{generation}),
   fresh: (id: string) => req<{ ok: true }>('POST', `/bots/${id}/fresh`),
 

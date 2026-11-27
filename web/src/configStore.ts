@@ -6,7 +6,7 @@ import { useStore } from './store';
 
 export type Theme = 'system' | 'light' | 'dark';
 /** The main column: a chat, the team's Workflow board, or the week's Calendar of routines. */
-export type View = 'chat' | 'workflow' | 'calendar' | 'usage';
+export type View = 'home' | 'chat' | 'workflow' | 'calendar' | 'usage';
 export type BotSettingsTab = 'general' | 'skills' | 'memories' | 'routines' | 'library' | 'members';
 export type AppSection = 'notifications' | 'general' | 'computer' | 'permissions' | 'apps' | 'plan' | 'account';
 
