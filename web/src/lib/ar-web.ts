@@ -960,4 +960,5 @@ export const arWeb: Record<string, string> = {
   "Chat": "المحادثة",
   "Close": "إغلاق",
   "Open call": "فتح المكالمة",
+  ", a link to choose a new password is on its way. It works for one hour.": "، فرابط اختيار كلمة مرور جديدة في طريقه إليك. يعمل لمدة ساعة واحدة.",
 };

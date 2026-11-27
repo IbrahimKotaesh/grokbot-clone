@@ -6,7 +6,7 @@ import { ar as phone } from '../../../packages/contracts/src/ar';
 import { nl as phoneNl } from '../../../packages/contracts/src/nl';
 import { arWeb } from './ar-web';
 import { nlWeb } from './nl-web';
-import { deviceTimeZone, languageForPlace } from '../../../packages/contracts/src/place';
+import { languageForPlace } from '../../../packages/contracts/src/place';
 
 export type LangChoice = 'system' | 'en' | 'ar' | 'nl';
 const KEY = 'fino.lang';
@@ -16,7 +16,7 @@ export function langChoice(): LangChoice {
   if (typeof localStorage === 'undefined') return 'en';
   try {
     const v = localStorage.getItem(KEY);
-    // Nothing saved yet means "Automatic": the language follows where the visitor is.
+    // Nothing saved yet means "Automatic": the language follows the browser's language.
     return v === 'ar' || v === 'nl' || v === 'en' ? v : 'system';
   } catch {
     return 'system';
@@ -31,9 +31,9 @@ export function setLangChoice(v: LangChoice) {
 
 const browserLang = () => (typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? 'en' : 'en');
 const choice = langChoice();
-// "Automatic" (the default) picks by place: the Netherlands → Dutch, the Arab world → Arabic, elsewhere English.
+// "Automatic" (the default) follows the browser's language: Arabic → Arabic, Dutch → Dutch, anything else English.
 // A language picked on the landing page or in Settings > General always wins.
-export const lang: 'ar' | 'en' | 'nl' = choice === 'system' ? languageForPlace(deviceTimeZone(), browserLang()) : choice;
+export const lang: 'ar' | 'en' | 'nl' = choice === 'system' ? languageForPlace(undefined, browserLang()) : choice;
 export const isArabic = lang === 'ar';
 /** The locale for dates and times in the chosen language. */
 export const locale = lang === 'ar' ? 'ar' : lang === 'nl' ? 'nl-NL' : 'en-GB';

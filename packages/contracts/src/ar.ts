@@ -650,4 +650,13 @@ export const ar: Record<string, string> = {
   "Research a topic and summarize it": "ابحث عن موضوع ولخّصلي ياه",
   "Help me write an email": "ساعدني اكتب إيميل",
   "Teammate created by Badr at the user’s request.": "عضو بالفريق عمله بدر بطلب منك.",
+  "Let's reopen Badr": "لنُعِد فتح بدر",
+  "Choose a JPEG, PNG or WebP photo.": "اختر صورة بصيغة JPEG أو PNG أو WebP.",
+  "Turn on Dictation in Settings → General → Keyboard so Badr can turn your voice into text.": "فعّل الإملاء من الإعدادات ← عام ← لوحة المفاتيح حتى يحوّل بدر صوتك إلى نص.",
+  "Keys are encrypted on the server and only used by your bots. Badr never sees your ChatGPT password.": "المفاتيح مشفّرة على الخادم ولا تستخدمها إلا بوتاتك. بدر لا يرى كلمة مرور ChatGPT أبدًا.",
+  "How will you use Badr?": "كيف ستستخدم بدر؟",
+  "Get more AI each month": "احصل على ذكاء اصطناعي أكثر كل شهر",
+  "Higher plans include more AI use each month.": "الباقات الأعلى فيها استخدام أكبر للذكاء الاصطناعي كل شهر.",
+  "Bring your own ChatGPT or API key. Badr gives your bots a home, skills and a computer.": "استخدم حساب ChatGPT أو مفتاح API الخاص بك. بدر يعطي بوتاتك بيتًا ومهارات وكمبيوترًا.",
+  "Sign out of Badr?": "تسجيل الخروج من بدر؟",
 };

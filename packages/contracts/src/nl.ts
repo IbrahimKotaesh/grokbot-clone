@@ -610,4 +610,7 @@ export const nl: Record<string, string> = {
   "{n}d": "{n}d",
   "{n}h": "{n}u",
   "{n}m": "{n}m",
+  "Badr 5.1 and Badr 4.8, part of your plan": "Badr 5.1 en Badr 4.8, onderdeel van je abonnement",
+  "Get more AI each month": "Elke maand meer AI",
+  "Higher plans include more AI use each month.": "Hogere abonnementen bevatten elke maand meer AI-gebruik.",
 };
