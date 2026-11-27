@@ -90,7 +90,7 @@ export const unstable_settings = { anchor: "index" };
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return (
     <View style={{ flex: 1, justifyContent: "center", padding: 28, gap: 16, backgroundColor: p.background }}>
-      <Text style={[type.title, { color: p.text }]}>{t("Let's reopen Fino")}</Text>
+      <Text style={[type.title, { color: p.text }]}>{t("Let's reopen Badr")}</Text>
       <Text style={[type.body, { color: p.muted }]}>
         {t("This screen could not open. Your conversations are saved on the server.")}
       </Text>

@@ -57,7 +57,7 @@ export async function rememberProfile(primary: Bot | undefined, p: Profile) {
   const parts = [
     p.name && `The user's name is ${p.name}.`,
     p.job && `They work as: ${p.job}.`,
-    `They use Fino for ${p.use === "work" ? `work${p.team ? ` (${p.team} team)` : ""}` : "personal life"}.`,
+    `They use Badr for ${p.use === "work" ? `work${p.team ? ` (${p.team} team)` : ""}` : "personal life"}.`,
   ].filter(Boolean);
   await client.request("POST", `/bots/${primary.id}/memories`, { text: parts.join(" ") }).catch(() => {});
 }

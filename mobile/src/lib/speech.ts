@@ -68,7 +68,7 @@ export async function startDictation(lang: SpeechLang, on: { level(v: number): v
   const ExpoSpeechRecognitionModule = native();
   if (!ExpoSpeechRecognitionModule) throw Error("Voice typing isn't available on this phone.");
   const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-  if (!permission.granted) throw Error("Allow microphone and speech recognition for Fino in your phone settings.");
+  if (!permission.granted) throw Error("Allow microphone and speech recognition for Badr in your phone settings.");
 
   let committed = "",
     interim = "",

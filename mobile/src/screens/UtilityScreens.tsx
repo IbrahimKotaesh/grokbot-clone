@@ -395,7 +395,7 @@ export function AccountScreen({ onLogout, openApps, openPlan, openModels, openCl
               destructive
               chevron={false}
               onPress={() =>
-                Alert.alert(t("Sign out of Fino?"), t("Your bots and conversations stay on the server."), [
+                Alert.alert(t("Sign out of Badr?"), t("Your bots and conversations stay on the server."), [
                   { text: t("Cancel"), style: "cancel" },
                   {
                     text: t("Sign out"),

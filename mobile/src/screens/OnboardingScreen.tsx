@@ -83,7 +83,7 @@ export function OnboardingScreen({ done }: { done: () => void }) {
         </StepShell>
       )}
       {step === "use" && (
-        <StepShell key="use" title={tr("How will you use Fino?")} subtitle={tr("We'll set up a starter team for you. You can change it anytime.")}>
+        <StepShell key="use" title={tr("How will you use Badr?")} subtitle={tr("We'll set up a starter team for you. You can change it anytime.")}>
           <ChoiceCard
             icon="home-outline"
             title={tr("Personal")}

@@ -20,7 +20,7 @@ const copy = {
   computer: { title: t("Give your bots a computer"), detail: t("With Pro, every bot gets its own screen to browse, fill forms and use apps for you.") },
   bots: { title: t("Grow your team"), detail: t("Your plan's bot limit is reached. Upgrade to hire more specialists.") },
   voice: { title: t("Do more"), detail: t("Upgrade for more bots and computer time.") },
-  models: { title: t("Unlock stronger models"), detail: t("Pro and Max include stronger Fino, GPT, Grok and Claude models for your bots.") },
+  models: { title: t("Unlock stronger models"), detail: t("Pro and Max include stronger Badr, GPT, Grok and Claude models for your bots.") },
 } as const;
 
 export function UpgradeScreen({ done, feature }: { done: () => void; feature?: keyof typeof copy }) {
@@ -47,7 +47,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   }, [summary?.plan]);
   const plans = (summary?.plans ?? []).filter((x) => x.id !== "free");
   const sel = plans.find((x) => x.id === selected);
-  const head = feature ? copy[feature] : { title: t("Choose your plan"), detail: t("Bring your own ChatGPT or API key. Fino gives your bots a home, skills and a computer.") };
+  const head = feature ? copy[feature] : { title: t("Choose your plan"), detail: t("Bring your own ChatGPT or API key. Badr gives your bots a home, skills and a computer.") };
   const buy = async () => {
     if (!sel) return;
     if (sel.id === "enterprise") {

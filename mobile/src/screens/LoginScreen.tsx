@@ -70,7 +70,7 @@ export function LoginScreen({ onLogin, initialError = null }: { onLogin: () => P
             </View>
           </FadeIn>
           <FadeIn delay={120} style={{ alignItems: "center", gap: space.sm }}>
-            <Text style={[type.largeTitle, { color: p.text, fontSize: 40, lineHeight: 46 }]}>Fino</Text>
+            <Text style={[type.largeTitle, { color: p.text, fontSize: 40, lineHeight: 46 }]}>Badr</Text>
             <Text style={[type.body, { color: p.muted, textAlign: "center", maxWidth: 280 }]}>
               {t("A team of AI bots that browse, use their own computers, and get real work done.")}
             </Text>

@@ -327,7 +327,7 @@ export const Composer = forwardRef<ComposerHandle, { bot: Bot; generation: numbe
             text = await serverTranscribe(r.audioUri, "audio/wav").catch(() => "");
           }
           if (!text && r.error === "service-not-allowed")
-            throw Error(t("Turn on Dictation in Settings → General → Keyboard so Fino can turn your voice into text."));
+            throw Error(t("Turn on Dictation in Settings → General → Keyboard so Badr can turn your voice into text."));
           if (!text && r.error === "language-not-supported") throw Error(t("This language isn't available for voice typing on your phone yet."));
         }
       } else {

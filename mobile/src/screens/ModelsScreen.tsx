@@ -94,7 +94,7 @@ export function ModelsScreen({ done }: { done: () => void }) {
               <Note icon="information-circle-outline">
                 {tr("Claude Pro and Max subscriptions only work inside Anthropic's own apps. To use Claude here, add an Anthropic API key.")}
               </Note>
-              <Note icon="lock-closed-outline">{tr("Keys are encrypted on the server and only used by your bots. Fino never sees your ChatGPT password.")}</Note>
+              <Note icon="lock-closed-outline">{tr("Keys are encrypted on the server and only used by your bots. Badr never sees your ChatGPT password.")}</Note>
               {shared && <Note icon="desktop-outline">{tr("Until you connect one, bots use this server's own sign-in (development mode).")}</Note>}
             </FadeIn>
           </>
