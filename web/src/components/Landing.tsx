@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { ArrowRight, Check, Download, Globe, Plus, X } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
+import { ArrowRight, Check, Download, Eye, Globe, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { characterDataUri } from '../../../packages/contracts/src/characters';
+import { CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import { lang, setLangChoice, t } from '../lib/i18n';
 import '../styles/landing.css';
@@ -30,93 +30,169 @@ const TEAM: Bot[] = [
   { id: 'kai', name: 'Kai', role: 'Inbox', color: 'blue', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
   { id: 'sol', name: 'Sol', role: 'Planner', color: 'magenta', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
+const QUINN = TEAM[1];
+// Badr, Fino's main character, is the logo: yellow on the tomato header.
+const MARK = characterDataUri('accountant', 'yellow');
+const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
+const EXAMPLES = ['Summarize this report', 'Work out this year’s taxes', 'Find cheap flights to Barcelona', 'What’s on my plate today?', 'Write an email for me'];
+// Short jobs that type themselves into the empty task box, one after another; each fits the box on a phone.
+const HINTS = ['Write an email for me', 'Find cheap flights to Lisbon', 'What’s on my plate today?', 'Work out this year’s taxes', 'Summarize this report'];
+
+/** The task box's placeholder, typed and erased like someone trying ideas. Still with reduced motion. */
+function useTypedHint() {
+  const [hint, setHint] = useState(() => t(HINTS[0]));
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let i = 0, n = t(HINTS[0]).length, dir = -1;
+    let timer = 0;
+    const tick = () => {
+      const full = t(HINTS[i]);
+      n += dir;
+      setHint(full.slice(0, Math.max(0, n)));
+      let wait = dir > 0 ? 60 + Math.random() * 50 : 26;
+      if (dir > 0 && n >= full.length) { dir = -1; wait = 2200; }
+      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % HINTS.length; wait = 380; }
+      timer = window.setTimeout(tick, wait);
+    };
+    timer = window.setTimeout(tick, 2600);
+    return () => clearTimeout(timer);
+  }, []);
+  return hint;
+}
+
 export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (mode: 'signin' | 'signup') => void }) {
+  const [task, setTask] = useState('');
+  const [said, setSaid] = useState<Bot | null>(null);
+  const hint = useTypedHint();
   const root = useRef<HTMLDivElement>(null);
   useReveal(root);
-  const os = useOs();
   const start = (mode: 'signin' | 'signup' = 'signup') => {
     store.set(OFFER_MAC, '1');
     if (signedIn) { location.href = '/'; return; }
     onSignIn(mode);
   };
-  const primary = os === 'windows' ? DOWNLOADS.windows : os === 'mac' ? DOWNLOADS.mac : null;
+  const giveJob = (e: FormEvent) => {
+    e.preventDefault();
+    const job = task.trim();
+    if (!job) { setSaid(QUINN); return; }
+    store.set(FIRST_TASK, job.slice(0, 2000));
+    start('signup');
+  };
+  const choose = (example: string) => { setTask(t(example)); setSaid(pickBot(example)); };
+  // The matching bot answers a moment after typing stops.
+  useEffect(() => {
+    if (!task.trim()) return;
+    const id = setTimeout(() => setSaid(pickBot(task)), 450);
+    return () => clearTimeout(id);
+  }, [task]);
 
   return (
     <ScrollContainer value={root}>
-    <div className="lp lp--v2" ref={root}>
-      <header className="lp2-nav">
-        <div className="lp-wrap lp2-nav__in">
-          <a className="lp2-brand" href="/welcome" aria-label="Badr"><img src="/icons/badr-app.png" alt="" width={30} height={30} /><span>{t('Badr')}</span></a>
-          <nav className="lp2-nav__links" aria-label={t('Main')}>
-            <a href="#features">{t('Features')}</a>
-            <a href="#jobs">{t('Bots')}</a>
-            <a href="#plans">{t('Pricing')}</a>
+    <div className="lp" ref={root}>
+      <section className="lp-open">
+        <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Badr">
+          <a className="lp-mark" href="/welcome" aria-label="Badr"><img src={MARK} alt="" width={36} height={36} /><span>{t('Badr')}</span></a>
+          <div className="lp-nav__links">
+            <a href="#demo">{t('See it work')}</a>
+            <a href="#plans">{t('Plans')}</a>
             <a href="#download">{t('Download')}</a>
-          </nav>
-          <div className="lp2-nav__end">
             <LangSwitch />
             {signedIn
-              ? <a className="lp2-btn lp2-btn--ghost" href="/">{t('Open Badr')}</a>
-              : <button type="button" className="lp2-btn lp2-btn--ghost" onClick={() => start('signin')}>{t('Sign in')}</button>}
-            <a className="lp2-btn lp2-btn--dark lp2-nav__dl" href="#download"><Download size={16} strokeWidth={2.4} aria-hidden />{t('Download')}</a>
+              ? <a className="lp-pill lp-pill--light" href="/">{t('Open Fino')}</a>
+              : <><button type="button" className="lp-nav__signin" onClick={() => start('signin')}>{t('Sign in')}</button>
+                <button type="button" className="lp-pill lp-pill--light" onClick={() => start('signup')}>{t('Get started')}</button></>}
           </div>
-        </div>
-      </header>
+        </nav>
 
-      <section className="lp2-hero">
-        <div className="lp-wrap lp2-hero__in">
-          <a className="lp2-note lp-in" style={{ '--d': '0ms' } as CSSProperties} href="#download">{t('New: Badr for Mac and Windows')} <ArrowRight size={14} strokeWidth={2.6} aria-hidden /></a>
-          <h1 className="lp2-h1 lp-in" dir={lang === 'ar' ? 'rtl' : undefined} style={{ '--d': '80ms' } as CSSProperties}>
-            <span>{t('Meet')}</span> <img src="/icons/badr-app-512.png" alt="" width={84} height={84} /> <span>{t('Badr')}</span>
-          </h1>
-          <p className="lp2-lede lp-in" style={{ '--d': '200ms' } as CSSProperties}>{t('AI teammates you can give real work to. They sign in to your tools, use their own computer, and come back with finished work.')}</p>
-          <div className="lp2-ctas lp-in" style={{ '--d': '300ms' } as CSSProperties}>
-            {primary
-              ? <DownloadButton d={primary} big />
-              : <button type="button" className="lp2-btn lp2-btn--dark lp2-btn--big" onClick={() => start('signup')}>{t(signedIn ? 'Open Badr' : 'Get started free')}</button>}
-            {primary
-              ? <button type="button" className="lp2-btn lp2-btn--soft lp2-btn--big" onClick={() => start('signup')}>{t(signedIn ? 'Open Badr' : 'Start free on the web')}</button>
-              : <a className="lp2-btn lp2-btn--soft lp2-btn--big" href="#download">{t('Get the desktop app')}</a>}
+        <div className="lp-open__body">
+          <h1 className="lp-h1" aria-label={`${t('Hire a team.')} ${t('Not a payroll.')}`}><BlurWords className="lp-line lp-line--words" text={t('Hire a team.')} delay={0.1} stagger={0.09} /> <BlurWords className="lp-line lp-line--words" text={t('Not a payroll.')} delay={0.32} stagger={0.09} /></h1>
+          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>{t('Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.')}</p>
+
+          <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
+            <label htmlFor="lp-task" className="lp-sr">{t('What should your team do?')}</label>
+            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={hint} autoComplete="off" maxLength={2000} />
+            <button type="submit" className="lp-slip__go">{t(signedIn ? 'Open Fino' : 'Get started')} <ArrowRight size={20} strokeWidth={2.4} aria-hidden /></button>
+          </form>
+          <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label={t('Example jobs')}>
+            {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === t(ex)}>{t(ex)}</button>)}
           </div>
-          <p className="lp2-also lp-in" style={{ '--d': '360ms' } as CSSProperties}>
-            {t('Also on')}{' '}
-            {os !== 'mac' && <a href="/api/download/mac" download>{t('Mac')}</a>}
-            {os !== 'mac' && os !== 'windows' && ' · '}
-            {os !== 'windows' && <a href="/api/download/windows" download>{t('Windows')}</a>}
-            {' · '}<button type="button" onClick={() => start('signup')}>{t('Web')}</button>
+          <p className="lp-models lp-in" style={{ '--d': '540ms' } as CSSProperties}>
+            <span>{t('Powered by the world’s best AI')}</span>
+            <b><img src="/brands/chatgpt.svg" alt="" width={18} height={18} />ChatGPT</b>
+            <b><img src="/brands/claude.svg" alt="" width={18} height={18} />Claude</b>
           </p>
         </div>
-        <AppWindow />
+
+        <div className="lp-team">
+          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{t(said.name)} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
+          {TEAM.map((b, i) => (
+            <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s`, '--c': CLAY[b.color], '--k': `${i * -1.7}s` } as CSSProperties}>
+              <span className="lp-bot__pop">
+                <Screen id={b.id} />
+                <span className="lp-bot__lift"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
+              </span>
+              <span className="lp-deskbar" aria-hidden>
+                <span className="lp-kb"><i className="lp-hand" /><i className="lp-hand lp-hand--r" /></span>
+                {b.id === 'quinn' && <span className="lp-mug"><i /><i /></span>}
+                {b.id === 'sol' && <span className="lp-plant"><i /><i /><i /></span>}
+              </span>
+              <figcaption><b>{t(b.name)}</b> <span>{t(b.role)}</span></figcaption>
+            </figure>
+          ))}
+        </div>
       </section>
+
+      <Cost onStart={() => start('signup')} signedIn={signedIn} />
 
       <Demo />
 
-      <Features />
-
       <Jobs />
+
+      <FirstSteps />
+
+      <section className="lp-apps">
+        <div className="lp-wrap lp-apps__in">
+          <Headline text={t('It works where you already work.')} />
+          <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.')}</p>
+          <ul className="lp-logos" aria-label={t('Some apps you can connect')}>
+            {[['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Google Docs', '/assets/apps/google-docs.png'], ['Google Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png'], ['Canva', '/assets/apps/canva.png']].map(([name, src], i) => (
+              <li key={name} data-reveal style={{ '--i': 2 + i } as CSSProperties}><img src={src} alt="" width={30} height={30} /><span>{name}</span></li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="lp-charge">
+        <div className="lp-wrap">
+          <Headline text={t('You stay in charge.')} />
+          <ol className="lp-rules">
+            <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>{t('Watch it live.')}</b> {t('Every click the bot makes shows up on screen, cursor and all.')}</div></li>
+            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>{t('Approve first.')}</b> {t('Emails, posts and anything final wait until you say yes. Fino never pays for you.')}</div></li>
+            <li data-reveal style={{ '--i': 3 } as CSSProperties}><Hand size={28} aria-hidden /><div><b>{t('Take over anytime.')}</b> {t('Grab the browser yourself, then hand it back.')}</div></li>
+          </ol>
+        </div>
+      </section>
 
       <Plans onStart={() => start('signup')} signedIn={signedIn} />
 
-      <Downloads os={os} onWeb={() => start('signup')} signedIn={signedIn} />
-
-      <Faq />
+      <DesktopBand />
 
       <section className="lp-close" id="start">
         <div className="lp-wrap lp-close__in">
           <div className="lp-close__copy" data-reveal>
-            <h2 className="lp-h2">{t('Meet your first bot.')}</h2>
+            <h2 className="lp-h2">{t('Meet your team today.')}</h2>
             <p className="lp-copy">{t('Create your account with Google or your email. Badr, your Chief of Staff, is waiting in the first chat.')}</p>
           </div>
           <div className="lp-close__panel" data-reveal style={{ '--i': 2 } as CSSProperties}>
-            {signedIn ? <div className="auth"><h2 className="auth__title">{t('You’re signed in.')}</h2><a className="auth__submit" href="/">{t('Open Badr')}</a></div> : <AuthPanel initial="signup" />}
+            {signedIn ? <div className="auth"><h2 className="auth__title">{t('You’re signed in.')}</h2><a className="auth__submit" href="/">{t('Open Fino')}</a></div> : <AuthPanel initial="signup" />}
           </div>
         </div>
       </section>
 
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot__in">
-          <span className="lp-mark lp-mark--small"><img src="/icons/badr-app.png" alt="" width={24} height={24} /> {t('Badr')}</span>
-          <nav aria-label={t('Legal')}><a href="#download">{t('Download')}</a><a href="/privacy.html">{t('Privacy')}</a><a href="/terms.html">{t('Terms')}</a><a href="/support.html">{t('Support')}</a><LangSwitch /></nav>
+          <span className="lp-mark lp-mark--small"><img src={MARK} alt="" width={24} height={24} /> {t('Badr')}</span>
+          <nav aria-label={t('Legal')}><LangSwitch /><a href="/privacy.html">{t('Privacy')}</a><a href="/terms.html">{t('Terms')}</a><a href="/support.html">{t('Support')}</a></nav>
         </div>
       </footer>
     </div>
@@ -124,160 +200,36 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
   );
 }
 
-/* ---- Desktop downloads: which system the visitor is on, and a button for each app ---- */
-type Os = 'mac' | 'windows' | 'other';
-function useOs(): Os {
-  const [os] = useState<Os>(() => {
-    if (typeof navigator === 'undefined') return 'other';
-    const ua = navigator.userAgent;
-    if (/iPhone|iPad|Android/i.test(ua)) return 'other';
-    if (/Windows/i.test(ua)) return 'windows';
-    if (/Macintosh|Mac OS X/i.test(ua)) return 'mac';
-    return 'other';
-  });
-  return os;
-}
-type Dl = { id: 'mac' | 'windows'; label: string; href: string; info: string; needs: string };
-const DOWNLOADS: Record<'mac' | 'windows', Dl> = {
-  mac: { id: 'mac', label: 'Download for macOS', href: '/api/download/mac', info: '/api/download/mac/info', needs: 'macOS 14 or later · Apple silicon' },
-  windows: { id: 'windows', label: 'Download for Windows', href: '/api/download/windows', info: '/api/download/windows/info', needs: 'Windows 10 or 11 · 64-bit' },
-};
-const AppleLogo = () => <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M16.37 12.5c-.02-2.1 1.72-3.12 1.8-3.17-.98-1.43-2.5-1.63-3.05-1.65-1.3-.13-2.53.77-3.19.77-.66 0-1.67-.75-2.75-.73-1.41.02-2.72.82-3.45 2.09-1.47 2.55-.38 6.33 1.06 8.4.7 1.01 1.53 2.15 2.62 2.11 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.03 2.54-2.05.8-1.17 1.13-2.3 1.15-2.36-.03-.01-2.2-.84-2.22-3.39zM14.3 6.33c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.53.62-1 1.61-.88 2.56.93.07 1.88-.47 2.46-1.16z" /></svg>;
-const WindowsLogo = () => <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M3 5.1l7.4-1v7.2H3V5.1zm8.4-1.2L21 2.5v8.8h-9.6V3.9zM3 12.6h7.4v7.3L3 18.9v-6.3zm8.4 0H21v8.9l-9.6-1.4v-7.5z" /></svg>;
-function DownloadButton({ d, big = false }: { d: Dl; big?: boolean }) {
-  return <a className={`lp2-btn lp2-btn--dark${big ? ' lp2-btn--big' : ''}`} href={d.href} download onClick={() => store.drop(OFFER_MAC)}>{d.id === 'mac' ? <AppleLogo /> : <WindowsLogo />}{t(d.label)}</a>;
-}
-
-/* ---- The app itself, as the hero picture: the team on the left, the chat, and a bot's own computer ---- */
-function AppWindow() {
+/* Each bot's own computer on the opening scene: a looping, wordless picture of the work it does.
+   Nour searches the web, Badr ticks off the team's tasks, Kai writes an email that waits for your OK,
+   Sol fills the week. Pure CSS; with reduced motion every screen shows its finished state. */
+function Screen({ id }: { id: string }) {
+  const rows = (n: number) => Array.from({ length: n }, (_, k) => k);
   return (
-    <div className="lp-wrap lp2-window lp-in" style={{ '--d': '420ms' } as CSSProperties} aria-label={t('The Badr app: your team, a chat with Badr, and a bot working in its own browser')} role="img">
-      <div className="lp2-window__bar"><i /><i /><i /><span>Badr</span></div>
-      <div className="lp2-window__body">
-        <aside className="lp2-window__team">
-          <div className="lp2-window__chief"><img src={characterDataUri('accountant', 'yellow')} alt="" /><span><b>Badr</b><small>{t('Chief of Staff')}</small></span></div>
-          <span className="lp2-window__label">{t('Team')}</span>
-          {TEAM.filter((b) => b.id !== 'quinn').map((b, i) => (
-            <div key={b.id} className={`lp2-window__bot${i === 0 ? ' is-on' : ''}`}><img src={b.img} alt="" /><span><b>{t(b.name)}</b><small>{t(b.role)}</small></span>{i === 0 && <em />}</div>
-          ))}
-        </aside>
-        <div className="lp2-window__chat">
-          <p className="lp2-msg lp2-msg--me">{t('Find three venues in Lisbon for our team offsite in March, under $3,000.')}</p>
-          <p className="lp2-msg">{t('On it. I asked Nour to search while I check everyone’s calendar.')}</p>
-          <p className="lp2-msg lp2-msg--from"><b>Nour</b>{t('Found 3 venues with free dates on 12–14 March. The best fit is $2,640 for two days, with a terrace.')}</p>
-          <div className="lp2-ask"><span>{t('Waiting for your OK')}</span><b>{t('Ask the venue to hold 12–14 March')}</b><div><i>{t('Approve')}</i><i>{t('Not now')}</i></div></div>
-          <div className="lp2-window__composer">{t('Message Badr…')}</div>
-        </div>
-        <div className="lp2-window__pc">
-          <div className="lp2-window__url"><i />venues.example.com</div>
-          <div className="lp2-window__page"><b /><span /><span /><span className="short" /><div className="lp2-window__cards"><em /><em /><em /></div></div>
-          <span className="lp2-window__tag"><i />{t('Nour is working')}</span>
-          <span className="lp-cursor lp-cursor--still" style={{ '--x': 0.62, '--y': 0.7 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span>
-        </div>
-      </div>
-    </div>
+    <span className={`lp-scr lp-scr--${id}`} aria-hidden>
+      {id === 'nour' && <>
+        <i className="lp-scr__url" />
+        <i className="lp-scr__find"><b /></i>
+        {rows(3).map((k) => <i key={k} className={`lp-scr__hit lp-k${k + 1}`}><s /><u /></i>)}
+      </>}
+      {id === 'quinn' && <>
+        {rows(3).map((k) => <i key={k} className={`lp-scr__task lp-k${k + 1}`}><s><b /></s><u /></i>)}
+        <i className="lp-scr__bar"><b /></i>
+      </>}
+      {id === 'kai' && <>
+        <i className="lp-scr__to" /><i className="lp-scr__subj" />
+        {rows(3).map((k) => <i key={k} className={`lp-scr__line lp-l${k + 1}`} />)}
+        <i className="lp-scr__ok lp-k4">✓</i>
+      </>}
+      {id === 'sol' && <>
+        <i className="lp-scr__grid" />
+        {rows(4).map((k) => <i key={k} className={`lp-scr__slot lp-s${k + 1} lp-k${k + 1}`} />)}
+      </>}
+    </span>
   );
 }
 
-/* ---- Everything you'd want in a teammate: six tiles, each with a small picture of it working ---- */
-function Features() {
-  const badr = characterDataUri('accountant', 'yellow');
-  return (
-    <section className="lp2-features" id="features">
-      <div className="lp-wrap">
-        <Headline text={t('Everything you’d want in a teammate.')} />
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Give each bot its own job, and add another when the work grows. They work in parallel, hand off to each other, and keep going day and night.')}</p>
-        <div className="lp2-grid">
-          <article className="lp2-tile" data-reveal style={{ '--i': 2 } as CSSProperties}>
-            <h3>{t('Bots take initiative')}</h3><p>{t('They notice what needs doing and get started before you ask.')}</p>
-            <div className="lp2-tile__art"><div className="lp2-mini-msg"><img src={badr} alt="" /><div><b>Badr <small>8:02</small></b>{t('Morning! Three invoices came in overnight. I checked them and drafted the replies.')}</div></div></div>
-          </article>
-          <article className="lp2-tile" data-reveal style={{ '--i': 3 } as CSSProperties}>
-            <h3>{t('Every bot has its own computer')}</h3><p>{t('Sign a bot in once, and it uses your websites and apps the way you would.')}</p>
-            <div className="lp2-tile__art"><div className="lp2-mini-pc"><div className="lp2-mini-pc__url">mail.example.com</div><span /><span /><span className="short" /><em className="lp-cursor lp-cursor--still" style={{ '--x': 0.7, '--y': 0.72 } as CSSProperties}><svg width="16" height="16" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg></em></div></div>
-          </article>
-          <article className="lp2-tile" data-reveal style={{ '--i': 4 } as CSSProperties}>
-            <h3>{t('You’re in control')}</h3><p>{t('Emails, posts and anything final wait for your OK. Badr never pays for you.')}</p>
-            <div className="lp2-tile__art"><div className="lp2-ask lp2-ask--mini"><span>{t('Waiting for your OK')}</span><b>{t('Send the summary to the board')}</b><div><i>{t('Approve')}</i><i>{t('Not now')}</i></div></div></div>
-          </article>
-          <article className="lp2-tile" data-reveal style={{ '--i': 5 } as CSSProperties}>
-            <h3>{t('Call Badr')}</h3><p>{t('Talk to your Chief of Staff like a phone call, in English or Arabic.')}</p>
-            <div className="lp2-tile__art lp2-tile__art--call"><img src={badr} alt="" /><b>Badr</b><small>0:42</small><span className="lp2-call-end" aria-hidden /></div>
-          </article>
-          <article className="lp2-tile" data-reveal style={{ '--i': 6 } as CSSProperties}>
-            <h3>{t('Routines on a schedule')}</h3><p>{t('“Every weekday at 8, send me the news.” It just happens.')}</p>
-            <div className="lp2-tile__art"><ul className="lp2-mini-cal"><li><time>08:00</time>{t('Morning news digest')}</li><li><time>09:30</time>{t('Check new invoices')}</li><li><time>17:00</time>{t('Plan tomorrow')}</li></ul></div>
-          </article>
-          <article className="lp2-tile" data-reveal style={{ '--i': 7 } as CSSProperties}>
-            <h3>{t('Works with your apps')}</h3><p>{t('Gmail, Calendar, Drive, Slack, Notion and hundreds more.')}</p>
-            <div className="lp2-tile__art"><ul className="lp2-mini-apps">{[['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Docs', '/assets/apps/google-docs.png'], ['Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png']].map(([n, src]) => <li key={n}><img src={src} alt={n} width={30} height={30} /></li>)}</ul></div>
-          </article>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---- Download Badr: one card per system ---- */
-function Downloads({ os, onWeb, signedIn }: { os: Os; onWeb: () => void; signedIn: boolean }) {
-  const [info, setInfo] = useState<Record<string, { available: boolean; bytes?: number }>>({});
-  useEffect(() => {
-    for (const d of Object.values(DOWNLOADS)) fetch(d.info).then((r) => r.json()).then((j) => setInfo((s) => ({ ...s, [d.id]: j }))).catch(() => setInfo((s) => ({ ...s, [d.id]: { available: false } })));
-  }, []);
-  const order: Dl[] = os === 'windows' ? [DOWNLOADS.windows, DOWNLOADS.mac] : [DOWNLOADS.mac, DOWNLOADS.windows];
-  return (
-    <section className="lp2-download" id="download">
-      <div className="lp-wrap">
-        <Headline text={t('Download Badr.')} />
-        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('One team, wherever you are: on your desk, in your browser and in your pocket.')}</p>
-        <div className="lp2-dl">
-          {order.map((d, i) => {
-            const ok = info[d.id]?.available !== false;
-            const bytes = info[d.id]?.bytes;
-            const size = bytes ? ` · ${(bytes / 1048576).toFixed(1)} MB` : '';
-            return (
-              <article key={d.id} className={`lp2-dl__card${os === d.id ? ' is-yours' : ''}`} data-reveal style={{ '--i': 2 + i } as CSSProperties}>
-                <span className="lp2-dl__os">{d.id === 'mac' ? <AppleLogo /> : <WindowsLogo />}{d.id === 'mac' ? 'macOS' : 'Windows'}{os === d.id && <em>{t('Your computer')}</em>}</span>
-                <p>{t(d.needs)}{size && <span dir="ltr">{size}</span>}</p>
-                {ok ? <DownloadButton d={d} /> : <span className="lp2-btn lp2-btn--soft" aria-disabled="true">{t('Coming soon')}</span>}
-                <small>{d.id === 'mac' ? t('Open the download and move Badr to Applications. The first time, if macOS can’t check it, open System Settings → Privacy & Security and choose Open Anyway.') : t('Run the installer. If Windows shows “Windows protected your PC”, choose More info → Run anyway.')}</small>
-              </article>
-            );
-          })}
-          <article className="lp2-dl__card" data-reveal style={{ '--i': 4 } as CSSProperties}>
-            <span className="lp2-dl__os"><Globe size={17} strokeWidth={2.2} aria-hidden />{t('Web')}</span>
-            <p>{t('Any browser, nothing to install')}</p>
-            <button type="button" className="lp2-btn lp2-btn--soft" onClick={onWeb}>{t(signedIn ? 'Open Badr' : 'Start on the web')}</button>
-            <small>{t('Everything you do on the web is there in the apps too.')}</small>
-          </article>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---- Questions people ask before they start ---- */
-const FAQ: [string, string][] = [
-  ['How is Badr different from a chat assistant?', 'A chat assistant answers you. Badr’s bots do the work: each one has a job, its own computer and access to the apps you connect, and they keep going while you’re away.'],
-  ['Do I need my own AI account?', 'No. Badr’s own AI models are included in every plan. If you already pay for ChatGPT or Claude, you can connect it too.'],
-  ['Can bots do things without asking me?', 'They read and prepare on their own. Anything that sends, posts, deletes or is final waits for your OK, and Badr never pays for you.'],
-  ['What does “its own computer” mean?', 'Each bot works in a cloud computer with a real browser. You can watch every move it makes and take over at any time.'],
-  ['Which languages does Badr speak?', 'English, Arabic and Dutch, in writing and on calls. It answers in the language you write in.'],
-  ['How much does it cost?', 'Plans start at $14.99 a month, and you can try any plan free for one day. Cancel anytime.'],
-];
-function Faq() {
-  return (
-    <section className="lp2-faq" id="faq">
-      <div className="lp-wrap lp2-faq__in">
-        <Headline text={t('Questions')} />
-        <div className="lp2-faq__list" data-reveal style={{ '--i': 1 } as CSSProperties}>
-          {FAQ.map(([q, a]) => <details key={q}><summary>{t(q)}<Plus size={18} strokeWidth={2.4} aria-hidden /></summary><p>{t(a)}</p></details>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
+/* A scripted replay of a bot using the Fino Browser. Demo content: no real site is opened. */
 type Msg = { id: number; who: 'me' | 'bot' | 'step'; text: string };
 const RESULTS = ['Financial Analyst · fintech scale-up', 'FP&A Analyst · logistics group', 'Junior Financial Analyst · bank', 'Investment Analyst · climate fund', 'Business Analyst, Finance · retail'];
 const FINAL: Msg[] = [
@@ -402,6 +354,66 @@ function useReveal(root: RefObject<HTMLElement | null>) {
   }, [root]);
 }
 
+/* ---- Desktop downloads: which system the visitor is on, and a button for each app ---- */
+type Os = 'mac' | 'windows' | 'other';
+function useOs(): Os {
+  const [os] = useState<Os>(() => {
+    if (typeof navigator === 'undefined') return 'other';
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|Android/i.test(ua)) return 'other';
+    if (/Windows/i.test(ua)) return 'windows';
+    if (/Macintosh|Mac OS X/i.test(ua)) return 'mac';
+    return 'other';
+  });
+  return os;
+}
+type Dl = { id: 'mac' | 'windows'; label: string; href: string; info: string; needs: string };
+const DOWNLOADS: Record<'mac' | 'windows', Dl> = {
+  mac: { id: 'mac', label: 'Download for macOS', href: '/api/download/mac', info: '/api/download/mac/info', needs: 'macOS 14 or later · Apple silicon' },
+  windows: { id: 'windows', label: 'Download for Windows', href: '/api/download/windows', info: '/api/download/windows/info', needs: 'Windows 10 or 11 · 64-bit' },
+};
+const AppleLogo = () => <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M16.37 12.5c-.02-2.1 1.72-3.12 1.8-3.17-.98-1.43-2.5-1.63-3.05-1.65-1.3-.13-2.53.77-3.19.77-.66 0-1.67-.75-2.75-.73-1.41.02-2.72.82-3.45 2.09-1.47 2.55-.38 6.33 1.06 8.4.7 1.01 1.53 2.15 2.62 2.11 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.03 2.54-2.05.8-1.17 1.13-2.3 1.15-2.36-.03-.01-2.2-.84-2.22-3.39zM14.3 6.33c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.53.62-1 1.61-.88 2.56.93.07 1.88-.47 2.46-1.16z" /></svg>;
+const WindowsLogo = () => <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M3 5.1l7.4-1v7.2H3V5.1zm8.4-1.2L21 2.5v8.8h-9.6V3.9zM3 12.6h7.4v7.3L3 18.9v-6.3zm8.4 0H21v8.9l-9.6-1.4v-7.5z" /></svg>;
+function DesktopBand() {
+  const os = useOs();
+  const [info, setInfo] = useState<Record<string, { available: boolean; bytes?: number }>>({});
+  useEffect(() => {
+    (['mac', 'windows'] as const).forEach((id) => fetch(DOWNLOADS[id].info).then((r) => r.json()).then((v) => setInfo((m) => ({ ...m, [id]: v }))).catch(() => setInfo((m) => ({ ...m, [id]: { available: false } }))));
+  }, []);
+  // The visitor's own system comes first.
+  const order: ('mac' | 'windows')[] = os === 'windows' ? ['windows', 'mac'] : ['mac', 'windows'];
+  return (
+    <section className="lp-mac" id="download">
+      <div className="lp-wrap lp-mac__in">
+        <div data-reveal>
+          <h2 className="lp-h2">{t('Badr for Mac and Windows.')}</h2>
+          <p className="lp-copy">{t('The same workspace in its own window, with the Fino Browser docked beside your chat. Your bot drives it with a visible cursor; you can grab it any time.')}</p>
+          <div className="lp-mac__dls">
+            {order.map((id, i) => {
+              const d = DOWNLOADS[id], v = info[id];
+              const size = v?.bytes ? ` · ${(v.bytes / 1048576).toFixed(1)} MB` : '';
+              return v?.available === false
+                ? <span key={id} className="lp-pill lp-pill--line lp-mac__dl is-off">{id === 'mac' ? <AppleLogo /> : <WindowsLogo />}{t('Coming soon')}</span>
+                : <a key={id} className={`lp-pill ${i === 0 ? 'lp-pill--dark' : 'lp-pill--line'} lp-mac__dl`} href={d.href} download onClick={() => store.drop(OFFER_MAC)}>
+                    {id === 'mac' ? <AppleLogo /> : <WindowsLogo />}<span>{t(d.label)}<small dir="ltr">{t(d.needs)}{size}</small></span>
+                  </a>;
+            })}
+          </div>
+          <p className="lp-mac__fine">{t('Open the download and move Badr to Applications. The first time, if macOS can’t check it, open System Settings → Privacy & Security and choose Open Anyway.')} {t('Run the installer. If Windows shows “Windows protected your PC”, choose More info → Run anyway.')}</p>
+        </div>
+        <div className="lp-mac__window" data-reveal style={{ '--i': 2 } as CSSProperties} aria-hidden>
+          <div className="lp-mac__lights"><i /><i /><i /></div>
+          <div className="lp-mac__panes">
+            <div className="lp-mac__side">{TEAM.slice(0, 4).map((b) => <span key={b.id}><img src={b.img} alt="" />{t(b.name)}</span>)}</div>
+            <div className="lp-mac__chat"><p /><p /><p className="me" /><p /></div>
+            <div className="lp-mac__browser"><em>{t('Fino Browser')}</em><div /><div /><div /><span className="lp-cursor lp-cursor--still" style={{ '--x': 0.56, '--y': 0.5 } as CSSProperties}><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1c1c1c" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /></svg><i /></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Shown once inside the web workspace after signing up from the landing page: the desktop app for this computer. */
 export function MacOffer() {
   const os = useOs();
@@ -419,6 +431,11 @@ export function MacOffer() {
   );
 }
 
+
+/* ---- The cost of people vs. a Fino team ---- */
+// The low end for one full-time assistant: $2,500 salary plus about $500 of employer costs a month.
+const ASSISTANT_SALARY = 2500;
+const ASSISTANT_EXTRA = 500;
 // The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
 const PLAN_BY_ID = {
   starter: { name: 'Starter', price: 14.99, bots: 'Badr + 5 bots', hours: 3, lines: ['Ready-to-work bots with superpowers', 'Their own computer · 3 h a month', 'Use your own Claude Code and ChatGPT'] },
@@ -426,7 +443,62 @@ const PLAN_BY_ID = {
   max: { name: 'Max', price: 99.99, bots: 'Badr + 40 bots', hours: 60, lines: ['Everything in Pro, plus', 'Their own computer · 60 h a month', 'Top AI models included', 'Priority support'] },
   ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Everything in Max, plus', 'Their own computer · 150 h a month', 'Early access to new features'] },
 } as const;
+const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : PLAN_BY_ID.max);
 const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: n % 1 ? 2 : 0, minimumFractionDigits: n % 1 ? 2 : 0 })}`;
+
+function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
+  const [roles, setRoles] = useState(3);
+  const plan = planFor(roles);
+  const humanYear = roles * (ASSISTANT_SALARY + ASSISTANT_EXTRA) * 12;
+  const finoYear = Math.round(plan.price * 12);
+  return (
+    <section className="lp-cost" id="cost">
+      <div className="lp-wrap">
+        <Headline text={t('A team for less than one day of wages.')} />
+        <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('One full-time assistant costs at least {amount} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.', { amount: usd(ASSISTANT_SALARY) })}</p>
+
+        <div className="lp-cost__ask" data-reveal style={{ '--i': 2 } as CSSProperties}>
+          <span id="lp-roles-label">{t('How many people’s routine work?')}</span>
+          <div className="lp-stepper" role="group" aria-labelledby="lp-roles-label">
+            <button type="button" onClick={() => setRoles((r) => Math.max(1, r - 1))} disabled={roles <= 1} aria-label={t('Fewer')}><Minus size={18} aria-hidden /></button>
+            <output aria-live="polite">{roles}</output>
+            <button type="button" onClick={() => setRoles((r) => Math.min(6, r + 1))} disabled={roles >= 6} aria-label={t('More')}><Plus size={18} aria-hidden /></button>
+          </div>
+        </div>
+
+        <div className="lp-cost__docs">
+          <article className="lp-slipdoc lp-slipdoc--pay" data-reveal style={{ '--i': 3 } as CSSProperties} aria-label={t('Payroll for assistants')}>
+            <header><b>{t('Payroll')}</b><span>{t(roles === 1 ? '{n} assistant · per month' : '{n} assistants · per month', { n: roles })}</span></header>
+            <dl>
+              <div><dt>{t('Salary')}</dt><dd>{usd(ASSISTANT_SALARY * roles)}</dd></div>
+              <div><dt>{t('Employer costs')}</dt><dd>{usd(ASSISTANT_EXTRA * roles)}</dd></div>
+              <div><dt>{t('Working hours')}</dt><dd>{t('40 a week each')}</dd></div>
+              <div><dt>{t('Evenings, weekends, holidays')}</dt><dd>{t('Off')}</dd></div>
+            </dl>
+            <footer><span>{t('A year')}</span><strong key={humanYear} className="lp-total">{usd(humanYear)}</strong></footer>
+          </article>
+
+          <article className="lp-slipdoc lp-slipdoc--fino" data-reveal style={{ '--i': 4 } as CSSProperties} aria-label={t('Fino {plan} plan', { plan: plan.name })}>
+            <header><b>{t('Badr')} {plan.name}</b><span>{usd(plan.price)} · {t('per month')}</span></header>
+            <dl>
+              <div><dt>{t('Bots')}</dt><dd>{t(plan.bots)}</dd></div>
+              <div><dt>{t('Their own computer')}</dt><dd>{t('{n} h a month', { n: plan.hours })}</dd></div>
+              <div><dt>{t('Working hours')}</dt><dd>{t('Around the clock')}</dd></div>
+              <div><dt>{t('Anything final')}</dt><dd>{t('Waits for your OK')}</dd></div>
+            </dl>
+            <footer><span>{t('A year')}</span><strong key={finoYear} className="lp-total">{usd(finoYear)}</strong></footer>
+          </article>
+        </div>
+
+        <div className="lp-cost__out" data-reveal style={{ '--i': 5 } as CSSProperties}>
+          <p>{t('You keep')} <strong key={humanYear - finoYear} className="lp-total">{usd(humanYear - finoYear)}</strong> {t('a year.')}</p>
+          <button type="button" className="lp-pill lp-pill--blue" onClick={onStart}>{t(signedIn ? 'Open Fino' : 'Build my team')} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
+        </div>
+        <p className="lp-fine" data-reveal style={{ '--i': 6 } as CSSProperties}>{t('Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.')}</p>
+      </div>
+    </section>
+  );
+}
 
 /* ---- A job for each bot: what it reports, and what it waits for you to approve ---- */
 type JobStory = { runs: string; uses: string; says: string[]; waits: string; done: string };
@@ -480,6 +552,27 @@ function Jobs() {
             </div>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---- From sign-up to the first job ---- */
+function FirstSteps() {
+  const steps = [
+    { t: 'Sign up', d: 'With Google or your email. No AI account or setup needed.' },
+    { t: 'Meet Badr', d: 'Your Chief of Staff says hi and helps you pick the team you need.' },
+    { t: 'Give a job', d: 'Type or say it. Watch the bot work, and approve what matters.' },
+  ];
+  return (
+    <section className="lp-steps">
+      <div className="lp-wrap">
+        <Headline text={t('Your first job in three steps.')} />
+        <ol className="lp-steps__row">
+          {steps.map((s, i) => (
+            <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{t(s.t)}</b><p>{t(s.d)}</p></li>
+          ))}
+        </ol>
       </div>
     </section>
   );

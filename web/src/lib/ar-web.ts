@@ -108,6 +108,7 @@ export const arWeb: Record<string, string> = {
   "Find five flats near my office and compare the rent…": "ابحث عن خمس شقق قرب مكتبي وقارن الإيجار…",
   "Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.": "بوتات بدر لها اسم وذاكرة وحاسوب خاص. أخبرهم بما تحتاج، كتابةً أو صوتًا، ويباشرون العمل على مدار الساعة. تبدأ الخطط من أقل شهريًا مما يكسبه مساعد في يوم",
   "Fino connects by itself.": "بدر يتصل تلقائيًا",
+  "Badr for Mac and Windows.": "بدر للماك والويندوز",
   "Fino for Mac.": "بدر لـ Mac",
   "Fino {plan} plan": "خطة بدر {plan}",
   "For macOS 14 or later on Apple silicon": "لـ macOS 14 أو أحدث على Apple silicon",

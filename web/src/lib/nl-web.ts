@@ -289,6 +289,7 @@ export const nlWeb: Record<string, string> = {
   "Find five flats near my office and compare the rent…": "Vind vijf appartementen bij mijn kantoor en vergelijk de huur…",
   "Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.": "Badr-bots hebben een naam, een geheugen en hun eigen computer. Vertel ze wat je nodig hebt, via tekst of spraak, en ze gaan de klok rond aan de slag. Abonnementen beginnen bij minder per maand dan een assistent op een dag verdient.",
   "Fino connects by itself.": "Badr maakt zelf verbinding.",
+  "Badr for Mac and Windows.": "Badr voor Mac en Windows.",
   "Fino for Mac.": "Badr voor Mac.",
   "Fino test notification": "Badr-testmelding",
   "Fino {plan} plan": "Badr {plan}-abonnement",
