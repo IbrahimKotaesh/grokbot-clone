@@ -311,9 +311,11 @@ export function TemplateToggle({ t, on, installed, onToggle }: { t: BotTemplate;
       <View style={s.row}>
         <Avatar shape={t.shape} size={46} color={t.color} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[type.headline, { color: p.text }]}>
-            {t.name} <Text style={{ color: p.muted, ...fw("400") }}>· {tr(t.label)}</Text>
-          </Text>
+          <View style={[s.row, { gap: 6, minWidth: 0 }]}>
+            <Text style={[type.headline, { color: p.text, flexShrink: 0 }]}>{t.name}</Text>
+            <Text style={[type.subhead, { color: p.muted }]}>·</Text>
+            <Text style={[type.subhead, { color: p.muted, flexShrink: 1 }]} numberOfLines={1}>{tr(t.label)}</Text>
+          </View>
           <Text style={[type.footnote, { color: p.muted }]} numberOfLines={2}>
             {tr(t.description)}
           </Text>

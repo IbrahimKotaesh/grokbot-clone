@@ -112,15 +112,17 @@ const FAMILY: Record<Weight, string> = isArabic
 export const fw = (weight: Weight = "400") => ({ fontFamily: FAMILY[weight] });
 export const fontAssets = isArabic ? "tajawal" : "nunito";
 
+// Arabic keeps the left-to-right layout, so its text starts on the left like English (only the letters run right to left).
+const start = isArabic ? ({ textAlign: "left" } as const) : {};
 export const type = {
-  largeTitle: { fontSize: 32, lineHeight: 38, ...fw("800"), letterSpacing: -0.6 },
-  title: { fontSize: 22, lineHeight: 28, ...fw("700"), letterSpacing: -0.3 },
-  headline: { fontSize: 17, lineHeight: 22, ...fw("700"), letterSpacing: -0.2 },
-  body: { fontSize: 16, lineHeight: 23, ...fw("400") },
-  callout: { fontSize: 15, lineHeight: 20, ...fw("400") },
-  subhead: { fontSize: 14, lineHeight: 19, ...fw("400") },
-  footnote: { fontSize: 13, lineHeight: 18, ...fw("400") },
-  caption: { fontSize: 12, lineHeight: 16, ...fw("600"), letterSpacing: 0.2 },
+  largeTitle: { fontSize: 32, lineHeight: 38, ...fw("800"), ...start, letterSpacing: -0.6 },
+  title: { fontSize: 22, lineHeight: 28, ...fw("700"), ...start, letterSpacing: -0.3 },
+  headline: { fontSize: 17, lineHeight: 22, ...fw("700"), ...start, letterSpacing: -0.2 },
+  body: { fontSize: 16, lineHeight: 23, ...fw("400"), ...start },
+  callout: { fontSize: 15, lineHeight: 20, ...fw("400"), ...start },
+  subhead: { fontSize: 14, lineHeight: 19, ...fw("400"), ...start },
+  footnote: { fontSize: 13, lineHeight: 18, ...fw("400"), ...start },
+  caption: { fontSize: 12, lineHeight: 16, ...fw("600"), ...start, letterSpacing: 0.2 },
 } as const;
 
 /** The website's sticker edge: an ink outline and a hard offset shadow (composer, primary buttons). */

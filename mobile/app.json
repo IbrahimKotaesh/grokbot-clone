@@ -9,13 +9,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ibkopixels.fino",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "appleTeamId": "345F6K6X7N",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleLocalizations": [
           "en",
-          "ar"
+          "ar",
+          "nl"
         ]
       },
       "usesAppleSignIn": true
@@ -76,14 +77,14 @@
       [
         "expo-localization",
         {
-          "supportsRTL": true
+          "supportsRTL": false
         }
       ],
       "expo-font"
     ],
     "scheme": "fino",
     "extra": {
-      "supportsRTL": true
+      "supportsRTL": false
     }
   }
 }

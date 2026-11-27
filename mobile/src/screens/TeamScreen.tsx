@@ -151,10 +151,17 @@ function PrimaryCard({
       <View style={s.row}>
         <Avatar shape={bot.avatarShape} size={58} primary status={status} color={bot.avatarColor} />
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[type.title, { color: p.text }]} numberOfLines={1}>
-            {bot.name}
-            {!!bot.label && statusLine(bot, live) !== t(bot.label) && <Text style={[type.subhead, { color: p.faint, ...fw("500") }]}>{`  ·  ${t(bot.label)}`}</Text>}
-          </Text>
+          <View style={[s.row, { gap: 8, minWidth: 0 }]}>
+            <Text style={[type.title, { color: p.text, flexShrink: 0 }]} numberOfLines={1}>
+              {bot.name}
+            </Text>
+            {!!bot.label && statusLine(bot, live) !== t(bot.label) && <Text style={[type.subhead, { color: p.faint }]}>·</Text>}
+            {!!bot.label && statusLine(bot, live) !== t(bot.label) && (
+              <Text style={[type.subhead, { color: p.faint, flexShrink: 1, ...fw("500") }]} numberOfLines={1}>
+                {t(bot.label)}
+              </Text>
+            )}
+          </View>
           <Text style={[type.subhead, { color: status === "working" ? p.green : status === "attention" ? p.amber : p.muted }]} numberOfLines={1}>
             {statusLine(bot, live)}
           </Text>
@@ -197,10 +204,18 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
       <Avatar shape={bot.avatarShape} size={50} status={status} color={bot.avatarColor} />
       <View style={{ flex: 1, gap: 3 }}>
         <View style={s.rowBetween}>
-          <Text style={[type.headline, { color: p.text, flex: 1, ...(bot.unread > 0 ? fw("800") : {}) }]} numberOfLines={1}>
-            {bot.name}
-            {!!bot.label && <Text style={[type.subhead, { color: p.faint, ...fw("400") }]}>{`  ·  ${t(bot.label)}`}</Text>}
-          </Text>
+          {/* Icon, then the name (closest to the icon), then the role: separate pieces so Arabic can't reorder them. */}
+          <View style={[s.row, { flex: 1, gap: 6, minWidth: 0 }]}>
+            <Text style={[type.headline, { color: p.text, flexShrink: 0, ...(bot.unread > 0 ? fw("800") : {}) }]} numberOfLines={1}>
+              {bot.name}
+            </Text>
+            {!!bot.label && <Text style={[type.subhead, { color: p.faint }]}>·</Text>}
+            {!!bot.label && (
+              <Text style={[type.subhead, { color: p.faint, flexShrink: 1 }]} numberOfLines={1}>
+                {t(bot.label)}
+              </Text>
+            )}
+          </View>
           <Text style={[type.caption, { color: bot.unread ? p.text : p.faint }]}>{relativeTime(bot.lastActivityAt)}</Text>
         </View>
         <View style={[s.row, { gap: space.sm }]}>
@@ -217,7 +232,7 @@ function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCal
           )}
         </View>
       </View>
-      {voiceCallsAvailable && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} color={p.muted} size={40} onPress={onCall} />}
+
     </Pressable>
   );
 }

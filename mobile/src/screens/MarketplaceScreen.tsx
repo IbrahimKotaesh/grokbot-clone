@@ -133,8 +133,8 @@ function BotTile({ t, added, progress, onOpen, onAdd }: { t: BotTemplate; added:
         </View>
       </View>
       <View style={{ paddingHorizontal: 4, gap: 1 }}>
-        <Text style={[type.headline, { color: p.text }]} numberOfLines={1}>{tr(t.label)}</Text>
-        <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>{t.name}</Text>
+        <Text style={[type.headline, { color: p.text }]} numberOfLines={1}>{t.name}</Text>
+        <Text style={[type.footnote, { color: p.muted }]} numberOfLines={1}>{tr(t.label)}</Text>
       </View>
     </PressableScale>
   );
@@ -156,8 +156,8 @@ export function MarketplaceBotScreen({ id, done, openChat }: { id: string; done:
           <View style={{ width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", backgroundColor: accent + "22" }}>
             <Avatar shape={t.shape} size={96} color={t.color} />
           </View>
-          <Text style={[type.largeTitle, { color: p.text, marginTop: space.sm }]}>{tr(t.label)}</Text>
-          <Text style={[type.callout, { color: p.muted }]}>{t.name}</Text>
+          <Text style={[type.largeTitle, { color: p.text, marginTop: space.sm }]}>{t.name}</Text>
+          <Text style={[type.callout, { color: p.muted }]}>{tr(t.label)}</Text>
         </FadeIn>
         <FadeIn delay={60}>
           {added ? (

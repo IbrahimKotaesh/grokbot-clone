@@ -92,9 +92,10 @@ export function ChatView() {
           )}
         </span>
         <div className="chat__header-right">
-          {bot.kind !== 'room' && !calling && (
-            <button type="button" className="icon-btn icon-btn--bordered chat__call" onClick={() => startCall(bot.id)} aria-label={t("Call {name}", { name: bot.name })} title={t("Call {name}", { name: bot.name })}>
-              <Phone size={18} strokeWidth={1.9} opacity={0.75} />
+          {/* Only Badr (the Chief of Staff) takes calls; teammates are reached through him or by chat. */}
+          {bot.isPrimary && !calling && (
+            <button type="button" className="chat__call" onClick={() => startCall(bot.id)} aria-label={t("Call {name}", { name: bot.name })} title={t("Call {name}", { name: bot.name })}>
+              <Phone size={18} strokeWidth={2.2} />
             </button>
           )}
           {!detailsOpen && bot.kind !== 'room' && !isMacDesktop() && (

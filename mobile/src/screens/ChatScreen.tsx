@@ -170,7 +170,7 @@ export function ChatScreen({
             />
           )}
         </View>
-        {voiceCallsAvailable && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} onPress={openCall} />}
+        {voiceCallsAvailable && bot.isPrimary && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} onPress={openCall} />}
         <IconButton name="ellipsis-horizontal" label={t("More")} onPress={more} />
       </View>
       {!!error && (

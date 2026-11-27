@@ -22,7 +22,12 @@ const phoneLang = phoneLanguage().slice(0, 2).toLowerCase();
 export const lang: "ar" | "en" | "nl" = languageForPlace(undefined, phoneLang);
 export const isArabic = lang === "ar";
 /** True when the layout runs right-to-left (mirror arrows and chevrons with this). */
-export const isRTL = I18nManager.isRTL;
+// Arabic keeps the same layout as English (menus, tabs and bubbles don't move); only Arabic text runs right to left.
+try {
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+} catch {}
+export const isRTL = false;
 
 /** Translate an English UI string. `{name}` placeholders are filled from `vars`. */
 export function t(text: string, vars?: Record<string, string | number>) {
