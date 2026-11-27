@@ -18,6 +18,9 @@ import {MessagePhotos} from './MessagePhotos';
 import { BlurWords } from '../lib/motion';
 import { GroupAvatar, useRoomMembers } from './GroupAvatar';
 import { markSeen, seenAt } from '../lib/seen';
+import { isSheetFile } from '../lib/sheet-read';
+import { SheetViewer } from './SheetViewer';
+import { Sheet } from 'lucide-react';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -92,7 +95,7 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, quietTime 
     <div ref={wrap} className={`bubble-wrap is-${side}${quietTime && !onRetry ? ' is-quiet-time' : ''}`} data-seq={row.seq}>
       {b.images?.length ? <MessagePhotos images={b.images}/> : null}
       {(b.text.trim()||b.files?.length||b.streaming||b.citations?.length)?<div className={`bubble is-${side === 'right' ? 'user' : 'agent'}${pos}${b.streaming ? ' is-streaming' : ''}${fresh ? ' is-fresh' : ''}`}>
-        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><div className="bubble__document" key={file.id}><div className="bubble__file"><Icon name="file" size={22}/><a href={file.url} target="_blank" rel="noreferrer noopener"><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase()??t("File")} · {Math.max(1,Math.round(file.size/1024))} KB</small>{file.extractionNote&&<small className="bubble__file-note">{file.extractionNote}</small>}</a><a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a></div>{file.mime==='application/pdf'&&<details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}</div>)}</div> : null}
+        {b.files?.length ? <div className="bubble__files">{b.files.map(file=><FileCard key={file.id} file={file} />)}</div> : null}
         {side === 'right' ? <div className="bubble__plain" dir="auto">{b.text}</div> : <Markdown text={shown || ' '} />}
         {b.citations && b.citations.length > 0 && (
           <div className="bubble__cites">
@@ -147,6 +150,28 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
     <div className="sender-label">
       {bot ? <BotAvatarFor bot={bot} size={16} /> : from.kind === 'routine' ? <Icon name="clock" size={12} opacity={0.56} /> : from.kind === 'voice' ? <Icon name="voice_a" size={12} opacity={0.56} /> : <BotAvatar shape="blob" color="gray" size={16} />}
       <span>{from.kind === 'routine' ? `Routine · ${from.name}` : from.kind === 'voice' ? t("Asked on a voice call") : `From ${from.name}`}</span>
+    </div>
+  );
+}
+
+
+type MessageFile = NonNullable<MessageBody['files']>[number];
+/** A file in a message. Excel and CSV files open right here in the chat; the arrow still downloads them. */
+function FileCard({ file }: { file: MessageFile }) {
+  const [viewing, setViewing] = useState(false);
+  const sheet = isSheetFile(file.name, file.mime);
+  const meta = <><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase() ?? t("File")} · {Math.max(1, Math.round(file.size / 1024))} KB</small>{file.extractionNote && <small className="bubble__file-note">{file.extractionNote}</small>}</>;
+  return (
+    <div className="bubble__document">
+      <div className={`bubble__file${sheet ? ' is-sheet' : ''}`}>
+        {sheet ? <span className="bubble__sheet-icon" aria-hidden><Sheet size={20} /></span> : <Icon name="file" size={22} />}
+        {sheet
+          ? <button type="button" className="bubble__open" onClick={() => setViewing(true)} aria-label={t("Open {name}", { name: file.name })}>{meta}<span className="bubble__open-cta">{t("Open")}</span></button>
+          : <a href={file.url} target="_blank" rel="noreferrer noopener">{meta}</a>}
+        <a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a>
+      </div>
+      {file.mime === 'application/pdf' && <details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}
+      {viewing && <SheetViewer name={file.name} url={file.url} onClose={() => setViewing(false)} />}
     </div>
   );
 }

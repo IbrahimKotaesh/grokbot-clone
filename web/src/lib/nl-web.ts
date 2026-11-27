@@ -1108,4 +1108,10 @@ export const nlWeb: Record<string, string> = {
   "Pick what the Bot should do.": "Kies wat de Bot moet doen.",
   "You can have up to 40 rules.": "Je kunt maximaal 40 regels hebben.",
   "Stopping…": "Stoppen…",
+  "Open": "Openen",
+  "Sheets": "Bladen",
+  "Couldn't open this file here.": "Dit bestand kan hier niet worden geopend.",
+  "Download it instead": "Download het",
+  "This sheet is empty.": "Dit blad is leeg.",
+  "Showing the first 2,000 rows. Download the file to see everything.": "De eerste 2.000 rijen worden getoond. Download het bestand voor alles.",
 };

@@ -1187,4 +1187,10 @@ export const arWeb: Record<string, string> = {
   "Pick what the Bot should do.": "اختار شو لازم يعمل البوت.",
   "You can have up to 40 rules.": "فيك تعمل لحد 40 قاعدة.",
   "Stopping…": "جاري الإيقاف…",
+  "Open": "افتح",
+  "Sheets": "الأوراق",
+  "Couldn't open this file here.": "ما قدرت إفتح الملف هون.",
+  "Download it instead": "نزّله بدالها",
+  "This sheet is empty.": "هالورقة فاضية.",
+  "Showing the first 2,000 rows. Download the file to see everything.": "عم نعرض أول 2,000 سطر. نزّل الملف لتشوف كل شي.",
 };
