@@ -115,6 +115,34 @@ export function IconButton({
   );
 }
 
+/** Badr's call button: a round sun-yellow sticker (outline + hard shadow), like the website. */
+export function CallButton({ label, onPress, size = 42 }: { label: string; onPress: () => void; size?: number }) {
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        void Haptics.selectionAsync();
+        onPress();
+      }}
+      hitSlop={6}
+      scaleTo={0.92}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: p.sun,
+        ...sticker(),
+        shadowOffset: { width: 2, height: 2 },
+      }}
+    >
+      <Ionicons name="call" size={Math.round(size * 0.45)} color={p.onSun} />
+    </PressableScale>
+  );
+}
+
 export function Button({
   title,
   onPress,

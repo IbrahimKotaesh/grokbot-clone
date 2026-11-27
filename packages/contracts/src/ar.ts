@@ -147,6 +147,11 @@ export const ar: Record<string, string> = {
   // Call
   "Call ended": "انتهت المكالمة",
   "Call failed": "فشلت المكالمة",
+  "Call dropped": "انقطعت المكالمة",
+  "Couldn't connect the call": "تعذّر الاتصال",
+  "Couldn't start the call": "تعذّر بدء المكالمة",
+  "Allow the microphone in Settings to call.": "اسمح بالميكروفون من الإعدادات لتتمكن من الاتصال.",
+  "Update the app to call from your iPhone.": "حدّث التطبيق لتتصل من الآيفون.",
   "Connecting…": "جارٍ الاتصال…",
   End: "إنهاء",
   "End call": "إنهاء المكالمة",

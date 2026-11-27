@@ -4,7 +4,7 @@ import { View, Text, FlatList, RefreshControl, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import type { Bot } from "../../../packages/contracts/src/types";
 import { useWorkspace } from "../lib/store";
-import { Avatar, IconButton, ErrorText, Header, Button, EmptyState, SectionLabel, LockBadge, styles as s } from "../components/UI";
+import { Avatar, IconButton, CallButton, ErrorText, Header, Button, EmptyState, SectionLabel, LockBadge, styles as s } from "../components/UI";
 import { useBilling, hasComputer } from "../lib/billing";
 import { FadeIn, PressableScale } from "../components/motion";
 import { palette as p, type, space, radius, fw } from "../theme";
@@ -96,7 +96,7 @@ export function TeamScreen({
         }
         renderItem={({ item: b, index }) => (
           <FadeIn delay={60 + index * 45}>
-            <BotRow bot={b} onPress={() => void go(b.id, openChat)} onCall={() => void go(b.id, openCall)} />
+            <BotRow bot={b} onPress={() => void go(b.id, openChat)} />
           </FadeIn>
         )}
         ListEmptyComponent={
@@ -174,7 +174,7 @@ function PrimaryCard({
       )}
       <View style={[s.row, { gap: space.sm }]}>
         <Button title={t("Message")} icon="chatbubble-ellipses" compact onPress={onChat} style={{ flex: 1 }} />
-        {voiceCallsAvailable && <IconButton name="call" label={t("Call {name}", { name: bot.name })} variant="filled" onPress={onCall} />}
+        {voiceCallsAvailable && bot.isPrimary && <CallButton label={t("Call {name}", { name: bot.name })} size={44} onPress={onCall} />}
         <View>
           <IconButton name="desktop-outline" label={t("{name}'s computer", { name: bot.name })} variant="filled" onPress={onComputer} />
           {!computerOn && <LockBadge />}
@@ -184,7 +184,7 @@ function PrimaryCard({
   );
 }
 
-function BotRow({ bot, onPress, onCall }: { bot: Bot; onPress: () => void; onCall: () => void }) {
+function BotRow({ bot, onPress }: { bot: Bot; onPress: () => void }) {
   const live = useWorkspace((x) => x.live[bot.id]);
   const status = botStatus(bot, live);
   return (

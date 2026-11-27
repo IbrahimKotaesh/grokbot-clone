@@ -18,7 +18,7 @@ import { WorkDetails } from "../components/WorkDetails";
 import type { Bot, Row } from "../../../packages/contracts/src/types";
 import { client } from "../lib/session";
 import { useWorkspace, rowKey } from "../lib/store";
-import { Avatar, IconButton, Button, ErrorText, Chip, KeyboardScreen, LockBadge, styles as s } from "../components/UI";
+import { Avatar, IconButton, CallButton, Button, ErrorText, Chip, KeyboardScreen, LockBadge, styles as s } from "../components/UI";
 import { useBilling, hasComputer } from "../lib/billing";
 import { MessageRow } from "../components/MessageRow";
 import { Composer, type ComposerHandle } from "../components/Composer";
@@ -170,7 +170,7 @@ export function ChatScreen({
             />
           )}
         </View>
-        {voiceCallsAvailable && bot.isPrimary && <IconButton name="call-outline" label={t("Call {name}", { name: bot.name })} onPress={openCall} />}
+        {voiceCallsAvailable && bot.isPrimary && <CallButton label={t("Call {name}", { name: bot.name })} onPress={openCall} />}
         <IconButton name="ellipsis-horizontal" label={t("More")} onPress={more} />
       </View>
       {!!error && (

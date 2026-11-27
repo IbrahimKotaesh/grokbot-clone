@@ -22,6 +22,11 @@ export const authHeaders = () => ({
   ...(session ? { Authorization: `Bearer ${session}` } : {}),
   ...(access ? { Cookie: access } : {}),
 });
+/** Headers for the voice-call websocket: the server's relay reads the session from its cookie. */
+export const socketHeaders = (): Record<string, string> => ({
+  Origin: new URL(server).origin,
+  Cookie: [session ? `grokbot_session=${encodeURIComponent(session)}` : "", access].filter(Boolean).join("; "),
+});
 export async function restoreSession() {
   try {
     const data = await SecureStore.getItemAsync(key);

@@ -153,7 +153,7 @@ function Message({ row, bot, seen, canRetry }: { row: Row; bot: Bot; seen?: bool
               size={13}
               color={body.type === "notice" && body.tone === "warn" ? p.amber : p.muted}
             />
-            <Text style={[type.caption, { color: p.muted, ...fw("500"), flexShrink: 1 }]} numberOfLines={2}>
+            <Text style={[type.caption, { color: p.muted, ...fw("500"), flexShrink: 1 }]} numberOfLines={body.type === "event" && body.event === "voice-call" ? 4 : 2}>
               {body.text}
             </Text>
           </View>
