@@ -273,6 +273,7 @@ export const nl: Record<string, string> = {
   "From {name}": "Van {name}",
   "Routine · {name}": "Routine · {name}",
   "Try another word.": "Probeer een ander woord.",
+  "BADR PLANS": "BADR-ABONNEMENTEN",
   "Meet your team": "Ontmoet je team",
   "Meet {name}": "Ontmoet {name}",
   "Memory": "Geheugen",

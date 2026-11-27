@@ -45,7 +45,8 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
   useEffect(() => {
     if (summary) setSelected((sel) => (sel === summary.plan && (summary.plan === "starter" || summary.plan === "free") ? "pro" : sel));
   }, [summary?.plan]);
-  const plans = (summary?.plans ?? []).filter((x) => x.id !== "free");
+  // The phone sells only what the App Store sells: Ultra shows once it has an App Store product; Enterprise is set up by us.
+  const plans = (summary?.plans ?? []).filter((x) => x.id !== "free" && x.id !== "enterprise" && (x.id !== "ultra" || !!prices.ultra || current === "ultra"));
   const sel = plans.find((x) => x.id === selected);
   const head = feature ? copy[feature] : { title: t("Choose your plan"), detail: t("Bring your own ChatGPT or API key. Badr gives your bots a home, skills and a computer.") };
   const buy = async () => {
@@ -81,7 +82,7 @@ export function UpgradeScreen({ done, feature }: { done: () => void; feature?: k
         <FadeIn style={{ gap: space.sm, paddingHorizontal: space.xs, marginBottom: space.sm }}>
           <View style={[s.row, { gap: 6, alignSelf: "flex-start", backgroundColor: "#ffc04d1f", borderRadius: radius.full, paddingHorizontal: 10, height: 26 }]}>
             <Ionicons name="sparkles" size={13} color={p.amber} />
-            <Text style={[type.caption, { color: p.amber }]}>FINO PLANS</Text>
+            <Text style={[type.caption, { color: p.amber }]}>{t("BADR PLANS")}</Text>
           </View>
           <Text style={[type.largeTitle, { color: p.text }]}>{head.title}</Text>
           <Text style={[type.body, { color: p.muted }]}>{head.detail}</Text>

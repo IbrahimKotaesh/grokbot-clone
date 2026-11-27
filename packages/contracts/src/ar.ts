@@ -306,6 +306,7 @@ export const ar: Record<string, string> = {
   "From {name}": "من {name}",
   "Routine · {name}": "مهمة دورية · {name}",
   "Try another word.": "جرّب كلمة تانية.",
+  "BADR PLANS": "باقات بدر",
   "Meet your team": "تعرّف على فريقك",
   "On team": "في الفريق",
   "Say hi to Badr. It already knows who you are and who's on the team.": "سلّم على بدر. إنه يعرف من أنت ومن في الفريق.",
