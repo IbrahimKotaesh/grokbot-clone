@@ -1,4 +1,5 @@
 import { assertComputerAllowed, recordComputerStatus } from './plans.js';
+import { closeBrowsersCleanly } from './lib/browser-keep.js';
 import { db, now } from './db.js';
 import { env } from './env.js';
 import { hub } from './lib/hub.js';
@@ -206,7 +207,7 @@ async function leaseScreen(userId: string, botId: string, computerId: string): P
       const victim = leased.find((l) => !getLive(l.bot_id).isRunning && l.screen_id !== 'default') ?? leased.find((l) => l.screen_id !== 'default') ?? leased[0];
       db.prepare('DELETE FROM screens WHERE bot_id=?').run(victim.bot_id);
       screenId = victim.screen_id;
-      try { await orgo.bash(computerId, screenId!, `pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${victim.bot_id}" || true`, 20); } catch { /* best effort */ }
+      try { await orgo.bash(computerId, screenId!, `${closeBrowsersCleanly(`/root/grokbot/profiles/${victim.bot_id}`)}; pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${victim.bot_id}" || true`, 30); } catch { /* best effort */ }
     }
   }
   db.prepare('INSERT OR REPLACE INTO screens(bot_id,user_id,screen_id,last_used_at) VALUES (?,?,?,?)').run(botId, userId, screenId, now());
@@ -233,7 +234,7 @@ export async function restartBotComputer(userId: string, botId: string): Promise
   const { computerId, screenId } = await screenFor(userId, botId);
   if (env.computerProvider === 'local') await restartLocalScreen(screenId, botId);
   else {
-    await orgo.bash(computerId, screenId, `pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${botId}" || true; rm -f /root/grokbot/profiles/${botId}/Singleton*`, 30).catch(() => {});
+    await orgo.bash(computerId, screenId, `${closeBrowsersCleanly(`/root/grokbot/profiles/${botId}`)}; pkill -f "[u]ser-data-dir=/root/grokbot/profiles/${botId}" || true; rm -f /root/grokbot/profiles/${botId}/Singleton*`, 40).catch(() => {});
     if (screenId !== 'default') await prepareScreen(computerId, screenId);
   }
   db.prepare('UPDATE screens SET last_used_at=? WHERE bot_id=?').run(now(), botId);
@@ -275,6 +276,8 @@ export function suspendComputer(userId: string, reason = 'manual'): Promise<void
       } catch (e) {
         // Orgo computers billed by the hour can't suspend: stop them instead so they cost only disk while idle.
         if (!(e instanceof OrgoError && e.code === 'HOURLY_USE_STOP') || !('stop' in orgo)) throw e;
+        // A stop is a full shutdown: let each Bot's browser close properly first, so it saves its site logins.
+        await orgo.bash(r.orgo_id, undefined, closeBrowsersCleanly(), 30).catch((err) => console.warn('[computer] close browsers', err?.message ?? err));
         await (orgo as { stop: (id: string) => Promise<unknown> }).stop(r.orgo_id);
         db.prepare('DELETE FROM screens WHERE user_id=?').run(userId); // a cold boot brings back only the default screen
         setStatus(userId, 'stopped');

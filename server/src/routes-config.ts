@@ -1,4 +1,5 @@
 import {saveDurableMemory,updateDurableMemory} from './agent/recall.js';
+import { closeBrowsersCleanly } from './lib/browser-keep.js';
 import { env } from './env.js';
 import { Hono } from 'hono';
 import { db, now } from './db.js';
@@ -232,7 +233,7 @@ configApi.post('/bots/:id/screen/reset', async (c) => {
   if (!comp?.orgo_id) return c.json({ error: 'Wake the computer first' }, 409);
   const profile = `/root/grokbot/profiles/${b.id}`;
   try {
-    await orgo.bash(comp.orgo_id, undefined, `pkill -f ${shq(`user-data-dir=${profile}`)}; rm -f ${shq(profile)}/Singleton*; echo ok`, 30).catch(() => null);
+    await orgo.bash(comp.orgo_id, undefined, `${closeBrowsersCleanly(profile)}; pkill -f ${shq(`user-data-dir=${profile}`)}; rm -f ${shq(profile)}/Singleton*; echo ok`, 40).catch(() => null);
     if (lease.screen_id !== 'default') {
       await orgo.deleteScreen(comp.orgo_id, lease.screen_id).catch((e) => console.warn('[computer] delete screen', e?.message));
       db.prepare('DELETE FROM screens WHERE bot_id=?').run(b.id);

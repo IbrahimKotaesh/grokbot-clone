@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { keepLoginsPrefs } from '../lib/browser-keep.js';
 import type {DesktopTarget} from '../desktop-device.js';
 import {freshApprovalReason} from './action-safety.js';
 import { cdpPort } from './employee-rules.js';
@@ -419,7 +420,8 @@ export const TOOLS: ToolDef[] = [
           s,
           `export DISPLAY=${display}; mkdir -p ${profile}; ` +
             `if ${chromes} >/dev/null && ! ${chromes} | grep -qF -- "--remote-debugging-port=${port}"; then ${chromes} | awk '{print $1}' | xargs -r kill; sleep 2; fi; ` +
-            `${chromes} >/dev/null || rm -f ${profile}/Singleton*; ` +
+            // Starting fresh: set the profile to keep its site logins across restarts (see lib/browser-keep.ts).
+            `${chromes} >/dev/null || { rm -f ${profile}/Singleton*; ${keepLoginsPrefs(profile)}; }; ` +
             // Remember which tabs exist, so the wait below watches the NEW tab rather than an old, already loaded one.
             `before=$(python3 -c 'import json,urllib.request;print(" ".join(t["id"] for t in json.load(urllib.request.urlopen("http://127.0.0.1:${port}/json",timeout=1))))' 2>/dev/null); export before; ` +
             `setsid nohup ${env.computerProvider === 'local' ? 'chromium' : 'google-chrome'} --no-sandbox --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic ` +
