@@ -197,8 +197,9 @@
 @media (hover: none) { .folder__more { opacity: 1; } }
 .folder__more-anchor .menu { top: calc(100% + 4px); min-width: 230px; }
 .folder__head { border-radius: 0; }
-.folder.is-open .folder__head { border-bottom: 1px solid var(--p-line); }
-.folder__bots { padding: 4px; animation: folder-open .25s var(--ease-apple, ease) both; }
+.folder__head { border-bottom: 1px solid transparent; transition: border-color .3s ease; }
+.folder.is-open .folder__head { border-bottom-color: var(--p-line); }
+.folder__bots { padding: 4px; }
 @keyframes folder-open { from { opacity: 0; translate: 0 -4px; } }
 .folder__empty { margin: 8px; padding: 10px 12px; border: 1px dashed var(--p-line-strong); border-radius: 12px; color: var(--p-faint); font-size: 12px; line-height: 1.45; }
 .folder__form { flex: 1; padding: 3px 4px; }
@@ -229,6 +230,7 @@
 .auto-box__name { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auto-box__count { flex: none; padding: 3px 10px; border-radius: 99px; background: var(--p-raised); color: var(--p-muted); font-size: 12px; font-weight: 600; }
 .auto-box__body { border-top: 1px solid var(--p-line); padding: 6px 8px 10px; }
+.auto-box__head { transition: background-color .2s ease; }
 .auto-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .auto-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 12px; }
 .auto-row + .auto-row { border-top: 1px solid var(--p-line); }
@@ -359,3 +361,56 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
 .use-note { margin: 10px 0 8px; color: var(--p-faint); font-size: 11.5px; line-height: 1.5; }
 @media (max-width: 900px) { .use-hero { grid-template-columns: 1fr; } .use-hero__plan { border-inline-start: 0; border-top: 1px solid var(--p-line); } .use-lefts { grid-template-columns: 1fr; } .use-hero__main b { font-size: 34px; } }
 @media (max-width: 640px) { .use-box__head { flex-direction: column; align-items: flex-start; } .page-view__head--row .seg { overflow-x: auto; max-width: 100%; } }
+
+/* Computer screen: a short drop shows a small chip while it reconnects, not a full overlay. */
+.viewer__reconnecting { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; background: rgb(0 0 0 / .62); color: #fff; font-size: 12.5px; font-weight: 600; z-index: 3; backdrop-filter: blur(6px); }
+.viewer__reconnecting i { width: 8px; height: 8px; border-radius: 50%; background: var(--p-sun); animation: viewer-pulse 1s ease-in-out infinite; }
+@keyframes viewer-pulse { 50% { opacity: .35; } }
+
+/* Motion, Apple style: everything that opens eases in and eases out (one curve everywhere), and pages fade in. */
+:root { --ease-ios: cubic-bezier(.32, .72, 0, 1); }
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .42s var(--ease-ios); }
+.collapse.is-open { grid-template-rows: 1fr; }
+.collapse__inner { min-height: 0; overflow: hidden; opacity: 0; transition: opacity .22s ease; }
+.collapse.is-open .collapse__inner { opacity: 1; transition: opacity .32s ease .06s; }
+.folder__chev, .auto-box__chev { transition: transform .42s var(--ease-ios) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .menu { animation: badr-menu-in .24s var(--ease-ios) both !important; }
+  .menu.is-above { transform-origin: bottom center; }
+  .menu.is-closing { animation: badr-menu-out .13s ease-in forwards !important; pointer-events: none; }
+  .menu-scrim.is-closing { opacity: 0; transition: opacity .13s ease; }
+  @keyframes badr-menu-in { from { opacity: 0; scale: .96; translate: 0 -4px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+  .menu.is-above { animation-name: badr-menu-in-up !important; }
+  .menu.is-above.is-closing { animation-name: badr-menu-out !important; }
+  @keyframes badr-menu-in-up { from { opacity: 0; scale: .96; translate: 0 4px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+  @keyframes badr-menu-out { to { opacity: 0; scale: .97; } }
+  /* Moving between Bots, Workflow, Calendar and Usage: the page fades in. */
+  main.chat { animation: badr-page-in .34s ease both; }
+  @keyframes badr-page-in { from { opacity: 0; } to { opacity: 1; } }
+  .page-view__inner > * { animation: badr-rise .5s var(--ease-ios) both; }
+  .page-view__inner > *:nth-child(2) { animation-delay: .04s; } .page-view__inner > *:nth-child(3) { animation-delay: .08s; } .page-view__inner > *:nth-child(n+4) { animation-delay: .12s; }
+  @keyframes badr-rise { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+  .modal { animation: badr-modal-in .32s var(--ease-ios) both !important; }
+  @keyframes badr-modal-in { from { opacity: 0; scale: .96; translate: 0 8px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+}
+@media (prefers-reduced-motion: reduce) { .collapse, .collapse__inner { transition: none; } }
+
+/* Theme previews in Settings match the real themes: cream with ink, black and graphite with Badr's yellow. */
+.theme-tile__art.is-dark .theme-tile__side { background: #09090a !important; }
+.theme-tile__art.is-dark .theme-tile__pane { background: #161618 !important; }
+.theme-tile__art.is-dark .theme-tile__pane i { background: #ffffff1f !important; }
+.theme-tile__art .theme-tile__pane b, .theme-tile__art.is-dark .theme-tile__pane b { background: var(--p-sun) !important; }
+
+/* A group's picture: two or three Bot faces overlapping, like a group in Messages. */
+.group-avatar { position: relative; display: inline-block; flex: none; }
+.group-avatar__face { position: absolute; display: grid; place-items: center; border-radius: 50%; background: var(--p-surface); box-shadow: 0 0 0 2px var(--p-surface); }
+.group-avatar.is-1 .group-avatar__face { inset: 0; box-shadow: none; background: none; }
+.group-avatar.is-2 .group-avatar__face:nth-child(1) { left: 0; top: 0; }
+.group-avatar.is-2 .group-avatar__face:nth-child(2) { right: 0; bottom: 0; }
+.group-avatar.is-3 .group-avatar__face:nth-child(1) { left: 0; top: 4%; }
+.group-avatar.is-3 .group-avatar__face:nth-child(2) { right: 0; top: 4%; }
+.group-avatar.is-3 .group-avatar__face:nth-child(3) { left: 50%; bottom: 0; translate: -50% 0; }
+.group-avatar__face > * { transform: scale(.82); }
+/* Faces sit freely (no circles to clip them), with a soft shadow to separate them. */
+.group-avatar__face { background: none !important; box-shadow: none !important; border-radius: 0; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .35)); }
+.group-avatar__face > * { transform: none; }

@@ -17,6 +17,7 @@ import { startersFor } from '../../../packages/contracts/src/jobs';
 import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
 import { BlurWords } from '../lib/motion';
+import { GroupAvatar, useRoomMembers } from './GroupAvatar';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -326,6 +327,14 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
   );
 }
 
+/** Who's in the group, and how to talk to it. */
+function RoomLine({ room }: { room: Bot }) {
+  const names = useRoomMembers(room).map((b) => b.name);
+  if (!names.length) return <>{t('Write to everyone, or type @ to ask one Bot.')}</>;
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} ${t('and')} ${names[names.length - 1]}`;
+  return <>{list}<br />{t('Write to everyone, or type @ to ask one Bot.')}</>;
+}
+
 function EmptyChat({ bot, generation }: { bot: Bot; generation?: number }) {
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -336,9 +345,9 @@ function EmptyChat({ bot, generation }: { bot: Bot; generation?: number }) {
   };
   return (
     <div className="empty-chat">
-      {bot.isPrimary && bot.avatarShape === 'accountant' ? <Badr mood="wave" size={88} /> : <BotAvatarFor bot={bot} size={72} />}
+      {bot.isPrimary && bot.avatarShape === 'accountant' ? <Badr mood="wave" size={88} /> : bot.kind === 'room' ? <GroupAvatar room={bot} size={84} /> : <BotAvatarFor bot={bot} size={72} />}
       <BlurWords key={bot.id} as="div" className="empty-chat__title" text={bot.name} />
-      <div className="empty-chat__sub">{(bot.description && t(bot.description)) || (bot.mode === 'teammate' ? t("A Bot for the whole team. Hand it a task and it will see it through.") : t("Your personal assistant. Hand it a task and it will see it through."))}</div>
+      <div className="empty-chat__sub">{bot.kind === 'room' ? <RoomLine room={bot} /> : (bot.description && t(bot.description)) || (bot.mode === 'teammate' ? t("A Bot for the whole team. Hand it a task and it will see it through.") : t("Your personal assistant. Hand it a task and it will see it through."))}</div>
       {bot.kind !== 'room' && (
         <div className="empty-chat__starters">
           {startersFor(bot).map((s) => (

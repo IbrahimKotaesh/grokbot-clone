@@ -11,6 +11,7 @@ import { Switch } from './config/ui';
 import { scheduleText } from '../lib/schedule';
 import { BlurWords } from '../lib/motion';
 import { WorkflowDiagram } from './WorkflowDiagram';
+import { Collapse } from './Collapse';
 
 const LS_CLOSED = 'badr.workflowClosed';
 const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar' : 'en-GB';
@@ -63,12 +64,12 @@ function BotBox({ bot, items, open, onToggle, onChange }: { bot: Bot; items: Rou
         <span className="auto-box__name" dir="auto">{displayName(bot)}</span>
         <span className="auto-box__count">{t('{on} of {all} on', { on, all: items.length })}</span>
       </button>
-      {open && (
+      <Collapse open={open}>
         <div className="auto-box__body">
           <ul className="auto-list">{items.map((r) => <AutomationRow key={r.id} r={r} onChange={onChange} />)}</ul>
           <button type="button" className="auto-box__settings" onClick={() => useConfigUI.getState().openBotSettings(bot.id, 'routines')}>{t('Edit in {name}’s settings', { name: bot.name })}</button>
         </div>
-      )}
+      </Collapse>
     </section>
   );
 }

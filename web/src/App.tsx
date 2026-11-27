@@ -26,7 +26,6 @@ import { Icon } from './components/Icon';
 import { Onboarding, onboardingDone } from './components/Onboarding';
 import { Landing, MacOffer } from './components/Landing';
 import { ResizeHandle, restoreColumnWidths } from './components/ResizeHandle';
-import { FinishToast } from './components/FinishToast';
 import { CallScreen } from './components/CallScreen';
 import { PlanGate, cameFromGate } from './components/PlanGate';
 import { Badr } from './components/Badr';
@@ -152,7 +151,6 @@ function Shell() {
       {modal === 'apps' && <ConnectAppsModal />}
       {viewerOpen && !isMacDesktop() && <ComputerViewer />}
       <ConfigLayer />
-      <FinishToast />
       <CallScreen />
       {showOnboarding && aiChecked && <Onboarding requireAI={needsAI} onClose={() => { setShowOnboarding(false); setNeedsAI(false); }} />}
       {!showOnboarding && aiChecked && !isMacDesktop() && <MacOffer />}

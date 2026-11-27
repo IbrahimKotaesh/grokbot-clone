@@ -15,6 +15,7 @@ import { Phone } from 'lucide-react';
 import { isCallActive, previewVoice, startCall, useVoice } from '../voice/call';
 import { voiceApi, type VoiceOptions } from '../voice/api';
 import { configApi } from '../lib/configApi';
+import { GroupAvatar } from './GroupAvatar';
 
 export function ChatView() {
   const bot = useSelectedBot();
@@ -49,7 +50,7 @@ export function ChatView() {
       <header className="chat__header">
         <span className="chat__pill-anchor">
           <button type="button" className="chat__pill" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
-            <BotAvatarFor bot={bot} size={24} />
+            {bot.kind === 'room' ? <GroupAvatar room={bot} size={26} /> : <BotAvatarFor bot={bot} size={24} />}
             <span className="chat__pill-name">{bot.name}</span>
           </button>
           {menu && (

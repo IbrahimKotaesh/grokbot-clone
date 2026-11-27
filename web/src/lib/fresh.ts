@@ -24,16 +24,20 @@ async function check() {
 /** Something typed and not sent yet in a message box: never throw that away. */
 const unsentText = () => [...document.querySelectorAll<HTMLTextAreaElement | HTMLInputElement>('textarea, input[type=text]')].some((el) => el.value.trim().length > 0);
 
+// Reloading the moment someone comes back felt like the site dropping out (updates ship often). So a new version
+// only swaps in after a long break, when nobody is in the middle of anything; otherwise the next visit picks it up.
+const LONG_AWAY = 45 * 60 * 1000;
+let hiddenAt = 0;
 function maybeReload() {
-  if (stale && !unsentText()) location.reload();
+  if (stale && !unsentText() && hiddenAt && Date.now() - hiddenAt >= LONG_AWAY) location.reload();
 }
 
 export function keepFresh() {
   setInterval(() => { void check(); }, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
-    // Back in view: the moment to swap in the new version, before the person starts reading again.
-    void check().then(maybeReload);
+    if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+    // Back in view after a long break: the moment to swap in the new version, before they start reading again.
+    void check().then(maybeReload).then(() => { hiddenAt = 0; });
   });
   window.addEventListener('pageshow', (e) => { if ((e as PageTransitionEvent).persisted) void check().then(maybeReload); });
 }

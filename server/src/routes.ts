@@ -717,11 +717,12 @@ api.get('/apps', async (c) => {
   const search = (c.req.query('search') ?? '').toLowerCase();
   const category = c.req.query('category') ?? '';
   const [all, connected] = await Promise.all([catalog(), connectedToolkits(user.id).catch(() => new Set<string>())]);
-  let items: Toolkit[] = all.map((t) => ({ ...t, connected: connected.has(t.slug) }));
+  // Composio is the plumbing behind connected apps, not an app people connect: it never shows in the list.
+  let items: Toolkit[] = all.filter((t) => t.slug !== 'composio').map((t) => ({ ...t, connected: connected.has(t.slug) }));
   if (search) items = items.filter((t) => t.name.toLowerCase().includes(search) || t.slug.includes(search) || t.description?.toLowerCase().includes(search));
   if (category) items = items.filter((t) => t.categories.some((x) => x.toLowerCase() === category.toLowerCase()));
   const categories = [...new Set(all.flatMap((t) => t.categories))].sort();
-  const connectedApps = all.filter((t) => connected.has(t.slug)).map((t) => ({ ...t, connected: true }));
+  const connectedApps = all.filter((t) => t.slug !== 'composio' && connected.has(t.slug)).map((t) => ({ ...t, connected: true }));
   return c.json({ configured: env.composioKey !== 'disabled', apps: items.slice(0, Number(c.req.query('limit') ?? 120)), connected: [...connected], connectedApps, categories, total: items.length });
 });
 

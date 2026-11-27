@@ -1,6 +1,7 @@
 import {executionEnvironment, isMacDesktop} from './desktop';
 import {disableDevicePush} from './push';
 import type { Bot, BotChat, ComputerState, LiveState, Routine, Row, Toolkit, User } from '@shared/types';
+import { fetchThroughRestart } from './fetch-retry';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -10,7 +11,7 @@ export interface BillingPlan { id: string; name: string; priceUsd: number | null
 export interface BillingSummary { plan: string; renewsAt: number | null; trialUntil?: number | null; trialAvailable?: boolean; plans: BillingPlan[]; usage: { bots: number; computerMinutes: number }; source: 'apple' | 'google' | 'stripe' | null; webCheckout: boolean; planRequired?: boolean }
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetchThroughRestart(`/api${path}`, {
     method,
     credentials: 'include',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,

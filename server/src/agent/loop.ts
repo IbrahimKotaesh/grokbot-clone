@@ -35,7 +35,9 @@ export type Trigger = (
   | { type: 'routine'; routineId: string; name: string; prompt: string }
   | { type: 'bot'; fromBotId: string; fromName: string; fromGeneration?:number; text: string; depth: number }
   | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
-  | { type: 'resume' }) & {generation?:number; providerOverride?: string; tried?: string[]};
+  | { type: 'resume' }) & {generation?:number; providerOverride?: string; tried?: string[];
+  /** Runs once this trigger's turn has finished (group chats use it to deliver a reply that wasn't posted). */
+  afterTurn?: () => void};
 
 /** The model provider the current turn of each bot actually runs on (after any fallback). */
 const turnProvider = new Map<string, string>();
@@ -77,7 +79,7 @@ export function enqueue(botId: string, trigger: Trigger) {
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
   const prev = queues.get(botId) ?? Promise.resolve();
-  const next = prev.then(() => runTurn(botId, trigger)).catch((e) => console.error('[agent] turn failed', botId, e));
+  const next = prev.then(() => runTurn(botId, trigger)).catch((e) => console.error('[agent] turn failed', botId, e)).finally(() => { try { trigger.afterTurn?.(); } catch { /* best effort */ } });
   queues.set(botId, next);
   next.finally(() => { if (queues.get(botId) === next) queues.delete(botId); });
 }
@@ -380,7 +382,8 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     if (trigger.type === 'routine') { try { hideQuietRoutine(botId, trigger.routineId); } catch (e) { console.warn('[routine] tidy', (e as Error).message); } }
     // A new reply the person hasn't read yet: the bot stands out in the list until they open it.
     const replied = db.prepare("SELECT 1 FROM rows WHERE bot_id=? AND seq>=? AND kind='message' AND json_extract(body,'$.role')='assistant' AND json_extract(body,'$.replaced') IS NULL AND length(coalesce(json_extract(body,'$.text'),''))>0 LIMIT 1").get(botId, firstSeq);
-    if (replied) db.prepare('UPDATE bots SET unread = unread + 1 WHERE id=?').run(botId);
+    // Only the private chat counts: work in a group's hidden thread shows in the group, not as unread on the Bot.
+    if (replied && (trigger.generation === undefined || trigger.generation === getBotRow(botId)?.generation)) db.prepare('UPDATE bots SET unread = unread + 1 WHERE id=?').run(botId);
     emitBot(botId);
 
   }

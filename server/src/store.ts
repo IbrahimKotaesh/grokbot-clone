@@ -12,8 +12,8 @@ import { Cron } from 'croner';
 export function toBot(r: any): Bot {
   const last = db
     // The latest thing worth showing in the list: not the automatic final-screenshot caption or a reply set aside by "Try again".
-    .prepare("SELECT body, created_at FROM rows WHERE bot_id=? AND kind IN ('message','card','event') AND coalesce(json_extract(body,'$.text'),'')<>'Computer · final screenshot' AND coalesce(json_extract(body,'$.replaced'),0)=0 ORDER BY created_at DESC,updated_seq DESC LIMIT 1")
-    .get(r.id) as any;
+    .prepare("SELECT body, created_at FROM rows WHERE bot_id=? AND generation=? AND kind IN ('message','card','event') AND coalesce(json_extract(body,'$.text'),'')<>'Computer · final screenshot' AND coalesce(json_extract(body,'$.replaced'),0)=0 ORDER BY created_at DESC,updated_seq DESC LIMIT 1")
+    .get(r.id, r.generation) as any;
   let lastPreview: string | null = null;
   if (last) {
     const b = JSON.parse(last.body) as RowBody;

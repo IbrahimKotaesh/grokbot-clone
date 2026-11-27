@@ -1,7 +1,8 @@
 import { t } from '../lib/i18n';
 import {BotConversations} from './BotConversations';
 import {BotRoster} from './BotRoster';
-import {NotificationBell} from './config/NotificationsSection';
+import { Collapse } from './Collapse';
+import { GroupAvatar } from './GroupAvatar';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useConfigUI } from '../configStore';
 import { BarChart3, CalendarDays, ChevronRight, FolderPlus, LayoutGrid, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
@@ -39,13 +40,13 @@ const BotRow = memo(function BotRow({ bot, selected, running, awaiting, onSelect
   return (
     <button type="button" className={`bot-row${selected ? ' is-selected' : ''}${bot.unread > 0 && !selected && !running ? ' is-unread' : ''}`} onClick={() => onSelect(bot.id)} aria-current={selected || undefined}>
       <span className="bot-row__avatar">
-        <BotAvatarFor bot={bot} size={44} />
+        {bot.kind === 'room' ? <GroupAvatar room={bot} size={44} /> : <BotAvatarFor bot={bot} size={44} />}
         {(running || awaiting || bot.unread > 0) && (
           <span className={`status-dot ${awaiting ? 'is-attention' : running ? 'is-working' : 'is-unread'}`} aria-label={awaiting ? t("Needs attention") : running ? t("Working") : t("Unread activity")} />
         )}
       </span>
       <span className="bot-row__text">
-        <span className="bot-row__top"><span className="bot-row__name" dir="auto">{displayName(bot)}</span>{bot.lastActivityAt > 0 && <time className="bot-row__time">{relativeShort(bot.lastActivityAt)}</time>}</span>
+        <span className="bot-row__top"><span className="bot-row__name" dir="auto">{bot.kind === 'room' ? bot.name : displayName(bot)}</span>{bot.lastActivityAt > 0 && <time className="bot-row__time">{relativeShort(bot.lastActivityAt)}</time>}</span>
         <span className="bot-row__preview" dir="auto">{previewFor(bot, running, awaiting)}</span>
       </span>
     </button>
@@ -94,7 +95,7 @@ function Folder({ folder, bots, open, onToggle, children }: { folder: { id: stri
           ]} />}
         </span>}
       </div>
-      {open && (bots.length ? <div className="folder__bots">{children}</div> : <div className="folder__empty">{t('Drag a Bot here by its handle, or pick “Move to folder” in its menu.')}</div>)}
+      <Collapse open={open}>{bots.length ? <div className="folder__bots">{children}</div> : <div className="folder__empty">{t('Drag a Bot here, or pick “Move to folder” in its menu.')}</div>}</Collapse>
     </section>
   );
 }
@@ -131,7 +132,6 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
       <div className="rail__spacer" />
       <div className="rail__group">
         <button type="button" className="rail__item" onClick={() => setModal('apps')} aria-label={t('Connect apps')} title={t('Connect apps')}><LayoutGrid size={19} strokeWidth={1.8} /></button>
-        <NotificationBell />
         <button type="button" className="rail__item" onClick={() => useConfigUI.getState().openAppSettings()} aria-label={t('Settings')} title={`${t('Settings')} (⌘,)`}><Settings size={19} strokeWidth={1.8} /></button>
         <span className="rail__account">
           <button type="button" className="rail__me" onClick={() => setAccountMenu(!accountMenu)} aria-haspopup="menu" aria-expanded={accountMenu} aria-label={user?.name ?? user?.email ?? t('Account')} title={user?.email}>{initials(user?.name ?? user?.email ?? '')}</button>
@@ -240,7 +240,7 @@ export function Sidebar() {
                   </button>
                   <button type="button" className="folder__more folder__add" aria-label={t('New group chat')} title={t('New group chat')} onClick={() => setModal('group')}><Icon name="plus" size={14} opacity={0.7} /></button>
                 </div>
-                {!folded.includes('groups') && <div className="folder__bots">{groups.map((g) => <BotRow key={g.id} bot={g} selected={selectedBotId === g.id} running={!!live[g.id]?.isRunning} awaiting={live[g.id]?.awaiting?.reason ?? null} onSelect={selectBot} />)}</div>}
+                <Collapse open={!folded.includes('groups')}><div className="folder__bots">{groups.map((g) => <BotRow key={g.id} bot={g} selected={selectedBotId === g.id} running={!!live[g.id]?.isRunning} awaiting={live[g.id]?.awaiting?.reason ?? null} onSelect={selectBot} />)}</div></Collapse>
               </section>
             )}
             {loose.length > 0 && <div className="sidebar__team-label" data-folder-drop="">{folders.length ? t("Other Bots") : t("Your team")}</div>}

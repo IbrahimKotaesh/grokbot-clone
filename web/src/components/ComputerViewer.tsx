@@ -22,6 +22,8 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
   const [mode, setMode] = useState<Mode>('watch');
   const [conn, setConn] = useState<Conn>('connecting');
   const [attempt, setAttempt] = useState(0);
+  // Drops in a row: a short one (an update restarting the server) heals quietly; the full message waits for several.
+  const [fails, setFails] = useState(0);
   const [waking, setWaking] = useState(false);
   const [wakeError, setWakeError] = useState('');
   const running = computer?.status === 'running';
@@ -87,7 +89,7 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
       rfb.resizeSession = false;
       rfb.background = 'transparent';
       rfb.focusOnClick = mode === 'control';
-      rfb.addEventListener('connect', () => { if (!disposed) { setConn('connected'); if (mode === 'control') rfb?.focus(); } });
+      rfb.addEventListener('connect', () => { if (!disposed) { setConn('connected'); setFails(0); if (mode === 'control') rfb?.focus(); } });
       rfb.addEventListener('disconnect', (e) => { if (!disposed) setConn((e as CustomEvent<{ clean: boolean }>).detail?.clean ? 'disconnected' : 'error'); });
       rfb.addEventListener('securityfailure', () => { if (!disposed) setConn('error'); });
       rfbRef.current = rfb;
@@ -100,12 +102,13 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
     };
   }, [bot?.id, running, mode, attempt]);
 
-  // The side panel heals itself: a dropped screen reconnects a few seconds later, no button needed.
+  // The screen heals itself: a dropped connection tries again after 1, 2, 3… seconds, no button needed.
   useEffect(() => {
-    if (!panel || !running || (conn !== 'error' && conn !== 'disconnected')) return;
-    const timer = setTimeout(() => setAttempt((n) => n + 1), 4000);
+    if (!running || (conn !== 'error' && conn !== 'disconnected')) return;
+    const timer = setTimeout(() => { setFails((n) => n + 1); setAttempt((n) => n + 1); }, Math.min(1000 * (fails + 1), 5000));
     return () => clearTimeout(timer);
-  }, [panel, running, conn, attempt]);
+  }, [running, conn, attempt, fails]);
+  const quietRetry = conn !== 'connected' && conn !== 'connecting' && fails < 4;
 
   if (!bot) return null;
   const busy = waking || computer?.status === 'starting' || computer?.status === 'resuming' || computer?.status === 'creating';
@@ -133,11 +136,12 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
                 <svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 2.5 L4 19 L8.6 14.8 L11.6 21.5 L14.4 20.3 L11.5 13.7 L17.8 13.4 Z" fill="#fff" stroke="#111" strokeWidth="1.4" strokeLinejoin="round" /></svg>
               </span>
             )}
-            {conn !== 'connected' && (
+            {(quietRetry || (conn === 'connecting' && fails > 0)) && <span className="viewer__reconnecting" role="status"><i />{t('Reconnecting…')}</span>}
+            {conn !== 'connected' && !quietRetry && !(conn === 'connecting' && fails > 0) && (
               <div className="viewer__overlay">
                 {conn === 'connecting' ? t("Connecting to the screen…") : (
                   <>
-                    <span>{conn === 'error' ? t("Couldn’t reach the screen.") : 'Disconnected.'}</span>
+                    <span>{conn === 'error' ? t("Couldn’t reach the screen.") : t('Disconnected.')}</span>
                     <button type="button" className="btn btn--light" onClick={() => setAttempt((n) => n + 1)}>{t("Reconnect")}</button>
                   </>
                 )}

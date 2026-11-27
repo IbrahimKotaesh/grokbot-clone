@@ -234,6 +234,8 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
               />
             )}
           </span>
+          {/* A group has no model or permissions of its own: each Bot answers with its own. */}
+          {!isRoom && (<>
           <span className="composer__setting-anchor composer__model-picker">
             <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${brainLabel(bot)}`} aria-expanded={settingsMenu==='model'||!!subKind} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><BrainLogo bot={bot}/><span>{brainLabel(bot)}</span><ChevronDown size={12}/></button>
             {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
@@ -255,6 +257,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
             <button type="button" className="composer__setting" aria-label={`Permissions: ${permission.name}`} title={permission.description} aria-expanded={settingsMenu==='permissions'} disabled={sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='permissions'?null:'permissions')}><permission.icon size={16}/><span>{permission.name}</span><ChevronDown size={12}/></button>
             {settingsMenu==='permissions'&&<Menu placement="above" align="center" onClose={()=>setSettingsMenu(null)} items={permissionChoices.map(p=>({label:p.name,description:p.description,icon:<p.icon size={18}/>,hint:p.id===permission.id?'✓':undefined,onSelect:()=>void changePermissions(p.id)}))}><div className="permission-menu__heading">{t('Permissions for {name}',{name:bot.name})}<small>{t('Applies to Fino’s Linux computer and your connected accounts. Saved “Always allow” choices are respected, except in Read only.')}</small></div></Menu>}
           </span>
+          </>)}
         </div>
         <div className="composer__right">
           <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError} onText={transcript=>setText(current=>`${current.trimEnd()}${current.trim()?"\n":""}${transcript}`)}/>
