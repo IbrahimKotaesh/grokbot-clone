@@ -14,7 +14,7 @@ Character limits: name 30 · subtitle 30 · promotional text 170 · keywords 100
 Meet Badr, your Chief of Staff. Talk to him, give him a job, and he hands it to the right teammate: email, research, accounting, social media and more.
 
 **Keywords:**
-ai assistant,ai agent,chatbot,productivity,email,accounting,research,automation,team,bots,voice,arabic
+ai assistant,ai agent,chatbot,productivity,email,accounting,research,automation,team,bots,voice
 
 **Description:**
 Badr gives you a team of AI assistants that get real work done, not just chat.
