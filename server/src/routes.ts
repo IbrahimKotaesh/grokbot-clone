@@ -296,6 +296,11 @@ api.patch('/bots/:id', async (c) => {
   if(p.agentProvider!==undefined&&p.agentProvider!==(b.agent_provider??env.agentProvider))invalidateProviderSession(b.id,p.agentProvider);
   const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
   if (p.voice !== undefined && (typeof p.voice !== 'string' || !/^[a-z0-9_-]{1,40}$/i.test(p.voice))) return c.json({ error: 'Choose a voice from the list.' }, 400);
+  // Every other field is a short string, a number or a yes/no; nothing else (objects, huge text) reaches the database.
+  const LIMITS: Record<string, number> = { name: 60, description: 500, instructions: 20000, avatarShape: 40, avatarColor: 40, mode: 40, effort: 40, voiceLanguage: 20 };
+  for (const [k, max] of Object.entries(LIMITS)) if (p[k] !== undefined && p[k] !== null && (typeof p[k] !== 'string' || p[k].length > max)) return c.json({ error: `That ${k === 'instructions' ? 'set of instructions' : k} is too long.` }, 400);
+  if (p.pinned !== undefined && typeof p.pinned !== 'boolean') return c.json({ error: 'Invalid value.' }, 400);
+  if (p.voiceSpeed !== undefined && (typeof p.voiceSpeed !== 'number' || !(p.voiceSpeed >= 0.5 && p.voiceSpeed <= 2))) return c.json({ error: 'Choose a voice speed between 0.5 and 2.' }, 400);
   if (p.voice !== undefined) markVoiceChosen(b.id);
   for (const [k, col] of Object.entries(cols)) {
     if (p[k] !== undefined) db.prepare(`UPDATE bots SET ${col}=?, updated_at=? WHERE id=?`).run(typeof p[k] === 'boolean' ? (p[k] ? 1 : 0) : p[k], now(), b.id);
@@ -733,7 +738,7 @@ api.post('/apps/:slug/connect', async (c) => {
 api.get('/apps/:slug/connect/go', async (c) => {
   // Only from Fino's own pages: another site must not start connections for a signed-in user.
   const site = c.req.header('sec-fetch-site');
-  if (site && site !== 'same-origin' && site !== 'none') return c.text('Open this from Fino.', 403);
+  if (site && site !== 'same-origin' && site !== 'none') return c.text('Open this from Badr.', 403);
   const user = c.get('user');
   const slug = c.req.param('slug');
   const num = (v?: string) => (v === undefined || v === '' ? undefined : Number(v));
@@ -742,12 +747,14 @@ api.get('/apps/:slug/connect/go', async (c) => {
     return c.redirect(r.redirectUrl, 302);
   } catch (e: any) {
     const msg = String(e?.message ?? 'Something went wrong.').replace(/[<>&"]/g, '');
-    return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fino</title><body style="font-family:-apple-system,system-ui,sans-serif;padding:40px 24px;text-align:center;color:#1f1e1d;background:#faf9f5"><h2 style="font-weight:600">Couldn’t start the connection</h2><p style="color:#6f6d66">${msg}</p><p><button onclick="window.close()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#2f6fe0;color:#fff">Close</button></p></body>`, e?.status === 404 ? 404 : 502);
+    return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Badr</title><body style="font-family:-apple-system,system-ui,sans-serif;padding:40px 24px;text-align:center;color:#1f1e1d;background:#faf9f5"><h2 style="font-weight:600">Couldn’t start the connection</h2><p style="color:#6f6d66">${msg}</p><p><button onclick="window.close()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#2f6fe0;color:#fff">Close</button></p></body>`, e?.status === 404 ? 404 : 502);
   }
 });
 
 api.get('/apps/callback', async (c) => {
-  const slug = c.req.query('slug') ?? '';
+  // The slug comes from the address bar, so it must be a plain app name before it goes anywhere near the page.
+  const rawSlug = c.req.query('slug') ?? '';
+  const slug = /^[a-z0-9_-]{1,64}$/i.test(rawSlug) ? rawSlug : '';
   const nativeTicket=c.req.query('native_ticket');
   const userId = (nativeTicket?redeemConnectionTicket(nativeTicket,slug):userFromCookieHeader(c.req.header('cookie'))?.id) ?? '';
   const botId = c.req.query('bot');
@@ -772,7 +779,10 @@ api.get('/apps/callback', async (c) => {
     }
   }
   if(nativeTicket)return c.redirect(`fino://connected?slug=${encodeURIComponent(slug)}&status=${verifiedConnection?'complete':'failed'}`);
-  return c.html(`<!doctype html><meta charset="utf-8"><title>Connected</title><body style="font-family:system-ui;padding:40px;text-align:center">${ok ? 'Connected. You can close this window.' : 'Connection failed.'}<script>try{window.opener&&window.opener.postMessage({type:'grokbot-connected',slug:${JSON.stringify(slug)},ok:${ok}},'*')}catch(e){};setTimeout(()=>window.close(),800)</script></body>`);
+  // JSON inside <script>: "<" is escaped so no value can close the script tag; only Badr's own page hears the message.
+  const js = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c').replace(/\u2028|\u2029/g, '');
+  const target = new URL(env.appUrl).origin;
+  return c.html(`<!doctype html><meta charset="utf-8"><title>Badr</title><body style="font-family:system-ui;padding:40px;text-align:center">${ok ? 'Connected. You can close this window.' : 'Connection failed.'}<script>try{window.opener&&window.opener.postMessage({type:'grokbot-connected',slug:${js(slug)},ok:${ok}},${js(target)})}catch(e){};setTimeout(()=>window.close(),800)</script></body>`);
 });
 
 api.delete('/apps/:slug', async (c) => {

@@ -46,8 +46,8 @@ const ipOf=(header:string|undefined)=>header?.split(',')[0]?.trim()||'local';
 async function sendResetEmail(to:string,link:string){
  // Sends through Resend when RESEND_API_KEY and MAIL_FROM are set; otherwise (local testing) the link goes to the server log.
  if(!process.env.RESEND_API_KEY||!process.env.MAIL_FROM){console.log(`[auth] password reset link for ${to}: ${link}`);return;}
- const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.MAIL_FROM,to,subject:'Reset your Fino password',
-  html:`<p>Someone asked to reset the password for your Fino account.</p><p><a href="${link}">Choose a new password</a> (this link works for one hour).</p><p>If it wasn't you, ignore this email.</p>`})});
+ const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.MAIL_FROM,to,subject:'Reset your Badr password',
+  html:`<p>Someone asked to reset the password for your Badr account.</p><p><a href="${link}">Choose a new password</a> (this link works for one hour).</p><p>If it wasn't you, ignore this email.</p>`})});
  if(!r.ok)console.warn('[auth] reset email failed with status',r.status);
 }
 

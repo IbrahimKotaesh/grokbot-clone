@@ -53,7 +53,8 @@ app.route('/api/download',downloadApi);
 app.use('/api/*',accessGate);
 app.route('/api/access',accessApi);
 app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });
-app.get('/api/health', (c) => c.json({ ok: true, model: env.agentProvider === 'codex' ? env.codexModel ?? 'codex-default' : env.agentProvider === 'claude' ? env.claudeModel ?? 'claude-default' : env.xaiModel, provider: env.agentProvider, computer: env.computerProvider }));
+// Public, so it only says the server is up: which AI and computer providers run behind it is nobody else's business.
+app.get('/api/health', (c) => c.json({ ok: true }));
 app.route('/api/checkins', checkinsApi);
 app.route('/api/rooms', roomsApi);
 app.route('/api', api);
