@@ -6,11 +6,11 @@
 #
 # Notarization runs when the app is signed with a "Developer ID Application" certificate and the notary
 # login is saved in the keychain as "fino-notary" (see README.md). Otherwise it still packages, and says so.
-# Output: desktop/macos/dist/Fino-mac.zip + Fino-mac.json, copied to web/public/downloads (served at /api/download/mac).
+# Output: desktop/macos/dist/Badr-mac.zip + Badr-mac.json, copied to web/public/downloads (served at /api/download/mac).
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 dist="$here/dist"
-app="$dist/Fino.app"
+app="$dist/Badr.app"
 public="$here/../../web/public/downloads"
 profile="${FINO_NOTARY_PROFILE:-fino-notary}"
 [ -d "$app" ] || { echo "Build the app first: desktop/macos/build.sh" >&2; exit 1; }
@@ -18,7 +18,7 @@ profile="${FINO_NOTARY_PROFILE:-fino-notary}"
 build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 signer=$(codesign -dvv "$app" 2>&1 | awk -F= '/^Authority=/ && !done {print $2; done=1}')
-zip="$dist/Fino-mac.zip"
+zip="$dist/Badr-mac.zip"
 pack() { rm -f "$zip"; ditto -c -k --sequesterRsrc --keepParent "$app" "$zip"; }
 
 notarized=false
@@ -39,8 +39,8 @@ else
   [[ "$signer" != "Developer ID Application"* ]] || echo "Not notarized: no notary login saved as '$profile' (see README.md)." >&2
 fi
 
-printf '{"version":"%s","build":"%s","notarized":%s,"signer":"%s"}\n' "$version" "$build" "$notarized" "$signer" > "$dist/Fino-mac.json"
+printf '{"version":"%s","build":"%s","notarized":%s,"signer":"%s"}\n' "$version" "$build" "$notarized" "$signer" > "$dist/Badr-mac.json"
 mkdir -p "$public"
-cp "$zip" "$public/Fino-mac.zip"
-cp "$dist/Fino-mac.json" "$public/Fino-mac.json"
+cp "$zip" "$public/Badr-mac.zip"
+cp "$dist/Badr-mac.json" "$public/Badr-mac.json"
 printf '%s (build %s, notarized: %s)\n' "$zip" "$build" "$notarized"

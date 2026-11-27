@@ -8,7 +8,7 @@ import ApplicationServices
 // For local testing: `defaults write com.ibkopixels.fino.mac FinoWorkspaceURL http://localhost:5173` (delete the key to go back).
 let workspace = URL(string: UserDefaults.standard.string(forKey: "FinoWorkspaceURL") ?? Bundle.main.object(forInfoDictionaryKey: "FinoWorkspaceURL") as? String ?? "https://finobots.com")!
 func jsonString(_ value: Any) -> String { String(data: try! JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), encoding: .utf8)! }
-func failure(_ message: String) -> NSError { NSError(domain: "Fino", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
+func failure(_ message: String) -> NSError { NSError(domain: "Badr", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     guard let context = CGContext(data:nil,width:width,height:height,bitsPerComponent:8,bytesPerRow:0,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue) else { throw failure("Screenshot unavailable") }
     context.draw(image,in:CGRect(x:0,y:0,width:width,height:height))
@@ -33,12 +33,12 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func applicationDidFinishLaunching(_ notification:Notification){
         NSApp.setActivationPolicy(.regular)
         let menu=NSMenu(),appMenu=NSMenu();let item=NSMenuItem();item.submenu=appMenu;menu.addItem(item)
-        appMenu.addItem(withTitle:"About Fino",action:#selector(about),keyEquivalent:"")
+        appMenu.addItem(withTitle:"About Badr",action:#selector(about),keyEquivalent:"")
         appMenu.addItem(withTitle:"Check for Updates…",action:#selector(checkForUpdates),keyEquivalent:"")
         appMenu.addItem(withTitle:"Sign in…",action:#selector(login),keyEquivalent:"")
         appMenu.addItem(withTitle:"Reload",action:#selector(reload),keyEquivalent:"r")
         appMenu.addItem(withTitle:"Stop local control",action:#selector(stopControl),keyEquivalent:".")
-        appMenu.addItem(.separator());appMenu.addItem(withTitle:"Quit Fino",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
+        appMenu.addItem(.separator());appMenu.addItem(withTitle:"Quit Badr",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
         let edit=NSMenuItem();let editMenu=NSMenu(title:"Edit");edit.submenu=editMenu;menu.addItem(edit)
         for (title,selector,key) in [("Undo","undo:","z"),("Cut","cut:","x"),("Copy","copy:","c"),("Paste","paste:","v"),("Select All","selectAll:","a")] {editMenu.addItem(withTitle:title,action:Selector(selector),keyEquivalent:key)}
         for entry in appMenu.items where entry.action != #selector(NSApplication.terminate(_:)){entry.target=self}
@@ -46,10 +46,10 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         NSApp.mainMenu=menu
         let visible=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:1440,height:900)
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:min(1380,visible.width*0.94),height:min(900,visible.height*0.94)),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
-        window.title="Fino";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.toolbarStyle = .unifiedCompact
+        window.title="Badr";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.toolbarStyle = .unifiedCompact
         window.appearance=NSAppearance(named:.darkAqua);window.backgroundColor = .black
         window.minSize=NSSize(width:850,height:600);window.center();window.isReleasedWhenClosed=false
-        mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer","Fino Browser"]);mode.selectItem(at:UserDefaults.standard.object(forKey:"FinoEnvironment") as? Int ?? 2);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Fino server."
+        mode=NSPopUpButton();mode.addItems(withTitles:["Cloud","This Computer","Badr Browser"]);mode.selectItem(at:UserDefaults.standard.object(forKey:"FinoEnvironment") as? Int ?? 2);mode.target=self;mode.action=#selector(environmentChanged);mode.setAccessibilityLabel("Execution environment");mode.toolTip="Choose where the bot works. Your conversations stay on the Badr server."
         control=NSButton(title:"Connect",target:self,action:#selector(toggleControl));control.bezelStyle = .rounded
         status=NSTextField(labelWithString:"Not connected");status.font = .systemFont(ofSize:11);status.textColor = .secondaryLabelColor;status.lineBreakMode = .byTruncatingTail
         let toolbar=NSToolbar(identifier:"FinoWorkspaceToolbar");toolbar.delegate=self;toolbar.displayMode = .iconOnly;toolbar.allowsUserCustomization=false;window.toolbar=toolbar
@@ -75,7 +75,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool{true}
     func applicationWillTerminate(_ notification:Notification){stopControl();Updater.shared.install(relaunch:false)}
     @objc func reload(){web.reload()}
-    @objc func about(){let alert=NSAlert();alert.messageText="Fino for Mac";alert.informativeText="Your Fino workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
+    @objc func about(){let alert=NSAlert();alert.messageText="Badr for Mac";alert.informativeText="Your Badr workspace on Cloud or This Computer. Local computer control is opt-in. Local control stops after 30 minutes, when you press Stop, or when the app closes.";alert.runModal()}
     @objc func stopControl(){actionTask?.cancel();actionTask=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connectionSession?.invalidateAndCancel();connectionSession=nil;connected=false;expires=nil;queue=[];control?.title=mode?.indexOfSelectedItem==0 ? "Open computer":"Connect";setAgentFrame();mode?.isEnabled=true;status?.stringValue=mode?.indexOfSelectedItem==0 ? "Linux · Cloud":"Not connected";emitDesktopState()}
     /// "Always allow on this Mac", remembered per place (browser / this Mac).
     func consentKey()->String{"FinoAlwaysAllow.\(mode.indexOfSelectedItem)"}
@@ -96,8 +96,8 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let inBrowser=mode.indexOfSelectedItem==2
         if !inBrowser && !ComputerSetup.ready {showComputerSetup();return}
         if inBrowser {ensureBrowser()}
-        let alert=NSAlert();alert.messageText=inBrowser ? "Let your bot use the Fino Browser?":"Allow Fino to control this computer?"
-        alert.informativeText=inBrowser ? "Your bot works only inside the browser panel on the right, not the rest of your Mac. Sign in to sites there yourself; the bot will not type passwords. Only bots responding to your direct messages can act, for 30 minutes. Press Stop or ⌘. to disconnect.":"Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Fino server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
+        let alert=NSAlert();alert.messageText=inBrowser ? "Let your bot use the Badr Browser?":"Allow Badr to control this computer?"
+        alert.informativeText=inBrowser ? "Your bot works only inside the browser panel on the right, not the rest of your Mac. Sign in to sites there yourself; the bot will not type passwords. Only bots responding to your direct messages can act, for 30 minutes. Press Stop or ⌘. to disconnect.":"Only bots responding to your direct messages can request actions for 30 minutes. Your bot’s configured permission mode still applies. Screen images are sent to your Badr server and selected model. Background routines cannot use this session. Press Stop or ⌘. to disconnect."
         if !alwaysAllowed {
             alert.addButton(withTitle:"Allow");alert.addButton(withTitle:"Cancel")
             alert.showsSuppressionButton=true;alert.suppressionButton?.title="Always allow on this Mac (connects by itself)";alert.suppressionButton?.state = .on
@@ -108,7 +108,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         web.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in DispatchQueue.main.async {
             guard let self else{return}
             let valid=cookies.filter{cookie in let domain=cookie.domain.trimmingCharacters(in:CharacterSet(charactersIn:"."));return domain==workspace.host && (cookie.expiresDate ?? .distantFuture)>Date()}
-            guard valid.contains(where:{$0.name=="grokbot_session"}) else{self.status.stringValue="Sign in to Fino first";self.login();return}
+            guard valid.contains(where:{$0.name=="grokbot_session"}) else{self.status.stringValue="Sign in to Badr first";self.login();return}
             var parts=URLComponents(url:workspace,resolvingAgainstBaseURL:false)!;parts.scheme=workspace.scheme=="http" ? "ws":"wss";parts.path="/api/desktop/connect";parts.queryItems=[URLQueryItem(name:"mode",value:inBrowser ? "browser":"mac")]
             var req=URLRequest(url:parts.url!);req.setValue(valid.map{"\($0.name)=\($0.value)"}.joined(separator:"; "),forHTTPHeaderField:"Cookie");req.setValue(workspace.absoluteString,forHTTPHeaderField:"Origin")
             self.connectionSession=URLSession(configuration:.ephemeral);let ws=self.connectionSession!.webSocketTask(with:req);self.socket=ws;self.control.title="Stop";self.status.stringValue="Connecting…";self.emitDesktopState();ws.resume();self.receive(ws)
@@ -121,7 +121,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         case .success(let message):
             let data:Data;switch message{case .data(let d):data=d;case .string(let s):data=Data(s.utf8);@unknown default:return}
             if let obj=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any] {
-                if obj["type"] as? String=="connected" {self.connected=true;self.expires=Date(timeIntervalSince1970:(obj["expires"] as? Double ?? 0)/1000);self.status.stringValue=self.mode.indexOfSelectedItem==2 ? "Connected · Fino Browser":"Connected · Local";self.setAgentFrame();self.emitDesktopState()}
+                if obj["type"] as? String=="connected" {self.connected=true;self.expires=Date(timeIntervalSince1970:(obj["expires"] as? Double ?? 0)/1000);self.status.stringValue=self.mode.indexOfSelectedItem==2 ? "Connected · Badr Browser":"Connected · Local";self.setAgentFrame();self.emitDesktopState()}
                 else if self.connected,obj["id"] is String {self.queue.append(obj);self.drain()}
             };self.receive(ws)
         }
@@ -149,7 +149,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     }
     func splitView(_ splitView:NSSplitView,constrainMinCoordinate proposedMinimumPosition:CGFloat,ofSubviewAt dividerIndex:Int)->CGFloat{650}
     func splitView(_ splitView:NSSplitView,constrainMaxCoordinate proposedMaximumPosition:CGFloat,ofSubviewAt dividerIndex:Int)->CGFloat{splitView.bounds.width-360}
-    static let environments:[(title:String,symbol:String)]=[("Cloud computer","cloud"),("This Mac","laptopcomputer"),("Fino Browser","globe")]
+    static let environments:[(title:String,symbol:String)]=[("Cloud computer","cloud"),("This Mac","laptopcomputer"),("Badr Browser","globe")]
     /// Toolbar pill: icon + where bots work, with a green dot while connected.
     func refreshPill(){
         guard let pill=computerPill,let mode else{return}
@@ -172,7 +172,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         for (i,env) in FinoApp.environments.enumerated(){
             let item=NSMenuItem(title:env.title,action:#selector(pickEnvironment(_:)),keyEquivalent:"");item.tag=i;item.target=self
             item.image=NSImage(systemSymbolName:env.symbol,accessibilityDescription:nil);item.state=mode.indexOfSelectedItem==i ? .on:.off
-            item.toolTip=["Fino's own Linux computer in the cloud.","Your bots use this Mac. Needs two macOS permissions.","A private browser in the panel on the right."][i]
+            item.toolTip=["Badr's own Linux computer in the cloud.","Your bots use this Mac. Needs two macOS permissions.","A private browser in the panel on the right."][i]
             menu.addItem(item)
         }
         menu.addItem(.separator())
@@ -210,7 +210,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     @objc func hideWorkspace(){suspendServerPreview();panel.isHidden=true;window.minSize=NSSize(width:850,height:600);split.adjustSubviews();emitDesktopState()}
     @objc func toggleWorkspace(){if panel.isHidden{showWorkspace()}else{hideWorkspace()}}
     func showComputerSetup(){
-        mode.selectItem(at:1);status.stringValue="Allow Fino to use this Mac"
+        mode.selectItem(at:1);status.stringValue="Allow Badr to use this Mac"
         let s=ComputerSetup();setup=s
         s.show(over:window){[weak self] in self?.setup=nil;self?.status.stringValue="Ready to connect";self?.toggleControl()}
     }
@@ -227,8 +227,8 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     }
     func suspendServerPreview(){if serverView?.url?.scheme=="https"{serverView?.loadHTMLString("<html><body style='background:#0c0f15'></body></html>",baseURL:nil)}}
     func ensureBrowser(){
-        suspendServerPreview();showPanel();paneTitle.stringValue="Fino Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
-        if browser==nil{let config=WKWebViewConfiguration();config.websiteDataStore=WKWebsiteDataStore(forIdentifier:UUID(uuidString:"0FB17465-9FA6-46CF-A98F-60EA1BFEB651")!);browser=WKWebView(frame:panelContent.bounds,configuration:config);browser.autoresizingMask=[.width,.height];browser.navigationDelegate=self;browser.uiDelegate=self;panelContent.addSubview(browser);browser.loadHTMLString("<html><body style='font:15px -apple-system;padding:36px;background:#10151e;color:#e7edf8'><h2>Fino Browser</h2><p>Sign in to sites here (LinkedIn, Indeed, email…) once. Then choose Connect from the menu at the top right and ask your bot to work in this panel. An orange frame shows while your bot is in control.</p></body></html>",baseURL:nil)}
+        suspendServerPreview();showPanel();paneTitle.stringValue="Badr Browser";browserControls.isHidden=false;serverView?.isHidden=true;macPreview.isHidden=true;placeholder.isHidden=true
+        if browser==nil{let config=WKWebViewConfiguration();config.websiteDataStore=WKWebsiteDataStore(forIdentifier:UUID(uuidString:"0FB17465-9FA6-46CF-A98F-60EA1BFEB651")!);browser=WKWebView(frame:panelContent.bounds,configuration:config);browser.autoresizingMask=[.width,.height];browser.navigationDelegate=self;browser.uiDelegate=self;panelContent.addSubview(browser);browser.loadHTMLString("<html><body style='font:15px -apple-system;padding:36px;background:#10151e;color:#e7edf8'><h2>Badr Browser</h2><p>Sign in to sites here (LinkedIn, Indeed, email…) once. Then choose Connect from the menu at the top right and ask your bot to work in this panel. An orange frame shows while your bot is in control.</p></body></html>",baseURL:nil)}
         browser.isHidden=false;setAgentFrame();emitDesktopState()
     }
     /// Orange frame around the browser panel while a bot is connected to it; brighter while it is acting.
@@ -236,7 +236,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         guard let layer=panel?.layer else{return}
         let on=connected && mode?.indexOfSelectedItem==2
         layer.borderColor=NSColor.systemOrange.withAlphaComponent(running ? 1:0.55).cgColor;layer.borderWidth=on ? (running ? 4:2):0
-        if paneTitle != nil && mode?.indexOfSelectedItem==2 {paneTitle.stringValue=on ? (running ? "Fino Browser · Your bot is working…":"Fino Browser · Bot connected"):"Fino Browser"}
+        if paneTitle != nil && mode?.indexOfSelectedItem==2 {paneTitle.stringValue=on ? (running ? "Badr Browser · Your bot is working…":"Badr Browser · Bot connected"):"Badr Browser"}
     }
     func showCursor(at x:Double,_ y:Double,click:Bool)async{
         guard let browser,let host=browser.superview else{return}
@@ -266,7 +266,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func webView(_ webView:WKWebView,didFail navigation:WKNavigation!,withError error:Error){workspaceUnreachable(webView,error)}
     func workspaceUnreachable(_ webView:WKWebView,_ error:Error){
         guard webView===web,(error as NSError).code != NSURLErrorCancelled,retryTimer==nil else{return}
-        web.loadHTMLString("<html><body style='margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#8e8e93;font:14px -apple-system'><div style='text-align:center'><div style='color:#f5f5f7;font-size:17px;font-weight:600;margin-bottom:6px'>Connecting to Fino…</div>Trying again in a moment.</div></body></html>",baseURL:nil)
+        web.loadHTMLString("<html><body style='margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#8e8e93;font:14px -apple-system'><div style='text-align:center'><div style='color:#f5f5f7;font-size:17px;font-weight:600;margin-bottom:6px'>Connecting to Badr…</div>Trying again in a moment.</div></body></html>",baseURL:nil)
         retryTimer=Timer.scheduledTimer(withTimeInterval:2,repeats:false){[weak self] _ in Task { @MainActor in guard let self else{return};self.retryTimer=nil;self.web.load(URLRequest(url:workspace)) }}
     }
     func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){if webView===web{emitDesktopState();if web.url?.host==workspace.host{DispatchQueue.main.asyncAfter(deadline:.now()+0.6){[weak self] in self?.loadingSpinner?.removeFromSuperview();self?.loadingSpinner=nil;self?.autoConnect()}}}else if webView===browser{address.stringValue=browser.url?.scheme=="about" ? "":browser.url?.absoluteString ?? ""}}
@@ -293,7 +293,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         if mac && action != "computer_screenshot" {
             let protected=["com.apple.systempreferences","com.apple.SecurityAgent","com.apple.keychainaccess","com.apple.Terminal","com.googlecode.iterm2","com.apple.ScriptEditor2"]
             let previousApplication=NSWorkspace.shared.frontmostApplication
-            if let front=previousApplication?.bundleIdentifier,protected.contains(front){throw failure("Handle security settings and command-line apps yourself; Fino will not control them")}
+            if let front=previousApplication?.bundleIdentifier,protected.contains(front){throw failure("Handle security settings and command-line apps yourself; Badr will not control them")}
 
         }
         if mac {try await macAction(action,args);return try await macSnapshot()}
@@ -367,13 +367,13 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     func webView(_ webView:WKWebView,runJavaScriptConfirmPanelWithMessage message:String,initiatedByFrame frame:WKFrameInfo,completionHandler:@escaping(Bool)->Void){completionHandler(false)}
     func testBrowser()async{
         do{
-            guard mode.itemTitles == ["Cloud","This Computer","Fino Browser"] else{throw failure("Environment selector must default to This Computer with three choices")}
-            mode.selectItem(at:2);control.title="Connect";ensureBrowser();browser.loadHTMLString("<html><body style='font:24px -apple-system;padding:32px;background:#101723;color:white'><h1>Fino local browser test</h1><input id='q' style='font:24px;width:400px;height:48px'><button style='font:24px' onclick=\"document.getElementById('result').textContent=document.getElementById('q').value\">Show result</button><p id='result'></p></body></html>",baseURL:nil)
+            guard mode.itemTitles == ["Cloud","This Computer","Badr Browser"] else{throw failure("Environment selector must default to This Computer with three choices")}
+            mode.selectItem(at:2);control.title="Connect";ensureBrowser();browser.loadHTMLString("<html><body style='font:24px -apple-system;padding:32px;background:#101723;color:white'><h1>Badr local browser test</h1><input id='q' style='font:24px;width:400px;height:48px'><button style='font:24px' onclick=\"document.getElementById('result').textContent=document.getElementById('q').value\">Show result</button><p id='result'></p></body></html>",baseURL:nil)
             try await Task.sleep(nanoseconds:2_000_000_000)
             let bounds=try await evaluate("JSON.stringify((()=>{const r=document.querySelector('input').getBoundingClientRect();return {x:r.x+10,y:r.y+10}})())") as! String;let p=try JSONSerialization.jsonObject(with:Data(bounds.utf8)) as! [String:Any]
-            try await browserAction("computer_click",p);try await browserAction("computer_type",["text":"Fino browser control works ✓"])
+            try await browserAction("computer_click",p);try await browserAction("computer_type",["text":"Badr browser control works ✓"])
             let button=try await evaluate("JSON.stringify((()=>{const r=document.querySelector('button').getBoundingClientRect();return {x:r.x+10,y:r.y+10}})())") as! String;try await browserAction("computer_click",try JSONSerialization.jsonObject(with:Data(button.utf8)) as! [String:Any])
-            guard try await evaluate("document.getElementById('result').textContent") as? String=="Fino browser control works ✓" else{throw failure("Browser input/click assertion failed")}
+            guard try await evaluate("document.getElementById('result').textContent") as? String=="Badr browser control works ✓" else{throw failure("Browser input/click assertion failed")}
             guard browser.window===window,web.bounds.width>=650,browser.bounds.width>=360,panel.frame.minX>=web.frame.maxX else{throw failure("Workspace pane layout assertion failed")}
             let shot=try await browserSnapshot();try Data(base64Encoded:shot["image"] as! String)!.write(to:URL(fileURLWithPath:"/tmp/fino-mac-browser-test.png"))
             try Data(jsonString(["ok":true,"twoEnvironments":true,"thisComputerDefault":true,"browserClick":true,"browserType":true,"screenshot":true,"macControlEnabled":false,"dockedBrowser":true,"mainPaneWidth":Int(web.bounds.width),"workspacePaneWidth":Int(browser.bounds.width)]).utf8).write(to:URL(fileURLWithPath:"/tmp/fino-mac-selftest.json"));mode.selectItem(at:1);stopControl();hideWorkspace();emitDesktopState()
@@ -381,7 +381,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
     }
 }
 
-/// "Let Fino use this Mac": walks through the two macOS permissions with live status, opens the exact
+/// "Let Badr use this Mac": walks through the two macOS permissions with live status, opens the exact
 /// Settings page for each, and restarts Fino when Screen Recording needs it. Connects by itself when ready.
 @MainActor final class ComputerSetup: NSObject {
     static var accessibility: Bool { AXIsProcessTrusted() }
@@ -395,7 +395,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
 
     func show(over window: NSWindow, onReady: @escaping () -> Void) {
         self.onReady = onReady; parent = window
-        let title = NSTextField(labelWithString: "Let Fino use this Mac"); title.font = .boldSystemFont(ofSize: 18)
+        let title = NSTextField(labelWithString: "Let Badr use this Mac"); title.font = .boldSystemFont(ofSize: 18)
         let intro = NSTextField(wrappingLabelWithString: "Your bots can open apps, browse in Chrome and type for you on this Mac. macOS asks you to allow two things, once:")
         intro.textColor = .secondaryLabelColor
         func row(_ mark: NSTextField, _ name: String, _ detail: String, _ button: NSButton, _ action: Selector) -> NSView {
@@ -410,9 +410,9 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         }
         let ax = row(axMark, "1. Accessibility", "To click and type for you.", axButton, #selector(openAccessibility))
         let sr = row(srMark, "2. Screen Recording", "To see the screen while it works.", srButton, #selector(openScreen))
-        let tip = NSTextField(wrappingLabelWithString: "Tip: if Fino is already in the list but still not allowed, select it, press − to remove it, then turn it on again. Older test copies of Fino keep the old switch.")
+        let tip = NSTextField(wrappingLabelWithString: "Tip: if Badr is already in the list but still not allowed, select it, press − to remove it, then turn it on again. Older test copies of Badr keep the old switch.")
         tip.font = .systemFont(ofSize: 11); tip.textColor = .tertiaryLabelColor
-        restart.title = "Restart Fino"; restart.bezelStyle = .rounded; restart.target = self; restart.action = #selector(restartFino); restart.isHidden = true
+        restart.title = "Restart Badr"; restart.bezelStyle = .rounded; restart.target = self; restart.action = #selector(restartFino); restart.isHidden = true
         restart.keyEquivalent = "\r"
         let cancel = NSButton(title: "Not now", target: self, action: #selector(close)); cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
         let buttons = NSStackView(views: [NSView(), cancel, restart]); buttons.orientation = .horizontal; buttons.spacing = 8
@@ -482,7 +482,7 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
                 let (data,_)=try await URLSession.shared.data(from:info)
                 let obj=(try JSONSerialization.jsonObject(with:data)) as? [String:Any] ?? [:]
                 let latest=Int(obj["build"] as? String ?? "") ?? 0
-                guard latest>installedBuild else{if userAsked{tell("Fino is up to date","You have the latest version (build \(installedBuild)).")};return}
+                guard latest>installedBuild else{if userAsked{tell("Badr is up to date","You have the latest version (build \(installedBuild)).")};return}
                 let app=try await download()
                 staged=app
                 offerRestart(app)
@@ -498,19 +498,19 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         let unzip=Process();unzip.executableURL=URL(fileURLWithPath:"/usr/bin/ditto");unzip.arguments=["-x","-k",zip.path,dir.path]
         try unzip.run();unzip.waitUntilExit()
         guard unzip.terminationStatus==0 else{throw failure("The update could not be unpacked")}
-        let app=dir.appendingPathComponent("Fino.app")
+        let app=["Badr.app","Fino.app"].map{dir.appendingPathComponent($0)}.first{FileManager.default.fileExists(atPath:$0.path)} ?? dir.appendingPathComponent("Badr.app")
         var code:SecStaticCode?,req:SecRequirement?
         guard SecStaticCodeCreateWithPath(app as CFURL,[],&code)==errSecSuccess,let code,
               SecRequirementCreateWithString(requirement as CFString,[],&req)==errSecSuccess,let req,
               SecStaticCodeCheckValidity(code,SecCSFlags(rawValue:kSecCSCheckAllArchitectures|kSecCSStrictValidate),req)==errSecSuccess
-        else{throw failure("The update is not signed by Fino, so it was not installed")}
+        else{throw failure("The update is not signed by Badr, so it was not installed")}
         return app
     }
 
     func offerRestart(_ app:URL){
         guard let window,window.attachedSheet==nil else{return}
-        let alert=NSAlert();alert.messageText="A new version of Fino is ready"
-        alert.informativeText="Restart to use it now. Your chats and bots stay as they are. If you choose Later, it installs when you quit Fino."
+        let alert=NSAlert();alert.messageText="A new version of Badr is ready"
+        alert.informativeText="Restart to use it now. Your chats and bots stay as they are. If you choose Later, it installs when you quit Badr."
         alert.addButton(withTitle:"Restart now");alert.addButton(withTitle:"Later")
         alert.beginSheetModal(for:window){[weak self] r in if r == .alertFirstButtonReturn {self?.install(relaunch:true)}}
     }
@@ -520,13 +520,13 @@ func png(_ image: CGImage, width: Int, height: Int) throws -> Data {
         guard let staged else{return}
         let current=Bundle.main.bundleURL
         do{
-            _=try FileManager.default.replaceItemAt(current,withItemAt:staged,backupItemName:"Fino-previous.app",options:[])
+            _=try FileManager.default.replaceItemAt(current,withItemAt:staged,backupItemName:"Badr-previous.app",options:[])
             self.staged=nil
             if relaunch {
                 let p=Process();p.executableURL=URL(fileURLWithPath:"/bin/sh");p.arguments=["-c","sleep 1; /usr/bin/open \"$0\"",current.path];try? p.run()
                 NSApp.terminate(nil)
             }
-        }catch{tell("Couldn't install the update","\(error.localizedDescription). You can download Fino again from the website.")}
+        }catch{tell("Couldn't install the update","\(error.localizedDescription). You can download Badr again from the website.")}
     }
 
     func tell(_ title:String,_ text:String){
