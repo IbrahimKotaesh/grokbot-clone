@@ -3,7 +3,7 @@ import { t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Bot, LiveState, MessageBody, Row, ToolCallBody } from '@shared/types';
+import type { Bot, LiveState, MessageBody, Row } from '@shared/types';
 import { BotAvatar, BotAvatarFor } from '../avatar/BotAvatar';
 import { dividerLabel, messageTimestamp } from '../lib/time';
 import { useStore } from '../store';
@@ -14,7 +14,6 @@ import { Markdown } from './Markdown';
 import { Badr } from './Badr';
 import { api } from '../lib/api';
 import { startersFor } from '../../../packages/contracts/src/jobs';
-import {stepDestination,stepTitle} from '../lib/work-step';
 import {MessagePhotos} from './MessagePhotos';
 import { BlurWords } from '../lib/motion';
 import { GroupAvatar, useRoomMembers } from './GroupAvatar';
@@ -149,34 +148,6 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
       {bot ? <BotAvatarFor bot={bot} size={16} /> : from.kind === 'routine' ? <Icon name="clock" size={12} opacity={0.56} /> : from.kind === 'voice' ? <Icon name="voice_a" size={12} opacity={0.56} /> : <BotAvatar shape="blob" color="gray" size={16} />}
       <span>{from.kind === 'routine' ? `Routine · ${from.name}` : from.kind === 'voice' ? t("Asked on a voice call") : `From ${from.name}`}</span>
     </div>
-  );
-}
-
-function Steps({ rows }: { rows: Row[] }) {
-  const calls = rows.map((r) => r.body as ToolCallBody);
-  // A clean chat: finished work stays out of the way, and the activity line shows what's happening now.
-  // Only steps that failed or were refused show, so the person knows something needs a look.
-  const visible = calls.filter((c) => c.status === 'error' || c.status === 'denied');
-  if (!visible.length) return null;
-  return (
-    <details className="steps">
-      <summary className="steps__toggle">
-        {t('Some steps need attention')}
-        <Icon name="chev_down" size={10} opacity={0.66} className="steps__chev" />
-      </summary>
-        <ul className="steps__list">
-          {visible.map((c) => (
-            <li key={c.callId} className={`step is-${c.status}`}>
-              {stepDestination(c)?<img className="step__site-icon" src={stepDestination(c)!.icon} alt="" referrerPolicy="no-referrer" onError={e=>{e.currentTarget.style.visibility='hidden';}}/>:<span className="step__dot" />}
-              <span className="step__label">{stepTitle(c)}</span>
-              {c.summary && <span className="step__summary">{c.summary}</span>}
-              {c.status === 'error' && <span className="step__summary">{t("Failed")}</span>}
-              {c.status === 'denied' && <span className="step__summary">{t("Not allowed")}</span>}
-              {c.screenshot && <img className="step__shot" src={c.screenshot} alt="" />}
-            </li>
-          ))}
-        </ul>
-    </details>
   );
 }
 
@@ -316,7 +287,9 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
       case 'divider':
         return <div key={it.key} className="divider">{dividerLabel(it.ts)}</div>;
       case 'steps':
-        return <Steps key={it.key} rows={it.rows} />;
+        // Steps stay out of the chat, failed ones too: the Bot works around a failed step itself and says in its
+        // reply if something couldn't be done. Raw errors only made people think something broke.
+        return null;
       case 'row':
         return <SystemRow key={it.key} row={it.row} running={running} />;
       case 'group':

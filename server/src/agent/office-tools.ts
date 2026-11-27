@@ -21,7 +21,21 @@ const PY_LIBS: Record<string, [string, string]> = {
   matplotlib: ['python3-matplotlib', 'matplotlib'],
   docx: ['python3-docx', 'python-docx'],
   pptx: ['python3-pptx', 'python-pptx'],
+  reportlab: ['python3-reportlab', 'reportlab'],
+  pypdf: ['python3-pypdf', 'pypdf'],
+  bs4: ['python3-bs4', 'beautifulsoup4'],
+  requests: ['python3-requests', 'requests'],
+  PIL: ['python3-pil', 'pillow'],
+  numpy: ['python3-numpy', 'numpy'],
 };
+/** Libraries a piece of Python code imports that Badr knows how to install (its own pip install would fail). */
+export function importedLibs(code: string): string[] {
+  const found = new Set<string>();
+  for (const m of code.matchAll(/^\s*(?:from\s+([A-Za-z_]\w*)|import\s+([A-Za-z_][\w, .]*))/gm)) {
+    for (const name of (m[1] ?? m[2] ?? '').split(',').map((x) => x.trim().split(/[ .]/)[0])) if (PY_LIBS[name]) found.add(name);
+  }
+  return [...found];
+}
 
 /** Shell that makes sure the given Python modules import, installing them once if needed. */
 function ensureLibs(mods: string[]): string {
@@ -338,12 +352,12 @@ export const OFFICE_TOOLS = [
   },
   {
     name: 'run_python',
-    description: 'Run Python on your computer for data work: analysis, calculations, cleaning, reading Excel/CSV/PDF data, and charts. pandas, openpyxl, matplotlib are available (installed on first use). Runs in your Library folder (LIBRARY variable holds its path); print() what you need to see. Every matplotlib figure you create is saved as a PNG and shown in the chat automatically. Use make_spreadsheet for the final Excel file.',
+    description: 'Run Python on your computer for data work: analysis, calculations, cleaning, reading Excel/CSV/PDF data, and charts. pandas, openpyxl, matplotlib are available, and reportlab, pypdf, bs4, requests, PIL, numpy, docx and pptx are installed for you when your code imports them (do not pip install anything yourself; it will not work). Runs in your Library folder (LIBRARY variable holds its path); print() what you need to see. Every matplotlib figure you create is saved as a PNG and shown in the chat automatically. Use make_spreadsheet for the final Excel file.',
     parameters: obj({ code: { type: 'string' }, purpose: { type: 'string', description: "One short sentence in the user's language: what this analysis does." }, chart_name: { type: 'string', description: 'Optional file name for charts, e.g. sales-by-month' }, send_charts: { type: 'boolean', description: 'Show charts in the chat (default true)' } }, ['code', 'purpose']),
     activity: 'running_commands' as const,
     label: 'Analysing data',
     impl: async (a: any, ctx: OfficeCtx): Promise<OfficeResult> => {
-      const r = await runPy(ctx, PYTHON, { code: String(a.code), chart_name: a.chart_name ? String(a.chart_name).replace(/[^\w-]/g, '_').slice(0, 60) : '' }, { libs: ['pandas', 'openpyxl', 'matplotlib'], timeout: 280 });
+      const r = await runPy(ctx, PYTHON, { code: String(a.code), chart_name: a.chart_name ? String(a.chart_name).replace(/[^\w-]/g, '_').slice(0, 60) : '' }, { libs: [...new Set(['pandas', 'openpyxl', 'matplotlib', ...importedLibs(String(a.code))])], timeout: 280 });
       const sent = a.send_charts === false ? [] : (r.charts ?? []).map((c: any) => sendFile(ctx, c.path.split('/').pop(), c.b64, '')).filter(Boolean);
       const out = { stdout: clip(String(r.stdout ?? ''), 20000), error: r.error ?? undefined, charts: (r.charts ?? []).map((c: any) => c.path), charts_shown_in_chat: sent.length, new_files: r.new_files };
       return { output: JSON.stringify(out), summary: r.error ? 'Python error' : sent.length ? `Made ${sent.length} chart${sent.length > 1 ? 's' : ''}` : 'Ran the analysis' };
