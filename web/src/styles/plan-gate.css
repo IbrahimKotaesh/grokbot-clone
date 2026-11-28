@@ -13,7 +13,7 @@
 :root[data-theme="dark"] .gate { --gate-accent-ink: #ff8a6b; }
 .gate ::selection { background: color-mix(in srgb, var(--gate-accent) 28%, transparent); }
 
-.gate__in { width: min(1000px, calc(100% - 40px)); margin: 0 auto; padding: clamp(32px, 7vh, 72px) 0 36px; }
+.gate__in { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: clamp(32px, 7vh, 72px) 0 36px; }
 
 /* Heading */
 .gate__head { max-width: 620px; margin: 0 auto; text-align: center; }
@@ -27,7 +27,8 @@
 
 /* Plans: flat cards, each in its own soft color (Starter sun, Pro tomato, Max blue), no shadows.
    The chosen one gets a solid border in its own strong color; the button below takes that color. */
-.gate__plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 40px; }
+.gate__plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 40px; }
+@media (min-width: 761px) and (max-width: 1080px) { .gate__plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .gate__plan--starter, .gate__plan--pro, .gate__plan--max { --card: var(--p-surface); --accent: var(--gate-accent-ink); --accent-strong: #c13f22; --accent-ink: #ffffff; }
 .gate__plan {
   position: relative; display: flex; flex-direction: column; padding: 22px; border-radius: 22px; cursor: pointer;

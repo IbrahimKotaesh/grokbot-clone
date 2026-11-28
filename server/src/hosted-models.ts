@@ -137,10 +137,68 @@ export function hostedSpend(userId: string, kind: 'chat' | 'computer'): number {
 }
 export const computerSpend = (userId: string) => hostedSpend(userId, 'computer');
 
+// ---------- usage limits: per day, per week, per month ----------
 /**
- * The model a chat step runs on with Fino's key: the bot's choice if the plan includes it, else the default.
- * Past the month's chat budget everything runs on the cheapest model; past twice the budget, replies stop.
+ * Each plan's AI on Badr's own models (chat and computer work together, at cost), set so that even a customer who
+ * uses every limit to the end leaves a 30% margin (2026-11-28): price × 0.7, minus card fees, the computer's disk and
+ * hours, and the plan's call minutes at ~$0.07 each. Starter $29.99 → $12, Pro $49.99 → $20, Max $99.99 → $40,
+ * Ultra $199.99 → $80. Calls have their own minutes, so voice is not counted here.
  */
+export const AI_MONTH: Record<PlanId, number | null> = { free: 0.5, starter: 12, pro: 20, max: 40, ultra: 80, enterprise: null };
+/**
+ * Spread over the month like the big AI apps do: a week may use about a third more than an even share of the month,
+ * and a day at most a third of a week. So nobody burns a month in an afternoon, and the plan lasts all month.
+ */
+const WEEK_SHARE = 1.3 / 4.3, DAY_SHARE = 1 / 3;
+const DAY = 86400_000;
+const dayStart = (t = Date.now()) => Math.floor(t / DAY) * DAY; // UTC midnight
+const weekStart = (t = Date.now()) => { const d = dayStart(t); return d - ((new Date(d).getUTCDay() + 6) % 7) * DAY; }; // Monday, UTC
+const monthStartUtc = (t = Date.now()) => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
+const nextMonthUtc = (t = Date.now()) => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); };
+
+/** What Badr's own models cost this account since a moment (calls excluded: they have their own minutes). */
+function aiSpentSince(userId: string, since: number): number {
+  return (db.prepare("SELECT COALESCE(SUM(cost_usd),0) AS s FROM model_usage WHERE user_id=? AND hosted=1 AND started_at>=? AND model NOT LIKE 'openai/gpt-audio%'").get(userId, since) as { s: number }).s;
+}
+
+export interface UsageWindow { used: number; limit: number; resetsAt: number }
+/** This account's usage per day, week and month (null = no limit: the server's owner, or Enterprise). */
+export function aiUsage(userId: string): { day: UsageWindow; week: UsageWindow; month: UsageWindow } | null {
+  if (usesServerResources(userId)) return null;
+  const trial = trialUntil(userId);
+  const month = trial ? TRIAL.chatUsd : AI_MONTH[planOf(userId).id]; // the free day: $0.25 of AI in all
+  if (month === null) return null;
+  const week = trial ? month : month * WEEK_SHARE, day = trial ? month : week * DAY_SHARE;
+  const now = Date.now();
+  const since = trial ? trial - TRIAL.days * DAY : 0;
+  return {
+    day: { used: aiSpentSince(userId, Math.max(since, dayStart(now))), limit: day, resetsAt: trial ?? dayStart(now) + DAY },
+    week: { used: aiSpentSince(userId, Math.max(since, weekStart(now))), limit: week, resetsAt: trial ?? weekStart(now) + 7 * DAY },
+    month: { used: aiSpentSince(userId, Math.max(since, monthStartUtc(now))), limit: month, resetsAt: trial ?? nextMonthUtc(now) },
+  };
+}
+
+/** When usage comes back, in words: "in 3 h", "on Monday", "on 1 December". */
+function whenBack(t: number): string {
+  const h = Math.ceil((t - Date.now()) / 3600_000);
+  if (h <= 24) return `in ${Math.max(1, h)} h`;
+  return `on ${new Date(t).toLocaleDateString('en-GB', { weekday: h <= 7 * 24 ? 'long' : undefined, day: h <= 7 * 24 ? undefined : 'numeric', month: h <= 7 * 24 ? undefined : 'long', timeZone: 'UTC' })}`;
+}
+
+/** Before a step on Badr's own models: stop with a clear message once today's, this week's or this month's usage is used. */
+export function assertAiAllowed(userId: string): void {
+  const u = aiUsage(userId);
+  if (!u) return;
+  const own = ' To keep going now, connect your own ChatGPT or Claude in Settings → AI models.';
+  if (trialUntil(userId) && u.month.used >= u.month.limit)
+    throw Object.assign(new Error(`The free trial day's included AI is used up. It refills when your plan starts.${own}`), { status: 402, code: 'usage_limit' });
+  for (const [name, w] of [['month', u.month], ['week', u.week], ['day', u.day]] as const)
+    if (w.used >= w.limit)
+      throw Object.assign(new Error(`You've used ${name === 'day' ? "today's" : `this ${name}'s`} included AI. It comes back ${whenBack(w.resetsAt)}.${own}`), { status: 402, code: 'usage_limit', window: name, resetsAt: w.resetsAt });
+}
+/** Near the end of a window (80%), long messages no longer step up to the strongest model. */
+const nearLimit = (userId: string) => { const u = aiUsage(userId); return !!u && [u.day, u.week, u.month].some((w) => w.used >= w.limit * 0.8); };
+
 /** The month's AI budget (USD at cost) for chat or computer work; the free trial day has its own small one. */
 function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
   // The server's owner pays the bills: their Bots keep the model they were given, with no monthly cap.
@@ -151,15 +209,12 @@ function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
   return kind === 'chat' ? CHAT_CAP[plan] : COMPUTER_CAP[plan];
 }
 
+/** The model a chat step runs on with Badr's key: the Bot's choice if the plan includes it; stops at a usage limit. */
 export function hostedChatModel(userId: string, wanted: string): string {
+  assertAiAllowed(userId);
   const plan = planOf(userId).id;
-  const cap = capFor(userId, 'chat');
-  const spent = hostedSpend(userId, 'chat');
-  if (cap !== null && spent >= cap * 2)
-    throw Object.assign(new Error(trialUntil(userId)
-      ? "The free trial day's included AI is used up. It refills when your plan starts, or connect your own ChatGPT in Settings → AI models."
-      : "This month's included AI is used up. Upgrade your plan, or add your own AI key in Settings → AI models."), { status: 402 });
-  if (cap !== null && spent >= cap) return DEFAULT_HOSTED;
+  // Close to a limit, the strongest model gives way to the default so what's left lasts longer.
+  if (wanted === STRONG_HOSTED && nearLimit(userId)) return DEFAULT_HOSTED;
   return modelAllowed(plan, wanted) ? wanted : DEFAULT_HOSTED;
 }
 
@@ -169,9 +224,7 @@ export function hostedChatModel(userId: string, wanted: string): string {
  * letters into 7 answers (DeepSeek V4.1 Flash: none), so Arabic goes straight to Badr 4.8.
  */
 export function sequenceModel(userId: string, step: number, opts: { arabic?: boolean } = {}): string {
-  const cap = capFor(userId, 'chat');
-  const capped = cap !== null && hostedSpend(userId, 'chat') >= cap;
-  if (!capped && step >= STEP_UP_AFTER) return STRONG_HOSTED;
+  if (step >= STEP_UP_AFTER && !nearLimit(userId)) return STRONG_HOSTED;
   return freeAvailable() && !opts.arabic ? FREE_MODEL : DEFAULT_HOSTED;
 }
 
@@ -185,12 +238,14 @@ export function hostedSummary(userId: string) {
     models: HOSTED_MODELS.map((m) => ({ id: m.id, name: m.name, note: m.note, tier: m.tier, allowed: modelAllowed(plan, m.id) })),
     // Percent of the month's included AI used, not dollars: the app shows it as a simple meter.
     usage: { chat: pct(hostedSpend(userId, 'chat'), capFor(userId, 'chat')), computer: pct(computerSpend(userId), capFor(userId, 'computer')) },
+    // Percent used of today, this week and this month, with when each comes back (null = no limit).
+    limits: (() => { const u = aiUsage(userId); if (!u) return null; const w = (x: UsageWindow) => ({ pct: Math.min(100, Math.round((x.used / Math.max(x.limit, 1e-9)) * 100)), resetsAt: x.resetsAt }); return { day: w(u.day), week: w(u.week), month: w(u.month) }; })(),
   };
 }
 
+/** Screen work stays on the cheap model near a usage limit (and every step still stops at the limit itself). */
 export function overComputerCap(userId: string): boolean {
-  const cap = capFor(userId, 'computer');
-  return cap !== null && computerSpend(userId) >= cap;
+  return nearLimit(userId);
 }
 
 /** Per-turn routing state for one bot's computer work. */
@@ -213,5 +268,6 @@ export const newRoute = (): RouteState => ({ computer: false, cheapSteps: 0, tro
 
 /** Stay on the cheap model until it struggles (2 failed/no-op actions or 25 steps), unless the month's budget is used up. */
 export function computerModel(userId: string, _r: RouteState): string {
+  assertAiAllowed(userId);
   return overComputerCap(userId) ? COMPUTER_CHEAP : COMPUTER_STRONG;
 }

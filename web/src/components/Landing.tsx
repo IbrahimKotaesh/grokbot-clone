@@ -471,9 +471,10 @@ const ASSISTANT_SALARY = 2500;
 const ASSISTANT_EXTRA = 500;
 // The real plans (server/src/plans.ts): the smallest one that fits the number of roles.
 const PLAN_BY_ID = {
-  starter: { name: 'Starter', price: 14.99, bots: 'Badr + 5 bots', hours: 3, lines: ['Ready-to-work bots with superpowers', 'Their own computer · 3 h a month', 'Use your own Claude Code and ChatGPT'] },
+  starter: { name: 'Starter', price: 29.99, bots: 'Badr + 5 bots', hours: 5, lines: ['Ready-to-work bots with superpowers', 'Their own computer · 5 h a month', 'Use your own Claude Code and ChatGPT'] },
   pro: { name: 'Pro', price: 49.99, bots: 'Badr + 15 bots', hours: 20, lines: ['Everything in Starter, plus', 'Their own computer · 20 h a month', 'Every marketplace bot', 'Stronger AI models included'] },
   max: { name: 'Max', price: 99.99, bots: 'Badr + 40 bots', hours: 60, lines: ['Everything in Pro, plus', 'Their own computer · 60 h a month', 'Top AI models included', 'Priority support'] },
+  ultra: { name: 'Ultra', price: 199.99, bots: 'Unlimited bots', hours: 150, lines: ['Everything in Max, plus', 'Their own computer · 150 h a month', 'The most included AI', 'Early access to new features'] },
 } as const;
 const planFor = (roles: number) => (roles <= 1 ? PLAN_BY_ID.pro : PLAN_BY_ID.max);
 const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: n % 1 ? 2 : 0, minimumFractionDigits: n % 1 ? 2 : 0 })}`;
@@ -591,7 +592,7 @@ function Jobs({ onStart, open }: { onStart: () => void; open: string }) {
 
 /* ---- Plans ---- */
 function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }) {
-  const list = [PLAN_BY_ID.starter, PLAN_BY_ID.pro, PLAN_BY_ID.max];
+  const list = [PLAN_BY_ID.starter, PLAN_BY_ID.pro, PLAN_BY_ID.max, PLAN_BY_ID.ultra];
   return (
     <section className="lp-plans" id="plans">
       <div className="lp-wrap lp-center">
@@ -617,7 +618,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
 const FAQ: [string, string][] = [
   ['What can the bots do?', 'Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.'],
   ['Do they do things without asking?', 'Emails, posts and anything final wait until you say yes. Fino never pays for you.'],
-  ['How much does Badr cost?', 'Plans start at $14.99 a month, and your first day is free. Cancel anytime.'],
+  ['How much does Badr cost?', 'Plans start at $29.99 a month, and your first day is free. Cancel anytime.'],
   ['Do I need my own AI account?', 'With Google or your email. No AI account or setup needed.'],
   ['Where can I use Badr?', 'On Mac, Windows and the web. Your team and your chats are the same everywhere.'],
 ];

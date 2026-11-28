@@ -273,7 +273,8 @@
 
 /* ---- plans: three soft cards ---- */
 .lp-plans { padding: 0 0 clamp(96px, 11vw, 140px); }
-.lp-plans__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 976px; margin: 40px auto 0; padding: 0; list-style: none; }
+.lp-plans__row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; max-width: 1180px; margin: 40px auto 0; padding: 0; list-style: none; }
+@media (min-width: 961px) and (max-width: 1120px) { .lp-plans__row { grid-template-columns: repeat(2, 1fr); max-width: 760px; } }
 .lp-plans__row > li { display: flex; flex-direction: column; padding: 28px; border-radius: 24px; background: var(--card); text-align: start; }
 .lp-plans__name { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--ink-2); }
 .lp-plans__name em { padding: 3px 10px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink); font-size: 12px; font-style: normal; font-weight: 500; }

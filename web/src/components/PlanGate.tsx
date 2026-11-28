@@ -7,7 +7,7 @@ import { Badr } from './Badr';
 import '../styles/plan-gate.css';
 import { BlurWords } from '../lib/motion';
 
-const SHOWN = ['starter', 'pro', 'max'];
+const SHOWN = ['starter', 'pro', 'max', 'ultra'];
 const FROM_GATE = 'fino.checkoutFromGate';
 /** True when this page load is the return from a checkout started on the plan screen (read once). */
 export const cameFromGate = (() => {

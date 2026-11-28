@@ -23,12 +23,12 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'free', name: 'Free', priceUsd: 0, bots: 1, computer: false, computerHours: 0, voiceMinutes: 10, marketplace: 'personal',
     highlights: ['Badr + 1 bot', 'Chat and voice messages', 'Personal marketplace bots'],
   },
-  // Each plan adds to the one before. Prices are set for about a 70% margin at typical use: a computer hour costs
-  // Fino about $0.42 (Orgo $0.055 plus ~$0.36 of screen-step AI), a computer's idle disk ~$2 a month, Stripe ~3% + $0.30,
-  // and hosted AI is capped per plan in hosted-models.ts so even the heaviest user stays above ~55%.
+  // Each plan adds to the one before (2026-11-28: $30 / $50 / $100 / $200, no $15 plan). Every limit is set so a
+  // customer who uses all of it still leaves a 30% margin: card fees ~3% + $0.30, the computer's disk ~$2 a month and
+  // Orgo ~$0.055 an hour, calls ~$0.07 a minute, and Badr's own AI capped per day, week and month (hosted-models.ts).
   starter: {
-    id: 'starter', name: 'Starter', priceUsd: 14.99, bots: 5, computer: true, computerHours: 3, voiceMinutes: 30, marketplace: 'personal',
-    highlights: ['Badr + 5 bots', 'Ready-to-work bots with superpowers', 'Their own computer · 3 h a month', 'Use your own Claude Code and ChatGPT'],
+    id: 'starter', name: 'Starter', priceUsd: 29.99, bots: 5, computer: true, computerHours: 5, voiceMinutes: 60, marketplace: 'personal',
+    highlights: ['Badr + 5 bots', 'Ready-to-work bots with superpowers', 'Their own computer · 5 h a month', 'Use your own Claude Code and ChatGPT'],
   },
   pro: {
     id: 'pro', name: 'Pro', priceUsd: 49.99, bots: 15, computer: true, computerHours: 20, voiceMinutes: 120, marketplace: 'all',
@@ -40,7 +40,7 @@ export const PLANS: Record<PlanId, Plan> = {
   },
   ultra: {
     id: 'ultra', name: 'Ultra', priceUsd: 199.99, bots: null, computer: true, computerHours: 150, voiceMinutes: 600, marketplace: 'all',
-    highlights: ['Everything in Max, plus', 'Unlimited bots', 'Their own computer · 150 h a month', 'Early access to new features'],
+    highlights: ['Everything in Max, plus', 'Unlimited bots', 'Their own computer · 150 h a month', 'The most included AI', 'Early access to new features'],
   },
   enterprise: {
     id: 'enterprise', name: 'Enterprise', priceUsd: null, bots: null, computer: true, computerHours: null, voiceMinutes: null, marketplace: 'all',

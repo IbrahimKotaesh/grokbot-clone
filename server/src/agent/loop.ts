@@ -426,7 +426,8 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         appendRow(botId, 'notice', {
           type: 'notice',
           tone: 'error',
-          text: tried.length
+          // Badr's own daily/weekly/monthly limit: say exactly when it comes back.
+          text: e?.code === 'usage_limit' ? String(e.message) : tried.length
             ? 'All your connected models are out of usage right now. Add another model in Account → AI models, or try again later.'
             : `${PROVIDER_NAMES[provider] ?? provider} is out of usage right now. Connect another model in Account → AI models so your bots can switch automatically.`,
         });

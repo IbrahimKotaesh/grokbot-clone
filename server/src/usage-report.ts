@@ -76,7 +76,7 @@ export function usageReport(userId: string, range: UsageRange) {
   // This month against the plan: what's left, and where the month is heading.
   const monthCost = rows.filter((r) => r.started_at >= monthStart()).reduce((a, r) => a + costOf(r), 0);
   const d = new Date(), daysIn = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(), elapsed = Math.max(1, (now - monthStart()) / DAY);
-  const plan = planOf(userId), included = hostedSummary(userId).usage;
+  const plan = planOf(userId), summary = hostedSummary(userId), included = summary.usage;
   return {
     range, from, to: now, hourly,
     buckets: buckets.map((b) => ({ ...b, cost: round(b.cost) })),
@@ -89,6 +89,8 @@ export function usageReport(userId: string, range: UsageRange) {
       computer: { usedMinutes: computerMinutesThisMonth(userId), limitMinutes: plan.computerHours === null ? null : plan.computerHours * 60 },
       // Percent of the month's included AI already used (chat and computer work), as the model picker shows it.
       includedUsed: { chat: included.chat, computer: included.computer },
+      // Badr's own AI per day, week and month: percent used and when each comes back (null = no limit).
+      limits: summary.limits,
     },
   };
 }

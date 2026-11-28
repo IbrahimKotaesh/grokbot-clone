@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Cpu, Sparkles, Timer } from 'lucide-react';
-import { lang, t } from '../lib/i18n';
+import { lang, locale, t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 import { useStore, displayName } from '../store';
 import { BlurWords } from '../lib/motion';
@@ -14,7 +14,7 @@ interface Report {
   range: Range; from: number; to: number; hourly: boolean; buckets: Bucket[];
   totals: { turns: number; tokens: number; input: number; output: number; cost: number; busyMinutes: number; computerSteps: number; images: number };
   bots: BotUse[]; models: ModelUse[];
-  month: { cost: number; projected: number; plan: { id: string; name: string; priceUsd: number; computerHours: number | null }; computer: { usedMinutes: number; limitMinutes: number | null }; includedUsed: { chat: number | null; computer: number | null } };
+  month: { cost: number; projected: number; plan: { id: string; name: string; priceUsd: number; computerHours: number | null }; computer: { usedMinutes: number; limitMinutes: number | null }; includedUsed: { chat: number | null; computer: number | null }; limits?: { day: { pct: number; resetsAt: number }; week: { pct: number; resetsAt: number }; month: { pct: number; resetsAt: number } } | null };
 }
 
 const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
@@ -41,6 +41,14 @@ function Seg<T extends string>({ value: v, options, onPick, label }: { value: T;
 }
 
 /** A "what's left" card: a meter that empties as the month is used. */
+/** When a usage window comes back: "in 5 h", "on Monday", "on 1 December" (in the reader's language). */
+function backIn(at: number): string {
+  const h = Math.ceil((at - Date.now()) / 3600_000);
+  if (h <= 24) return t('in {n} h', { n: Math.max(1, h) });
+  const day = new Date(at).toLocaleDateString(locale, h <= 7 * 24 ? { weekday: 'long' } : { day: 'numeric', month: 'long' });
+  return t('on {day}', { day });
+}
+
 function Left({ icon, title, left, of, pct }: { icon: React.ReactNode; title: string; left: string; of: string; pct: number | null }) {
   const remaining = pct === null ? 100 : Math.max(0, 100 - pct);
   return (
@@ -136,10 +144,11 @@ export function UsageView() {
                 <Left icon={<Timer size={15} />} title={t('Computer time left')} pct={compPct}
                   left={compLeft === null ? t('Unlimited') : dur(compLeft)}
                   of={m.computer.limitMinutes === null ? t('{used} used this month', { used: dur(m.computer.usedMinutes) }) : t('{used} of {all} used', { used: dur(m.computer.usedMinutes), all: dur(m.computer.limitMinutes) })} />
-                <Left icon={<Sparkles size={15} />} title={t('Badr AI left for chat')} pct={m.includedUsed.chat}
-                  left={m.includedUsed.chat === null ? t('Unlimited') : `${Math.max(0, 100 - m.includedUsed.chat)}%`} of={t('Of what your plan includes this month')} />
-                <Left icon={<Cpu size={15} />} title={t('Badr AI left for computer work')} pct={m.includedUsed.computer}
-                  left={m.includedUsed.computer === null ? t('Unlimited') : `${Math.max(0, 100 - m.includedUsed.computer)}%`} of={t('Of what your plan includes this month')} />
+                {/* Badr's own AI, spread over the month like the big AI apps: today, this week, this month. */}
+                {m.limits ? ([['day', t('Badr AI left today')], ['week', t('Badr AI left this week')], ['month', t('Badr AI left this month')]] as const).map(([k, title]) => (
+                  <Left key={k} icon={k === 'month' ? <Cpu size={15} /> : <Sparkles size={15} />} title={title} pct={m.limits![k].pct}
+                    left={`${Math.max(0, 100 - m.limits![k].pct)}%`} of={t('Comes back {when}', { when: backIn(m.limits![k].resetsAt) })} />
+                )) : <Left icon={<Sparkles size={15} />} title={t('Badr AI')} pct={null} left={t('Unlimited')} of={t('No daily or weekly limit on your account')} />}
               </section>
 
               <div className="use-period">
