@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type RefObject } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ElementType, type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Check, Download, Eye, Globe, Hand, Minus, Plus, ShieldCheck, X } from 'lucide-react';
 import { AuthPanel } from './AuthPanel';
-import { CLAY, characterDataUri } from '../../../packages/contracts/src/characters';
+import { characterDataUri } from '../../../packages/contracts/src/characters';
 import { JOBS } from '../../../packages/contracts/src/jobs';
 import { lang, setLangChoice, t } from '../lib/i18n';
+import '../styles/lp-fonts.css';
+import '../styles/auth.css';
 import '../styles/landing.css';
-import { BlurWords, ScrollContainer } from '../lib/motion';
 
-/** A section headline: words arrive out of a blur, and it fades away as it scrolls off the top. */
-const Headline = ({ text }: { text: string }) => <BlurWords as="h2" className="lp-h2" when="view" text={text} />;
-
-/* The public front door for web visitors: what Fino is, a live demo, sign-up, and the Mac app. */
+/* The public front door for web visitors: what Badr is, a live demo, the cost, plans, sign-up and the desktop apps.
+   Look: warm cream paper, deep green and ink bands, lilac buttons with an ink edge, and a serif whose last words lean
+   into italic. One signature moment: a messy request flows along a curve into Badr and comes out as finished work. */
 
 const FIRST_TASK = 'fino.firstTask';
 const OFFER_MAC = 'fino.offerMac';
@@ -22,16 +22,18 @@ const store = {
 /** The job typed on the landing page, handed once to the first chat after sign-in. */
 export const firstTask = { peek: () => store.get(FIRST_TASK) ?? '', used: () => store.drop(FIRST_TASK) };
 
-type Bot = { id: string; name: string; role: string; color: string; img: string; reply: string; match: RegExp };
+const reducedMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+type Bot = { id: string; name: string; role: string; img: string; reply: string; match: RegExp };
 // An example team. Every new account starts with Badr; people add the others themselves.
 const TEAM: Bot[] = [
-  { id: 'nour', name: 'Nour', role: 'Research', color: 'violet', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
-  { id: 'quinn', name: 'Badr', role: 'Chief of Staff', color: 'yellow', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
-  { id: 'kai', name: 'Kai', role: 'Inbox', color: 'blue', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
-  { id: 'sol', name: 'Sol', role: 'Planner', color: 'magenta', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
+  { id: 'nour', name: 'Nour', role: 'Research', img: characterDataUri('architect', 'violet'), reply: 'On it. I’ll open my browser, search, and come back with a shortlist.', match: /find|search|research|compare|flight|job|price|look up|best/i },
+  { id: 'quinn', name: 'Badr', role: 'Chief of Staff', img: characterDataUri('accountant', 'yellow'), reply: 'Got it. I’ll take this on and hand parts to the right teammate.', match: /$^/ },
+  { id: 'kai', name: 'Kai', role: 'Inbox', img: characterDataUri('medic', 'blue'), reply: 'I’ll read your inbox, flag what matters, and draft replies for your OK.', match: /mail|inbox|repl|newsletter|unsubscribe/i },
+  { id: 'sol', name: 'Sol', role: 'Planner', img: characterDataUri('florist', 'magenta'), reply: 'I’ll check your calendar and lay out the week, with time to breathe.', match: /plan|week|calendar|schedule|meeting|day|remind/i },
 ];
 const QUINN = TEAM[1];
-// Badr, Fino's main character, is the logo: yellow on the tomato header.
+// Badr, the main character, is the logo.
 const MARK = characterDataUri('accountant', 'yellow');
 const pickBot = (task: string) => TEAM.find((b) => b.match.test(task)) ?? QUINN;
 const EXAMPLES = ['Summarize this report', 'Work out this year’s taxes', 'Find cheap flights to Barcelona', 'What’s on my plate today?', 'Write an email for me'];
@@ -42,7 +44,7 @@ const HINTS = ['Write an email for me', 'Find cheap flights to Lisbon', 'What’
 function useTypedHint() {
   const [hint, setHint] = useState(() => t(HINTS[0]));
   useEffect(() => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedMotion()) return;
     let i = 0, n = t(HINTS[0]).length, dir = -1;
     let timer = 0;
     const tick = () => {
@@ -58,6 +60,20 @@ function useTypedHint() {
     return () => clearTimeout(timer);
   }, []);
   return hint;
+}
+
+/** A section headline in the serif, its last words leaning into italic. Words rise out of a soft blur as it arrives. */
+function Head({ text, em = 1, as: Tag = 'h2', className = 'lp-h2' }: { text: string; em?: number; as?: ElementType; className?: string }) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const cut = Math.max(0, words.length - em);
+  return (
+    // Arabic needs dir="rtl" here: the words are separate boxes, so the page's automatic direction can't see the letters.
+    <Tag className={className} data-reveal="words" aria-label={text} dir={/[\u0590-\u08ff]/.test(text) ? 'rtl' : undefined}>
+      {words.map((w, i) => (
+        <Fragment key={i}>{i > 0 && ' '}<span aria-hidden className={i >= cut ? 'lp-w lp-w--em' : 'lp-w'} style={{ '--w': i } as CSSProperties}>{w}</span></Fragment>
+      ))}
+    </Tag>
+  );
 }
 
 export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (mode: 'signin' | 'signup') => void }) {
@@ -87,59 +103,63 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
   }, [task]);
 
   return (
-    <ScrollContainer value={root}>
     <div className="lp" ref={root}>
-      <section className="lp-open">
-        <nav className="lp-nav lp-in" style={{ '--d': '0ms' } as CSSProperties} aria-label="Badr">
-          <a className="lp-mark" href="/welcome" aria-label="Badr"><img src={MARK} alt="" width={36} height={36} /><span>{t('Badr')}</span></a>
+      <a className="lp-news" href="#download">{t('Badr for Mac and Windows.')} <span>{t('Download')} <ArrowRight size={15} strokeWidth={2.4} aria-hidden /></span></a>
+      <header className="lp-top">
+        <nav className="lp-nav" aria-label="Badr">
+          <a className="lp-mark" href="/welcome" aria-label="Badr"><img src={MARK} alt="" width={34} height={34} /><span>{t('Badr')}</span></a>
           <div className="lp-nav__links">
             <a href="#demo">{t('See it work')}</a>
             <a href="#plans">{t('Plans')}</a>
             <a href="#download">{t('Download')}</a>
+          </div>
+          <div className="lp-nav__end">
             <LangSwitch />
             {signedIn
-              ? <a className="lp-pill lp-pill--light" href="/">{t('Open Fino')}</a>
+              ? <a className="lp-btn lp-btn--sm" href="/">{t('Open Fino')}</a>
               : <><button type="button" className="lp-nav__signin" onClick={() => start('signin')}>{t('Sign in')}</button>
-                <button type="button" className="lp-pill lp-pill--light" onClick={() => start('signup')}>{t('Get started')}</button></>}
+                <button type="button" className="lp-btn lp-btn--sm" onClick={() => start('signup')}>{t('Get started')}</button></>}
           </div>
         </nav>
+      </header>
 
-        <div className="lp-open__body">
-          <h1 className="lp-h1" aria-label={`${t('Hire a team.')} ${t('Not a payroll.')}`}><BlurWords className="lp-line lp-line--words" text={t('Hire a team.')} delay={0.1} stagger={0.09} /> <BlurWords className="lp-line lp-line--words" text={t('Not a payroll.')} delay={0.32} stagger={0.09} /></h1>
-          <p className="lp-lede lp-in" style={{ '--d': '300ms' } as CSSProperties}>{t('Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.')}</p>
+      <section className="lp-hero">
+        <h1 className="lp-h1" aria-label={`${t('Hire a team.')} ${t('Not a payroll.')}`}>
+          <span className="lp-h1__a" aria-hidden>{t('Hire a team.')}</span>
+          <em className="lp-h1__b" aria-hidden>{t('Not a payroll.')}</em>
+        </h1>
+        <p className="lp-lede lp-in" style={{ '--d': '420ms' } as CSSProperties}>{t('Fino bots have a name, a memory and their own computer. Tell them what you need, by text or by voice, and they get to work around the clock. Plans start at less a month than an assistant earns in a day.')}</p>
 
-          <form className="lp-slip lp-in" style={{ '--d': '400ms' } as CSSProperties} onSubmit={giveJob}>
-            <label htmlFor="lp-task" className="lp-sr">{t('What should your team do?')}</label>
-            <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={hint} autoComplete="off" maxLength={2000} />
-            <button type="submit" className="lp-slip__go">{t(signedIn ? 'Open Fino' : 'Get started')} <ArrowRight size={20} strokeWidth={2.4} aria-hidden /></button>
-          </form>
-          <div className="lp-chips lp-in" style={{ '--d': '480ms' } as CSSProperties} role="group" aria-label={t('Example jobs')}>
-            {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === t(ex)}>{t(ex)}</button>)}
-          </div>
-          <p className="lp-models lp-in" style={{ '--d': '540ms' } as CSSProperties}>
-            <span>{t('Powered by the world’s best AI')}</span>
-            <b><img src="/brands/chatgpt.svg" alt="" width={18} height={18} />ChatGPT</b>
-            <b><img src="/brands/claude.svg" alt="" width={18} height={18} />Claude</b>
-          </p>
+        <form className="lp-task lp-in" style={{ '--d': '540ms' } as CSSProperties} onSubmit={giveJob}>
+          <label htmlFor="lp-task" className="lp-sr">{t('What should your team do?')}</label>
+          <input id="lp-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder={hint} autoComplete="off" maxLength={2000} />
+          <button type="submit" className="lp-btn">{t(signedIn ? 'Open Fino' : 'Get started')} <ArrowRight size={19} strokeWidth={2.4} aria-hidden /></button>
+        </form>
+        <div className="lp-reply" aria-live="polite">
+          {said && <p key={said.id}><img src={said.img} alt="" width={30} height={30} /><span><b>{t(said.name)} · {t(said.role)}</b>{t(said.reply)}</span></p>}
         </div>
+        <div className="lp-chips lp-in" style={{ '--d': '640ms' } as CSSProperties} role="group" aria-label={t('Example jobs')}>
+          {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => choose(ex)} aria-pressed={task === t(ex)}>{t(ex)}</button>)}
+        </div>
+        <p className="lp-models lp-in" style={{ '--d': '720ms' } as CSSProperties}>
+          <span>{t('Powered by the world’s best AI')}</span>
+          <b><img src="/brands/chatgpt.svg" alt="" width={16} height={16} />ChatGPT</b>
+          <b><img src="/brands/claude.svg" alt="" width={16} height={16} />Claude</b>
+        </p>
+      </section>
 
-        <div className="lp-team">
-          <div className="lp-bubble-slot" aria-live="polite">{said && <blockquote key={said.id} className="lp-bubble"><b>{t(said.name)} · {t(said.role)}</b>{t(said.reply)}</blockquote>}</div>
-          {TEAM.map((b, i) => (
-            <figure key={b.id} className={`lp-bot lp-bot--${b.id}${said?.id === b.id ? ' is-up' : ''}`} style={{ '--d': `${560 + i * 90}ms`, '--bob': `${i * -0.9}s`, '--c': CLAY[b.color], '--k': `${i * -1.7}s` } as CSSProperties}>
-              <span className="lp-bot__pop">
-                <Screen id={b.id} />
-                <span className="lp-bot__lift"><span className="lp-bot__float"><img src={b.img} alt="" draggable={false} /></span></span>
-              </span>
-              <span className="lp-deskbar" aria-hidden>
-                <span className="lp-kb"><i className="lp-hand" /><i className="lp-hand lp-hand--r" /></span>
-                {b.id === 'quinn' && <span className="lp-mug"><i /><i /></span>}
-                {b.id === 'sol' && <span className="lp-plant"><i /><i /><i /></span>}
-              </span>
-              <figcaption><b>{t(b.name)}</b> <span>{t(b.role)}</span></figcaption>
-            </figure>
+      <FlowBand />
+
+      <section className="lp-apps">
+        <p className="lp-apps__say" data-reveal>{t('It works where you already work.')}</p>
+        <div className="lp-marquee" aria-label={t('Some apps you can connect')} role="list">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="lp-marquee__row" aria-hidden={copy === 1 || undefined}>
+              {APPS.map(([name, src]) => <span key={name} role={copy ? undefined : 'listitem'} className="lp-marquee__app"><img src={src} alt="" width={26} height={26} />{name}</span>)}
+            </div>
           ))}
         </div>
+        <p className="lp-apps__copy" data-reveal>{t('Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.')}</p>
       </section>
 
       <Cost onStart={() => start('signup')} signedIn={signedIn} />
@@ -148,30 +168,18 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <Jobs />
 
-      <FirstSteps />
-
-      <section className="lp-apps">
-        <div className="lp-wrap lp-apps__in">
-          <Headline text={t('It works where you already work.')} />
-          <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Connect Gmail, Google Calendar, Drive, Slack, Notion and hundreds more. Bots read on their own; anything that sends, posts or deletes waits for your OK first.')}</p>
-          <ul className="lp-logos" aria-label={t('Some apps you can connect')}>
-            {[['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Google Docs', '/assets/apps/google-docs.png'], ['Google Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png'], ['Canva', '/assets/apps/canva.png']].map(([name, src], i) => (
-              <li key={name} data-reveal style={{ '--i': 2 + i } as CSSProperties}><img src={src} alt="" width={30} height={30} /><span>{name}</span></li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
       <section className="lp-charge">
         <div className="lp-wrap">
-          <Headline text={t('You stay in charge.')} />
+          <Head text={t('You stay in charge.')} em={2} />
           <ol className="lp-rules">
-            <li data-reveal style={{ '--i': 1 } as CSSProperties}><Eye size={28} aria-hidden /><div><b>{t('Watch it live.')}</b> {t('Every click the bot makes shows up on screen, cursor and all.')}</div></li>
-            <li data-reveal style={{ '--i': 2 } as CSSProperties}><ShieldCheck size={28} aria-hidden /><div><b>{t('Approve first.')}</b> {t('Emails, posts and anything final wait until you say yes. Fino never pays for you.')}</div></li>
-            <li data-reveal style={{ '--i': 3 } as CSSProperties}><Hand size={28} aria-hidden /><div><b>{t('Take over anytime.')}</b> {t('Grab the browser yourself, then hand it back.')}</div></li>
+            <li data-reveal style={{ '--i': 1 } as CSSProperties}><span className="lp-rules__icon"><Eye size={22} aria-hidden /></span><b>{t('Watch it live.')}</b><p>{t('Every click the bot makes shows up on screen, cursor and all.')}</p></li>
+            <li data-reveal style={{ '--i': 2 } as CSSProperties}><span className="lp-rules__icon"><ShieldCheck size={22} aria-hidden /></span><b>{t('Approve first.')}</b><p>{t('Emails, posts and anything final wait until you say yes. Fino never pays for you.')}</p></li>
+            <li data-reveal style={{ '--i': 3 } as CSSProperties}><span className="lp-rules__icon"><Hand size={22} aria-hidden /></span><b>{t('Take over anytime.')}</b><p>{t('Grab the browser yourself, then hand it back.')}</p></li>
           </ol>
         </div>
       </section>
+
+      <FirstSteps />
 
       <Plans onStart={() => start('signup')} signedIn={signedIn} />
 
@@ -179,9 +187,10 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
 
       <section className="lp-close" id="start">
         <div className="lp-wrap lp-close__in">
-          <div className="lp-close__copy" data-reveal>
-            <h2 className="lp-h2">{t('Meet your team today.')}</h2>
-            <p className="lp-copy">{t('Create your account with Google or your email. Badr, your Chief of Staff, is waiting in the first chat.')}</p>
+          <div className="lp-close__copy">
+            <Head text={t('Meet your team today.')} em={1} />
+            <p className="lp-copy" data-reveal>{t('Create your account with Google or your email. Badr, your Chief of Staff, is waiting in the first chat.')}</p>
+            <img className="lp-close__badr" src={MARK} alt="" width={120} height={120} draggable={false} />
           </div>
           <div className="lp-close__panel" data-reveal style={{ '--i': 2 } as CSSProperties}>
             {signedIn ? <div className="auth"><h2 className="auth__title">{t('You’re signed in.')}</h2><a className="auth__submit" href="/">{t('Open Fino')}</a></div> : <AuthPanel initial="signup" />}
@@ -196,36 +205,74 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </div>
       </footer>
     </div>
-    </ScrollContainer>
   );
 }
 
-/* Each bot's own computer on the opening scene: a looping, wordless picture of the work it does.
-   Nour searches the web, Badr ticks off the team's tasks, Kai writes an email that waits for your OK,
-   Sol fills the week. Pure CSS; with reduced motion every screen shows its finished state. */
-function Screen({ id }: { id: string }) {
-  const rows = (n: number) => Array.from({ length: n }, (_, k) => k);
+const APPS: [string, string][] = [['Slack', '/assets/icons/slack.svg'], ['Notion', '/assets/apps/notion.png'], ['Google Docs', '/assets/apps/google-docs.png'], ['Google Sheets', '/assets/apps/google-sheets.png'], ['Dropbox', '/assets/apps/dropbox.png'], ['Linear', '/assets/apps/linear.png'], ['Canva', '/assets/apps/canva.png'], ['ChatGPT', '/brands/chatgpt.svg'], ['Claude', '/brands/claude.svg']];
+
+/* The signature moment. A request, said the way people really talk, drifts along a curve into Badr; finished work
+   flows out the other side. Each line holds its phrase a few times and slides by exactly one phrase, so the loop has
+   no seam. It runs only while on screen; with reduced motion both lines rest in place. */
+const MESSY = 'umm so can you find me a flight to Lisbon next week, not too early… oh and a hotel near the office, and tell Sara I’m coming, thanks —';
+const CLEAN = 'Lisbon, 12–15 March · direct flight at 8:40, $186 · hotel near the office, $132 a night · Sara knows you’re coming · ready for your OK ·';
+const REPEAT = 3;
+function FlowBand() {
+  const box = useRef<HTMLDivElement>(null);
+  const inText = useRef<SVGTextElement>(null);
+  const outText = useRef<SVGTextElement>(null);
+  const inPath = useRef<SVGTextPathElement>(null);
+  const outPath = useRef<SVGTextPathElement>(null);
+  useEffect(() => {
+    const a = inPath.current, b = outPath.current, ta = inText.current, tb = outText.current, el = box.current;
+    if (!a || !b || !ta || !tb || !el) return;
+    let la = 1, lb = 1, raf = 0, on = false, last = 0, sa = 0, sb = 0;
+    const measure = () => { la = ta.getComputedTextLength() / REPEAT || 1; lb = tb.getComputedTextLength() / REPEAT || 1; };
+    const place = () => { a.setAttribute('startOffset', String(-la + (sa % la))); b.setAttribute('startOffset', String(-lb + (sb % lb))); };
+    measure(); place();
+    document.fonts?.ready.then(() => { measure(); place(); });
+    // Phones use bigger letters (CSS), so the phrase length changes with the window.
+    const resize = () => { measure(); place(); };
+    window.addEventListener('resize', resize);
+    if (reducedMotion()) { sa = la * 0.55; sb = lb * 0.6; place(); return () => window.removeEventListener('resize', resize); }
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now;
+      sa += dt * 58; sb += dt * 46;
+      place();
+      if (on) raf = requestAnimationFrame(tick);
+    };
+    const io = new IntersectionObserver(([e]) => {
+      const was = on; on = e.isIntersecting;
+      if (on && !was) { last = 0; raf = requestAnimationFrame(tick); }
+    });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); on = false; window.removeEventListener('resize', resize); };
+  }, []);
+  const messy = Array(REPEAT).fill(t(MESSY)).join('  ');
+  const clean = Array(REPEAT).fill(t(CLEAN)).join('  ');
+  // Phones see the middle of the scene a little larger, so both lines stay long enough to read.
+  const [phone, setPhone] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 560px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(max-width: 560px)');
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
   return (
-    <span className={`lp-scr lp-scr--${id}`} aria-hidden>
-      {id === 'nour' && <>
-        <i className="lp-scr__url" />
-        <i className="lp-scr__find"><b /></i>
-        {rows(3).map((k) => <i key={k} className={`lp-scr__hit lp-k${k + 1}`}><s /><u /></i>)}
-      </>}
-      {id === 'quinn' && <>
-        {rows(3).map((k) => <i key={k} className={`lp-scr__task lp-k${k + 1}`}><s><b /></s><u /></i>)}
-        <i className="lp-scr__bar"><b /></i>
-      </>}
-      {id === 'kai' && <>
-        <i className="lp-scr__to" /><i className="lp-scr__subj" />
-        {rows(3).map((k) => <i key={k} className={`lp-scr__line lp-l${k + 1}`} />)}
-        <i className="lp-scr__ok lp-k4">✓</i>
-      </>}
-      {id === 'sol' && <>
-        <i className="lp-scr__grid" />
-        {rows(4).map((k) => <i key={k} className={`lp-scr__slot lp-s${k + 1} lp-k${k + 1}`} />)}
-      </>}
-    </span>
+    <div className="lp-flow" ref={box} role="img" aria-label={t('Badr turns a messy request into finished work')}>
+      <svg viewBox={phone ? '370 40 700 290' : '0 0 1440 340'} preserveAspectRatio={phone ? 'xMidYMid meet' : 'xMidYMid slice'} aria-hidden>
+        <defs>
+          <path id="lp-flow-in" d="M -80 64 C 230 30, 420 290, 646 196" />
+          <path id="lp-flow-out" d="M 794 196 C 1010 92, 1170 330, 1520 236" />
+        </defs>
+        <text ref={inText} className="lp-flow__in"><textPath ref={inPath} href="#lp-flow-in">{messy}</textPath></text>
+        <text ref={outText} className="lp-flow__out"><textPath ref={outPath} href="#lp-flow-out">{clean}</textPath></text>
+        <g className="lp-flow__pill" transform="translate(720 196)">
+          <rect x="-92" y="-36" width="184" height="72" rx="36" />
+          <image href={MARK} x="-82" y="-29" width="58" height="58" />
+          {[0, 1, 2, 3, 4, 5].map((i) => <rect key={i} className="lp-flow__bar" x={-8 + i * 13} y="-14" width="6" height="28" rx="3" style={{ '--b': i } as CSSProperties} />)}
+        </g>
+      </svg>
+    </div>
   );
 }
 
@@ -305,7 +352,7 @@ function Demo() {
   return (
     <section className="lp-demo" id="demo" ref={ref}>
       <div className="lp-wrap">
-        <Headline text={t('Watch it work.')} />
+        <Head text={t('Watch it work.')} em={1} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Ask in chat. The bot opens its own browser, and you see every move it makes.')}</p>
       </div>
       {/* Fading is a data attribute, not a class: a changing className would wipe the reveal's is-in class and hide the demo. */}
@@ -344,17 +391,13 @@ function Demo() {
 function useReveal(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = root.current; if (!el) return;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedMotion()) return;
     el.classList.add('lp--reveal');
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
     }, { root: el, rootMargin: '0px 0px 15% 0px', threshold: 0 });
     el.querySelectorAll('[data-reveal]').forEach((n) => io.observe(n));
-    // The opening's bots keep moving only while you can see them; scrolled away, their animations rest.
-    const open = el.querySelector('.lp-open');
-    const idle = new IntersectionObserver(([e]) => open?.classList.toggle('is-away', !e.isIntersecting), { root: el });
-    if (open) idle.observe(open);
-    return () => { io.disconnect(); idle.disconnect(); };
+    return () => io.disconnect();
   }, [root]);
 }
 
@@ -399,7 +442,7 @@ function DesktopBand() {
     <section className="lp-dl" id="download">
       <div className="lp-wrap">
         <div className="lp-dl__head" data-reveal>
-          <h2 className="lp-h2">{t('Badr for Mac and Windows.')}</h2>
+          <Head text={t('Badr for Mac and Windows.')} em={2} />
           <p className="lp-copy">{t('Your team in its own window, always one click away. Included in every plan.')}</p>
         </div>
         <div className="lp-dl__grid">
@@ -416,8 +459,8 @@ function DesktopBand() {
                   {os === id && <em>{t('Your computer')}</em>}
                 </header>
                 {v?.available === false
-                  ? <span className="lp-pill lp-pill--line lp-dl__btn is-off">{t('Coming soon')}</span>
-                  : <a className={`lp-pill ${id === mine ? 'lp-pill--dark' : 'lp-pill--line'} lp-dl__btn`} href={href} download onClick={() => store.drop(OFFER_MAC)}>
+                  ? <span className="lp-btn lp-btn--line lp-dl__btn is-off">{t('Coming soon')}</span>
+                  : <a className={`lp-btn ${id === mine ? '' : 'lp-btn--line'} lp-dl__btn`} href={href} download onClick={() => store.drop(OFFER_MAC)}>
                       <Download size={18} strokeWidth={2.6} aria-hidden />{t(id === 'mac' ? 'Download for Mac' : 'Download for Windows')}
                     </a>}
                 <ol className="lp-dl__steps">{steps[id].map((s) => <li key={s}>{t(s)}</li>)}</ol>
@@ -471,7 +514,7 @@ function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean })
   return (
     <section className="lp-cost" id="cost">
       <div className="lp-wrap">
-        <Headline text={t('A team for less than one day of wages.')} />
+        <Head text={t('A team for less than one day of wages.')} em={3} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('One full-time assistant costs at least {amount} a month, before employer costs. Fino bots work nights and weekends, remember how you like things done, and each one has its own computer.', { amount: usd(ASSISTANT_SALARY) })}</p>
 
         <div className="lp-cost__ask" data-reveal style={{ '--i': 2 } as CSSProperties}>
@@ -509,7 +552,7 @@ function Cost({ onStart, signedIn }: { onStart: () => void; signedIn: boolean })
 
         <div className="lp-cost__out" data-reveal style={{ '--i': 5 } as CSSProperties}>
           <p>{t('You keep')} <strong key={humanYear - finoYear} className="lp-total">{usd(humanYear - finoYear)}</strong> {t('a year.')}</p>
-          <button type="button" className="lp-pill lp-pill--blue" onClick={onStart}>{t(signedIn ? 'Open Fino' : 'Build my team')} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
+          <button type="button" className="lp-btn" onClick={onStart}>{t(signedIn ? 'Open Fino' : 'Build my team')} <ArrowRight size={18} strokeWidth={2.4} aria-hidden /></button>
         </div>
         <p className="lp-fine" data-reveal style={{ '--i': 6 } as CSSProperties}>{t('Bots take on routine work on a computer: email, research, sheets, forms and follow-ups. You decide what they do, and they ask before anything final.')}</p>
       </div>
@@ -537,7 +580,7 @@ function Jobs() {
   return (
     <section className="lp-jobs" id="jobs">
       <div className="lp-wrap">
-        <Headline text={t('Give each bot a job worth doing.')} />
+        <Head text={t('Give each bot a job worth doing.')} em={2} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Pick a job to see what its bot tells you, and what it waits for you to approve.')}</p>
         <div className="lp-jobs__in" data-reveal style={{ '--i': 2 } as CSSProperties}>
           <div className="lp-jobs__list" role="tablist" aria-label={t('Jobs')}>
@@ -584,7 +627,7 @@ function FirstSteps() {
   return (
     <section className="lp-steps">
       <div className="lp-wrap">
-        <Headline text={t('Your first job in three steps.')} />
+        <Head text={t('Your first job in three steps.')} em={2} />
         <ol className="lp-steps__row">
           {steps.map((s, i) => (
             <li key={s.t} data-reveal style={{ '--i': 1 + i } as CSSProperties}><span className="lp-steps__n" aria-hidden>{i + 1}</span><b>{t(s.t)}</b><p>{t(s.d)}</p></li>
@@ -601,7 +644,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
   return (
     <section className="lp-plans" id="plans">
       <div className="lp-wrap">
-        <Headline text={t('Simple plans. No hiring.')} />
+        <Head text={t('Simple plans. No hiring.')} em={2} />
         <p className="lp-copy" data-reveal style={{ '--i': 1 } as CSSProperties}>{t('Every plan includes Badr, Fino’s own AI models and the safety rules. Prices in US dollars a month; cancel anytime.')}</p>
         <ul className="lp-plans__row">
           {list.map((p, i) => (
@@ -611,7 +654,7 @@ function Plans({ onStart, signedIn }: { onStart: () => void; signedIn: boolean }
               <strong>{usd(p.price)}<small>{t('/month')}</small></strong>
               <span className="lp-plans__bots">{t(p.bots)}</span>
               <ul>{p.lines.map((l) => l.startsWith('Everything in ') ? <li key={l} className="lp-plans__plus">{t(l)}</li> : <li key={l}><Check size={15} strokeWidth={2.6} aria-hidden />{t(l)}</li>)}</ul>
-              <button type="button" className={`lp-pill ${p.name === 'Max' ? 'lp-pill--blue' : 'lp-pill--line'}`} onClick={onStart}>{signedIn ? t('Open Fino') : t('Start with {plan}', { plan: p.name })}</button>
+              <button type="button" className={`lp-btn ${p.name === 'Max' ? '' : 'lp-btn--line'}`} onClick={onStart}>{signedIn ? t('Open Fino') : t('Start with {plan}', { plan: p.name })}</button>
             </li>
           ))}
         </ul>

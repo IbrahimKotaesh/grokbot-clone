@@ -1119,4 +1119,7 @@ export const nlWeb: Record<string, string> = {
   "In this period": "In deze periode",
   "{s} sec": "{s} sec",
   "{h} h": "{h} u",
+  "umm so can you find me a flight to Lisbon next week, not too early… oh and a hotel near the office, and tell Sara I’m coming, thanks —": "eh dus kun je een vlucht naar Lissabon zoeken voor volgende week, niet te vroeg… o en een hotel bij kantoor, en zeg Sara dat ik kom, thanks —",
+  "Lisbon, 12–15 March · direct flight at 8:40, $186 · hotel near the office, $132 a night · Sara knows you’re coming · ready for your OK ·": "Lissabon, 12–15 maart · directe vlucht om 8:40, $186 · hotel bij kantoor, $132 per nacht · Sara weet dat je komt · klaar voor je OK ·",
+  "Badr turns a messy request into finished work": "Badr maakt van een rommelige vraag af werk",
 };

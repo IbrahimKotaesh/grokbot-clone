@@ -1198,4 +1198,7 @@ export const arWeb: Record<string, string> = {
   "In this period": "بهالفترة",
   "{s} sec": "{s} ثانية",
   "{h} h": "{h} س",
+  "umm so can you find me a flight to Lisbon next week, not too early… oh and a hotel near the office, and tell Sara I’m coming, thanks —": "اممم بدّي تلاقيلي رحلة على لشبونة الأسبوع الجاي، مش بكّير كتير… وأوتيل قريب من المكتب، وخبّر سارة إني جاي، يسلمو —",
+  "Lisbon, 12–15 March · direct flight at 8:40, $186 · hotel near the office, $132 a night · Sara knows you’re coming · ready for your OK ·": "لشبونة، 12–15 آذار · رحلة مباشرة الساعة 8:40 بـ 186$ · أوتيل جنب المكتب بـ 132$ بالليلة · سارة عرفت إنك جاي · جاهز لموافقتك ·",
+  "Badr turns a messy request into finished work": "بدر بيحوّل طلب مبعثر لشغل خلصان",
 };

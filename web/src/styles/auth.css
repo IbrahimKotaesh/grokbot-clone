@@ -1,0 +1,44 @@
+/* Sign-in form (landing panel and the sign-in screen), the desktop-app offer in the workspace, and shared keyframes. */
+@keyframes lp-say { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+/* ---- sign-in form (landing panel and the sign-in screen) ---- */
+.auth { display: flex; flex-direction: column; width: 100%; text-align: left; }
+.auth__title { margin: 0 0 18px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.auth__google { display: flex; align-items: center; justify-content: center; gap: 10px; height: 50px; border-radius: 14px; background: #fff; color: #16181d; font-size: 15.5px; font-weight: 600; text-decoration: none; box-shadow: 0 0 0 1px #16181d26; transition: background-color .2s; }
+.auth__google:hover { background: #f4f5f7; }
+.auth__or { display: flex; align-items: center; gap: 12px; margin: 18px 0 6px; font-size: 13px; color: #6b7180; }
+.auth__or::before, .auth__or::after { content: ''; flex: 1; height: 1px; background: #16181d1a; }
+.auth__form { display: flex; flex-direction: column; gap: 12px; }
+.auth__field { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 500; color: #3c414b; }
+.auth__field input { height: 48px; padding: 0 14px; border: 1.5px solid #16181d26; border-radius: 12px; background: #fff; color: #16181d; font: inherit; font-size: 16px; font-weight: 400; outline: 0; transition: border-color .2s, box-shadow .2s; }
+.auth__field input:focus { border-color: #235bd6; box-shadow: 0 0 0 4px #235bd626; }
+.auth__field small { font-size: 12.5px; font-weight: 400; color: #6b7180; }
+.auth__submit { display: flex; align-items: center; justify-content: center; height: 50px; margin-top: 6px; border: 0; border-radius: 14px; background: #235bd6; color: #fff !important; font: inherit; font-size: 16px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background-color .2s, transform .2s; }
+.auth__submit:hover { background: #1a47ad; }
+.auth__submit:active { transform: scale(.98); }
+.auth__submit:disabled { background: #8aa4dc; cursor: progress; }
+.auth__link { padding: 0; border: 0; background: none; color: #235bd6; font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.auth__forgot { align-self: flex-end; margin-top: -4px; font-size: 13.5px; font-weight: 500; }
+.auth__error { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fb2b3e14; color: #b4202c; font-size: 14px; line-height: 1.4; }
+.auth__note { margin: 0 0 14px; font-size: 14.5px; line-height: 1.5; color: #4a4f5a; }
+.auth__switch { margin: 18px 0 0; font-size: 14px; color: #4a4f5a; text-align: center; }
+.signin__back { margin-top: 14px; font-size: 13px; color: var(--color-text-tertiary); }
+.signin .auth { margin-top: 8px; }
+.signin .auth__title { display: none; }
+
+/* ---- Mac offer inside the web workspace ---- */
+.mac-offer { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 40px); padding: 12px 12px 12px 14px; border-radius: 20px; background: var(--color-bg-elevated); color: var(--color-text-primary); box-shadow: var(--shadow-modal), 0 0 0 .5px var(--color-border-secondary); animation: lp-say .5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.mac-offer img { border-radius: 12px; object-fit: cover; }
+.mac-offer div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--color-text-secondary); }
+.mac-offer b { font-size: 14px; color: var(--color-text-primary); }
+.mac-offer__dl { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--chat-blue, #1877f2); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.mac-offer__x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-tertiary); cursor: pointer; }
+.mac-offer__x:hover { background: var(--color-bg-hover); }
+/* The sign-in card scrolls instead of being cut off on short screens. */
+.signin { overflow-y: auto; align-items: safe center; padding: 24px 0; box-sizing: border-box; }
+@media (max-height: 820px) {
+  .signin__mascot { width: 84px !important; height: 84px !important; border-radius: 24px !important; }
+  .signin__hero { margin-bottom: 8px; }
+  .signin__card { padding-top: 22px !important; padding-bottom: 22px !important; }
+}
+.mac-offer__dl:hover { background: color-mix(in srgb, var(--chat-blue, #1877f2) 88%, #000); }
+:root:lang(ar) :is(.gate__head h1, .cheer__card h2) { font-family: "Fraunces", "Baloo Bhaijaan 2", Georgia, serif; letter-spacing: 0; }
