@@ -439,8 +439,18 @@ body { background: var(--p-bg); color: var(--p-text); font-family: var(--font-st
 @media (hover: hover) { .bubble__copy { opacity: 0; } .bubble-wrap:hover .bubble__copy, .bubble__copy:focus-visible, .bubble__copy.is-done { opacity: 1; } }
 .bubble__meta { display: flex; align-items: center; gap: 2px; }
 .bubble-wrap.is-right .bubble__meta { justify-content: flex-end; }
-/* Screenshots reserve their space before they load, so the chat does not jump when they arrive. */
-.message-photos__open img { width: min(440px, 100%); aspect-ratio: 16 / 10; height: auto; object-fit: contain; background: var(--p-raised); }
+/* Photos in the chat: each keeps its own shape and fills its frame edge to edge. Before it loads, a picture holds a
+   16:10 space (the shape of a screenshot, so the chat doesn't jump); once loaded it takes its real shape. */
+.message-photos { display: flex; flex-wrap: wrap; gap: 6px; }
+.message-photos__open { position: relative; border-radius: 18px; overflow: hidden; line-height: 0; background: var(--p-raised); box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 0 0 1px color-mix(in srgb, var(--p-text) 7%, transparent); transition: transform .3s var(--ease-apple, ease), box-shadow .2s; }
+.message-photos__open:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10), 0 0 0 1px color-mix(in srgb, var(--p-text) 9%, transparent); }
+.message-photos__open img { display: block; width: min(420px, 100%); height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 0; background: none; opacity: 0; transition: opacity .35s ease; }
+.message-photos__open img.is-loaded { width: auto; max-width: min(420px, 100%); max-height: 460px; aspect-ratio: auto; opacity: 1; }
+/* Several pictures: a tidy grid of equal tiles, each filled edge to edge (tap to see it whole). */
+.message-photos.is-many { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(420px, 100%); }
+.message-photos.is-many .message-photos__open { border-radius: 14px; }
+.message-photos.is-many .message-photos__open img, .message-photos.is-many .message-photos__open img.is-loaded { width: 100%; max-width: none; max-height: none; aspect-ratio: 1; object-fit: cover; }
+@media (prefers-reduced-motion: reduce) { .message-photos__open img { transition: none; } }
 /* The main screen takes the height of its picture (16:10 plus the Watching bar), so the other bots' screens sit right under it. */
 @media (min-width: 901px) {
   .computer-panel > .computer-panel__screen { flex: none; aspect-ratio: 16 / 12.4; max-height: calc(100% - 150px); }

@@ -175,6 +175,18 @@ export function trimOldToolOutputs(items: any[]): any[] {
     return { ...it, output: `${it.output.slice(0, OLD_OUTPUT_CHARS)}\n…[older result shortened to save space; call the tool again if you need the rest]` };
   });
 }
+/** Models whose hosts turned images away ("No endpoints found that support image input"): they get text in their place. */
+const textOnlyModels = new Set<string>();
+const IMAGE_REFUSED = /support image input|image input is not supported|does not support image/i;
+/** Every image in the request becomes a short note, for a model that can't see. */
+function withoutImages(items: any[]): any[] {
+  const note = { type: 'input_text', text: '[an image was here; this model cannot see images]' };
+  return items.map((it) => {
+    if (Array.isArray(it?.content) && it.content.some((c: any) => c?.type === 'input_image')) return { ...it, content: it.content.map((c: any) => (c?.type === 'input_image' ? note : c)) };
+    if (it?.type === 'function_call_output' && Array.isArray(it.output) && it.output.some((c: any) => c?.type === 'input_image')) return { ...it, output: it.output.filter((c: any) => c?.type !== 'input_image').map((c: any) => c?.text ?? '').join('\n') || note.text };
+    return it;
+  });
+}
 function pruneImages(items: any[]): any[] {
   const hasImage = (it: any) => {
     const content = it?.type === 'function_call_output' ? it.output : it?.role === 'user' ? it.content : null;
@@ -672,10 +684,18 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
 
   let stream: any;
   const callStart = now();
+  if (textOnlyModels.has(body.model)) body.input = withoutImages(body.input);
   try {
     try {
       stream = await llm.client.responses.create(body, { signal });
     } catch (e: any) {
+      if (IMAGE_REFUSED.test(String(e?.message)) && !signal.aborted) {
+        // This model's hosts can't take images (one was just attached, or an older screenshot is in the history):
+        // the same step goes again with notes in their place, and the model is remembered as text-only.
+        textOnlyModels.add(body.model);
+        body.input = withoutImages(body.input);
+        stream = await llm.client.responses.create(body, { signal });
+      } else
       // The free model is out for today, busy or down: the same step runs on Badr 4.8 straight away.
       if (model === FREE_MODEL && !signal.aborted) {
         freeFailed(e);
