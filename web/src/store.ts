@@ -32,6 +32,8 @@ interface State {
   /** Bumped on every `connections` event so open views can refetch. */
   connectionsVersion: number;
   sseConnected: boolean;
+  /** When the owner last handed the computer back from the chat ("go ahead"); the viewer leaves Take control. */
+  controlReleasedAt: number;
 
   detailsOpen: boolean;
   sidebarCollapsed: boolean;
@@ -81,6 +83,7 @@ export const useStore = create<State>((set, get) => ({
   computer: null,
   connectionsVersion: 0,
   sseConnected: false,
+  controlReleasedAt: 0,
   detailsOpen: !window.matchMedia('(max-width: 900px)').matches && lsGet(LS_DETAILS) !== '0',
   sidebarCollapsed: lsGet(LS_SIDEBAR) === '1',
   mobileNavOpen: false,
@@ -197,6 +200,9 @@ export const useStore = create<State>((set, get) => ({
         return;
       case 'roster':
         s.loadBots().catch(console.error);
+        return;
+      case 'control-released':
+        set({ controlReleasedAt: Date.now() });
         return;
       case 'bot': {
         const exists = s.bots.some((b) => b.id === ev.bot.id);

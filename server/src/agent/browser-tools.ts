@@ -231,7 +231,7 @@ export function formatPage(page: any, tabs?: any[] | null): string {
   if (!page) return 'No page.';
   const lines = [`URL: ${String(page.url).length > 200 ? String(page.url).slice(0, 200) + '…' : page.url}`, `Title: ${page.title}`];
   if (tabs) lines.push(`Tabs: ${tabs.map((t: any) => `[tab ${t.index}] ${t.title}`).join(' | ')}`);
-  if (page.pay) lines.push('NOTE: this is a payment page. Fino never pays or types payment details; tell the owner.');
+  if (page.pay) lines.push('NOTE: this is a billing page. You may browse, sign in and get everything ready, but never press the button that pays, and ask the owner before you cancel anything.');
   lines.push(`Scrolled ${page.scroll}px of ${page.height}px (window ${page.viewport}px).`, '', 'Elements (use the number in brackets):');
   for (const e of page.elements ?? []) {
     let s = `[${e.ref}] ${e.kind} "${e.label}"`;

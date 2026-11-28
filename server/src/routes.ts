@@ -1,3 +1,4 @@
+import { isWaitingForHandback, releaseControl } from './vnc.js';
 import { openaiVoiceReady } from './openai-voice.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { addRule, deleteRule, listRules, setPaused, updateRule } from './agent/rules.js';
@@ -403,7 +404,11 @@ api.post('/bots/:id/messages', bodyLimit({maxSize:42*1024*1024,onError:c=>c.json
   const fileIds=files.map(file=>file.id);
   const prompt=text || (files.length?'Read and summarize the attached documents.':'Describe the attached photo.');
   if (b.kind === 'room') dispatchRoomMessage(b.id,prompt,enqueue,imageIds,fileIds);
-  else enqueue(b.id, { type: 'user',generation,desktopTarget, text:prompt,imageIds,fileIds });
+  else {
+    // Writing to a Bot that waits for the computer ("go ahead") hands the computer back, no "I'm done" needed.
+    if (isWaitingForHandback(c.get('user').id, b.id)) releaseControl(c.get('user').id, b.id);
+    enqueue(b.id, { type: 'user',generation,desktopTarget, text:prompt,imageIds,fileIds });
+  }
   return c.json({ row });
 });
 

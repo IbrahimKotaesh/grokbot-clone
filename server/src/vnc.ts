@@ -1,3 +1,4 @@
+import { hub } from './lib/hub.js';
 import { allowedOrigin } from './lib/origin.js';
 import type { IncomingMessage, Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -154,20 +155,49 @@ const waiting = new Map<string, Set<string>>();
 export function noteWaitingForHandback(userId: string, botId: string) {
   const set = waiting.get(userId) ?? new Set<string>(); set.add(botId); waiting.set(userId, set);
 }
+export const isWaitingForHandback = (userId: string, botId: string) => !!waiting.get(userId)?.has(botId);
+/** The open Take control connections, per user, so a chat message can end them. */
+const controlSockets = new Map<string, Set<Pick<WebSocket, 'once' | 'close'>>>();
+/**
+ * The owner wrote to a Bot that is waiting for the computer ("go ahead"): that is the hand-back. Their screen
+ * switches to watching (the page hears it), and the control connection closes, which lets the Bot carry on.
+ */
+export function releaseControl(userId: string, botId: string) {
+  if (!userInControl(userId)) return false;
+  // At once, so the Bot's very next step finds the computer free; its own message carries on the work, so it gets
+  // no separate "handed back" notice. Other Bots still waiting carry on as usual.
+  waiting.get(userId)?.delete(botId);
+  controlling.delete(userId);
+  const socks = [...(controlSockets.get(userId) ?? [])]; controlSockets.delete(userId);
+  for (const ws of socks) released.add(ws);
+  hub.emit(userId, { type: 'control-released' });
+  setTimeout(() => { for (const ws of socks) { try { ws.close(1000, 'Handed back from the chat'); } catch { /* gone */ } } }, 400);
+  const bots = waiting.get(userId); waiting.delete(userId);
+  for (const id of bots ?? []) resume(userId, id);
+  return true;
+}
+/** Control connections already handed back from the chat: their closing changes nothing more. */
+const released = new WeakSet<object>();
 let resume: (userId: string, botId: string) => void = () => {};
 export function onHandback(fn: (userId: string, botId: string) => void) { resume = fn; }
 
+/** The owner's Take control connection: while it is open their Bots keep their hands off; closing it hands back. */
+export function holdControl(userId: string, client: Pick<WebSocket, 'once' | 'close'>) {
+  controlling.set(userId, (controlling.get(userId) ?? 0) + 1);
+  const socks = controlSockets.get(userId) ?? new Set<Pick<WebSocket, 'once' | 'close'>>(); socks.add(client); controlSockets.set(userId, socks);
+  client.once('close', () => {
+    if (released.has(client)) return;
+    controlSockets.get(userId)?.delete(client);
+    const n = (controlling.get(userId) ?? 1) - 1;
+    if (n > 0) { controlling.set(userId, n); return; }
+    controlling.delete(userId);
+    const bots = waiting.get(userId); waiting.delete(userId);
+    for (const id of bots ?? []) resume(userId, id);
+  });
+}
+
 async function relay(client: WebSocket, userId: string, botId: string, mode: 'watch' | 'control') {
-  if (mode === 'control') {
-    controlling.set(userId, (controlling.get(userId) ?? 0) + 1);
-    client.once('close', () => {
-      const n = (controlling.get(userId) ?? 1) - 1;
-      if (n > 0) { controlling.set(userId, n); return; }
-      controlling.delete(userId);
-      const bots = waiting.get(userId); waiting.delete(userId);
-      for (const id of bots ?? []) resume(userId, id);
-    });
-  }
+  if (mode === 'control') holdControl(userId, client);
   const fromClient = new ByteQueue();
   const fromUp = new ByteQueue();
   let upstream: WebSocket | null = null;

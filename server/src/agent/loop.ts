@@ -443,7 +443,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       try { guard = await employeeGuard(userId, botId, inner.name, inner.args, { pageCheck: !ctx.desktopTarget }); } catch { guard = {}; }
       // The owner pressed Take control: stay off the shared computer until they hand it back.
       if (!guard.block && !ctx.desktopTarget && userInControl(userId) && (c.name.startsWith('computer_') || ['open_browser', 'read_page'].includes(c.name)))
-        (noteWaitingForHandback(userId, botId), guard = { block: 'The owner has taken control of your computer right now. Do not use it. Tell them briefly what you were about to do and that you will continue when they press "I\'m done".' });
+        (noteWaitingForHandback(userId, botId), guard = { block: 'The owner has taken control of your computer right now. Do not use it. Tell them briefly what you were about to do, and that you will continue when they press "I\'m done" or simply tell you to go ahead in the chat.' });
     }
     let decision = policyFor(userId, c.name, args, botId).decision;
     // The owner's own rules in plain words ("ask me before replying to an email"). They can make a Bot ask or stop,
@@ -503,7 +503,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
     let res: ToolResult;
     if (decision === 'block') {
       res = guard.block
-        ? { output: `Blocked by Fino's employee rules: ${guard.block} Do not retry it or work around it in any other way.`, summary: 'Blocked: never pays' }
+        ? { output: `Blocked by Badr's employee rules: ${guard.block} Do not retry it or work around it in any other way.`, summary: 'Blocked: never pays' }
         : { output: 'The user declined this action. Do not retry it. Find another way, or tell the user what you could not do.', summary: 'Not allowed' };
       updateRow(botId, c.rowSeq, { ...body, status: 'denied', summary: 'Not allowed' });
     } else {

@@ -20,6 +20,9 @@ export function ComputerViewer({docked=false,panel=false}:{docked?:boolean;panel
   const screenRef = useRef<HTMLDivElement>(null);
   const rfbRef = useRef<RFBType | null>(null);
   const [mode, setMode] = useState<Mode>('watch');
+  // "Go ahead" in the chat hands the computer back: leave Take control here too.
+  const releasedAt = useStore((s) => s.controlReleasedAt);
+  useEffect(() => { if (releasedAt) setMode('watch'); }, [releasedAt]);
   const [conn, setConn] = useState<Conn>('connecting');
   const [attempt, setAttempt] = useState(0);
   // Drops in a row: a short one (an update restarting the server) heals quietly; the full message waits for several.

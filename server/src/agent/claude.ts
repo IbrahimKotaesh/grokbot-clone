@@ -42,7 +42,7 @@ export async function claudeTurn(botId: string, text: string, signal: AbortSigna
   // A Claude subscription the user connected in Fino runs from their own Claude config folder.
   const userHome = userKey ? null : claudeHomeIfConnected(bot.user_id);
   if (!userKey && !userHome) {
-    if (!sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Fino and connect your ChatGPT or Claude subscription.');
+    if (!sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Badr and connect your ChatGPT or Claude subscription.');
     if (!await claudeLoginStatus()) throw new Error('Sign in with your Claude subscription first: claude auth login');
   }
   if (signal.aborted) throw new Error('Stopped.');

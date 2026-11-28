@@ -32,7 +32,7 @@ export async function codexTurn(botId: string, text: string, signal: AbortSignal
   const nativeImagesAllowed=bot.permission_mode!=='read_only';
   // The user's own ChatGPT sign-in or OpenAI key lives in their Codex home; otherwise fall back to the server's login.
   const userHome = codexHomeIfConnected(bot.user_id);
-  if (!userHome && !sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Fino and connect your ChatGPT or Claude subscription.');
+  if (!userHome && !sharedLoginAllowed(bot.user_id)) throw new Error('Connect your AI to use this bot: reload Badr and connect your ChatGPT or Claude subscription.');
   const codexHome = userHome ?? process.env.CODEX_HOME ?? path.join(os.homedir(),'.codex');
   const proc = spawn(env.codexBin, ['app-server', '-c', 'features.shell_tool=false', '-c', 'features.apply_patch_freeform=false', '-c', 'features.skip_host_skill_discovery=true', '-c', 'features.omit_skill_descriptions=true', '-c', `features.image_generation=${nativeImagesAllowed}`, '-c', 'web_search="disabled"'], { cwd, stdio: ['pipe', 'pipe', 'pipe'], env: userHome ? { ...process.env, CODEX_HOME: userHome } : process.env });
   const turn=currentTurn(botId);

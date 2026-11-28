@@ -60,6 +60,29 @@ export function moneyText(text: string): string | undefined {
   return undefined;
 }
 
+// The owner's rule (2026-11-28): a Bot may browse shops and billing pages, sign in, fill in carts and forms and
+// prepare a payment. The one thing it never does is press the button that pays. Cancelling needs the owner's OK.
+// Pays the moment it is pressed, wherever it is.
+const PAY_BUTTON = /\b(pay now|nu betalen|buy now|nu kopen|complete (the )?purchase|place (your |my )?order|order now|plaats bestelling|confirm (and pay|purchase|order|payment)|bevestig (betaling|bestelling)|pay \S*\d|betaal \S*\d|donate now|send money|transfer money)\b|ادفع|إتمام الشراء|تأكيد الدفع|اشتري الآن/i;
+// Pays when it submits a form or sits on a billing page; a plain "Buy" link in a shop's menu only opens the shop.
+const PAY_WORD = /\b(pay|betaal|betalen|afrekenen|buy|kopen|purchase|bestel(len)?|donate|doneer|top up|opwaarderen|checkout|check out)\b|اشتري|شراء/i;
+// On a billing page these start or grow a payment too.
+const PAY_PAGE_BUTTON = /\b(subscribe|resubscribe|upgrade|start (my )?(subscription|membership|trial|plan)|join now|renew|verlengen|abonneren|aanschaffen)\b|اشترك|ترقية|تجديد/i;
+const CANCEL_BUTTON = /\b(cancel|annuleren|opzeggen|beëindigen|stopzetten|turn off (auto[- ]?renew(al)?|recurring billing)|end (subscription|membership|plan)|stop (subscription|membership))\b|إلغاء|الغاء/i;
+/** What a press on a button means under the money rule: blocked (it pays), needs the owner's OK, or neither. */
+export function payDecision(label: string, opts: { payPage: boolean; submit: boolean }): 'block' | 'ask' | null {
+  const l = label.trim();
+  if (PAY_BUTTON.test(l)) return 'block';
+  if ((opts.submit || opts.payPage) && PAY_WORD.test(l)) return 'block';
+  if (!opts.payPage) return null;
+  if (CANCEL_BUTTON.test(l)) return 'ask'; // first, so "Turn off auto-renew" is not read as "renew"
+  if (PAY_PAGE_BUTTON.test(l)) return 'block';
+  if (opts.submit && !l) return 'ask'; // an unnamed submit on a billing page: could be the payment, so the owner decides
+  return null;
+}
+const payBlock = (label: string) => ({ block: `“${label || 'Pay'}” pays. Badr never presses the button that pays: everything up to it is ready, and the owner presses it themselves.` });
+const cancelAsk = (label: string, host: string) => ({ decide: `This cancels or changes a paid plan: “${label || 'submit'}” on ${host}. Badr waits for your OK.`, title: `${label || 'Confirm'} on ${host}` });
+
 // Pages where money changes hands.
 const PAY_PAGE = /checkout|payment|\/pay\b|\bpay\.|billing|\/cart\b|winkelwagen|afrekenen|betalen|betaling|kassa|ideal|klarna|paypal\.|stripe\.com|checkout\.stripe|adyen|mollie|buckaroo|sumup|bunq\.me|tikkie/i;
 // Unmistakably final buttons, wherever they are.
@@ -137,29 +160,29 @@ export async function employeeGuard(userId: string, botId: string, name: string,
     ? (args?.tools ?? args?.tool_calls ?? args?.actions ?? []).map((c: any) => String(c.tool_slug ?? c.slug ?? c.name ?? c.tool ?? ''))
     : [name];
   const money = slugs.find(moneySlug);
-  if (money) return { block: `Fino never pays or moves money (${money}). Tell the owner what needs paying; they pay themselves.` };
+  if (money) return { block: `Badr never pays or moves money (${money}). Tell the owner what needs paying; they pay themselves.` };
 
   // The owner's files never go to outside file-sharing or paste sites, whatever the reason.
   const canPush = ['shell', 'run_python', 'browser_run_js', 'COMPOSIO_MULTI_EXECUTE_TOOL'].includes(name) || /^COMPOSIO_REMOTE/.test(name);
-  if (canPush && FILE_DROP.test(JSON.stringify(args ?? {}))) return { block: 'Fino never uploads the owner\'s files to outside file-sharing or paste sites. To attach files to an email use draft_email; otherwise tell the owner what is blocked.' };
+  if (canPush && FILE_DROP.test(JSON.stringify(args ?? {}))) return { block: 'Badr never uploads the owner\'s files to outside file-sharing or paste sites. To attach files to an email use draft_email; otherwise tell the owner what is blocked.' };
 
   // Sending an email is always the owner's call, even on Autonomous.
   if (name === 'send_email') {
     const to = String(args?.to ?? '').trim(), subject = String(args?.subject ?? '').trim();
-    return { decide: `This sends an email${to ? ` to ${to}` : ''}${subject ? ` (“${subject}”)` : ''}. Fino waits for your OK before anything is sent.`, title: `Send email${to ? ` to ${to}` : ''}` };
+    return { decide: `This sends an email${to ? ` to ${to}` : ''}${subject ? ` (“${subject}”)` : ''}. Badr waits for your OK before anything is sent.`, title: `Send email${to ? ` to ${to}` : ''}` };
   }
 
   if (name === 'computer_type') {
     const what = moneyText(String(args?.text ?? ''));
-    if (what) return { block: `Fino never types ${what}. Payments are always done by the owner themselves.` };
+    if (what) return { block: `Badr never types ${what}. Payments are always done by the owner themselves.` };
   }
-  if (name === 'shell' && moneyText(String(args?.command ?? ''))) return { block: 'Fino never handles payment card or bank numbers. Payments are always done by the owner themselves.' };
+  if (name === 'shell' && moneyText(String(args?.command ?? ''))) return { block: 'Badr never handles payment card or bank numbers. Payments are always done by the owner themselves.' };
 
   // In-page browser tools: the same rules, judged from the element itself.
   if (name === 'browser_click' || name === 'browser_fill') {
     if (name === 'browser_fill') {
       const what = (args?.fields ?? []).map((f: any) => moneyText(String(f?.value ?? ''))).find(Boolean);
-      if (what) return { block: `Fino never types ${what}. Payments are always done by the owner themselves.` };
+      if (what) return { block: `Badr never types ${what}. Payments are always done by the owner themselves.` };
     }
     if (opts.pageCheck === false) return {};
     const fields = name === 'browser_fill' ? (args?.fields ?? []) : [];
@@ -169,15 +192,16 @@ export async function employeeGuard(userId: string, botId: string, name: string,
     try { p = await cdp({ userId, botId }, { op: 'probe', ref: Number(ref) }); } catch { p = null; }
     if (!p?.info) return {};
     const payPage = p.pay || PAY_PAGE.test(p.url) || PAY_PAGE.test(p.title);
-    if (payPage && name === 'browser_fill') return { block: 'This is a payment page. Fino never types on payment pages; the owner pays themselves.' };
     // What actually gets pressed: the clicked element, or the form's submit button when Enter is pressed.
     const pressing = name === 'browser_click' || args?.click_ref != null ? { text: p.info.text, submit: p.info.submit } : args?.press_enter ? { text: p.info.formSubmit, submit: !!p.info.formSubmit } : null;
     if (!pressing) return {};
     const label = String(pressing.text ?? '');
-    if (payPage && (pressing.submit || FINAL_WORDS.test(label))) return { block: `This button (“${label || 'pay'}”) is on a payment page. Fino never pays; the owner pays themselves.` };
+    const host = (() => { try { return new URL(p.url).host || p.title; } catch { return p.title || String(p.url).slice(0, 60); } })();
+    const money = payDecision(label, { payPage, submit: !!pressing.submit });
+    if (money === 'block') return payBlock(label);
+    if (money === 'ask') return cancelAsk(label, host);
     if ((pressing.submit && FINAL_WORDS.test(label)) || STRONG_FINAL.test(label)) {
-      const host = (() => { try { return new URL(p.url).host || p.title; } catch { return p.title || String(p.url).slice(0, 60); } })();
-      return { decide: `This is a final step: “${label}” on ${host}. Fino waits for your OK before finishing things like applications, orders and messages.`, title: `${label} on ${host}` };
+      return { decide: `This is a final step: “${label}” on ${host}. Badr waits for your OK before finishing things like applications, orders and messages.`, title: `${label} on ${host}` };
     }
     return {};
   }
@@ -194,14 +218,17 @@ export async function employeeGuard(userId: string, botId: string, name: string,
   if (!page) return {}; // No inspectable browser in front (desktop app, file dialog…): nothing to judge.
 
   const payPage = page.pay || PAY_PAGE.test(page.url) || PAY_PAGE.test(page.title);
-  if (payPage && name !== 'computer_click') return { block: 'This is a payment page. Fino never types on payment pages; the owner pays themselves.' };
   // Keys go to whatever window is in front: when a system window (like the file picker) has focus, the page's form is not touched.
   const target = name === 'computer_click' ? page.at : enter && page.focused ? page.enter : null;
   const label = String(target?.text ?? '');
-  if (payPage && target && (target.submit || FINAL_WORDS.test(label))) return { block: `This button (“${label || 'pay'}”) is on a payment page. Fino never pays; the owner pays themselves.` };
+  const host = (() => { try { return new URL(page!.url).host || page!.title; } catch { return page!.title || page!.url.slice(0, 60); } })();
+  if (target) {
+    const money = payDecision(label, { payPage, submit: !!target.submit });
+    if (money === 'block') return payBlock(label);
+    if (money === 'ask') return cancelAsk(label, host);
+  }
   if (target && ((target.submit && FINAL_WORDS.test(label)) || STRONG_FINAL.test(label))) {
-    const host = (() => { try { return new URL(page!.url).host || page!.title; } catch { return page!.title || page!.url.slice(0, 60); } })();
-    return { decide: `This is a final step: “${label}” on ${host}. Fino waits for your OK before finishing things like applications, orders and messages.`, title: `${label} on ${host}` };
+    return { decide: `This is a final step: “${label}” on ${host}. Badr waits for your OK before finishing things like applications, orders and messages.`, title: `${label} on ${host}` };
   }
   return {};
 }

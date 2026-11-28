@@ -374,4 +374,6 @@ export type ServerEvent =
   | { type: "tasks"; botId: string }
   | { type: "memories"; botId: string }
   | { type: "connections" }
+  /** The owner told a waiting Bot to go ahead in the chat: leave Take control. */
+  | { type: "control-released" }
   | { type: "ping" };
