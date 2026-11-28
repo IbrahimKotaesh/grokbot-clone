@@ -16,6 +16,8 @@ import { sonioxEnabled, sonioxTranscribe } from './soniox.js';
 import { TurnMeter } from './usage-meter.js';
 
 export const OPENAI_VOICE_MODEL = process.env.OR_VOICE_MODEL ?? 'openai/gpt-audio';
+/** The saver: the same voices for about a twentieth of the price (tested 2026-11-28: greets, chats and hands work to send_task correctly). */
+export const OPENAI_VOICE_MINI = process.env.OR_VOICE_MINI_MODEL ?? 'openai/gpt-audio-mini';
 export const openaiVoiceReady = () => !!hostedKey();
 /** OpenAI's two most natural voices, matched to the Bot's voice gender. */
 export const openaiVoiceFor = (gender?: string) => (gender === 'male' ? 'cedar' : 'marin');
@@ -26,12 +28,12 @@ const MAX_CALL_MS = 60 * 60_000;
 const OUT_RATE = 24000;
 
 // ---------- tickets ----------
-const tickets = new Map<string, { userId: string; botId: string; exp: number }>();
-export function mintOpenAIVoiceTicket(userId: string, botId: string) {
+const tickets = new Map<string, { userId: string; botId: string; exp: number; model: string }>();
+export function mintOpenAIVoiceTicket(userId: string, botId: string, model = OPENAI_VOICE_MODEL) {
   const now = Date.now();
   for (const [k, v] of tickets) if (v.exp < now) tickets.delete(k);
   const value = randomBytes(24).toString('base64url');
-  tickets.set(value, { userId, botId, exp: now + 5 * 60_000 });
+  tickets.set(value, { userId, botId, exp: now + 5 * 60_000, model });
   return { value, expires_at: Math.floor((now + 5 * 60_000) / 1000) };
 }
 
@@ -46,7 +48,7 @@ export function attachOpenAIVoiceRelay(server: Server) {
     const ticket = offered ? tickets.get(offered.slice(PROTO.length)) : undefined;
     if (!user || !ticket || ticket.userId !== user.id || ticket.exp < Date.now() || !openaiVoiceReady()) return deny('401 Unauthorized');
     tickets.delete(offered!.slice(PROTO.length));
-    wss.handleUpgrade(req, socket, head, (client) => new OpenAIVoiceCall(client, ticket.userId, ticket.botId));
+    wss.handleUpgrade(req, socket, head, (client) => new OpenAIVoiceCall(client, ticket.userId, ticket.botId, ticket.model));
   });
 }
 
@@ -87,9 +89,9 @@ export class OpenAIVoiceCall {
   private responseId: string | null = null;
   private cap: ReturnType<typeof setTimeout>;
 
-  constructor(private ws: WebSocket, private userId: string, private botId: string) {
+  constructor(private ws: WebSocket, private userId: string, private botId: string, private model = OPENAI_VOICE_MODEL) {
     this.cap = setTimeout(() => this.close('Call time limit reached'), MAX_CALL_MS);
-    console.log('[voice:openai] call connected');
+    console.log(`[voice:openai] call connected (${model})`);
     ws.on('message', (data, isBinary) => {
       if (isBinary) return;
       let ev: any;
@@ -252,7 +254,7 @@ export class OpenAIVoiceCall {
         signal: ctrl.signal,
         headers: { authorization: `Bearer ${hostedKey()}`, 'content-type': 'application/json' },
         body: JSON.stringify({
-          model: OPENAI_VOICE_MODEL, stream: true, usage: { include: true },
+          model: this.model, stream: true, usage: { include: true },
           modalities: ['text', 'audio'], audio: { voice: this.voice, format: 'pcm16' },
           messages, ...(this.tools.length ? { tools: this.tools } : {}),
         }),
@@ -322,7 +324,7 @@ export class OpenAIVoiceCall {
 
     // What the trial costs shows on the Usage page, next to everything else.
     if (usage) {
-      const m = new TurnMeter(this.userId, this.botId, 'openrouter', OPENAI_VOICE_MODEL, { startedAt: started });
+      const m = new TurnMeter(this.userId, this.botId, 'openrouter', this.model, { startedAt: started });
       m.hosted = true;
       m.add({ input_tokens: usage.prompt_tokens ?? 0, output_tokens: usage.completion_tokens ?? 0, cost: typeof usage.cost === 'number' ? usage.cost : undefined });
       m.save();

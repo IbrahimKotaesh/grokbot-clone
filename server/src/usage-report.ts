@@ -18,6 +18,7 @@ function startOf(range: UsageRange): number {
 /** What Badr shows for a model: Badr's own names for its models, and plain words for the user's own AI. Never a vendor model id. */
 function modelLabel(provider: string, model: string | null, hosted: boolean): { label: string; kind: 'badr' | 'subscription' | 'key' } {
   if (hosted && model && model === FREE_MODEL) return { label: 'Badr 4.8 (free)', kind: 'badr' };
+  if (hosted && model?.startsWith('openai/gpt-audio-mini')) return { label: 'Voice calls (OpenAI trial, saver)', kind: 'badr' };
   if (hosted && model?.startsWith('openai/gpt-audio')) return { label: 'Voice calls (OpenAI trial)', kind: 'badr' };
   if (hosted) return { label: HOSTED_MODELS.find((m) => m.id === model)?.name ?? 'Badr (computer work)', kind: 'badr' };
   if (provider === 'codex') return { label: 'ChatGPT (your subscription)', kind: 'subscription' };

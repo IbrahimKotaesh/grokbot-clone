@@ -1145,4 +1145,7 @@ export const nlWeb: Record<string, string> = {
   "Done, put the text in the message box": "Klaar, zet de tekst in het berichtvak",
   "Permissions": "Rechten",
   "Listening…": "Luistert…",
+  "Trial voice · saver": "Teststem · zuinig",
+  "The most natural voice": "De meest natuurlijke stem",
+  "Same voice, about 20 times cheaper": "Dezelfde stem, ongeveer 20 keer goedkoper",
 };

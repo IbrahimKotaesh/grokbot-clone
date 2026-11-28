@@ -14,7 +14,7 @@ import { computerState } from './computer.js';
 import { falSpeak, falVoiceReady, mintRelayTicket } from './fal-voice.js';
 import { CAST } from './voice-cast.js';
 import { humorNote } from './agent/prompt.js';
-import { OPENAI_VOICE_MODEL, mintOpenAIVoiceTicket, openaiVoiceFor, openaiVoiceReady } from './openai-voice.js';
+import { OPENAI_VOICE_MINI, OPENAI_VOICE_MODEL, mintOpenAIVoiceTicket, openaiVoiceFor, openaiVoiceReady } from './openai-voice.js';
 import { hostedKey } from './hosted-models.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
@@ -235,14 +235,15 @@ voiceApi.post('/session', async (c) => {
   if (!bot) return c.json({ error: 'not found' }, 404);
   const s = settingsOf(bot);
   // The trial voice: OpenAI's gpt-audio through our own relay (openai-voice.ts), same protocol for the call screen.
-  const openai = engine === 'openai';
+  const openai = engine === 'openai' || engine === 'openai-mini';
+  const openaiModel = engine === 'openai-mini' ? OPENAI_VOICE_MINI : OPENAI_VOICE_MODEL;
   if (openai && !openaiVoiceReady()) return c.json({ error: 'The trial voice isn’t available on this server.' }, 503);
   if (!openai && env.xaiKey === 'disabled' && !falVoiceReady()) return c.json({ error: 'Voice is not configured on this server.' }, 503);
 
   let secret: { value: string; expires_at: number };
   let websocketUrl = `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(VOICE_MODEL)}`;
   if (openai) {
-    secret = mintOpenAIVoiceTicket(user.id, bot.id);
+    secret = mintOpenAIVoiceTicket(user.id, bot.id, openaiModel);
     const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? 'localhost';
     const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host);
     websocketUrl = `${local ? 'ws' : 'wss'}://${host}/api/voice/openai`;
@@ -291,8 +292,8 @@ voiceApi.post('/session', async (c) => {
     callId,
     clientSecret: secret.value,
     expiresAt: secret.expires_at,
-    model: openai ? OPENAI_VOICE_MODEL : VOICE_MODEL,
-    engine: openai ? 'openai' : 'grok',
+    model: openai ? openaiModel : VOICE_MODEL,
+    engine: openai ? engine : 'grok',
     websocketUrl,
     sampleRate: SAMPLE_RATE,
     instructions,

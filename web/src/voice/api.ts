@@ -1,6 +1,6 @@
 import type { VoiceOption } from '@shared/types';
 
-export type CallEngine = 'grok' | 'openai';
+export type CallEngine = 'grok' | 'openai' | 'openai-mini';
 
 export interface VoiceSession {
   callId: string;
@@ -37,7 +37,7 @@ export const voiceApi = {
     return r.json() as Promise<VoiceOptions>;
   }).catch((e) => { optionsPromise = null; throw e; })),
   /** engine 'openai' = the trial voice (OpenAI gpt-audio through Badr's relay); default is Grok. */
-  session: (botId: string, engine?: CallEngine) => post<VoiceSession>('/session', { botId, ...(engine === 'openai' ? { engine } : {}) }),
+  session: (botId: string, engine?: CallEngine) => post<VoiceSession>('/session', { botId, ...(engine && engine !== 'grok' ? { engine } : {}) }),
   tool: (botId: string, callId: string, name: string, args: unknown) => post<{ output: string; taskSeq?: number }>('/tool', { botId, callId, name, args }),
   end: (botId: string, callId: string, transcript: { role: 'user' | 'assistant'; text: string }[], error?: string) => post<{ ok: true }>('/end', { botId, callId, transcript, error }),
   /** Best-effort end on tab close. */

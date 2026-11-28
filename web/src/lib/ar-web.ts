@@ -1227,4 +1227,7 @@ export const arWeb: Record<string, string> = {
   "Discard recording": "احذف التسجيل",
   "Done, put the text in the message box": "خلصت، حط النص بالمربع",
   "Listening…": "عم يسمع…",
+  "Trial voice · saver": "صوت تجريبي · موفّر",
+  "The most natural voice": "الصوت الأطبع",
+  "Same voice, about 20 times cheaper": "نفس الصوت، أرخص بحوالي 20 مرة",
 };

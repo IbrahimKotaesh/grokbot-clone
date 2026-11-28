@@ -1,3 +1,4 @@
+import { TrialCallButton } from './TrialCallButton';
 import { isArabic, t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -116,12 +117,8 @@ export function ChatView() {
               <Phone size={18} strokeWidth={2.2} />
             </button>
           )}
-          {/* A second voice on trial, to compare with the one above. */}
-          {bot.isPrimary && !calling && (
-            <button type="button" className="chat__call chat__call--trial" onClick={() => startCall(bot.id, 'openai')} aria-label={t("Call {name} with the trial voice", { name: bot.name })} title={t("Call {name} with the trial voice", { name: bot.name })}>
-              <Phone size={15} strokeWidth={2.2} /><span>{t('Trial')}</span>
-            </button>
-          )}
+          {/* Voices on trial, to compare with the one above. */}
+          {bot.isPrimary && !calling && <TrialCallButton botId={bot.id} name={bot.name} />}
           {!detailsOpen && bot.kind !== 'room' && !isMacDesktop() && (
             <button type="button" className="icon-btn icon-btn--bordered chat__show-computer" onClick={() => set({ detailsOpen: true })} aria-label={t("Show computer")} title={t("Show computer")}>
               <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />
