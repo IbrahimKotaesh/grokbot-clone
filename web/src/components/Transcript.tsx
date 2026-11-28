@@ -1,5 +1,5 @@
 import { land } from '../lib/sendFlight';
-import { locale, t } from '../lib/i18n';
+import { lang, locale, t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -405,6 +405,11 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
 /** Call notes are written by the server in English; show their fixed words in the reader's language (the summary keeps the call's own language). */
 /** Schedules the server describes in English ("Every day at 9:00 AM"), in the reader's language. */
 function scheduleLabel(s: string): string {
+  const out = scheduleLabelRaw(s);
+  // Arabic reads the hour as ص / م, like the time beside it; "كل جمعة", not "كل الجمعة".
+  return lang === 'ar' ? out.replace(/(\d) AM\b/g, '$1 ص').replace(/(\d) PM\b/g, '$1 م').replace(/كل ال(?=\S)/, 'كل ') : out;
+}
+function scheduleLabelRaw(s: string): string {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   let m: RegExpExecArray | null;
   if ((m = /^Every day at (.+)$/.exec(s))) return t('Every day at {time}', { time: m[1] });
