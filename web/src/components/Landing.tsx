@@ -71,8 +71,8 @@ export function Landing({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: (
         </h1>
         <p className="lp-lede lp-in" style={{ '--d': '160ms' } as CSSProperties}>{t('Badr is your Chief of Staff. Give it a job by text or by voice, and Badr and its team get it done on their own computers, around the clock.')}</p>
         <div className="lp-cta lp-in" style={{ '--d': '240ms' } as CSSProperties}>
-          {os === 'other' || signedIn
-            ? <><button type="button" className="lp-btn" onClick={() => start('signup')}>{open}</button>
+          {os === 'other'
+            ?<><button type="button" className="lp-btn" onClick={() => start('signup')}>{open}</button>
               {!signedIn && <button type="button" className="lp-btn lp-btn--soft" onClick={() => start('signin')}>{t('Sign in')}</button>}</>
             : <><a className="lp-btn" href={os === 'mac' ? '/api/download/mac/dmg' : DOWNLOADS.windows.href} download onClick={() => store.drop(OFFER_MAC)}>
                 {os === 'mac' ? <AppleLogo /> : <WindowsLogo />}{t(DOWNLOADS[os].label)}
