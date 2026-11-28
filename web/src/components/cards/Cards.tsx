@@ -22,7 +22,7 @@ const prettyTool = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/^\
 /** Badr's own tools by a name people know. */
 const LOCAL_TOOL: Record<string, string> = { run_python: 'Python', shell: t('Terminal'), browser_run_js: t('Browser'), send_email: t('Email'), public_link: t('Public link') };
 /** The server writes the card in English ("Badr wants to: Run Python code on its computer"): show it in the reader's language. */
-const cardTitle = (title: string) => { const m = /^(.+?) wants to: ([\s\S]+)$/.exec(title); return m ? `${t('{name} wants to', { name: m[1] })}: ${t(m[2])}` : t(title); };
+const cardTitle = (title: string) => { const m = /^(.+?) wants to: ([\s\S]+)$/.exec(title); return m ? `${t('{name} wants to', { name: t(m[1]) })}: ${t(m[2])}` : t(title); };
 const KNOWN: Record<string, string> = { github: t("GitHub"), gitlab: t("GitLab"), hubspot: 'HubSpot', linkedin: 'LinkedIn', youtube: t("YouTube"), clickup: 'ClickUp', googledocs: t("Google Docs"), googledrive: t("Google Drive"), googlesheets: t("Google Sheets"), googlecalendar: t("Google Calendar"), googletasks: t("Google Tasks"), googlemeet: 'Google Meet' };
 /** "googlecalendar" → "Google Calendar", "slack" → "Slack". */
 export const humanizeToolkit = (slug: string) => KNOWN[slug.toLowerCase()] ?? slug.replace(/^(google|microsoft)(?=\w)/i, '$1 ').replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
