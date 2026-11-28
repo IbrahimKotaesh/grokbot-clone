@@ -1217,4 +1217,7 @@ export const arWeb: Record<string, string> = {
   "Warm, with a light joke when the moment fits.": "لطيف، وبيمزح شوي لما يكون الجو مناسب.",
   "Playful, jokes in your dialect, and has opinions of its own. Still serious about work and money.": "مهضوم، بيمزح بلهجتك، وإلو رأيه الخاص. بس بالشغل والمصاري بيضل جدّي.",
   "Normal": "عادي",
+  "Trial": "تجربة",
+  "Trial voice": "صوت تجريبي",
+  "Call {name} with the trial voice": "اتصل بـ{name} بالصوت التجريبي",
 };

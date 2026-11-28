@@ -138,6 +138,7 @@ function Shell() {
         {view === 'chat' && selectedBot && selectedBot.kind !== 'room' ? <span className="mobile-topbar__right">
           {/* Only Badr takes calls: one round sun button, like the desktop header. */}
           {!calling && selectedBot.isPrimary && <button type="button" className="chat__call" aria-label={t("Call {name}", { name: selectedBot.name })} title={t("Call {name}", { name: selectedBot.name })} onClick={() => startCall(selectedBot.id)}><Phone size={19} strokeWidth={2.2} /></button>}
+          {!calling && selectedBot.isPrimary && <button type="button" className="chat__call chat__call--trial" aria-label={t("Call {name} with the trial voice", { name: selectedBot.name })} title={t("Call {name} with the trial voice", { name: selectedBot.name })} onClick={() => startCall(selectedBot.id, 'openai')}><Phone size={15} strokeWidth={2.2} /><span>{t('Trial')}</span></button>}
           {!isMacDesktop() && <button type="button" className="icon-btn" aria-label={t("Show computer")} aria-pressed={detailsOpen} onClick={() => useStore.getState().set({detailsOpen:!detailsOpen})}><Icon name="monitor" size={21}/></button>}
         </span> : <span className="mobile-topbar__spacer" />}
       </div>

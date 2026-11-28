@@ -14,6 +14,7 @@ import { computerState } from './computer.js';
 import { falSpeak, falVoiceReady, mintRelayTicket } from './fal-voice.js';
 import { CAST } from './voice-cast.js';
 import { humorNote } from './agent/prompt.js';
+import { OPENAI_VOICE_MODEL, mintOpenAIVoiceTicket, openaiVoiceFor, openaiVoiceReady } from './openai-voice.js';
 import { hostedKey } from './hosted-models.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
@@ -229,14 +230,23 @@ voiceApi.get('/options', (c) => c.json({ voices: CAST, languages: LANGUAGES, spe
 
 voiceApi.post('/session', async (c) => {
   const user = c.get('user');
-  const { botId } = await c.req.json<{ botId: string }>().catch(() => ({ botId: '' }));
+  const { botId, engine } = await c.req.json<{ botId: string; engine?: string }>().catch(() => ({ botId: '', engine: '' }));
   const bot = ownBot(user.id, botId);
   if (!bot) return c.json({ error: 'not found' }, 404);
   const s = settingsOf(bot);
+  // The trial voice: OpenAI's gpt-audio through our own relay (openai-voice.ts), same protocol for the call screen.
+  const openai = engine === 'openai';
+  if (openai && !openaiVoiceReady()) return c.json({ error: 'The trial voice isn’t available on this server.' }, 503);
+  if (!openai && env.xaiKey === 'disabled' && !falVoiceReady()) return c.json({ error: 'Voice is not configured on this server.' }, 503);
 
   let secret: { value: string; expires_at: number };
   let websocketUrl = `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(VOICE_MODEL)}`;
-  if (viaFal()) {
+  if (openai) {
+    secret = mintOpenAIVoiceTicket(user.id, bot.id);
+    const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? 'localhost';
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host);
+    websocketUrl = `${local ? 'ws' : 'wss'}://${host}/api/voice/openai`;
+  } else if (viaFal()) {
     secret = mintRelayTicket(user.id);
     const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? 'localhost';
     const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host);
@@ -257,8 +267,9 @@ voiceApi.post('/session', async (c) => {
   }
 
   const instructions = voiceInstructions(user.id, bot, s.language);
+  const voiceGender = (CAST.find((v) => v.id === bot.voice) ?? FALLBACK_VOICES.find((v) => v.id === bot.voice))?.gender;
   const session: Record<string, unknown> = {
-    voice: s.voice,
+    voice: openai ? openaiVoiceFor(voiceGender) : s.voice,
     instructions,
     turn_detection: { type: 'server_vad' },
     tools: VOICE_TOOLS,
@@ -280,7 +291,8 @@ voiceApi.post('/session', async (c) => {
     callId,
     clientSecret: secret.value,
     expiresAt: secret.expires_at,
-    model: VOICE_MODEL,
+    model: openai ? OPENAI_VOICE_MODEL : VOICE_MODEL,
+    engine: openai ? 'openai' : 'grok',
     websocketUrl,
     sampleRate: SAMPLE_RATE,
     instructions,

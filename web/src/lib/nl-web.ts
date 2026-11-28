@@ -1134,4 +1134,7 @@ export const nlWeb: Record<string, string> = {
   "Warm, with a light joke when the moment fits.": "Warm, met een grapje als het past.",
   "Playful, jokes in your dialect, and has opinions of its own. Still serious about work and money.": "Speels, grapt in jouw taal en heeft een eigen mening. Wel serieus over werk en geld.",
   "Normal": "Normaal",
+  "Trial": "Test",
+  "Trial voice": "Teststem",
+  "Call {name} with the trial voice": "Bel {name} met de teststem",
 };

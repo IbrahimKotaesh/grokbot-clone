@@ -1,3 +1,4 @@
+import { openaiVoiceReady } from './openai-voice.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { addRule, deleteRule, listRules, setPaused, updateRule } from './agent/rules.js';
 import { markVoiceChosen } from './voice-cast.js';
@@ -851,8 +852,8 @@ api.delete('/policies/:tool', (c) => {
 // Private transcription works with either subscription provider.
 api.route('/voice', transcriptionApi);
 api.use('/voice/*', async (c, next) => {
-  // Grok Voice needs either the xAI runtime or the fal relay (fal-voice.ts).
-  if (env.agentProvider !== 'xai' && !falVoiceReady()) return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
+  // Grok Voice needs either the xAI runtime or the fal relay (fal-voice.ts); the OpenAI trial voice only needs OpenRouter.
+  if (env.agentProvider !== 'xai' && !falVoiceReady() && !openaiVoiceReady()) return c.json({ error: 'Voice is not configured for subscription runtimes.' }, 503);
   await next();
 });
 api.route('/voice', voiceApi);

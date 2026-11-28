@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import type { Row } from '@shared/types';
 import { sortedRows, useStore,transcriptKey } from '../store';
-import { voiceApi, type VoiceSession } from './api';
+import { voiceApi, type CallEngine, type VoiceSession } from './api';
 import { MicCapture, PcmPlayer, base64ToPcm, createAudioContext, micErrorMessage, openMic, pcmToBase64 } from './audio';
 
 export interface Caption { id: string; role: 'user' | 'assistant'; text: string; final: boolean }
@@ -29,11 +29,13 @@ interface VoiceState {
   startedAt: number | null;
   /** The full-screen call view is showing (false = shrunk to the bar above the chat). */
   expanded: boolean;
+  /** Which voice runs the call: Grok, or the trial voice being compared with it. */
+  engine: CallEngine;
 }
 
 export const useVoice = create<VoiceState>(() => ({
   status: 'idle', botId: null, callId: null, muted: false, speaking: false, listening: false, thinking: false,
-  working: [], captions: [], error: null, startedAt: null, expanded: false,
+  working: [], captions: [], error: null, startedAt: null, expanded: false, engine: 'grok',
 }));
 
 const setV = (p: Partial<VoiceState>) => useVoice.setState(p);
@@ -41,12 +43,12 @@ const setV = (p: Partial<VoiceState>) => useVoice.setState(p);
 let current: VoiceCall | null = null;
 
 /** Start a call with a bot. Must be called from a user gesture (click) so audio can start. */
-export function startCall(botId: string) {
+export function startCall(botId: string, engine: CallEngine = 'grok') {
   if (current && !current.ended) {
-    if (current.botId === botId) return;
+    if (current.botId === botId && current.engine === engine) return;
     current.end();
   }
-  current = new VoiceCall(botId);
+  current = new VoiceCall(botId, engine);
   void current.start();
 }
 
@@ -86,7 +88,7 @@ class VoiceCall {
   private connectTimer: ReturnType<typeof setTimeout> | null = null;
   private onUnload = () => { if (this.sess && !this.ended) voiceApi.endBeacon(this.botId, this.sess.callId, this.transcript()); };
 
-  constructor(readonly botId: string) {
+  constructor(readonly botId: string, readonly engine: CallEngine = 'grok') {
     // Created synchronously inside the click so autoplay policy lets it run.
     this.ctx = createAudioContext();
     this.player = new PcmPlayer(this.ctx);
@@ -97,7 +99,7 @@ class VoiceCall {
   micLevel() { return useVoice.getState().muted ? 0 : this.mic?.level ?? 0; }
 
   async start() {
-    setV({ status: 'connecting', botId: this.botId, callId: null, muted: false, speaking: false, listening: false, thinking: false, working: [], captions: [], error: null, startedAt: null, expanded: true });
+    setV({ status: 'connecting', botId: this.botId, callId: null, muted: false, speaking: false, listening: false, thinking: false, working: [], captions: [], error: null, startedAt: null, expanded: true, engine: this.engine });
     window.addEventListener('pagehide', this.onUnload);
     let stream: MediaStream;
     try {
@@ -110,7 +112,7 @@ class VoiceCall {
     try {
       this.mic = new MicCapture(this.ctx, stream, (pcm) => this.sendAudio(pcm));
       await this.mic.start();
-      this.sess = await voiceApi.session(this.botId);
+      this.sess = await voiceApi.session(this.botId, this.engine);
       if (this.ended) { void voiceApi.end(this.botId, this.sess.callId, [], 'Cancelled'); return; }
       setV({ callId: this.sess.callId });
       this.connect(this.sess);
