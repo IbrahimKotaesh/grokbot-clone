@@ -7,6 +7,7 @@ import { env } from '../env.js';
 import { newId } from '../lib/ids.js';
 import { hub } from '../lib/hub.js';
 import { getBotRow, getLive } from '../store.js';
+import { withCurrentNames } from './recall.js';
 
 /**
  * Memory over time:
@@ -337,7 +338,8 @@ export async function consolidateBot(botId: string, opts: { upTo?: number } = {}
   let skipped = 0;
   const ins = db.prepare("INSERT INTO memories(id,bot_id,text,created_at,source) VALUES (?,?,?,?,'learned')");
   for (const text of proposed.slice(0, 8)) {
-    const t = text.slice(0, 300);
+    const owner = (db.prepare('SELECT user_id FROM bots WHERE id=?').get(botId) as { user_id?: string } | undefined)?.user_id ?? '';
+    const t = withCurrentNames(owner, text.slice(0, 300));
     if ([...existing, ...added].some((e) => similar(e, t))) { skipped++; continue; }
     ins.run(newId('mem'), botId, t, now());
     added.push(t);

@@ -742,9 +742,12 @@ echo ok`,
         db.prepare("INSERT INTO tasks(id,bot_id,title,state,created_at,updated_at) VALUES (?,?,?,'working',?,?)").run(taskId, child.id, task.slice(0, 160), now(), now());
         return { child, taskId };
       })();
-      ctx.enqueueBotMessage(ctx.botId, result.child.id, `The user explicitly asked to create you and assigned this task:\n${task}\n\nTask ID: ${result.taskId}. Update this task with update_task when done or blocked, then report back to ${parent.name} using send_to_bot.`, 1);
+      // The new teammate introduces itself to the owner in its own chat right away and works with them there;
+      // the Chief of Staff only hears one plain line back. (It used to send its first report, ids and all, to the
+      // Chief of Staff, so the owner met it through a technical note instead of a hello.)
+      ctx.enqueueBotMessage(ctx.botId, result.child.id, `The owner just asked ${parent.name} to create you, with this job:\n${task}\n\nDo this now:\n1. Write your first message to the owner in this chat: a warm hello by their first name, in their own language and dialect (the job above is written in it), 2-3 short lines saying who you are, what you will do for them and when. If one thing truly needs their answer to start (a time, an account), ask that single question.\n2. Then start the job, and send its results to the owner here in this chat.\n3. When you are set up, tell ${parent.name} in one plain sentence with send_to_bot (no ids, no file names).\nKeep the task (id ${result.taskId}) up to date with update_task; never show ids to the owner.`, 1);
       hub.emit(ctx.userId, { type: 'tasks', botId: result.child.id });
-      return { output: JSON.stringify({ created: true, bot_id: result.child.id, name, task_id: result.taskId, note: 'Visible teammate created and task dispatched. It will report back; do not claim its task is finished yet.' }), summary: `Created ${name} and assigned the task` };
+      return { output: JSON.stringify({ created: true, bot_id: result.child.id, name, task_id: result.taskId, note: 'Visible teammate created. It will say hello to the owner in its own chat right away and work with them there. Tell the owner in one or two short lines that it exists and will message them now; no ids, no list of internal details. Do not claim its task is finished.' }), summary: `Created ${name} and assigned the task` };
     },
   },
   {

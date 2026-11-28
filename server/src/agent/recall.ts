@@ -19,9 +19,15 @@ export function searchConversation(userId:string,botId:string,query:string,inclu
  return {scope:includeEarlier?'All saved conversations for this bot':'Current conversation for this bot',searched_messages:rows.length,search_limited:rows.length===5000,matches:matches.map(({r,b,text})=>{const positions=[query,...query.split(/\s+/)].map(w=>text.toLowerCase().indexOf(w.toLowerCase())).filter(n=>n>=0);const start=Math.max(0,(positions.length?Math.min(...positions):0)-250);return {seq:r.seq,generation:r.generation,at:new Date(r.created_at).toISOString(),role:b.role,text:text.slice(start,start+1800),excerpt:start>0||text.length>1800};})};
 }
 
+/** The Chief of Staff's earlier name ("Quinn"): memories always use its name today, so new Bots aren't told to report to a stranger. */
+export function withCurrentNames(userId:string,text:string):string{
+ if(!/\bQuinn\b/.test(text))return text;
+ const primary=(db.prepare('SELECT name FROM bots WHERE user_id=? AND is_primary=1').get(userId) as {name?:string}|undefined)?.name;
+ return primary&&primary!=='Quinn'?text.replace(/\bQuinn\b/g,primary):text;
+}
 export function saveDurableMemory(userId:string,botId:string,value:unknown,automatic=false){
  const bot=db.prepare('SELECT user_id FROM bots WHERE id=?').get(botId) as any;if(bot?.user_id!==userId)throw Error('Memory unavailable.');
- const text=typeof value==='string'?value.trim():'';if(!text||text.length>2000)throw Error('Save one concise memory, under 2000 characters.');
+ const text=typeof value==='string'?withCurrentNames(userId,value.trim()):'';if(!text||text.length>2000)throw Error('Save one concise memory, under 2000 characters.');
  const existing=(db.prepare('SELECT id,text FROM memories WHERE bot_id=?').all(botId) as {id:string;text:string}[]).find(m=>normalizeRecall(m.text)===normalizeRecall(text));
  if(existing){if(!automatic&&db.prepare("SELECT 1 FROM sqlite_master WHERE name='auto_memory_sources'").get())db.prepare('DELETE FROM auto_memory_sources WHERE memory_id=?').run(existing.id);return {id:existing.id,created:false};}
  const id=newId('mem');db.prepare('INSERT INTO memories(id,bot_id,text,created_at) VALUES (?,?,?,?)').run(id,botId,text,now());hub.emit(userId,{type:'memories',botId});return {id,created:true};

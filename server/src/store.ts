@@ -77,7 +77,26 @@ function bumpRev(botId: string): number {
 }
 
 /** Append a new row. Returns its seq. */
+/**
+ * Internal ids and paths never reach the owner's screen: "task_4bQMPB7_Gv60", "rt_8O7_-MIvyXGP", "/root/grokbot/files/bot_…/".
+ * Applied to Bot replies and to Bots' messages to each other (both show in the owner's chats). The stored history the
+ * models read is unchanged, so a Bot can still use the id it needs.
+ */
+const INTERNAL_ID = /\b(?:task|rt|bot|call|img|file|chat|room|usr|appr|run|turn)_[A-Za-z0-9_-]{6,}\b/g;
+export function plainForOwner(text: string): string {
+  if (!text || !/_[A-Za-z0-9_-]{6,}|\/root\/grokbot\//.test(text)) return text;
+  return text
+    .replace(/\/root\/grokbot\/files\/bot_[A-Za-z0-9_-]+\//g, '')
+    .replace(new RegExp(`\\s*[(（\\[]\\s*(?:${INTERNAL_ID.source})\\s*[)）\\]]`, 'g'), '')
+    // Bare ids, but never inside a link or path (".../attachments/file_x" stays a working link).
+    .replace(/(?<![\/=?&#\w.-])[`"«]?(?:task|rt|bot|call|img|file|chat|room|usr|appr|run|turn)_[A-Za-z0-9_-]{6,}\b[`"»]?(?![\/\w])/g, '')
+    .replace(/[ \t]{2,}/g, ' ').replace(/ ([.,،:])/g, '$1');
+}
+const forOwner = (body: RowBody): RowBody =>
+  body.type === 'message' && (body.role === 'assistant' || body.from?.kind === 'bot') && typeof body.text === 'string' ? { ...body, text: plainForOwner(body.text) } : body;
+
 export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
+  body = forOwner(body);
   if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation, next_seq FROM bots WHERE id=?').get(botId) as any;
@@ -99,6 +118,7 @@ export function appendRow(botId: string, kind: RowKind, body: RowBody): Row {
 
 /** Rewrite an existing row's body (e.g. streaming text, card status). */
 export function updateRow(botId: string, seq: number, body: RowBody): Row | null {
+  body = forOwner(body);
   if(body.type==='message'&&body.role==='assistant'&&isSilentPlaceholder(body.text))body={...body,text:''};
   const tx = db.transaction(() => {
     const b = db.prepare('SELECT user_id, generation FROM bots WHERE id=?').get(botId) as any;

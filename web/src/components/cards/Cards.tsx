@@ -19,6 +19,10 @@ function useBusy() {
 }
 
 const prettyTool = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+/** Badr's own tools by a name people know. */
+const LOCAL_TOOL: Record<string, string> = { run_python: 'Python', shell: t('Terminal'), browser_run_js: t('Browser'), send_email: t('Email'), public_link: t('Public link') };
+/** The server writes the card in English ("Badr wants to: Run Python code on its computer"): show it in the reader's language. */
+const cardTitle = (title: string) => { const m = /^(.+?) wants to: ([\s\S]+)$/.exec(title); return m ? `${t('{name} wants to', { name: m[1] })}: ${t(m[2])}` : t(title); };
 const KNOWN: Record<string, string> = { github: t("GitHub"), gitlab: t("GitLab"), hubspot: 'HubSpot', linkedin: 'LinkedIn', youtube: t("YouTube"), clickup: 'ClickUp', googledocs: t("Google Docs"), googledrive: t("Google Drive"), googlesheets: t("Google Sheets"), googlecalendar: t("Google Calendar"), googletasks: t("Google Tasks"), googlemeet: 'Google Meet' };
 /** "googlecalendar" → "Google Calendar", "slack" → "Slack". */
 export const humanizeToolkit = (slug: string) => KNOWN[slug.toLowerCase()] ?? slug.replace(/^(google|microsoft)(?=\w)/i, '$1 ').replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -31,20 +35,20 @@ export function ApprovalCard({ body }: { body: Card<'approval'> }) {
   const { busy, error, run } = useBusy();
   const pending = body.status === 'pending';
   const decide = (d: 'allow' | 'always' | 'deny') => run(d, () => api.approve(body.approvalId, d));
-  const name = body.toolkit ? humanizeToolkit(body.toolkit) : prettyTool(body.tool);
+  const name = body.toolkit ? humanizeToolkit(body.toolkit) : LOCAL_TOOL[body.tool] ?? prettyTool(body.tool);
   return (
     <div className={`card approval-card${pending ? '' : ' is-resolved'}`}>
       <div className="card__head">
         <ToolkitLogo name={name} logo={body.toolkit ? `https://logos.composio.dev/api/${body.toolkit.toLowerCase()}` : undefined} size={44} />
         <div className="card__titles">
-          <div className="card__title">{body.title}</div>
+          <div className="card__title" dir="auto">{cardTitle(body.title)}</div>
           <div className="card__sub">{name}</div>
         </div>
       </div>
       {body.summary ? (
         <>
-          <div className="card__body">{body.summary}</div>
-          {body.reason && <div className="card__sub">{body.reason}</div>}
+          <div className="card__body" dir="auto">{t(body.summary)}</div>
+          {body.reason && <div className="card__sub" dir="auto">{t(body.reason)}</div>}
           {body.rule && <div className="card__rule">{t('Your rule: ask first when it wants to “{action}”.', { action: body.rule })}</div>}
           {(body.technical || body.detail) && <details className="card__technical"><summary>{t("Show details")}</summary><pre>{body.technical || body.detail}</pre></details>}
         </>

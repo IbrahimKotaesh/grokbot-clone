@@ -289,12 +289,19 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     const col = el?.querySelector('.transcript__col');
     if (!el || !col) return;
     let frame=0;
+    const follow = () => { if (stick.current) el.scrollTop = el.scrollHeight; else if (el.scrollHeight - el.scrollTop - el.clientHeight > 40) setShowJump(true); };
     const observer = new ResizeObserver(() => {
-      if(frame||!stick.current)return;
-      frame=requestAnimationFrame(()=>{frame=0;if(stick.current)el.scrollTop=el.scrollHeight;});
+      // Scroll right away (a frame can be held back while the window is in the background, which left new
+      // replies sitting below the screen), then once more after layout settles.
+      follow();
+      if(frame)return;
+      frame=requestAnimationFrame(()=>{frame=0;follow();});
     });
     observer.observe(col); observer.observe(el);
-    return () => {observer.disconnect();cancelAnimationFrame(frame);};
+    // Back in view: catch up with anything that arrived meanwhile.
+    const onVisible = () => { if (document.visibilityState === 'visible') follow(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {observer.disconnect();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange', onVisible);};
     // Re-attach once the history has loaded, so the column exists to be watched.
   }, [bot.id, loaded]);
 
@@ -321,6 +328,15 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     if (el) el.scrollTop = el.scrollHeight;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastSeq]);
+
+  // A reply (or any new step) arrived: follow it down while you're at the bottom; otherwise offer the arrow.
+  const shownCount = shownRows.length;
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !positioned.current) return;
+    if (stick.current) el.scrollTop = el.scrollHeight;
+    else if (el.scrollHeight - el.scrollTop - el.clientHeight > 40) setShowJump(true);
+  }, [shownCount, lastSeq]);
 
   const onScroll = () => {
     const el = scrollRef.current!;

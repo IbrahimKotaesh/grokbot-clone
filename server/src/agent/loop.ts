@@ -315,6 +315,9 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       if (old) await finishPending(ctx, JSON.parse(old.state), 'restart');
       const item = triggerItem(trigger,attachedContext);
       if (!item) return;
+      // A group post, another Bot or a routine woke it: remind it which language the owner reads (Nour answered
+      // the owner in English after writing in the Family group).
+      if (trigger.type !== 'user' && typeof item.content === 'string') { const lang = ownerLanguageFromChat(userId, botId); if (lang) item.content += `\n\n[Anything you write to the owner: ${lang === 'ar' ? 'Arabic, in their own dialect' : 'their language (usually English), not Arabic'}.]`; }
       const images=imageInputs(userId, 'imageIds' in trigger ? trigger.imageIds : []);
       await (provider === 'claude' ? claudeTurn : codexTurn)(botId, item.content, ctrl.signal, async (name, args, callId) => {
         if (!toolMap.has(name)) throw new Error(`Unknown local tool: ${name}`);
@@ -626,16 +629,36 @@ async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string):Pr
 /** Badr's chat voice, repeated next to each reply for the hosted models (they drift into report formatting). */
 const CHAT_STYLE = ' Write like a confident colleague texting: plain sentences and, when useful, a few simple bullets. No headings, no --- lines, no emojis, no bold on every line; a table only for many rows of numbers. Lead with the answer or the result, say plainly what you did and found, and ask at most one question at the end.';
 /** Whether the owner's latest own message (not a routine or another Bot) is in Arabic. */
-function ownerWritesArabic(history: any[]): boolean {
+/**
+ * The language the owner writes in: from their own latest message; when this Bot has none yet (a new teammate whose
+ * only messages came from the Chief of Staff, or a routine), from those messages and its job instead. A new Bot whose
+ * job arrived in Arabic used to count as "not Arabic" and ran on the free model that slips foreign letters into Arabic.
+ */
+function ownerLanguage(history: any[]): 'ar' | 'other' | null {
+  let fallback: 'ar' | 'other' | null = null;
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i];
     if (h?.role !== 'user') continue;
     const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
-    if (!text.trim() || /^\[(?:From|Routine|Message from|System notice)/.test(text)) continue;
+    if (!text.trim() || /^\[System notice/.test(text)) continue;
+    if (/^\[(?:From|Routine|Message from)/.test(text)) { fallback ??= /[\u0600-\u06FF]/.test(text) ? 'ar' : /[a-z]{3,}/i.test(text) ? 'other' : null; continue; }
     if (shortLatin(text) && i > 0 && earlierOwnerText(history, i)) continue;
-    return /[\u0600-\u06FF]/.test(text);
+    return /[\u0600-\u06FF]/.test(text) ? 'ar' : /[a-z]{3,}/i.test(text) ? 'other' : fallback;
   }
-  return false;
+  return fallback;
+}
+/** The owner's language from what they last wrote to this Bot, else to their Chief of Staff (for engines whose history lives elsewhere). */
+function ownerLanguageFromChat(userId: string, botId: string): 'ar' | 'other' | null {
+  const primary = (db.prepare('SELECT id FROM bots WHERE user_id=? AND is_primary=1').get(userId) as { id?: string } | undefined)?.id;
+  for (const id of [botId, primary]) {
+    if (!id) continue;
+    const mine = listRows(id, { limit: 80 }).reverse().find((r) => r.body.type === 'message' && r.body.role === 'user' && !r.body.from && !shortLatin(r.body.text ?? '') && (r.body.text ?? '').trim());
+    if (mine?.body.type === 'message') return /[\u0600-\u06FF]/.test(mine.body.text) ? 'ar' : 'other';
+  }
+  return null;
+}
+function ownerWritesArabic(history: any[]): boolean {
+  return ownerLanguage(history) === 'ar';
 }
 
 /** "yes", "ok", "go ahead": a few Latin words say nothing about the language the owner writes in. */
@@ -646,16 +669,9 @@ const earlierOwnerText = (history: any[], before: number) => history.slice(0, be
   return !!t.trim() && !/^\[(?:From|Routine|Message from|System notice)/.test(t) && !shortLatin(t);
 });
 function replyLanguageNote(history: any[]): string {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const h = history[i];
-    if (h?.role !== 'user') continue;
-    const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
-    if (!text.trim() || /^\[(?:From|Routine|Message from|System notice)/.test(text)) continue;
-    if (shortLatin(text) && i > 0 && earlierOwnerText(history, i)) continue;
-    if (/[\u0600-\u06FF]/.test(text)) return `\nThe owner's last message is in Arabic: answer in Arabic, in their dialect.${CHAT_STYLE} In Arabic, start every sentence and every bullet with Arabic words and put English names or terms after them ("الفواتير من Wispr وSupabase…", not "Wispr, Supabase: …"), so each line reads right to left.`;
-    if (/[a-z]{3,}/i.test(text)) return `\nThe owner's last message is not in Arabic: answer in the language it is written in (usually English), never in Arabic.${CHAT_STYLE}`;
-    return '';
-  }
+  const lang = ownerLanguage(history);
+  if (lang === 'ar') return `\nThe owner writes in Arabic: answer in Arabic, in their dialect.${CHAT_STYLE} In Arabic, start every sentence and every bullet with Arabic words and put English names or terms after them ("الفواتير من Wispr وSupabase…", not "Wispr, Supabase: …"), so each line reads right to left.`;
+  if (lang === 'other') return `\nThe owner does not write in Arabic: answer in their language (usually English), never in Arabic.${CHAT_STYLE}`;
   return '';
 }
 
@@ -857,6 +873,12 @@ function plainSummary(name: string, args: any, title: string, appName?: string):
     if (/^(python3?|node|bash|sh)\s+\S+/.test(cmd)) return `Run the program ${cmd.split(/\s+/)[1]}`;
     if (/^git\s+clone\b/.test(cmd)) return 'Download a code project';
     return 'Run a command on its computer';
+  }
+  // Badr's own tools say what they do in plain words ("run_python" read as an app action came out "Python in run").
+  const LOCAL: Record<string, string> = { run_python: 'Run Python code on its computer', browser_run_js: 'Run a script in a web page', public_link: 'Make a public link to a picture', send_email: 'Send an email', attach_file: 'Send a file into the chat' };
+  if (toolMap.has(name) && name !== 'connected_apps') {
+    const purpose = String(args?.purpose ?? '').trim();
+    return purpose ? purpose.slice(0, 200) : LOCAL[name] ?? title;
   }
   // Connected apps: "GMAIL_SEND_EMAIL" → "Send email in Gmail", plus who/what when the arguments say.
   let slug = name, a: Record<string, unknown> = args ?? {};
