@@ -1210,4 +1210,11 @@ export const arWeb: Record<string, string> = {
   "Cheap, and reads images and screenshots": "رخيص، وبيقرا الصور ولقطات الشاشة",
   "Light and quick, for short replies": "خفيف وسريع، للردود القصيرة",
   "Everyday default: free when it can be, stronger when needed": "الافتراضي اليومي: ببلاش لما بيقدر، وأقوى لما بيلزم",
+  "Serious": "جدّي",
+  "Funny": "مهضوم",
+  "Sense of humor": "روح الدعابة",
+  "Straight to the point. No jokes.": "دغري عالموضوع، بدون نكت.",
+  "Warm, with a light joke when the moment fits.": "لطيف، وبيمزح شوي لما يكون الجو مناسب.",
+  "Playful, jokes in your dialect, and has opinions of its own. Still serious about work and money.": "مهضوم، بيمزح بلهجتك، وإلو رأيه الخاص. بس بالشغل والمصاري بيضل جدّي.",
+  "Normal": "عادي",
 };

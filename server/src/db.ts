@@ -145,6 +145,7 @@ function addColumn(table: string, col: string, ddl: string) {
 }
 addColumn('bots', 'voice', "TEXT NOT NULL DEFAULT 'luna'");
 addColumn('bots', 'voice_speed', 'REAL NOT NULL DEFAULT 1');
+addColumn('bots', 'humor', "TEXT NOT NULL DEFAULT 'normal'");
 addColumn('bots', 'voice_language', "TEXT NOT NULL DEFAULT 'auto'");
 
 addColumn('login_attempts', 'native_challenge', 'TEXT');

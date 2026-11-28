@@ -40,6 +40,7 @@ export function toBot(r: any): Bot {
     effort: r.effort,
     voice: r.voice ?? 'luna',
     voiceSpeed: r.voice_speed ?? 1,
+    humor: r.humor === 'low' || r.humor === 'high' ? r.humor : 'normal',
     voiceLanguage: r.voice_language ?? 'auto',
     paused: !!r.paused,
     generation: r.generation,

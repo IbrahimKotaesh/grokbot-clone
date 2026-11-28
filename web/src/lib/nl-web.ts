@@ -1127,4 +1127,11 @@ export const nlWeb: Record<string, string> = {
   "Cheap, and reads images and screenshots": "Goedkoop, en leest afbeeldingen en screenshots",
   "Light and quick, for short replies": "Licht en snel, voor korte antwoorden",
   "Everyday default: free when it can be, stronger when needed": "Standaard voor elke dag: gratis waar het kan, sterker als het moet",
+  "Serious": "Serieus",
+  "Funny": "Grappig",
+  "Sense of humor": "Gevoel voor humor",
+  "Straight to the point. No jokes.": "Recht op het doel af. Geen grapjes.",
+  "Warm, with a light joke when the moment fits.": "Warm, met een grapje als het past.",
+  "Playful, jokes in your dialect, and has opinions of its own. Still serious about work and money.": "Speels, grapt in jouw taal en heeft een eigen mening. Wel serieus over werk en geld.",
+  "Normal": "Normaal",
 };

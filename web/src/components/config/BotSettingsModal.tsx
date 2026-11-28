@@ -28,6 +28,18 @@ const EFFORTS: { value: Bot['effort']; label: string }[] = [
   { value: 'xhigh', label: t("Max") },
 ];
 
+type Humor = NonNullable<Bot['humor']>;
+const HUMORS: { value: Humor; label: string }[] = [
+  { value: 'low', label: t("Serious") },
+  { value: 'normal', label: t("Normal") },
+  { value: 'high', label: t("Funny") },
+];
+const HUMOR_HINT: Record<Humor, string> = {
+  low: t("Straight to the point. No jokes."),
+  normal: t("Warm, with a light joke when the moment fits."),
+  high: t("Playful, jokes in your dialect, and has opinions of its own. Still serious about work and money."),
+};
+
 const EFFORT_HINT: Record<Bot['effort'], string> = {
   low: t("Fastest replies. Good for quick lookups and chit-chat."),
   medium: t("A good balance for most work."),
@@ -101,8 +113,8 @@ export function BotSettingsModal() {
 
 // ---------------------------------------------------------------------------
 
-type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'>;
-const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '' });
+type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'> & { humor: Humor };
+const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '', humor: b.humor ?? 'normal' });
 
 /** Picks the call voice: saves right away and plays a short sample. */
 function VoicePicker({ bot }: { bot: Bot }) {
@@ -195,6 +207,9 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         </Field>
         {(draft.agentProvider === 'codex' || draft.agentProvider === 'claude') && <Field label={t("Model")} htmlFor="cfg-model" hint={t("Every model your {name} plan includes.", { name: draft.agentProvider === 'claude' ? 'Claude' : 'ChatGPT' })}>
           <SubscriptionModelSelect kind={draft.agentProvider} value={draft.model ?? ''} onChange={(m) => put('model', m)} />
+        </Field>}
+        {bot.kind !== 'room' && <Field label={t("Sense of humor")} hint={HUMOR_HINT[draft.humor]}>
+          <Segmented label={t("Sense of humor")} value={draft.humor} options={HUMORS} onChange={(v) => put('humor', v)} />
         </Field>}
         <Field label={t("Thinking effort")} hint={EFFORT_HINT[draft.effort]}>
           <Segmented label={t("Thinking effort")} value={draft.effort} options={EFFORTS} onChange={(v) => put('effort', v)} />

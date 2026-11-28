@@ -562,6 +562,18 @@ async function finishPending(ctx: ToolCtx, st: PendingState, _reason: string):Pr
 /** "Answer in English" when the owner's last typed message has no Arabic letters, "in Arabic" when it does. */
 /** Badr's chat voice, repeated next to each reply for the hosted models (they drift into report formatting). */
 const CHAT_STYLE = ' Write like a confident colleague texting: plain sentences and, when useful, a few simple bullets. No headings, no --- lines, no emojis, no bold on every line; a table only for many rows of numbers. Lead with the answer or the result, say plainly what you did and found, and ask at most one question at the end.';
+/** Whether the owner's latest own message (not a routine or another Bot) is in Arabic. */
+function ownerWritesArabic(history: any[]): boolean {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h?.role !== 'user') continue;
+    const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
+    if (!text.trim() || /^\[(?:From|Routine|Message from)/.test(text)) continue;
+    return /[\u0600-\u06FF]/.test(text);
+  }
+  return false;
+}
+
 function replyLanguageNote(history: any[]): string {
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i];
@@ -615,7 +627,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   } else if (llm.hosted) {
     model = hostedChatModel(userId, llm.model);
     // The default model runs as a sequence: free first, then Badr 4.8, and Badr 5.1 once a message runs long.
-    if (model === DEFAULT_HOSTED) model = sequenceModel(userId, stepOfTurn(botId));
+    if (model === DEFAULT_HOSTED) model = sequenceModel(userId, stepOfTurn(botId), { arabic: ownerWritesArabic(history2) });
   }
   const body: any = {
     model,

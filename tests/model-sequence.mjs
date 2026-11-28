@@ -19,6 +19,8 @@ assert.equal(hostedChatModel('u_seq', 'moonshotai/kimi-k2.7-code'), 'moonshotai/
 assert.equal(sequenceModel('u_seq', 0), FREE_MODEL, 'first step: free');
 assert.equal(sequenceModel('u_seq', STEP_UP_AFTER - 1), FREE_MODEL);
 assert.equal(sequenceModel('u_seq', STEP_UP_AFTER), STRONG_HOSTED, 'a long message steps up to Badr 5.1');
+assert.equal(sequenceModel('u_seq', 0, { arabic: true }), DEFAULT_HOSTED, 'Arabic skips the free model');
+assert.equal(sequenceModel('u_seq', STEP_UP_AFTER, { arabic: true }), STRONG_HOSTED, 'long Arabic messages still step up');
 
 freeFailed(Object.assign(new Error('Rate limit exceeded: free-models-per-day'), { status: 429 }));
 assert.equal(freeAvailable(), false);

@@ -49,7 +49,7 @@ export const STRONG_HOSTED = 'deepseek/deepseek-v4-pro';
 /*
  * The default path ("Badr 4.8"), tested 2026-11-28 on ten everyday Bot tasks and a real-size prompt:
  *  1. Free first: Baidu's ERNIE preview on OpenRouter costs nothing, keeps no data (works with data_collection: deny)
- *     and passed 9 of 10 tasks. OpenRouter allows about 1,000 free requests a day for the whole server.
+ *     and passed 9 of 10 tasks. Not for Arabic conversations (see sequenceModel). OpenRouter allows about 1,000 free requests a day for the whole server.
  *  2. When the free model is rate limited or fails, the same step reruns on DeepSeek V4.1 Flash (10 of 10, and the
  *     cheapest paid model once its prompt cache is warm), and the free model rests a while.
  *  3. A message that is still going after STEP_UP_AFTER steps is a hard task: the rest of it runs on Badr 5.1.
@@ -160,12 +160,16 @@ export function hostedChatModel(userId: string, wanted: string): string {
   return modelAllowed(plan, wanted) ? wanted : DEFAULT_HOSTED;
 }
 
-/** The model for one step on the default path (see FREE_MODEL above). `step` counts this message's model calls from 0. */
-export function sequenceModel(userId: string, step: number): string {
+/**
+ * The model for one step on the default path (see FREE_MODEL above). `step` counts this message's model calls from 0.
+ * Arabic conversations skip the free model: on 15 everyday Arabic questions it slipped Chinese, Hebrew or English
+ * letters into 7 answers (DeepSeek V4.1 Flash: none), so Arabic goes straight to Badr 4.8.
+ */
+export function sequenceModel(userId: string, step: number, opts: { arabic?: boolean } = {}): string {
   const cap = capFor(userId, 'chat');
   const capped = cap !== null && hostedSpend(userId, 'chat') >= cap;
   if (!capped && step >= STEP_UP_AFTER) return STRONG_HOSTED;
-  return freeAvailable() ? FREE_MODEL : DEFAULT_HOSTED;
+  return freeAvailable() && !opts.arabic ? FREE_MODEL : DEFAULT_HOSTED;
 }
 
 /** What the app shows in the model picker: every included model, which ones this plan unlocks, and usage. */

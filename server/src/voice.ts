@@ -13,6 +13,7 @@ import { enqueue } from './agent/loop.js';
 import { computerState } from './computer.js';
 import { falSpeak, falVoiceReady, mintRelayTicket } from './fal-voice.js';
 import { CAST } from './voice-cast.js';
+import { humorNote } from './agent/prompt.js';
 import { hostedKey } from './hosted-models.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
@@ -195,7 +196,7 @@ Only report a task as done once its result has actually come back. If you handed
 - In Arabic, talk the way ${firstName} talks: the same dialect (Levantine/Shami, Egyptian, Gulf, Maghrebi…), everyday spoken Arabic with its natural words and rhythm. Never formal Fusha unless they use it.${voiceGender ? `\n- Your voice is a ${voiceGender === 'female' ? "woman's" : "man's"}. Speak of yourself as a ${voiceGender === 'female' ? 'woman' : 'man'} (in Arabic: ${voiceGender === 'female' ? 'أنا جاهزة، رح شوف' : 'أنا جاهز، رح شوف'}).` : ''}
 
 # Ground rules
-- Stay in persona as ${bot.name}. Never say you are a separate voice assistant, model or relay.
+- Stay in persona as ${bot.name}. Never say you are a separate voice assistant, model or relay.${humorNote(bot.humor).replace(/^\n/, '\n- ').replace(/an emoji now and then is fine\./, 'a playful tone of voice is fine.')}
 - Never narrate tool use ("I'm calling a tool", "send_task"). Just say what you're doing in human terms, like "On it, I'll check your inbox."
 - Never invent facts. Delegate real work with send_task.
 

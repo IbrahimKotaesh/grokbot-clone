@@ -95,6 +95,8 @@ export interface Bot {
   voice: string;
   voiceSpeed: number;
   voiceLanguage: string;
+  /** Sense of humor: low = serious, normal = warm with a light touch, high = playful, with opinions of its own. */
+  humor?: "low" | "normal" | "high";
   /** Paused: stopped and quiet (no routines, triggers or messages of its own) until the owner resumes it or writes to it. */
   paused?: boolean;
   generation: number;

@@ -297,12 +297,13 @@ api.patch('/bots/:id', async (c) => {
   if (p.label !== undefined && (typeof p.label !== 'string' || p.label.length > 60 || /[\r\n]/.test(p.label))) return c.json({error:'Keep the job title to one short line.'},400);
   if ((p.agentProvider !== undefined || p.model !== undefined) && getLive(b.id).isRunning) return c.json({error:'Wait for the current turn to finish before changing models.'},409);
   if(p.agentProvider!==undefined&&p.agentProvider!==(b.agent_provider??env.agentProvider))invalidateProviderSession(b.id,p.agentProvider);
-  const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language' };
+  const cols: Record<string, string> = { permissionMode: 'permission_mode', agentProvider: 'agent_provider', model: 'model', name: 'name', label: 'label', description: 'description', instructions: 'instructions', avatarShape: 'avatar_shape', avatarColor: 'avatar_color', mode: 'mode', effort: 'effort', pinned: 'pinned', voice: 'voice', voiceSpeed: 'voice_speed', voiceLanguage: 'voice_language', humor: 'humor' };
   if (p.voice !== undefined && (typeof p.voice !== 'string' || !/^[a-z0-9_-]{1,40}$/i.test(p.voice))) return c.json({ error: 'Choose a voice from the list.' }, 400);
   // Every other field is a short string, a number or a yes/no; nothing else (objects, huge text) reaches the database.
   const LIMITS: Record<string, number> = { name: 60, description: 500, instructions: 20000, avatarShape: 40, avatarColor: 40, mode: 40, effort: 40, voiceLanguage: 20 };
   for (const [k, max] of Object.entries(LIMITS)) if (p[k] !== undefined && p[k] !== null && (typeof p[k] !== 'string' || p[k].length > max)) return c.json({ error: `That ${k === 'instructions' ? 'set of instructions' : k} is too long.` }, 400);
   if (p.pinned !== undefined && typeof p.pinned !== 'boolean') return c.json({ error: 'Invalid value.' }, 400);
+  if (p.humor !== undefined && !['low', 'normal', 'high'].includes(p.humor)) return c.json({ error: 'Choose low, normal or high.' }, 400);
   if (p.voiceSpeed !== undefined && (typeof p.voiceSpeed !== 'number' || !(p.voiceSpeed >= 0.5 && p.voiceSpeed <= 2))) return c.json({ error: 'Choose a voice speed between 0.5 and 2.' }, 400);
   if (p.voice !== undefined) markVoiceChosen(b.id);
   for (const [k, col] of Object.entries(cols)) {
