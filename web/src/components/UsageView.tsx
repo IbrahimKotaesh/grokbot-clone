@@ -14,7 +14,7 @@ interface Report {
   range: Range; from: number; to: number; hourly: boolean; buckets: Bucket[];
   totals: { turns: number; tokens: number; input: number; output: number; cost: number; busyMinutes: number; computerSteps: number; images: number };
   bots: BotUse[]; models: ModelUse[];
-  month: { cost: number; projected: number; plan: { id: string; name: string; priceUsd: number; computerHours: number | null }; computer: { usedMinutes: number; limitMinutes: number | null }; includedUsed: { chat: number | null; computer: number | null }; limits?: { day: { pct: number; resetsAt: number }; week: { pct: number; resetsAt: number }; month: { pct: number; resetsAt: number } } | null };
+  month: { cost: number; projected: number; plan: { id: string; name: string; priceUsd: number; computerHours: number | null }; computer: { usedMinutes: number; limitMinutes: number | null }; includedUsed: { chat: number | null; computer: number | null }; limits?: { session: { pct: number; resetsAt: number }; week: { pct: number; resetsAt: number }; month: { pct: number; resetsAt: number } } | null };
 }
 
 const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
@@ -43,8 +43,11 @@ function Seg<T extends string>({ value: v, options, onPick, label }: { value: T;
 /** A "what's left" card: a meter that empties as the month is used. */
 /** When a usage window comes back: "in 5 h", "on Monday", "on 1 December" (in the reader's language). */
 function backIn(at: number): string {
-  const h = Math.ceil((at - Date.now()) / 3600_000);
-  if (h <= 24) return t('in {n} h', { n: Math.max(1, h) });
+  const mins = Math.max(1, Math.ceil((at - Date.now()) / 60_000));
+  if (mins < 60) return t('in {n} min', { n: mins });
+  const h = Math.ceil(mins / 60);
+  if (h <= 5) return t('in {h} h {m} min', { h: Math.floor(mins / 60), m: mins % 60 });
+  if (h <= 24) return t('in {n} h', { n: h });
   const day = new Date(at).toLocaleDateString(locale, h <= 7 * 24 ? { weekday: 'long' } : { day: 'numeric', month: 'long' });
   return t('on {day}', { day });
 }
@@ -145,7 +148,7 @@ export function UsageView() {
                   left={compLeft === null ? t('Unlimited') : dur(compLeft)}
                   of={m.computer.limitMinutes === null ? t('{used} used this month', { used: dur(m.computer.usedMinutes) }) : t('{used} of {all} used', { used: dur(m.computer.usedMinutes), all: dur(m.computer.limitMinutes) })} />
                 {/* Badr's own AI, spread over the month like the big AI apps: today, this week, this month. */}
-                {m.limits ? ([['day', t('Badr AI left today')], ['week', t('Badr AI left this week')], ['month', t('Badr AI left this month')]] as const).map(([k, title]) => (
+                {m.limits ? ([['session', t('Badr AI left this session')], ['week', t('Badr AI left this week')], ['month', t('Badr AI left this month')]] as const).map(([k, title]) => (
                   <Left key={k} icon={k === 'month' ? <Cpu size={15} /> : <Sparkles size={15} />} title={title} pct={m.limits![k].pct}
                     left={`${Math.max(0, 100 - m.limits![k].pct)}%`} of={t('Comes back {when}', { when: backIn(m.limits![k].resetsAt) })} />
                 )) : <Left icon={<Sparkles size={15} />} title={t('Badr AI')} pct={null} left={t('Unlimited')} of={t('No daily or weekly limit on your account')} />}

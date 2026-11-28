@@ -258,6 +258,9 @@ export interface NoticeBody {
   type: "notice";
   text: string;
   tone?: "info" | "warn" | "error";
+  /** Badr's included AI ran out: offer a bigger plan, or say when it comes back (ms). */
+  action?: "upgrade";
+  resetsAt?: number;
 }
 
 export type ActivityKind =

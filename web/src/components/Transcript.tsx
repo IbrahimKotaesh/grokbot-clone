@@ -1,5 +1,5 @@
 import { land } from '../lib/sendFlight';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import { PlanCard } from './PlanCard';
 import {isSilentPlaceholder,visibleTranscriptRows} from '@shared/lib/message-text';
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -23,6 +23,7 @@ import { SheetViewer } from './SheetViewer';
 import { DocViewer } from './DocViewer';
 import { isDocFile } from '../lib/doc-read';
 import { Sheet, FileText } from 'lucide-react';
+import { useConfigUI } from '../configStore';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -182,9 +183,29 @@ function FileCard({ file }: { file: MessageFile }) {
   );
 }
 
+/** Badr's included AI ran out: a bigger plan now, or wait until it comes back (like Claude and ChatGPT). */
+function UpgradeNotice({ resetsAt, botId }: { resetsAt?: number; botId: string }) {
+  const open = useConfigUI((s) => s.openAppSettings);
+  const openBot = useConfigUI((s) => s.openBotSettings);
+  const mins = resetsAt ? Math.max(1, Math.ceil((resetsAt - Date.now()) / 60_000)) : 0;
+  const back = !resetsAt ? '' : mins < 60 ? t('in {n} min', { n: mins }) : mins <= 5 * 60 ? t('in {h} h {m} min', { h: Math.floor(mins / 60), m: mins % 60 })
+    : t('on {day}', { day: new Date(resetsAt).toLocaleDateString(locale, mins <= 7 * 1440 ? { weekday: 'long' } : { day: 'numeric', month: 'long' }) });
+  return (
+    <div className="notice is-warn upgrade-notice" role="status">
+      <strong>{t('You’ve reached your plan’s limit for now')}</strong>
+      <span>{back ? t('It comes back {when}. Or upgrade to keep going now.', { when: back }) : t('Upgrade to keep going now.')}</span>
+      <div className="upgrade-notice__actions">
+        <button type="button" className="upgrade-notice__btn" onClick={() => open('plan')}>{t('See plans')}</button>
+        <button type="button" className="upgrade-notice__ghost" onClick={() => openBot(botId)}>{t('Use my ChatGPT or Claude')}</button>
+      </div>
+    </div>
+  );
+}
+
 function SystemRow({ row, running }: { row: Row; running: boolean }) {
   const b = row.body;
   if (b.type === 'event') return <div className="system-event">{eventLabel(b.text)}</div>;
+  if (b.type === 'notice' && b.action === 'upgrade') return <UpgradeNotice resetsAt={b.resetsAt} botId={row.botId} />;
   if (b.type === 'notice') return <div className={`notice is-${b.tone ?? 'info'}`}>{b.text}</div>;
   if (b.type === 'card') return <CardRow row={row} />;
   if (b.type === 'plan') return <PlanCard body={b} running={running} />;

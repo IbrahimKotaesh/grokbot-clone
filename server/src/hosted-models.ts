@@ -150,10 +150,12 @@ export const computerSpend = (userId: string) => hostedSpend(userId, 'computer')
  */
 export const AI_MONTH: Record<PlanId, number | null> = { free: 0.5, starter: 12, pro: 20, max: 40, ultra: 80, enterprise: null };
 /**
- * Spread over the month like the big AI apps do: a week may use about a third more than an even share of the month,
- * and a day at most a third of a week. So nobody burns a month in an afternoon, and the plan lasts all month.
+ * Spread over the month like the big AI apps do (Claude Code, ChatGPT, Grok): a 5-hour session that starts with
+ * the first message and then comes back whole, a week of about a third more than an even share of the month, and a
+ * session of an eighth of a week. So nobody burns a month in an afternoon, and use spreads over the day.
+ * (A calendar day reset at UTC midnight meant 2-3 am in Beirut; a session is fair at any hour.)
  */
-const WEEK_SHARE = 1.3 / 4.3, DAY_SHARE = 1 / 3;
+const WEEK_SHARE = 1.3 / 4.3, SESSION_SHARE = 1 / 8, SESSION_MS = 5 * 3600_000;
 const DAY = 86400_000;
 const dayStart = (t = Date.now()) => Math.floor(t / DAY) * DAY; // UTC midnight
 const weekStart = (t = Date.now()) => { const d = dayStart(t); return d - ((new Date(d).getUTCDay() + 6) % 7) * DAY; }; // Monday, UTC
@@ -165,18 +167,32 @@ function aiSpentSince(userId: string, since: number): number {
   return (db.prepare("SELECT COALESCE(SUM(cost_usd),0) AS s FROM model_usage WHERE user_id=? AND hosted=1 AND started_at>=? AND model NOT LIKE 'openai/gpt-audio%'").get(userId, since) as { s: number }).s;
 }
 
+/**
+ * The current 5-hour session: it starts with the first use after the previous session ended and lasts 5 hours.
+ * Returns its start (or null when no session is running: the next message starts a fresh one).
+ */
+function sessionStart(userId: string, now = Date.now()): number | null {
+  const times = (db.prepare("SELECT started_at t FROM model_usage WHERE user_id=? AND hosted=1 AND started_at>=? AND model NOT LIKE 'openai/gpt-audio%' ORDER BY started_at").all(userId, now - 4 * SESSION_MS) as { t: number }[]).map((r) => r.t);
+  let start: number | null = null;
+  for (const t of times) if (start === null || t >= start + SESSION_MS) start = t;
+  return start !== null && now < start + SESSION_MS ? start : null;
+}
+
 export interface UsageWindow { used: number; limit: number; resetsAt: number }
-/** This account's usage per day, week and month (null = no limit: the server's owner, or Enterprise). */
-export function aiUsage(userId: string): { day: UsageWindow; week: UsageWindow; month: UsageWindow } | null {
+/** This account's usage per session, week and month (null = no limit: the server's owner, or Enterprise). */
+export function aiUsage(userId: string): { session: UsageWindow; week: UsageWindow; month: UsageWindow } | null {
   if (usesServerResources(userId)) return null;
   const trial = trialUntil(userId);
   const month = trial ? TRIAL.chatUsd : AI_MONTH[planOf(userId).id]; // the free day: $0.25 of AI in all
   if (month === null) return null;
-  const week = trial ? month : month * WEEK_SHARE, day = trial ? month : week * DAY_SHARE;
+  const week = trial ? month : month * WEEK_SHARE, session = trial ? month : week * SESSION_SHARE;
   const now = Date.now();
   const since = trial ? trial - TRIAL.days * DAY : 0;
+  const ss = sessionStart(userId, now);
   return {
-    day: { used: aiSpentSince(userId, Math.max(since, dayStart(now))), limit: day, resetsAt: trial ?? dayStart(now) + DAY },
+    session: ss === null
+      ? { used: 0, limit: session, resetsAt: now + SESSION_MS }
+      : { used: aiSpentSince(userId, Math.max(since, ss)), limit: session, resetsAt: trial ?? ss + SESSION_MS },
     week: { used: aiSpentSince(userId, Math.max(since, weekStart(now))), limit: week, resetsAt: trial ?? weekStart(now) + 7 * DAY },
     month: { used: aiSpentSince(userId, Math.max(since, monthStartUtc(now))), limit: month, resetsAt: trial ?? nextMonthUtc(now) },
   };
@@ -184,8 +200,10 @@ export function aiUsage(userId: string): { day: UsageWindow; week: UsageWindow; 
 
 /** When usage comes back, in words: "in 3 h", "on Monday", "on 1 December". */
 function whenBack(t: number): string {
-  const h = Math.ceil((t - Date.now()) / 3600_000);
-  if (h <= 24) return `in ${Math.max(1, h)} h`;
+  const mins = Math.max(1, Math.ceil((t - Date.now()) / 60_000));
+  if (mins < 60) return `in ${mins} min`;
+  const h = Math.ceil(mins / 60);
+  if (h <= 24) return mins % 60 && h <= 5 ? `in ${Math.floor(mins / 60)} h ${mins % 60} min` : `in ${h} h`;
   return `on ${new Date(t).toLocaleDateString('en-GB', { weekday: h <= 7 * 24 ? 'long' : undefined, day: h <= 7 * 24 ? undefined : 'numeric', month: h <= 7 * 24 ? undefined : 'long', timeZone: 'UTC' })}`;
 }
 
@@ -196,12 +214,12 @@ export function assertAiAllowed(userId: string): void {
   const own = ' To keep going now, connect your own ChatGPT or Claude in Settings → AI models.';
   if (trialUntil(userId) && u.month.used >= u.month.limit)
     throw Object.assign(new Error(`The free trial day's included AI is used up. It refills when your plan starts.${own}`), { status: 402, code: 'usage_limit' });
-  for (const [name, w] of [['month', u.month], ['week', u.week], ['day', u.day]] as const)
+  for (const [name, w] of [['month', u.month], ['week', u.week], ['session', u.session]] as const)
     if (w.used >= w.limit)
-      throw Object.assign(new Error(`You've used ${name === 'day' ? "today's" : `this ${name}'s`} included AI. It comes back ${whenBack(w.resetsAt)}.${own}`), { status: 402, code: 'usage_limit', window: name, resetsAt: w.resetsAt });
+      throw Object.assign(new Error(`You've used ${name === 'session' ? "this session's" : `this ${name}'s`} included AI. It comes back ${whenBack(w.resetsAt)}.${own}`), { status: 402, code: 'usage_limit', window: name, resetsAt: w.resetsAt });
 }
 /** Near the end of a window (80%), long messages no longer step up to the strongest model. */
-const nearLimit = (userId: string) => { const u = aiUsage(userId); return !!u && [u.day, u.week, u.month].some((w) => w.used >= w.limit * 0.8); };
+const nearLimit = (userId: string) => { const u = aiUsage(userId); return !!u && [u.session, u.week, u.month].some((w) => w.used >= w.limit * 0.8); };
 
 /** The month's AI budget (USD at cost) for chat or computer work; the free trial day has its own small one. */
 function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
@@ -243,7 +261,7 @@ export function hostedSummary(userId: string) {
     // Percent of the month's included AI used, not dollars: the app shows it as a simple meter.
     usage: { chat: pct(hostedSpend(userId, 'chat'), capFor(userId, 'chat')), computer: pct(computerSpend(userId), capFor(userId, 'computer')) },
     // Percent used of today, this week and this month, with when each comes back (null = no limit).
-    limits: (() => { const u = aiUsage(userId); if (!u) return null; const w = (x: UsageWindow) => ({ pct: Math.min(100, Math.round((x.used / Math.max(x.limit, 1e-9)) * 100)), resetsAt: x.resetsAt }); return { day: w(u.day), week: w(u.week), month: w(u.month) }; })(),
+    limits: (() => { const u = aiUsage(userId); if (!u) return null; const w = (x: UsageWindow) => ({ pct: Math.min(100, Math.round((x.used / Math.max(x.limit, 1e-9)) * 100)), resetsAt: x.resetsAt }); return { session: w(u.session), week: w(u.week), month: w(u.month) }; })(),
   };
 }
 

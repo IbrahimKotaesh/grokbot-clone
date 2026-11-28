@@ -244,3 +244,12 @@
 .bubble-wrap.is-right:has(.bubble__reaction) .bubble__meta { margin-top: 10px; }
 @keyframes reaction-pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .bubble__seen { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--p-muted); animation: rise .3s ease-out both; }
+
+/* Badr's included AI ran out: upgrade now, use your own ChatGPT/Claude, or wait (like Claude and ChatGPT). */
+.notice.upgrade-notice { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: min(520px, calc(100% - 32px)); margin-inline: auto; padding: 14px 16px; border-radius: 18px; text-align: start; }
+.upgrade-notice strong { font-size: 14px; font-weight: 700; color: var(--p-text); }
+.upgrade-notice span { font-size: 13px; line-height: 1.45; color: var(--p-muted); }
+.upgrade-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.upgrade-notice__btn, .upgrade-notice__ghost { height: 34px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.upgrade-notice__btn { border: 0; background: var(--p-text); color: var(--p-bg); }
+.upgrade-notice__ghost { border: 1px solid var(--p-line-strong, var(--p-line)); background: var(--p-surface); color: var(--p-text); }
