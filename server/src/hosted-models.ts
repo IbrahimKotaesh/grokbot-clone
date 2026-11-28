@@ -2,6 +2,7 @@
 // a monthly cost cap. Users who add their own OpenRouter key pay for themselves and are never routed.
 import { db } from './db.js';
 import { planOf, TRIAL, trialUntil, type PlanId } from './plans.js';
+import { usesServerResources } from './lib/owner.js';
 
 /**
  * Hosts for Fino's included models: any host that neither keeps prompts nor trains on them (OpenRouter's
@@ -142,6 +143,8 @@ export const computerSpend = (userId: string) => hostedSpend(userId, 'computer')
  */
 /** The month's AI budget (USD at cost) for chat or computer work; the free trial day has its own small one. */
 function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
+  // The server's owner pays the bills: their Bots keep the model they were given, with no monthly cap.
+  if (usesServerResources(userId)) return null;
   // Chat replies stop at twice the cap, so the trial's chat cap is half its budget.
   if (trialUntil(userId)) return kind === 'chat' ? TRIAL.chatUsd / 2 : TRIAL.computerUsd;
   const plan = planOf(userId).id;
