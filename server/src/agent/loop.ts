@@ -174,17 +174,30 @@ const IMAGE_BATCH = 4;
  * and previous request keep their full results. The cut only moves when a new message arrives, so within a turn
  * the request stays identical step to step and the prompt cache keeps hitting.
  */
-const KEEP_FULL_TURNS = 2, OLD_OUTPUT_CHARS = 1200;
+const KEEP_FULL_TURNS = 2, OLD_OUTPUT_CHARS = 1200, OLD_ARGS_CHARS = 2000, KEEP_RECENT_ITEMS = 30, CUT_STEP = 20;
+/**
+ * Every step re-sends the whole conversation, so old bulk is shortened before it goes out (the stored history
+ * stays whole): tool results, and the long inputs of old tool calls (scripts written with save_file or shell).
+ * "Old" is before the last two owner messages, or, inside one long job, before the latest 30 steps. That boundary
+ * moves in blocks of 20, so the start of the conversation stays the same between steps and is read from cache.
+ * (Lina's design job re-sent ~250k tokens a step: her scripts and their outputs, all from one long turn.)
+ */
 export function trimOldToolOutputs(items: any[]): any[] {
-  let turns = 0, cut = -1;
+  let turns = 0, turnCut = -1;
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
-    if (it?.role === 'user' && it?.type !== 'function_call_output' && ++turns === KEEP_FULL_TURNS) { cut = i; break; }
+    if (it?.role === 'user' && it?.type !== 'function_call_output' && ++turns === KEEP_FULL_TURNS) { turnCut = i; break; }
   }
+  const recentCut = Math.floor(Math.max(0, items.length - KEEP_RECENT_ITEMS) / CUT_STEP) * CUT_STEP;
+  const cut = Math.max(turnCut, recentCut);
   if (cut <= 0) return items;
   return items.map((it, i) => {
-    if (i >= cut || it?.type !== 'function_call_output' || typeof it.output !== 'string' || it.output.length <= OLD_OUTPUT_CHARS * 1.5) return it;
-    return { ...it, output: `${it.output.slice(0, OLD_OUTPUT_CHARS)}\n…[older result shortened to save space; call the tool again if you need the rest]` };
+    if (i >= cut) return it;
+    if (it?.type === 'function_call_output' && typeof it.output === 'string' && it.output.length > OLD_OUTPUT_CHARS * 1.5)
+      return { ...it, output: `${it.output.slice(0, OLD_OUTPUT_CHARS)}\n…[older result shortened to save space; call the tool again if you need the rest]` };
+    if (it?.type === 'function_call' && typeof it.arguments === 'string' && it.arguments.length > OLD_ARGS_CHARS * 1.5)
+      return { ...it, arguments: JSON.stringify({ _note: 'older call: its long input was shortened to save space (its result follows)', start: it.arguments.slice(0, 600) }) };
+    return it;
   });
 }
 /** Models whose hosts turned images away ("No endpoints found that support image input"): they get text in their place. */
@@ -717,7 +730,13 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     try {
       stream = await llm.client.responses.create(body, { signal });
     } catch (e: any) {
-      if (IMAGE_REFUSED.test(String(e?.message)) && !signal.aborted) {
+      if (llm.hosted && /exceed your available credits|insufficient credits|more credits/i.test(String(e?.message)) && body.model !== DEFAULT_HOSTED && !signal.aborted) {
+        // Badr's OpenRouter balance is low: an expensive model's step is refused up front, a cheap one still fits.
+        console.warn(`[route] ${body.model} refused for low credit; this step runs on ${DEFAULT_HOSTED}`);
+        model = body.model = DEFAULT_HOSTED;
+        if (textOnlyModels.has(body.model)) body.input = withoutImages(body.input);
+        stream = await llm.client.responses.create(body, { signal });
+      } else if (IMAGE_REFUSED.test(String(e?.message)) && !signal.aborted) {
         // This model's hosts can't take images (one was just attached, or an older screenshot is in the history):
         // the same step goes again with notes in their place, and the model is remembered as text-only.
         textOnlyModels.add(body.model);
