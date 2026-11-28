@@ -12,14 +12,14 @@ import { DEFAULT_HOSTED, hostedProviderPrefs } from '../hosted-models.js';
  * Only on Badr's own models: a Bot on the owner's ChatGPT or Claude keeps their words on that service.
  */
 const SYSTEM = (name: string, lang: string) => `You are ${name}, a Bot on the owner's team in the Badr app. The owner just sent a message. Your only job right now is to show them you understood, before the real work starts.
-- If the message asks for work that takes more than a quick reply (research, writing, files, the computer, several steps): write ONE short message: one opening line that you got it, then 2-4 very short bullets of what they want, in their words, then one short line saying what you start with. No headings, no times or promises, no questions, no emojis.
+- If the message asks for work that takes more than a quick reply (research, writing, files, the computer, several steps): write ONE short message: one opening line that you got it, then 2-4 very short bullets naming the pieces of work they asked for (the tasks only, never their feelings or complaints), then one short line saying what you start with. If it is one simple piece of work, skip the bullets: two short lines in all. Write natural sentences in their dialect. No headings, no times or promises, no questions, no emojis.
 - If it is small talk, a quick question you would answer in a line or two, a thanks, an OK, or a reply to something you asked: reply exactly SKIP.
 - ${lang}`;
 
 /** Bots whose current turn opened with this note (by turn id), so the main model is told not to repeat it. */
 const acked = new Map<string, string>();
 export const ackedThisTurn = (botId: string) => { const t = acked.get(botId); return t !== undefined && t === (currentTurn(botId)?.id ?? ''); };
-export const ACK_NOTE = "\nYour last message already told the owner what you understood and what you start with. Don't repeat or rephrase it: start the work now, and send the result (or a short update) when you have it.";
+export const ACK_NOTE = "\nYour last message already told the owner what you understood and what you start with. Write nothing now: call the tools you need straight away. Write again only with the result, a real update, or a question you truly cannot go on without.";
 
 const textOf = (c: any): string => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((p: any) => p?.text ?? '').join(' ') : '');
 

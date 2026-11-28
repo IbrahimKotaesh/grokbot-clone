@@ -19,6 +19,7 @@ import { TurnMeter } from '../usage-meter.js';
 import { COMPUTER_CHEAP, COMPUTER_STRONG, DEFAULT_HOSTED, FREE_MODEL, computerModel, freeFailed, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, sequenceModel, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { sendAck, ackedThisTurn, ACK_NOTE } from './ack.js';
+import { repairOutput } from './output-repair.js';
 import { db, now } from '../db.js';
 import { planRequired } from '../plans.js';
 import { env } from '../env.js';
@@ -571,18 +572,27 @@ function ownerWritesArabic(history: any[]): boolean {
     const h = history[i];
     if (h?.role !== 'user') continue;
     const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
-    if (!text.trim() || /^\[(?:From|Routine|Message from)/.test(text)) continue;
+    if (!text.trim() || /^\[(?:From|Routine|Message from|System notice)/.test(text)) continue;
+    if (shortLatin(text) && i > 0 && earlierOwnerText(history, i)) continue;
     return /[\u0600-\u06FF]/.test(text);
   }
   return false;
 }
 
+/** "yes", "ok", "go ahead": a few Latin words say nothing about the language the owner writes in. */
+const shortLatin = (text: string) => !/[\u0600-\u06FF]/.test(text) && text.trim().split(/\s+/).length <= 3 && text.trim().length <= 24;
+const earlierOwnerText = (history: any[], before: number) => history.slice(0, before).some((h: any) => {
+  if (h?.role !== 'user') return false;
+  const t = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
+  return !!t.trim() && !/^\[(?:From|Routine|Message from|System notice)/.test(t) && !shortLatin(t);
+});
 function replyLanguageNote(history: any[]): string {
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i];
     if (h?.role !== 'user') continue;
     const text = typeof h.content === 'string' ? h.content : Array.isArray(h.content) ? h.content.map((c: any) => c?.text ?? '').join(' ') : '';
-    if (!text.trim() || /^\[(?:From|Routine|Message from)/.test(text)) continue;
+    if (!text.trim() || /^\[(?:From|Routine|Message from|System notice)/.test(text)) continue;
+    if (shortLatin(text) && i > 0 && earlierOwnerText(history, i)) continue;
     if (/[\u0600-\u06FF]/.test(text)) return `\nThe owner's last message is in Arabic: answer in Arabic, in their dialect.${CHAT_STYLE} In Arabic, start every sentence and every bullet with Arabic words and put English names or terms after them ("الفواتير من Wispr وSupabase…", not "Wispr, Supabase: …"), so each line reads right to left.`;
     if (/[a-z]{3,}/i.test(text)) return `\nThe owner's last message is not in Arabic: answer in the language it is written in (usually English), never in Arabic.${CHAT_STYLE}`;
     return '';
@@ -686,6 +696,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   }
 
   let msgSeq: number | null = null;
+  const msgRows: number[] = [];
   let text = '';
   let lastFlush = 0;
   let final: any = null;
@@ -712,7 +723,9 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
         if (ev.item?.type === 'message' && msgSeq !== null) {
           // finalize this message; a later message in the same response gets its own row
           const citations = (ev.item.content ?? []).flatMap((c: any) => (c.annotations ?? []).filter((a: any) => a.url).map((a: any) => ({ url: a.url, title: a.title })));
-          updateRow(botId, msgSeq, { type: 'message', role: 'assistant', text, streaming: false, citations: citations.length ? citations : undefined });
+          // Still "streaming" (not shown) until the whole response is in and mended below.
+          updateRow(botId, msgSeq, { type: 'message', role: 'assistant', text, streaming: true, citations: citations.length ? citations : undefined });
+          msgRows.push(msgSeq);
           msgSeq = null;
           text = '';
         }
@@ -730,9 +743,20 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   } catch (e: any) {
     // The free model gave up mid-answer before writing anything: rerun the step on Badr 4.8, unseen by the user.
     if (model === FREE_MODEL && msgSeq === null && !text && !signal.aborted) { freeFailed(e); return callModel(ctx, tools, signal); }
+    // Whatever was written before the failure is shown as it is.
+    for (const seq of msgRows) { const row = getRow(botId, seq); if (row?.body.type === 'message' && row.body.streaming) updateRow(botId, seq, { ...row.body, streaming: false }); }
     throw e;
   }
-  if (msgSeq !== null) flush(false);
+  if (msgSeq !== null) { flush(false); msgRows.push(msgSeq); }
+  // Mend what some hosts break: words cut before a tool call, and tool calls that arrive as DeepSeek markup.
+  final.output = repairOutput(final.output ?? [], msgRows, (seq, fixed) => {
+    const row = getRow(botId, seq);
+    if (row?.body.type === 'message') updateRow(botId, seq, fixed ? { ...row.body, text: fixed, streaming: false } : { ...row.body, text: '', streaming: false, replaced: true });
+  });
+  for (const seq of msgRows) {
+    const row = getRow(botId, seq);
+    if (row?.body.type === 'message' && row.body.streaming) updateRow(botId, seq, { ...row.body, streaming: false });
+  }
   if (final.usage?.input_tokens) noteUsage(botId, final.usage.input_tokens, history.length);
   const meter = new TurnMeter(userId, botId, provider, model, { turnId: currentTurn(botId)?.id, startedAt: callStart });
   meter.hosted = llm.hosted;

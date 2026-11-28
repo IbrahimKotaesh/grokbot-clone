@@ -760,6 +760,7 @@ export const arWeb: Record<string, string> = {
   "Reading the file": "يقرأ الملف",
   "Jotting it down": "يدوّن",
   "Moving files over": "ينقل الملفات",
+  "This document is empty.": "هالمستند فاضي.",
   "You’ve used this month’s call minutes.": "خلصت دقايق المكالمات لهالشهر.",
   "{n} min left": "باقي {n} د",
   "Reading {site}": "يقرأ {site}",

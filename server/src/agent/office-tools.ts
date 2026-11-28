@@ -9,6 +9,16 @@ import { publishAttachment } from '../attachments.js';
 import { orgo } from '../orgo.js';
 import { screenFor } from '../computer.js';
 
+/** A safe file name: the one asked for, else the document's title, else the first heading, else a plain default. */
+function fileName(a: any, fallback: string): string {
+  const ext = fallback.slice(fallback.lastIndexOf('.'));
+  const heading = Array.isArray(a?.blocks) ? a.blocks.find((b: any) => b?.type === 'heading' && b?.text)?.text : undefined;
+  const raw = [a?.filename, a?.title, heading].find((v) => typeof v === 'string' && v.trim() && v.trim() !== 'undefined');
+  if (!raw) return fallback;
+  const name = String(raw).trim().replace(/[^\w.\- ؀-ۿ/]/g, '_').replace(/_+/g, '_').slice(0, 110);
+  return /\.[a-z0-9]{3,4}$/i.test(name) ? name : name + ext;
+}
+
 export interface OfficeCtx { userId: string; botId: string }
 export interface OfficeResult { output: string; summary?: string }
 
@@ -283,6 +293,7 @@ done(path=str(p), name=p.name, b64=base64.b64encode(p.read_bytes()).decode())
 
 const COMPARE = String.raw`
 import difflib, csv
+
 a = lib_path(A.get("file_a"), True); b = lib_path(A.get("file_b"), True)
 def table(p):
     if p.suffix.lower() in (".xlsx", ".xlsm"):
@@ -375,7 +386,7 @@ export const OFFICE_TOOLS = [
     activity: 'drafting_file' as const,
     label: 'Making a spreadsheet',
     impl: async (a: any, ctx: OfficeCtx): Promise<OfficeResult> => {
-      const r = await runPy(ctx, SHEET, { filename: String(a.filename).replace(/[^\w.\- ؀-ۿ/]/g, '_').slice(0, 120) || 'sheet.xlsx', sheets: a.sheets ?? [] }, { libs: ['openpyxl'] });
+      const r = await runPy(ctx, SHEET, { filename: fileName(a, 'sheet.xlsx'), sheets: a.sheets ?? [] }, { libs: ['openpyxl'] });
       const sent = a.send === false ? null : sendFile(ctx, r.name, r.b64, a.caption);
       return { output: JSON.stringify({ ok: true, path: r.path, sheets: r.sheets, sent_to_chat: !!sent }), summary: `Made ${r.name}` };
     },
@@ -395,8 +406,8 @@ export const OFFICE_TOOLS = [
     activity: 'drafting_file' as const,
     label: 'Making a document',
     impl: async (a: any, ctx: OfficeCtx): Promise<OfficeResult> => {
-      const pptx = /\.pptx$/i.test(String(a.filename));
-      const r = await runPy(ctx, DOC, { ...a, filename: String(a.filename).replace(/[^\w.\- ؀-ۿ/]/g, '_').slice(0, 120) || 'document.docx' }, { libs: [pptx ? 'pptx' : 'docx'] });
+      const pptx = /\.pptx$/i.test(String(a.filename ?? ''));
+      const r = await runPy(ctx, DOC, { ...a, filename: fileName(a, pptx ? 'presentation.pptx' : 'document.docx') }, { libs: [pptx ? 'pptx' : 'docx'] });
       const sent = a.send === false ? null : sendFile(ctx, r.name, r.b64, a.caption);
       return { output: JSON.stringify({ ok: true, path: r.path, sent_to_chat: !!sent }), summary: `Made ${r.name}` };
     },

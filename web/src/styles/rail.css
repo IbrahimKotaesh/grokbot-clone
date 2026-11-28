@@ -559,6 +559,32 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
 }
 @media (prefers-reduced-motion: reduce) { .sheetv, .sheetv__panel { animation: none !important; } }
 
+/* Word documents in the same viewer: a calm reading page, blue like Word. */
+.docv__icon { background: #2b63c6; }
+.bubble__file.is-doc { border-color: color-mix(in srgb, #2b63c6 35%, transparent); }
+.bubble__file.is-doc .bubble__sheet-icon { background: color-mix(in srgb, #2b63c6 14%, transparent); color: #2b63c6; }
+.bubble__file.is-doc .bubble__open-cta { background: color-mix(in srgb, #2b63c6 14%, transparent); color: #2b63c6; }
+.bubble__file.is-doc .bubble__open:hover .bubble__open-cta { background: color-mix(in srgb, #2b63c6 24%, transparent); }
+:root[data-theme='dark'] .bubble__file.is-doc .bubble__sheet-icon, :root[data-theme='dark'] .bubble__file.is-doc .bubble__open-cta { color: #8db4ff; }
+.docv__scroll { flex: 1; overflow: auto; overscroll-behavior: contain; background: color-mix(in srgb, var(--p-text) 4%, var(--p-bg, #f6f5f2)); }
+.docv__page { box-sizing: border-box; width: min(780px, calc(100% - 32px)); margin: 24px auto 40px; padding: 48px 56px; border-radius: 14px; background: var(--p-surface, #fff); border: 1px solid var(--p-line); box-shadow: 0 6px 24px rgba(0,0,0,.06); color: var(--p-text); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.docv__page > :first-child { margin-top: 0; }
+.docv__page h2 { margin: 0 0 14px; font-size: 24px; line-height: 1.3; font-weight: 750; }
+.docv__page h3 { margin: 26px 0 8px; font-size: 18px; line-height: 1.35; font-weight: 700; }
+.docv__page h4 { margin: 20px 0 6px; font-size: 15.5px; font-weight: 700; }
+.docv__page p { margin: 0 0 10px; white-space: pre-wrap; }
+.docv__page ul, .docv__page ol { margin: 0 0 12px; padding-inline-start: 1.4em; }
+.docv__page li { margin: 3px 0; }
+.docv__gap { height: 8px; }
+.docv__table-wrap { margin: 8px 0 16px; overflow-x: auto; }
+.docv__table { border-collapse: collapse; font-size: 13.5px; line-height: 1.45; min-width: 60%; }
+.docv__table th, .docv__table td { padding: 8px 12px; border: 1px solid var(--p-line); text-align: start; vertical-align: top; }
+.docv__table th { background: color-mix(in srgb, var(--p-text) 5%, transparent); font-weight: 700; }
+@media (max-width: 700px) {
+  .docv__page { width: 100%; margin: 0; padding: 22px 18px 40px; border-radius: 0; border: 0; box-shadow: none; }
+  .docv__page h2 { font-size: 21px; }
+}
+
 /* Groups page with no group open. */
 .groups-empty { display: grid; place-items: center; }
 .groups-empty__inner { width: min(440px, 100%); padding: 32px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }

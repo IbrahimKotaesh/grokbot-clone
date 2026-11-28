@@ -20,7 +20,9 @@ import { GroupAvatar, useRoomMembers } from './GroupAvatar';
 import { markSeen, seenAt } from '../lib/seen';
 import { isSheetFile } from '../lib/sheet-read';
 import { SheetViewer } from './SheetViewer';
-import { Sheet } from 'lucide-react';
+import { DocViewer } from './DocViewer';
+import { isDocFile } from '../lib/doc-read';
+import { Sheet, FileText } from 'lucide-react';
 
 type Item =
   | { kind: 'divider'; key: string; ts: number }
@@ -156,22 +158,23 @@ function SenderLabel({ from }: { from: NonNullable<MessageBody['from']> }) {
 
 
 type MessageFile = NonNullable<MessageBody['files']>[number];
-/** A file in a message. Excel and CSV files open right here in the chat; the arrow still downloads them. */
+/** A file in a message. Excel, CSV and Word files open right here in the chat; the arrow still downloads them. */
 function FileCard({ file }: { file: MessageFile }) {
   const [viewing, setViewing] = useState(false);
-  const sheet = isSheetFile(file.name, file.mime);
+  const doc = isDocFile(file.name, file.mime);
+  const sheet = isSheetFile(file.name, file.mime) || doc;
   const meta = <><strong dir="auto">{file.name}</strong><small>{file.name.split('.').pop()?.toUpperCase() ?? t("File")} · {Math.max(1, Math.round(file.size / 1024))} KB</small>{file.extractionNote && <small className="bubble__file-note">{file.extractionNote}</small>}</>;
   return (
     <div className="bubble__document">
-      <div className={`bubble__file${sheet ? ' is-sheet' : ''}`}>
-        {sheet ? <span className="bubble__sheet-icon" aria-hidden><Sheet size={20} /></span> : <Icon name="file" size={22} />}
+      <div className={`bubble__file${doc ? ' is-doc' : sheet ? ' is-sheet' : ''}`}>
+        {sheet ? <span className="bubble__sheet-icon" aria-hidden>{doc ? <FileText size={20} /> : <Sheet size={20} />}</span> : <Icon name="file" size={22} />}
         {sheet
           ? <button type="button" className="bubble__open" onClick={() => setViewing(true)} aria-label={t("Open {name}", { name: file.name })}>{meta}<span className="bubble__open-cta">{t("Open")}</span></button>
           : <a href={file.url} target="_blank" rel="noreferrer noopener">{meta}</a>}
         <a className="bubble__download" href={`${file.url}?download=1`} aria-label={`Download ${file.name}`} title={t("Download")}>↓</a>
       </div>
       {file.mime === 'application/pdf' && <details className="pdf-preview"><summary>{t("Preview PDF")}</summary><iframe loading="lazy" src={`${file.url}#toolbar=0`} title={`Preview ${file.name}`} /></details>}
-      {viewing && <SheetViewer name={file.name} url={file.url} onClose={() => setViewing(false)} />}
+      {viewing && (doc ? <DocViewer name={file.name} url={file.url} onClose={() => setViewing(false)} /> : <SheetViewer name={file.name} url={file.url} onClose={() => setViewing(false)} />)}
     </div>
   );
 }
