@@ -72,6 +72,11 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
   const [settingsMenu,setSettingsMenu]=useState<'model'|'codex'|'claude'|'permissions'|null>(null);
   const [switching, setSwitching] = useState(false);
   const [dictating,setDictating]=useState(false);
+  // Live voice typing: words land after what was already typed (`base`). If you edit the box mid-dictation, your
+  // edit becomes the new base and only words spoken after it are added, so deleted words never come back.
+  const dict=useRef<{base:string;used:number;shown:string}|null>(null);
+  const joinSpoken=(base:string,spoken:string)=>{const s2=spoken.trimStart();if(!s2)return base;const b=base.replace(/[ \t]+$/,'');return b?`${b}${/\s$/.test(b)?'':' '}${s2}`:s2;};
+  const placeSpoken=(all:string)=>{const d=dict.current;if(!d)return;d.shown=all;setText(joinSpoken(d.base,all.slice(d.used)));};
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -209,7 +214,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
             rows={1}
             value={text}
             placeholder={isRoom ? t('Message the group… type @ to ask one bot') : t('Message {name}…',{name:bot.name})}
-            onChange={(e) => { setText(e.target.value); findMention(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
+            onChange={(e) => { if (dict.current) { dict.current.base = e.target.value; dict.current.used = dict.current.shown.length; } setText(e.target.value); findMention(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
             onKeyDown={(e) => {
               if (mentionList.length) {
                 if (e.key === 'ArrowDown') { e.preventDefault(); setMentionActive((a) => (a + 1) % mentionList.length); return; }
@@ -267,7 +272,11 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
           </>)}
         </div>
         <div className="composer__right">
-          <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError} onText={transcript=>setText(current=>`${current.trimEnd()}${current.trim()?"\n":""}${transcript}`)}/>
+          <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError}
+            onStart={()=>{dict.current={base:text,used:0,shown:''};}}
+            onLive={placeSpoken}
+            onDone={(final)=>{placeSpoken(final||dict.current?.shown||'');dict.current=null;ref.current?.focus();}}
+            onCancel={()=>{const d=dict.current;dict.current=null;if(d)setText(d.base);}}/>
           {running && !hasText ? (
             <button type="button" className={`composer__cta${stopping ? ' is-stopping' : ''}`} onClick={stop} disabled={stopping} aria-label={stopping ? t("Stopping…") : t("Stop")} title={stopping ? t("Stopping…") : t("Stop")}>
               {stopping ? <span className="composer__stopping" aria-hidden /> : <Icon name="stop" size={14} />}

@@ -17,6 +17,9 @@ try{
  const authHeaders={Cookie:'grokbot_session=test-session','Content-Type':'audio/mp4'};
  assert.equal((await app.request('/api/voice/transcribe',{method:'POST',headers:authHeaders,body:new Uint8Array(500)})).status,200,'Parent voice middleware must allow private STT with subscription models');
  assert.equal((await app.request('/api/voice/transcribe',{method:'POST',headers:{'Content-Type':'audio/mp4'},body:new Uint8Array(500)})).status,401);
- assert.equal((await app.request('/api/voice/session',{method:'POST',headers:authHeaders,body:'{}'})).status,503,'Unconfigured paid voice calls remain disabled');db.close();
+ // Without xAI or fal, Grok calls stay off. (With an OpenRouter key the trial voice may still run; that's openai-voice.ts.)
+ db.prepare("INSERT INTO bots(id,user_id,name,created_at,updated_at) VALUES ('b_voice','test-owner','Badr',?,?)").run(Date.now(),Date.now());
+ const grok=await app.request('/api/voice/session',{method:'POST',headers:{...authHeaders,'Content-Type':'application/json'},body:JSON.stringify({botId:'b_voice'})});
+ assert.equal(grok.status,503,'Unconfigured paid voice calls remain disabled');db.close();
  console.log('PASS: actual audio bytes proxied privately, Arabic unchanged, Safari format, upload/type limits, busy and no-speech errors');
 }finally{server.close();}

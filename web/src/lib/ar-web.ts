@@ -1220,4 +1220,8 @@ export const arWeb: Record<string, string> = {
   "Trial": "تجربة",
   "Trial voice": "صوت تجريبي",
   "Call {name} with the trial voice": "اتصل بـ{name} بالصوت التجريبي",
+  "Voice typing": "الكتابة بالصوت",
+  "Stop voice typing": "وقّف الكتابة بالصوت",
+  "Cancel voice typing": "إلغاء الكتابة بالصوت",
+  "Finishing…": "عم يخلّص…",
 };

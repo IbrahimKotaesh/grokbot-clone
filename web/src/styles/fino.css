@@ -570,3 +570,7 @@ html[data-fino-desktop=true] .sidebar__controls>button[aria-label="Collapse side
 [dir="rtl"] .toggle.is-on .toggle__knob{transform:translateX(-12px);}
 [dir="rtl"] .app-settings__back svg{transform:scaleX(-1);}
 [dir="rtl"] .cfg-item--routine .toggle{margin-left:0;margin-right:6px;}
+/* Voice typing status floats just above the message box, so it never covers the words you're editing. */
+.composer-shell { position: relative; }
+.composer-shell .dictation { position: static; }
+.composer-shell .dictation__status { bottom: calc(100% + 8px); right: 12px; }

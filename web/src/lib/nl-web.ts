@@ -1137,4 +1137,8 @@ export const nlWeb: Record<string, string> = {
   "Trial": "Test",
   "Trial voice": "Teststem",
   "Call {name} with the trial voice": "Bel {name} met de teststem",
+  "Voice typing": "Spraakinvoer",
+  "Stop voice typing": "Spraakinvoer stoppen",
+  "Cancel voice typing": "Spraakinvoer annuleren",
+  "Finishing…": "Afronden…",
 };

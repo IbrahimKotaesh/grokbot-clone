@@ -22,7 +22,7 @@ export function contentSecurityPolicy(nonce?: string): string {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "media-src 'self' data: blob:",
-    `connect-src 'self' ${origins.map(wsOf).join(' ')} https://api.x.ai wss://api.x.ai`,
+    `connect-src 'self' ${origins.map(wsOf).join(' ')} https://api.x.ai wss://api.x.ai wss://stt-rt.soniox.com`, // Soniox: live voice typing
     "frame-src 'self' blob:",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
