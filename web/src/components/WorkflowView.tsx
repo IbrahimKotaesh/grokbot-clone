@@ -42,7 +42,7 @@ function AutomationRow({ r, onChange, bot }: { r: Routine; onChange: (r: Routine
   return (
     <li className={`auto-row${r.enabled ? '' : ' is-off'}`}>
       {bot && !isEvent && r.enabled && r.nextRunAt
-        ? <span className="auto-row__time">{clock(r.nextRunAt)}</span>
+        ? <span className="auto-row__time">{clockIn(r.nextRunAt, r.timezone)}</span>
         : <span className={`auto-row__icon${isEvent ? ' is-event' : ''}`} aria-hidden>{isEvent ? <Zap size={15} strokeWidth={2.2} /> : <Clock size={15} strokeWidth={2.2} />}</span>}
       <span className="auto-row__text">
         <b dir="auto">{r.name}</b>
@@ -80,6 +80,10 @@ function BotBox({ bot, items, open, onToggle, onChange }: { bot: Bot; items: Rou
 }
 
 /** Workflow: everything your Bots do on their own (schedules and app triggers), grouped by Bot. */
+/** The time in the routine's own time zone, so it matches its description ("every day at 9:00"). */
+function clockIn(ts: number, tz: string) {
+  try { return new Date(ts).toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit', timeZone: tz || undefined }); } catch { return clock(ts); }
+}
 /** Day heading for the schedule: "Today", "Tomorrow", or the date. */
 function dayLabel(ts: number) {
   const d = new Date(ts), now = new Date();
