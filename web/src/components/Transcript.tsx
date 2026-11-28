@@ -338,11 +338,17 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
     else if (el.scrollHeight - el.scrollTop - el.clientHeight > 40) setShowJump(true);
   }, [shownCount, lastSeq]);
 
+  // Following stops only when you scroll up yourself. Content growing below (a reply, a "seen" mark) also fires
+  // scroll events with a small gap, and reading those as "scrolled away" left new replies below the screen.
+  const lastTop = useRef(0);
   const onScroll = () => {
     const el = scrollRef.current!;
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stick.current = dist < 40;
-    setShowJump(dist > 40);
+    const movedUp = el.scrollTop < lastTop.current - 2;
+    lastTop.current = el.scrollTop;
+    if (dist < 80) stick.current = true;
+    else if (movedUp) stick.current = false;
+    setShowJump(!stick.current && dist > 40);
   };
 
   const jump = () => {
