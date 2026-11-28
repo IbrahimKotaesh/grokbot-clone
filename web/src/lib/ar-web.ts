@@ -1201,4 +1201,12 @@ export const arWeb: Record<string, string> = {
   "umm so can you find me a flight to Lisbon next week, not too early… oh and a hotel near the office, and tell Sara I’m coming, thanks —": "اممم بدّي تلاقيلي رحلة على لشبونة الأسبوع الجاي، مش بكّير كتير… وأوتيل قريب من المكتب، وخبّر سارة إني جاي، يسلمو —",
   "Lisbon, 12–15 March · direct flight at 8:40, $186 · hotel near the office, $132 a night · Sara knows you’re coming · ready for your OK ·": "لشبونة، 12–15 آذار · رحلة مباشرة الساعة 8:40 بـ 186$ · أوتيل جنب المكتب بـ 132$ بالليلة · سارة عرفت إنك جاي · جاهز لموافقتك ·",
   "Badr turns a messy request into finished work": "بدر بيحوّل طلب مبعثر لشغل خلصان",
+  "Badr 5.0": "بدر 5.0",
+  "Badr 4.9": "بدر 4.9",
+  "Badr 4.5": "بدر 4.5",
+  "Badr 4.2": "بدر 4.2",
+  "Strong at code, files and data": "قوي بالكود والملفات والبيانات",
+  "Strong at long, multi-step work": "قوي بالشغل الطويل اللي إلو خطوات كتير",
+  "Cheap, and reads images and screenshots": "رخيص، وبيقرا الصور ولقطات الشاشة",
+  "Light and quick, for short replies": "خفيف وسريع، للردود القصيرة",
 };

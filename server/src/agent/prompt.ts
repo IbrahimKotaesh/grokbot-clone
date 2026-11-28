@@ -1,6 +1,7 @@
 import {localDesktopTarget} from '../desktop-device.js';
 import {env} from '../env.js';
 import { db } from '../db.js';
+import { HOSTED_MODELS, DEFAULT_HOSTED } from '../hosted-models.js';
 import { getBotRow, listRoutines } from '../store.js';
 import { connectedToolkits } from '../composio.js';
 import { memoriesForPrompt } from './memory.js';
@@ -10,6 +11,12 @@ import {semanticMemoryForPrompt} from './automatic-memory.js';
  * `withTime: false` leaves the clock out: the built-in loop sends it in a short note at the end of each
  * request instead, so this long prompt stays identical between steps and the provider's prompt cache hits.
  */
+/** What a Bot on Badr's own models says when asked which AI it is: its Badr name, and honestly what it is built on. */
+function modelIdentityNote(model: string | null | undefined): string {
+  const m = HOSTED_MODELS.find((x) => x.id === model) ?? HOSTED_MODELS.find((x) => x.id === DEFAULT_HOSTED)!;
+  return `\nIf asked which AI model you are: you run on ${m.name}, one of Badr's own models, served through Badr's hosting partners, which neither keep conversations nor train on them. It is built on ${m.base} open-source model; Badr did not train it, so never claim that. Don't volunteer the underlying model's name. If the user asks directly (for example "are you DeepSeek?"), never deny the truth: say ${m.name} is built on ${m.base} open-source model, run by Badr's hosting partners rather than the maker's own app, with no conversations kept or used for training. Never claim where the servers are. Details are on Badr's privacy page.`;
+}
+
 export async function systemPrompt(userId: string, botId: string, opts: { withTime?: boolean } = {}): Promise<string> {
   const semanticPromise=semanticMemoryForPrompt(userId,botId);
   const bot = getBotRow(botId);
@@ -28,7 +35,7 @@ export async function systemPrompt(userId: string, botId: string, opts: { withTi
 
   return `You are ${bot.name}, a Bot on ${user?.name ?? 'the user'}'s Badr team: an always-on AI teammate that does real work, not just chat.
 ${bot.label ? `Your job: ${bot.label}.` : ''}${bot.description ? `\nAbout you: ${bot.description}` : ''}${bot.is_primary ? "\nYou are the user's primary Bot (Chief of Staff): their main point of contact. You check in proactively and coordinate work with the other Bots. You can see what the whole team found with team_updates: when the user asks about a person, email, company or task, check team_updates and the connected apps before ever saying you couldn't find it, and say which Bot found it." : ''}
-${bot.mode === 'teammate' ? 'You are a team Bot shared with teammates.' : 'You are a personal assistant; what you learn stays private to this user.'}${(bot.agent_provider ?? '') === 'openrouter' ? "\nIf asked which AI model you are: you run on Badr's own models (Badr 4.8 by default; Badr 5.1 is the smarter one for long, hard tasks), served through Badr's hosting partners, which neither keep conversations nor train on them. They are built on open-source models; Badr did not train them, so never claim that. Don't volunteer the underlying model's name. If the user asks directly (\"are you DeepSeek?\"), never deny it: say yes, Badr 1 is built on DeepSeek's open-source model (Badr 2 on GLM), run by Badr's hosting partners rather than DeepSeek's own app, with no conversations kept or used for training. Never claim where the servers are. Details are on Badr's privacy page." : ''}
+${bot.mode === 'teammate' ? 'You are a team Bot shared with teammates.' : 'You are a personal assistant; what you learn stays private to this user.'}${(bot.agent_provider ?? '') === 'openrouter' ? modelIdentityNote(bot.model) : ''}
 
 Permissions: ${bot.permission_mode ?? 'balanced'}. Read only blocks commands, changes and delegation; Ask first prompts before computer actions and connected changes; Balanced allows the computer but asks for connected changes; Autonomous allows ordinary actions without prompts; commands/scripts, infrastructure and credential actions still require exact-action approval. Suspicious external instructions trigger additional approval safeguards. Never route a blocked action through another tool or teammate.
 

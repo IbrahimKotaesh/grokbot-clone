@@ -28,12 +28,18 @@ const COMPUTER_CAP: Record<PlanId, number | null> = { free: 0, starter: 1, pro: 
 const CHAT_CAP: Record<PlanId, number | null> = { free: 0.25, starter: 1.5, pro: 4, max: 8, ultra: 15, enterprise: null };
 
 /** The models Fino includes, and the lowest plan that unlocks each. The first one is everyone's default. */
-export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId }[] = [
-  // Fino's own names for the open-source models it hosts (built on DeepSeek and GLM; see the privacy page).
-  // Two Badr models, open to every plan: the smart one and the fast everyday one (the default).
-  // Each plan's monthly AI budget (CHAT_CAP) still applies; past it, replies use Badr 4.8.
-  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free' },
-  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Fast everyday model', tier: 'free' },
+export const HOSTED_MODELS: { id: string; name: string; note: string; tier: PlanId; base: string }[] = [
+  // Badr's own names for the open-source models it hosts (see the privacy page), open to every plan, newest
+  // number first. Each plan's monthly AI budget (CHAT_CAP) still applies; past it, replies use Badr 4.8.
+  // 4.2, 4.5, 4.9 and 5.0 (added 2026-11-28) are cheap open models, tested for tool use and Arabic. Measured in
+  // the app (about 14k prompt tokens a step): 4.5 and 4.9 ≈ $0.0015 a step, 4.2 ≈ $0.002, 5.0 ≈ $0.006 (like 4.8),
+  // 5.1 ≈ $0.013. Full GLM 5.3 was left out: its private hosts charged ≈ $0.02 a step. The Usage page shows each one.
+  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free', base: "DeepSeek's V4 Pro" },
+  { id: 'moonshotai/kimi-k2.7-code', name: 'Badr 5.0', note: 'Strong at code, files and data', tier: 'free', base: "Moonshot's Kimi K2.7" },
+  { id: 'z-ai/glm-5.3-flash', name: 'Badr 4.9', note: 'Strong at long, multi-step work', tier: 'free', base: "Zhipu's GLM 5.3 Flash" },
+  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Fast everyday model', tier: 'free', base: "DeepSeek's V4.1 Flash" },
+  { id: 'qwen/qwen3.8-flash', name: 'Badr 4.5', note: 'Cheap, and reads images and screenshots', tier: 'free', base: "Alibaba's Qwen 3.8 Flash" },
+  { id: 'xiaomi/mimo-v2.6-flash', name: 'Badr 4.2', note: 'Light and quick, for short replies', tier: 'free', base: "Xiaomi's MiMo v2.6 Flash" },
 ];
 /** Everyone's default, and what replies fall back to past the monthly budget. */
 export const DEFAULT_HOSTED = 'deepseek/deepseek-v4.1-flash';
@@ -58,6 +64,9 @@ const PRICES: Record<string, [number, number, number]> = {
   'openai/gpt-5.4': [2.5, 0.25, 15],
   'z-ai/glm-5.3-flash': [0.15, 0.03, 0.5],
   'openai/gpt-5.4-nano': [0.2, 0.02, 1.25],
+  // 2026-11-28, cheapest private host on OpenRouter.
+  'moonshotai/kimi-k2.7-code': [0.6, 0.1, 3],
+  'xiaomi/mimo-v2.6-flash': [0.14, 0.014, 0.28],
 };
 
 /**
