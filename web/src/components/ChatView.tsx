@@ -1,4 +1,3 @@
-import { TrialCallButton } from './TrialCallButton';
 import { isArabic, t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -117,8 +116,6 @@ export function ChatView() {
               <Phone size={18} strokeWidth={2.2} />
             </button>
           )}
-          {/* Voices on trial, to compare with the one above. */}
-          {bot.isPrimary && !calling && <TrialCallButton botId={bot.id} name={bot.name} />}
           {!detailsOpen && bot.kind !== 'room' && !isMacDesktop() && (
             <button type="button" className="icon-btn icon-btn--bordered chat__show-computer" onClick={() => set({ detailsOpen: true })} aria-label={t("Show computer")} title={t("Show computer")}>
               <Icon name="sidebar" opacity={0.66} style={{ transform: 'scaleX(-1)' }} />

@@ -75,5 +75,4 @@
 /* With two call buttons on the right, the Bot's name sits next to the menu button instead of in the middle,
    so it never slides under the buttons. */
 @media (max-width: 900px) {
-  .mobile-topbar:has(.chat__call--trial) .mobile-brand { position: static; transform: none; flex: 1; min-width: 0; max-width: none; margin: 0 6px 0 8px; justify-content: flex-start; }
 }

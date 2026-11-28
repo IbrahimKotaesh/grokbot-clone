@@ -234,10 +234,10 @@ voiceApi.post('/session', async (c) => {
   const bot = ownBot(user.id, botId);
   if (!bot) return c.json({ error: 'not found' }, 404);
   const s = settingsOf(bot);
-  // The trial voice: OpenAI's gpt-audio through our own relay (openai-voice.ts), same protocol for the call screen.
-  const openai = engine === 'openai';
+  // Badr's voice: OpenAI's gpt-audio through our own relay (openai-voice.ts), same protocol for every call screen
+  // (web and iPhone). Grok stays only as the fallback when that relay is not set up on a server.
+  const openai = engine !== 'grok' && openaiVoiceReady();
   const openaiModel = OPENAI_VOICE_MODEL;
-  if (openai && !openaiVoiceReady()) return c.json({ error: 'The trial voice isn’t available on this server.' }, 503);
   if (!openai && env.xaiKey === 'disabled' && !falVoiceReady()) return c.json({ error: 'Voice is not configured on this server.' }, 503);
 
   let secret: { value: string; expires_at: number };
@@ -293,7 +293,7 @@ voiceApi.post('/session', async (c) => {
     clientSecret: secret.value,
     expiresAt: secret.expires_at,
     model: openai ? openaiModel : VOICE_MODEL,
-    engine: openai ? engine : 'grok',
+    engine: openai ? 'openai' : 'grok',
     websocketUrl,
     sampleRate: SAMPLE_RATE,
     instructions,

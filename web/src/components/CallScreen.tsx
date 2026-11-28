@@ -62,7 +62,6 @@ export function CallScreen() {
 
           <div className="call-screen__who">
             <h2 dir="auto">{bot.name}</h2>
-            {v.engine === 'openai' && <span className="call-screen__engine">{t('Trial voice')}</span>}
             <AnimatePresence mode="wait" initial={false}>
               <motion.p key={status === t('Calling…') ? 'calling' : v.status} className="call-screen__status" initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }} transition={{ duration: 0.3, ease: EASE }}>{status}</motion.p>
             </AnimatePresence>

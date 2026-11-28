@@ -29,7 +29,7 @@ interface VoiceState {
   startedAt: number | null;
   /** The full-screen call view is showing (false = shrunk to the bar above the chat). */
   expanded: boolean;
-  /** Which voice runs the call: Grok, or the trial voice being compared with it. */
+  /** Which voice runs the call: Badr's OpenAI voice, or Grok where a server has only that. */
   engine: CallEngine;
 }
 
@@ -43,7 +43,7 @@ const setV = (p: Partial<VoiceState>) => useVoice.setState(p);
 let current: VoiceCall | null = null;
 
 /** Start a call with a bot. Must be called from a user gesture (click) so audio can start. */
-export function startCall(botId: string, engine: CallEngine = 'grok') {
+export function startCall(botId: string, engine: CallEngine = 'openai') {
   if (current && !current.ended) {
     if (current.botId === botId && current.engine === engine) return;
     current.end();
@@ -88,7 +88,7 @@ class VoiceCall {
   private connectTimer: ReturnType<typeof setTimeout> | null = null;
   private onUnload = () => { if (this.sess && !this.ended) voiceApi.endBeacon(this.botId, this.sess.callId, this.transcript()); };
 
-  constructor(readonly botId: string, readonly engine: CallEngine = 'grok') {
+  constructor(readonly botId: string, readonly engine: CallEngine = 'openai') {
     // Created synchronously inside the click so autoplay policy lets it run.
     this.ctx = createAudioContext();
     this.player = new PcmPlayer(this.ctx);

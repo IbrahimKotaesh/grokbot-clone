@@ -18,6 +18,7 @@ import { codexTurn } from './codex.js';
 import { TurnMeter } from '../usage-meter.js';
 import { COMPUTER_CHEAP, COMPUTER_STRONG, DEFAULT_HOSTED, FREE_MODEL, computerModel, freeFailed, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, sequenceModel, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
+import { sendAck, ackedThisTurn, ACK_NOTE } from './ack.js';
 import { db, now } from '../db.js';
 import { planRequired } from '../plans.js';
 import { env } from '../env.js';
@@ -315,6 +316,8 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         // A fallback retry after another built-in model already recorded this message must not add it twice.
         const last = tried.length ? loadHistory(botId).at(-1) : null;
         if (!(last && last.role === 'user' && JSON.stringify(last.content) === JSON.stringify(item.content))) appendHistory(botId, [item]);
+        // Real work gets a quick "got it, you want…" before the main model starts planning.
+        if (trigger.type === 'user' && !tried.length) await sendAck(userId, botId, provider, trigger.text, ctrl.signal);
       }
     }
 
@@ -617,7 +620,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   if (provider !== 'xai') input.splice(1, input.length - 1, ...imagesOutOfToolReplies(history2));
   // The clock goes last (to the minute), so everything before it is the same as the previous step and is read from cache.
   // The language goes last too: cheap models drift into Arabic (the product is called Badr) unless told plainly.
-  input.push({ role: 'system', content: `Current time: ${new Date().toISOString().slice(0, 16)}Z${replyLanguageNote(history2)}` });
+  input.push({ role: 'system', content: `Current time: ${new Date().toISOString().slice(0, 16)}Z${replyLanguageNote(history2)}${ackedThisTurn(botId) && history2.at(-1)?.role === 'assistant' ? ACK_NOTE : ''}` });
   // On Fino's own key, screen steps run on a cheap vision model and move up only when it struggles.
   const route = routes.get(botId);
   let model = llm.model;

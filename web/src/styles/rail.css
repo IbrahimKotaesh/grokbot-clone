@@ -217,11 +217,6 @@
 }
 .chat__call:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--p-edge, #211c17); }
 :root[data-theme='dark'] .chat__call { border-color: #000; box-shadow: 2px 2px 0 #000; }
-/* The trial voice: a quieter pill beside the sun button, so the two calls can be compared. */
-.chat__call--trial { width: auto; padding: 0 12px 0 10px; gap: 5px; border-radius: 999px; background: var(--p-surface, #fff); color: var(--p-text, #211c17); font: 700 13px/1 inherit; }
-.chat__call--trial span { font-size: 13px; font-weight: 700; }
-.call-screen__engine { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 12.5px; font-weight: 700; }
-@media (max-width: 900px) { .chat__header-right .chat__call--trial, .mobile-topbar__right .chat__call--trial { width: auto; height: 38px; } }
 @media (max-width: 900px) { .chat__header-right .chat__call { width: 44px; height: 44px; } .mobile-topbar__right .chat__call { width: 42px; height: 42px; margin-right: 4px; } .mobile-topbar__right { align-items: center; gap: 8px; } }
 
 .folder__add { opacity: 1; }

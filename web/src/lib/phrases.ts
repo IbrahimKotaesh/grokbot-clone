@@ -28,8 +28,39 @@ const PHRASES: Record<string, string[]> = {
 
 const nice = (s?: string) => !!s && !/[_]/.test(s) && !/^[a-z0-9-]+$/.test(s);
 
+const hostOf = (u: unknown) => { try { return new URL(String(u)).host.replace(/^www\./, ''); } catch { return ''; } };
+const clip = (s: string, n = 48) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+
+/**
+ * What the Bot is really doing right now, in words the owner recognises: the step of its plan ("2/3 · Writing the
+ * three skills") or the page it is reading. Null when there is nothing concrete, so the line falls back to a phrase.
+ */
+export function progressPhrase(live: LiveState, rows: Row[]): string | null {
+  if (!live.isRunning) return null;
+  // Only this turn: everything after the owner's last message.
+  let from = rows.length - 1;
+  while (from >= 0 && !(rows[from].body.type === 'message' && (rows[from].body as { role?: string }).role === 'user')) from--;
+  const turn = rows.slice(from + 1);
+  const running = [...turn].reverse().find((r) => r.body.type === 'tool-call' && r.body.status === 'running');
+  if (running?.body.type === 'tool-call') {
+    const args = (running.body.args ?? {}) as Record<string, unknown>;
+    const site = hostOf(args.url);
+    if (site && /read|browse|navigate|open|fetch/i.test(running.body.name)) return t('Reading {site}', { site });
+    if (typeof args.query === 'string' && /search|recall/i.test(running.body.name) && args.query.trim()) return t('Searching “{query}”', { query: clip(args.query.trim(), 40) });
+  }
+  const plan = [...turn].reverse().find((r) => r.body.type === 'plan');
+  if (plan?.body.type === 'plan' && plan.body.steps.length > 1) {
+    const steps = plan.body.steps;
+    const i = steps.findIndex((s) => s.status === 'in_progress');
+    if (i >= 0) return `${i + 1}/${steps.length} · ${clip(steps[i].text)}`;
+  }
+  return null;
+}
+
 /** Phrase for the activity line. `tick` rotates multi-phrase kinds. */
 export function activityPhrase(live: LiveState, rows: Row[], tick: number): string {
+  const real = progressPhrase(live, rows);
+  if (real) return real;
   const a = live.activity;
   if (!a) return t(live.awaiting ? 'Needs your input' : 'Working on it');
   const kind = a.kind as ActivityKind;
