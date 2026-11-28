@@ -18,7 +18,7 @@ import { getBotRow, getLive } from '../store.js';
 const xai = new OpenAI({ apiKey: env.xaiKey, baseURL: 'https://api.x.ai/v1', timeout: 90_000 });
 const xaiReady = env.xaiKey !== 'disabled';
 // Without an xAI key, summaries are written by a cheap long-context model on Fino's OpenRouter key.
-const SUMMARY_MODEL = process.env.OR_SUMMARY_MODEL ?? 'deepseek/deepseek-v4.1-flash';
+const SUMMARY_MODEL = process.env.OR_SUMMARY_MODEL ?? 'deepseek/deepseek-v4.1-flash-1017';
 const summarizer = hostedKey() ? new OpenAI({ apiKey: hostedKey()!, baseURL: 'https://openrouter.ai/api/v1', timeout: 90_000 }) : null;
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);

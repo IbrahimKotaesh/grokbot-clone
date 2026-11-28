@@ -17,7 +17,7 @@ const BASE: Record<LoopProvider, string> = {
 // Sensible defaults when a bot has no model set. Users can type any model the provider offers.
 export const DEFAULT_MODEL: Record<LoopProvider, string> = {
   xai: env.xaiModel,
-  openrouter: process.env.OR_DEFAULT_MODEL ?? 'deepseek/deepseek-v4.1-flash',
+  openrouter: process.env.OR_DEFAULT_MODEL ?? 'deepseek/deepseek-v4.1-flash-1017',
   groq: 'openai/gpt-oss-120b',
 };
 const NAMES: Record<LoopProvider, string> = { xai: 'xAI', openrouter: 'OpenRouter', groq: 'Groq' };

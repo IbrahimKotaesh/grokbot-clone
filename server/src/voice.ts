@@ -386,7 +386,7 @@ async function summarizeCall(botName: string, transcript: { role: string; text: 
   if (!summarizer || (!transcript.length && !tasks.length)) return null;
   const lines = transcript.map((t) => `${t.role === 'user' ? 'User' : botName}: ${t.text}`).join('\n').slice(-12_000);
   const res = (await summarizer.chat.completions.create({
-    model: 'deepseek/deepseek-v4.1-flash', max_tokens: 200, temperature: 0.2, reasoning: { enabled: false },
+    model: 'deepseek/deepseek-v4.1-flash-1017', max_tokens: 200, temperature: 0.2, reasoning: { enabled: false },
     messages: [
       { role: 'system', content: `Summarise this voice call between the user and ${botName} in one short sentence (max 25 words), past tense, third person ("Talked about…", "Asked ${botName} to…"), in the language the call was in. No preamble.` },
       { role: 'user', content: `${lines || '(no transcript)'}${tasks.length ? `\n\nWork handed off during the call:\n${tasks.map((t) => `- ${t}`).join('\n')}` : ''}` },

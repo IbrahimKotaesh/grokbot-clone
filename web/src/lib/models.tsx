@@ -29,11 +29,12 @@ export function useHostedModels() {
   return data;
 }
 
-export const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
+export const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash-1017';
 const NAMES: Record<string, string> = {
   // Fino's own names for the open-source models it hosts.
   'deepseek/deepseek-v4-pro-0813': 'Badr 5.2',
   'deepseek/deepseek-v4-pro': 'Badr 5.1',
+  'deepseek/deepseek-v4.1-flash-1017': 'Badr 4.8',
   'deepseek/deepseek-v4.1-flash': 'Badr 4.8',
   'moonshotai/kimi-k2.7-code': 'Badr 5.0',
   'z-ai/glm-5.3-flash': 'Badr 4.9',

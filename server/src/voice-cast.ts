@@ -24,7 +24,7 @@ async function genderOf(name: string, label: string): Promise<'female' | 'male'>
   if (!llm) return 'male';
   try {
     const r = await llm.chat.completions.create(({
-      model: 'deepseek/deepseek-v4.1-flash', max_tokens: 200, temperature: 0, reasoning: { enabled: false },
+      model: 'deepseek/deepseek-v4.1-flash-1017', max_tokens: 200, temperature: 0, reasoning: { enabled: false },
       messages: [
         { role: 'system', content: 'You classify an assistant persona by its name. Answer with exactly one word: female or male. If the name is not clearly a woman\'s name, answer male.' },
         { role: 'user', content: `Name: ${name}\nRole: ${label}` },

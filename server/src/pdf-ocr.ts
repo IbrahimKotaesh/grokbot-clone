@@ -2,7 +2,7 @@
 // (about $0.002 a page) and a cheap model returns the transcription as plain text.
 import { hostedKey, hostedProviderPrefs } from './hosted-models.js';
 
-const OCR_MODEL = process.env.OR_OCR_MODEL ?? 'deepseek/deepseek-v4.1-flash';
+const OCR_MODEL = process.env.OR_OCR_MODEL ?? 'deepseek/deepseek-v4.1-flash-1017';
 const OCR_ENGINE = process.env.OR_OCR_ENGINE ?? 'mistral-ocr';
 
 /** Plain text of a scanned PDF, or '' when OCR isn't available on this server. */

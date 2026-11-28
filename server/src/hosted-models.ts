@@ -18,7 +18,7 @@ export const hostedKey = () => process.env.OPENROUTER_API_KEY || null;
 
 /** Cheap vision model for routine screen steps, and the stronger one used when a task gets stuck. */
 export const COMPUTER_CHEAP = process.env.OR_COMPUTER_CHEAP ?? 'z-ai/glm-5.3-flash';
-export const COMPUTER_STRONG = process.env.OR_COMPUTER_STRONG ?? 'deepseek/deepseek-v4.1-flash';
+export const COMPUTER_STRONG = process.env.OR_COMPUTER_STRONG ?? 'deepseek/deepseek-v4.1-flash-1017';
 
 /**
  * Monthly computer-work AI budget (USD, at cost) per plan. Past it, work continues on the cheap model only,
@@ -41,12 +41,16 @@ export const HOSTED_MODELS: { id: string; name: string; note: string; tier: Plan
   { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smart, for long and hard tasks', tier: 'free', base: "DeepSeek's open-source V4 Pro model" },
   { id: 'moonshotai/kimi-k2.7-code', name: 'Badr 5.0', note: 'Strong at code, files and data', tier: 'free', base: "Moonshot's open-source Kimi K2.7 model" },
   { id: 'z-ai/glm-5.3-flash', name: 'Badr 4.9', note: 'Strong at long, multi-step work', tier: 'free', base: "Zhipu's open-source GLM 5.3 Flash model" },
-  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Everyday default: free when it can be, stronger when needed', tier: 'free', base: "DeepSeek's open-source V4.1 Flash model (simple steps may first go to Baidu's free ERNIE preview, and long tasks step up to Badr 5.1)" },
+  // 4.8 moved to the 17 October 2026 build (2026-11-28): the most used model with Hermes Agent on OpenRouter; on the
+  // private hosts as clean in Arabic, ~20% faster, and a long cached conversation costs ~55% less per step.
+  { id: 'deepseek/deepseek-v4.1-flash-1017', name: 'Badr 4.8', note: 'Everyday default: free when it can be, stronger when needed', tier: 'free', base: "DeepSeek's open-source V4.1 Flash model (simple steps may first go to Baidu's free ERNIE preview, and long tasks step up to Badr 5.1)" },
   { id: 'qwen/qwen3.8-flash', name: 'Badr 4.5', note: 'Cheap, and reads images and screenshots', tier: 'free', base: "Alibaba's open-source Qwen 3.8 Flash model" },
   { id: 'xiaomi/mimo-v2.6-flash', name: 'Badr 4.2', note: 'Light and quick, for short replies', tier: 'free', base: "Xiaomi's open-source MiMo v2.6 Flash model" },
 ];
 /** Everyone's default, and what replies fall back to past the monthly budget. */
-export const DEFAULT_HOSTED = 'deepseek/deepseek-v4.1-flash';
+export const DEFAULT_HOSTED = 'deepseek/deepseek-v4.1-flash-1017';
+/** Bots saved with an earlier build of a model run on its current one. */
+export const MODEL_ALIASES: Record<string, string> = { 'deepseek/deepseek-v4.1-flash': DEFAULT_HOSTED };
 /** The strongest included model: long messages on the default path step up to it. */
 export const STRONG_HOSTED = 'deepseek/deepseek-v4-pro';
 
@@ -82,6 +86,7 @@ export const modelAllowed = (plan: PlanId, id: string) => {
 const PRICES: Record<string, [number, number, number]> = {
   'qwen/qwen3.7-flash': [0.03, 0.006, 0.13],
   'deepseek/deepseek-v4.1-flash': [0.0507, 0.001, 0.2028],
+  'deepseek/deepseek-v4.1-flash-1017': [0.15, 0.003, 0.6],
   'qwen/qwen3.7-plus': [0.32, 0.064, 1.28],
   'qwen/qwen3.8-flash': [0.15, 0.015, 0.47],
   'deepseek/deepseek-v4-pro': [1.28, 0.108, 2.56],
@@ -234,6 +239,7 @@ function capFor(userId: string, kind: 'chat' | 'computer'): number | null {
 /** The model a chat step runs on with Badr's key: the Bot's choice if the plan includes it; stops at a usage limit. */
 export function hostedChatModel(userId: string, wanted: string): string {
   assertAiAllowed(userId);
+  wanted = MODEL_ALIASES[wanted] ?? wanted;
   const plan = planOf(userId).id;
   // Close to a limit, the strongest model gives way to the default so what's left lasts longer.
   if (wanted === STRONG_HOSTED && nearLimit(userId)) return DEFAULT_HOSTED;
