@@ -1141,4 +1141,8 @@ export const nlWeb: Record<string, string> = {
   "Stop voice typing": "Spraakinvoer stoppen",
   "Cancel voice typing": "Spraakinvoer annuleren",
   "Finishing…": "Afronden…",
+  "Discard recording": "Opname verwijderen",
+  "Done, put the text in the message box": "Klaar, zet de tekst in het berichtvak",
+  "Permissions": "Rechten",
+  "Listening…": "Luistert…",
 };

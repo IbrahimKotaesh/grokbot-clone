@@ -528,7 +528,7 @@ export const arWeb: Record<string, string> = {
   'Open in Google': 'فتح في Google',
   'Open sheet in Google': 'فتح الجدول في Google',
   'Password Managers': 'مديرو كلمات المرور',
-  Permissions: 'الأذونات',
+  Permissions: 'الصلاحيات',
   'Personal assistant': 'مساعد شخصي',
   'Picked for you': 'مختارة لك',
   'Picked up': 'بدأ العمل',
@@ -1224,4 +1224,7 @@ export const arWeb: Record<string, string> = {
   "Stop voice typing": "وقّف الكتابة بالصوت",
   "Cancel voice typing": "إلغاء الكتابة بالصوت",
   "Finishing…": "عم يخلّص…",
+  "Discard recording": "احذف التسجيل",
+  "Done, put the text in the message box": "خلصت، حط النص بالمربع",
+  "Listening…": "عم يسمع…",
 };

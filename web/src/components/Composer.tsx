@@ -1,28 +1,19 @@
 import { launch } from '../lib/sendFlight';
 import { firstTask } from './Landing';
 import { t } from '../lib/i18n';
-import {ProviderLogo} from './ProviderLogo';
-import { BrainLogo, brainLabel, DEFAULT_MODEL, ModelLogo, subscriptionModelName, tierName, useHostedModels, useSubscriptionModels } from '../lib/models';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ShieldCheck, Eye, Hand, Zap } from 'lucide-react';
-import type { Bot, PermissionMode } from '@shared/types';
+import { Check, LoaderCircle, Mic, Trash2 } from 'lucide-react';
+import type { Bot } from '@shared/types';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { Icon } from './Icon';
 import { Menu } from './Menu';
-import { configApi } from '../lib/configApi';
-import { DictationButton } from './DictationButton';
+import { useDictation, Waveform } from './DictationButton';
 import { PhotoCamera } from './PhotoCamera';
 import { prepareDocument, DOCUMENT_ACCEPT, type DocumentUpload } from '../lib/documents';
 import { preparePhoto, type Photo } from '../lib/photos';
 import { BotAvatarFor } from '../avatar/BotAvatar';
 
-const permissionChoices = [
-  {id:'read_only',name:t('Read only'),icon:Eye,description:t("Read connected data and screenshots. No commands or changes.")},
-  {id:'balanced',name:t('Balanced'),icon:ShieldCheck,description:t('Use the computer freely; ask before connected app changes.')},
-  {id:'ask',name:t('Ask first'),icon:Hand,description:t("Ask before commands, computer actions or app changes.")},
-  {id:'autonomous',name:t('Autonomous'),icon:Zap,description:t("Run computer actions and connected app changes without asking.")},
-] as const;
 const MAX_H = 200;
 const drafts = new Map<string, string>();
 const documentDrafts=new Map<string,DocumentUpload[]>();
@@ -69,14 +60,19 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
-  const [settingsMenu,setSettingsMenu]=useState<'model'|'codex'|'claude'|'permissions'|null>(null);
-  const [switching, setSwitching] = useState(false);
-  const [dictating,setDictating]=useState(false);
   // Live voice typing: words land after what was already typed (`base`). If you edit the box mid-dictation, your
   // edit becomes the new base and only words spoken after it are added, so deleted words never come back.
   const dict=useRef<{base:string;used:number;shown:string}|null>(null);
   const joinSpoken=(base:string,spoken:string)=>{const s2=spoken.trimStart();if(!s2)return base;const b=base.replace(/[ \t]+$/,'');return b?`${b}${/\s$/.test(b)?'':' '}${s2}`:s2;};
   const placeSpoken=(all:string)=>{const d=dict.current;if(!d)return;d.shown=all;setText(joinSpoken(d.base,all.slice(d.used)));};
+  const voice=useDictation({
+    onStart:()=>{dict.current={base:text,used:0,shown:''};},
+    onLive:placeSpoken,
+    onDone:(final)=>{placeSpoken(final||dict.current?.shown||'');dict.current=null;ref.current?.focus();},
+    onCancel:()=>{const d=dict.current;dict.current=null;if(d)setText(d.base);},
+    onError:setError,
+  });
+  const dictating=voice.busy;
   const ref = useRef<HTMLTextAreaElement>(null);
   const setModal = useStore((s) => s.setModal);
 
@@ -133,7 +129,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
 
   const send = async () => {
     const msg = text.trim();
-    if ((!msg && !photos.length && !documents.length) || preparing || sending || switching || dictating) return;
+    if ((!msg && !photos.length && !documents.length) || preparing || sending || dictating) return;
     setSending(true); setError(null);
     // The words leave the box at once and fly into the chat; they come back if sending fails.
     launch(bot.id, msg, ref.current);
@@ -159,28 +155,6 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
     api.interrupt(bot.id, generation).catch((e) => { setStopping(false); setError(e.message); });
   };
 
-  const hosted = useHostedModels();
-  const included = bot.agentProvider === 'openrouter';
-  const onCodex = bot.agentProvider === 'codex' || !bot.agentProvider, onClaude = bot.agentProvider === 'claude';
-  const subKind = settingsMenu === 'codex' || settingsMenu === 'claude' ? settingsMenu : null;
-  const subModels = useSubscriptionModels(subKind);
-  const changeProvider = async (agentProvider: 'codex' | 'claude' | 'openrouter', model = '') => {
-    setSwitching(true); setError(null);
-    try {
-      const { bot: updated } = await configApi.updateBot(bot.id, { agentProvider, model });
-      useStore.setState(s => ({ bots: s.bots.map(b => b.id === updated.id ? updated : b) }));
-    } catch (e) { setError((e as Error).message); }
-    finally { setSwitching(false); }
-  };
-
-  const changePermissions = async (permissionMode: PermissionMode) => {
-    setSwitching(true);setError(null);
-    try {
-      const {bot:updated}=await configApi.updateBot(bot.id,{permissionMode});
-      useStore.setState(s=>({bots:s.bots.map(b=>b.id===updated.id?updated:b)}));
-    } catch(e) {setError((e as Error).message);} finally {setSwitching(false);}
-  };
-  const permission=permissionChoices.find(p=>p.id===(bot.permissionMode??'balanced'))!;
   const hasText = text.trim().length > 0 || photos.length > 0 || documents.length > 0;
 
   return (
@@ -190,7 +164,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
       <input hidden ref={fileRef} type="file" accept="image/*" multiple aria-label={t("Choose photos")} onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       <input hidden ref={captureRef} type="file" accept="image/*" capture="environment" aria-label={t("Take a photo")} onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/>
       {camera&&<PhotoCamera onClose={closeCamera} onPhoto={photo=>setPhotos(cur=>[...cur,photo].slice(0,3))}/>}
-      <div className="composer-shell">
+      <div className={`composer-shell${dictating ? ' is-recording' : ''}`}>
       
       {documents.length>0&&<div className="composer__documents">{documents.map((file,i)=><div className="composer__document" key={i}><Icon name="file" size={20}/><span><strong>{file.name}</strong><small>{Math.max(1,Math.round(file.size/1024))} KB</small></span><button type="button" aria-label={`Remove file ${i+1}`} disabled={sending} onClick={()=>setDocuments(cur=>cur.filter((_,n)=>n!==i))}>×</button></div>)}</div>}
       {sending&&documents.length>0&&<div className="composer__preparing" role="status">{t("Reading attachments…")}</div>}
@@ -213,7 +187,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
             className="composer__input"
             rows={1}
             value={text}
-            placeholder={isRoom ? t('Message the group… type @ to ask one bot') : t('Message {name}…',{name:bot.name})}
+            placeholder={dictating ? t('Listening…') : isRoom ? t('Message the group… type @ to ask one bot') : t('Message {name}…',{name:bot.name})}
             onChange={(e) => { if (dict.current) { dict.current.base = e.target.value; dict.current.used = dict.current.shown.length; } setText(e.target.value); findMention(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
             onKeyDown={(e) => {
               if (mentionList.length) {
@@ -228,6 +202,18 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
           />
       </div>
       <div className="composer__toolbar">
+        {dictating ? (
+          /* Recording, like the iPhone app: discard, a red dot and the time, the live waveform, and ✓ to keep the words. */
+          <div className="composer__recording" role="group" aria-label={t('Voice typing')}>
+            <button type="button" className="composer__btn" onClick={voice.cancel} aria-label={t('Discard recording')} title={t('Discard recording')}><Trash2 size={18}/></button>
+            <span className="composer__rec-dot" aria-hidden/>
+            <span className="composer__rec-time">{voice.phase==='permission'?'0:00':`${Math.floor(voice.seconds/60)}:${String(voice.seconds%60).padStart(2,'0')}`}</span>
+            <Waveform level={voice.level} running={voice.phase==='live'}/>
+            <button type="button" className="composer__cta composer__cta--done" onClick={()=>void voice.finish()} disabled={voice.phase!=='live'} aria-label={t('Done, put the text in the message box')} title={t('Done, put the text in the message box')}>
+              {voice.phase==='finishing'?<LoaderCircle size={17} className="dictation__spinner"/>:<Check size={18} strokeWidth={2.6}/>}
+            </button>
+          </div>
+        ) : (<>
         <div className="composer__tools">
           <span className="composer__plus-anchor">
             <button type="button" className="composer__btn" disabled={sending || preparing} onClick={() => setMenu(!menu)} aria-label={t("More actions")} aria-expanded={menu}>
@@ -246,37 +232,9 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
               />
             )}
           </span>
-          {/* A group has no model or permissions of its own: each Bot answers with its own. */}
-          {!isRoom && (<>
-          <span className="composer__setting-anchor composer__model-picker">
-            <button type="button" className={`composer__setting is-${bot.agentProvider==='claude'?'claude':'chatgpt'}`} aria-label={`AI model: ${brainLabel(bot)}`} aria-expanded={settingsMenu==='model'||!!subKind} disabled={running||sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='model'?null:'model')}><BrainLogo bot={bot}/><span>{brainLabel(bot)}</span><ChevronDown size={12}/></button>
-            {settingsMenu==='model'&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
-              {label:'ChatGPT',description:onCodex&&bot.model?subscriptionModelName('codex',bot.model):t('Your ChatGPT subscription'),icon:<ProviderLogo provider="codex"/>,selected:onCodex,hint:'›',onSelect:()=>setSettingsMenu('codex')},
-              {label:'Claude',description:onClaude&&bot.model?subscriptionModelName('claude',bot.model):t('Your Claude subscription'),icon:<ProviderLogo provider="claude"/>,selected:onClaude,hint:'›',onSelect:()=>setSettingsMenu('claude')},
-              ...(hosted?.available?hosted.models.map((m)=>{
-                const on=included&&(bot.model||DEFAULT_MODEL)===m.id;
-                return {label:m.name,description:m.allowed?t(m.note):t('Included in {name}',{name:tierName(m.tier)}),icon:<ModelLogo model={m.id} dim={!m.allowed}/>,selected:on,locked:!m.allowed,hint:on?'✓':m.allowed?undefined:'🔒',onSelect:()=>{if(!m.allowed){setError(t('{model} is included in the {name} plan. Upgrade in the Fino app.',{model:m.name,name:tierName(m.tier)}));return;}void changeProvider('openrouter',m.id);}};
-              }):[]),
-            ]}/>}
-            {subKind&&<Menu placement="above" onClose={()=>setSettingsMenu(null)} items={[
-              {label:t('Account default'),description:t('Whatever your {name} plan uses by default',{name:subKind==='codex'?'ChatGPT':'Claude'}),icon:<ProviderLogo provider={subKind}/>,selected:(subKind==='codex'?onCodex:onClaude)&&!bot.model,hint:(subKind==='codex'?onCodex:onClaude)&&!bot.model?'✓':undefined,onSelect:()=>void changeProvider(subKind,'')},
-              ...(subModels??[]).map((m)=>{const on=(subKind==='codex'?onCodex:onClaude)&&bot.model===m.id;return {label:m.name,description:m.note,selected:on,hint:on?'✓':undefined,onSelect:()=>void changeProvider(subKind,m.id)};}),
-            ]}>
-              <button type="button" className="menu__back" onMouseDown={(e)=>e.stopPropagation()} onClick={()=>setSettingsMenu('model')}><ChevronLeft size={15} className="menu__back-icon"/>{subKind==='codex'?'ChatGPT':'Claude'}{!subModels&&<small>{t('Loading models…')}</small>}</button>
-            </Menu>}
-          </span>
-          <span className="composer__setting-anchor composer__permissions">
-            <button type="button" className="composer__setting" aria-label={`Permissions: ${permission.name}`} title={permission.description} aria-expanded={settingsMenu==='permissions'} disabled={sending||switching} onClick={()=>setSettingsMenu(settingsMenu==='permissions'?null:'permissions')}><permission.icon size={16}/><span>{permission.name}</span><ChevronDown size={12}/></button>
-            {settingsMenu==='permissions'&&<Menu placement="above" align="center" onClose={()=>setSettingsMenu(null)} items={permissionChoices.map(p=>({label:p.name,description:p.description,icon:<p.icon size={18}/>,hint:p.id===permission.id?'✓':undefined,onSelect:()=>void changePermissions(p.id)}))}><div className="permission-menu__heading">{t('Permissions for {name}',{name:bot.name})}<small>{t('Applies to Fino’s Linux computer and your connected accounts. Saved “Always allow” choices are respected, except in Read only.')}</small></div></Menu>}
-          </span>
-          </>)}
         </div>
         <div className="composer__right">
-          <DictationButton key={bot.id} disabled={sending||preparing||switching} onBusy={setDictating} onError={setError}
-            onStart={()=>{dict.current={base:text,used:0,shown:''};}}
-            onLive={placeSpoken}
-            onDone={(final)=>{placeSpoken(final||dict.current?.shown||'');dict.current=null;ref.current?.focus();}}
-            onCancel={()=>{const d=dict.current;dict.current=null;if(d)setText(d.base);}}/>
+          <button type="button" className="composer__btn" disabled={sending||preparing} onClick={()=>void voice.start()} aria-label={t('Voice typing')} title={t('Voice typing')}><Mic size={18}/></button>
           {running && !hasText ? (
             <button type="button" className={`composer__cta${stopping ? ' is-stopping' : ''}`} onClick={stop} disabled={stopping} aria-label={stopping ? t("Stopping…") : t("Stop")} title={stopping ? t("Stopping…") : t("Stop")}>
               {stopping ? <span className="composer__stopping" aria-hidden /> : <Icon name="stop" size={14} />}
@@ -286,7 +244,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
               type="button"
               className="composer__cta"
               onClick={send}
-              disabled={!hasText || preparing || sending || switching || dictating}
+              disabled={!hasText || preparing || sending || dictating}
               aria-label={t("Send")}
               title={t("Send (Enter)")}
             >
@@ -294,6 +252,7 @@ export function Composer({ bot, running,generation=bot.generation }: { bot: Bot;
             </button>
           )}
         </div>
+        </>)}
       </div>
       </div>
     </div>

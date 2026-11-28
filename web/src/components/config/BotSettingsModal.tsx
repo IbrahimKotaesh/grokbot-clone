@@ -20,6 +20,7 @@ import { Glyph } from './glyphs';
 import { LibraryTab } from './LibraryTab';
 import { MembersCard } from '../MembersCard';
 import { ConfirmButton, Field, Segmented, Switch, nextRunLabel, shortDate } from './ui';
+import { permissionChoices } from '../../lib/permissions';
 
 const EFFORTS: { value: Bot['effort']; label: string }[] = [
   { value: 'low', label: t("Low") },
@@ -113,8 +114,8 @@ export function BotSettingsModal() {
 
 // ---------------------------------------------------------------------------
 
-type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'> & { humor: Humor };
-const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '', humor: b.humor ?? 'normal' });
+type Draft = Pick<Bot, 'name' | 'label' | 'description' | 'instructions' | 'avatarShape' | 'avatarColor' | 'effort' | 'mode' | 'agentProvider' | 'model'> & { humor: Humor; permissionMode: NonNullable<Bot['permissionMode']> };
+const draftOf = (b: Bot): Draft => ({ name: b.name, label: b.label, description: b.description, instructions: b.instructions, avatarShape: characterKind(b.avatarShape), avatarColor: b.avatarColor, effort: b.effort, mode: b.mode, agentProvider: b.agentProvider ?? 'codex', model: b.model ?? '', humor: b.humor ?? 'normal', permissionMode: b.permissionMode ?? 'balanced' });
 
 /** Picks the call voice: saves right away and plays a short sample. */
 function VoicePicker({ bot }: { bot: Bot }) {
@@ -207,6 +208,9 @@ function GeneralTab({ bot, onClose }: { bot: Bot; onClose: () => void }) {
         </Field>
         {(draft.agentProvider === 'codex' || draft.agentProvider === 'claude') && <Field label={t("Model")} htmlFor="cfg-model" hint={t("Every model your {name} plan includes.", { name: draft.agentProvider === 'claude' ? 'Claude' : 'ChatGPT' })}>
           <SubscriptionModelSelect kind={draft.agentProvider} value={draft.model ?? ''} onChange={(m) => put('model', m)} />
+        </Field>}
+        {bot.kind !== 'room' && <Field label={t("Permissions")} hint={permissionChoices.find((p) => p.id === draft.permissionMode)?.description}>
+          <Segmented label={t("Permissions")} value={draft.permissionMode} options={permissionChoices.map((p) => ({ value: p.id, label: p.name }))} onChange={(v) => put('permissionMode', v)} />
         </Field>}
         {bot.kind !== 'room' && <Field label={t("Sense of humor")} hint={HUMOR_HINT[draft.humor]}>
           <Segmented label={t("Sense of humor")} value={draft.humor} options={HUMORS} onChange={(v) => put('humor', v)} />

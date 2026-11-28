@@ -574,3 +574,13 @@ html[data-fino-desktop=true] .sidebar__controls>button[aria-label="Collapse side
 .composer-shell { position: relative; }
 .composer-shell .dictation { position: static; }
 .composer-shell .dictation__status { bottom: calc(100% + 8px); right: 12px; }
+/* Voice typing, like the iPhone app: the box outline turns red, and the toolbar becomes one recording row. */
+.composer-shell.is-recording { border-color: #e2493b !important; }
+.composer__recording { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; min-height: 40px; animation: rec-in .2s ease-out both; }
+@keyframes rec-in { from { opacity: 0; transform: translateY(3px); } }
+.composer__rec-dot { flex: none; width: 9px; height: 9px; margin-left: 2px; border-radius: 50%; background: #e2493b; animation: rec-dot 1.2s ease-in-out infinite; }
+@keyframes rec-dot { 50% { opacity: .35; } }
+.composer__rec-time { flex: none; width: 38px; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--color-text-primary, inherit); }
+.voice-wave { flex: 1; min-width: 0; height: 32px; color: var(--color-text-primary, #211c17); }
+.composer__cta--done { flex: none; }
+@media (prefers-reduced-motion: reduce) { .composer__rec-dot, .composer__recording { animation: none; } }
