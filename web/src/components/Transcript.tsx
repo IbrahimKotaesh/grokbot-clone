@@ -91,7 +91,10 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, quietTime 
   // Fixed captions the server writes (like the final-screenshot label) show in the reader's language.
   const shown = SERVER_CAPTIONS.has(b.text) ? t(b.text) : b.text;
   const wrap = useRef<HTMLDivElement>(null);
-  // Your just-sent message flies in from the composer.
+  // A reaction pops in only when it arrives while you watch; ones already there just show (opening a chat
+  // used to replay every pop at once).
+  const reactedAtMount = useRef(b.reaction);
+  // Your just-sent message rises into place.
   useLayoutEffect(() => { if (side === 'right') land(row.botId, b.text, wrap.current); }, []);
   return (
     <div ref={wrap} className={`bubble-wrap is-${side}${quietTime && !onRetry ? ' is-quiet-time' : ''}`} data-seq={row.seq}>
@@ -108,7 +111,7 @@ const Bubble = memo(function Bubble({ row, side, pos, fresh, onRetry, quietTime 
             })}
           </div>
         )}
-        {side === 'right' && b.reaction && <span className="bubble__reaction" role="img" aria-label={t('Reacted {emoji}', { emoji: b.reaction })}>{b.reaction}</span>}
+        {side === 'right' && b.reaction && <span className={`bubble__reaction${b.reaction !== reactedAtMount.current ? ' is-new' : ''}`} role="img" aria-label={t('Reacted {emoji}', { emoji: b.reaction })}>{b.reaction}</span>}
       </div>:null}
       <div className="bubble__meta">
         <time className="bubble__time" dateTime={new Date(row.createdAt).toISOString()} title={new Date(row.createdAt).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}>{messageTimestamp(row.createdAt)}</time>

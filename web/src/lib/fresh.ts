@@ -26,7 +26,7 @@ const unsentText = () => [...document.querySelectorAll<HTMLTextAreaElement | HTM
 
 // Reloading the moment someone comes back felt like the site dropping out (updates ship often). So a new version
 // only swaps in after a long break, when nobody is in the middle of anything; otherwise the next visit picks it up.
-const LONG_AWAY = 45 * 60 * 1000;
+const LONG_AWAY = 5 * 60 * 1000;
 let hiddenAt = 0;
 function maybeReload() {
   if (stale && !unsentText() && hiddenAt && Date.now() - hiddenAt >= LONG_AWAY) location.reload();

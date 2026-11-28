@@ -239,7 +239,8 @@
 
 /* The bot's emoji on the person's message, and "Seen" under the latest one. */
 .bubble { position: relative; }
-.bubble__reaction { position: absolute; bottom: -12px; inset-inline-start: -8px; display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 5px; font-size: 16px; line-height: 1; border-radius: 999px; background: var(--p-raised); border: 2px solid var(--p-bg); box-shadow: 0 2px 8px rgba(0,0,0,.18); animation: reaction-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
+.bubble__reaction { position: absolute; bottom: -12px; inset-inline-start: -8px; display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 5px; font-size: 16px; line-height: 1; border-radius: 999px; background: var(--p-raised); border: 2px solid var(--p-bg); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.bubble__reaction.is-new { animation: reaction-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
 .bubble-wrap.is-right:has(.bubble__reaction) .bubble__meta { margin-top: 10px; }
 @keyframes reaction-pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .bubble__seen { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--p-muted); animation: rise .3s ease-out both; }
