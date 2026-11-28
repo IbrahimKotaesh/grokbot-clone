@@ -33,6 +33,7 @@ import { desSelfTest } from './lib/des.js';
 import { configApi } from './routes-config.js';
 import { startIdleWatcher } from './idle.js';
 import { startMemoryConsolidation } from './agent/memory.js';
+import { publicFilesApi } from './public-files.js';
 
 if (!desSelfTest()) throw new Error('DES self-test failed');
 initSubagents();
@@ -57,6 +58,8 @@ app.post('/api/billing/webhook', revenueCatWebhook);
 app.post('/api/billing/stripe-webhook', stripeWebhook);
 // The Mac app download is public: the landing page offers it before sign-in.
 app.route('/api/download',downloadApi);
+// Temporary public links to a Bot's pictures (for Facebook/Instagram to fetch): open without a session, by token.
+app.route('/api/public-files',publicFilesApi);
 app.use('/api/*',accessGate);
 app.route('/api/access',accessApi);
 app.use('/sw.js', async (c, next) => { c.header('Cache-Control', 'no-cache'); await next(); });

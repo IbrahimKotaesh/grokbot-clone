@@ -32,6 +32,7 @@ import { createRoom, postToRoom } from './rooms.js';
 import type { ActivityKind } from '../types.js';
 import { Cron } from 'croner';
 import type {DesktopProof} from './desktop-proof.js';
+import { makePublicLink } from '../public-files.js';
 
 export interface ToolCtx {
   userId: string;
@@ -511,20 +512,20 @@ echo ok`,
     parameters: obj({ path: {type:'string',description:'Absolute path inside your own Library directory'}, caption: {type:'string',description:'Optional short message alongside the attachment'} },['path']),
     activity:'drafting_file',label:'Attaching a file',
     impl: async(a,ctx)=>{
-      const root=`/root/grokbot/files/${ctx.botId}`;
-      const payload=Buffer.from(JSON.stringify({root,path:String(a.path),max:MAX_ATTACHMENT_BYTES})).toString('base64');
-      const script=`import sys,json,base64
-from pathlib import Path
-a=json.loads(base64.b64decode(sys.argv[1]));p=Path(a["path"]).resolve(strict=True);root=Path(a["root"]).resolve()
-if not p.is_relative_to(root) or not p.is_file(): raise ValueError("Use a file inside your own Library folder")
-if p.stat().st_size>a["max"]: raise ValueError("File exceeds 10 MB")
-print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()}))`;
-      const quote=(s:string)=>"'"+s.replace(/'/g,"'\"'\"'")+"'";
-      const result=await onScreen(ctx,(c,s)=>orgo.bash(c,s,`python3 -c ${quote(script)} ${quote(payload)}`,60),false);
-      if(result.exit_code!==0)throw new Error('Could not read the attachment. Save it inside your own Library folder and keep it under 10 MB.');
-      const file=JSON.parse(result.output??'{}');
-      const attached=publishAttachment(ctx.userId,ctx.botId,file.name,Buffer.from(file.data,'base64'),typeof a.caption==='string'?a.caption.slice(0,2000):'');
+      const file=await readLibraryFile(ctx,String(a.path));
+      const attached=publishAttachment(ctx.userId,ctx.botId,file.name,file.data,typeof a.caption==='string'?a.caption.slice(0,2000):'');
       return {output:JSON.stringify({attached:true,...attached}),summary:`Attached ${attached.name}`};
+    },
+  },
+  {
+    name: 'public_link',
+    description: 'Make a temporary public link (works for 24 hours) to a picture or video in your own Library, so a connected app can fetch it. Use it to post photos or videos with Facebook, Instagram, X or LinkedIn tools: pass the link as the image or video URL. Only for things the owner wants published. Pictures (PNG, JPG, WebP, GIF) and videos (MP4, MOV) up to 10 MB.',
+    parameters: obj({ path: {type:'string',description:'Absolute path inside your own Library directory'} },['path']),
+    activity:'connecting_service',label:'Making a public link',
+    impl: async(a,ctx)=>{
+      const file=await readLibraryFile(ctx,String(a.path));
+      const link=makePublicLink(ctx.userId,ctx.botId,file.name,file.data);
+      return {output:JSON.stringify({...link,note:'Pass url to the app as the image/video URL. It stops working after 24 hours.'}),summary:`Public link for ${file.name}`};
     },
   },
   {
@@ -897,6 +898,23 @@ export function functionSchemas() {
 // ---------- approvals policy ----------
 
 export type Decision = 'allow' | 'ask' | 'block';
+
+/** Reads one file from the Bot's own Library on its computer (at most 10 MB), for attach_file and public_link. */
+async function readLibraryFile(ctx: ToolCtx, path: string): Promise<{ name: string; data: Buffer }> {
+  const root=`/root/grokbot/files/${ctx.botId}`;
+  const payload=Buffer.from(JSON.stringify({root,path,max:MAX_ATTACHMENT_BYTES})).toString('base64');
+  const script=`import sys,json,base64
+from pathlib import Path
+a=json.loads(base64.b64decode(sys.argv[1]));p=Path(a["path"]).resolve(strict=True);root=Path(a["root"]).resolve()
+if not p.is_relative_to(root) or not p.is_file(): raise ValueError("Use a file inside your own Library folder")
+if p.stat().st_size>a["max"]: raise ValueError("File exceeds 10 MB")
+print(json.dumps({"name":p.name,"data":base64.b64encode(p.read_bytes()).decode()}))`;
+  const quote=(s:string)=>"'"+s.replace(/'/g,"'\"'\"'")+"'";
+  const result=await onScreen(ctx,(c,s)=>orgo.bash(c,s,`python3 -c ${quote(script)} ${quote(payload)}`,60),false);
+  if(result.exit_code!==0)throw new Error('Could not read the file. Save it inside your own Library folder and keep it under 10 MB.');
+  const file=JSON.parse(result.output??'{}');
+  return { name: String(file.name), data: Buffer.from(file.data,'base64') };
+}
 
 export function appToolCall(a: any): {name:string;args:Record<string,unknown>} {
   const tool = typeof a?.tool === 'string' ? a.tool.trim() : '';
