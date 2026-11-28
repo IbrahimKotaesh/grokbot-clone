@@ -74,9 +74,12 @@ class OpenAIVoiceCall {
   private history: Msg[] = [];
   // listening
   private speaking = false;
-  private noise = 0.004;
   private loud = 0;
   private quietMs = 0;
+  private turnMs = 0;
+  private history10: number[] = []; // the last ~3 s of loudness, to find the room's own noise level
+  private botTalkingUntil = 0;      // when the Bot's current answer finishes playing in the browser (estimate)
+  private turns = 0;
   private preroll: Int16Array[] = [];
   private turn: Int16Array[] = [];
   // answering
@@ -86,13 +89,14 @@ class OpenAIVoiceCall {
 
   constructor(private ws: WebSocket, private userId: string, private botId: string) {
     this.cap = setTimeout(() => this.close('Call time limit reached'), MAX_CALL_MS);
+    console.log('[voice:openai] call connected');
     ws.on('message', (data, isBinary) => {
       if (isBinary) return;
       let ev: any;
       try { ev = JSON.parse(data.toString()); } catch { return; }
       try { this.onEvent(ev); } catch (e: any) { console.warn('[voice:openai] event failed', e?.message); }
     });
-    ws.on('close', () => this.stop());
+    ws.on('close', () => { console.log(`[voice:openai] call closed after ${this.turns} turn(s)`); this.stop(); });
     ws.on('error', () => this.stop());
   }
 
@@ -135,33 +139,46 @@ class OpenAIVoiceCall {
     }
   }
 
-  // ---------- listening: a simple voice detector that adapts to the room's noise ----------
+  // ---------- listening: notices when the caller starts and stops talking ----------
+  // A real microphone has automatic gain, so a quiet room still reads as a steady hiss. The room's level is the
+  // quiet end of the last three seconds (15th percentile); speech has to rise well above it to start a turn, and
+  // the turn ends after 0.7 s back near it. While the Bot is talking the bar is higher and must hold longer, so
+  // its own voice leaking into the microphone doesn't interrupt it; a real interruption still gets through.
   private hear(chunk: Int16Array) {
     const ms = (chunk.length / this.inRate) * 1000;
     const level = rms(chunk);
-    const threshold = Math.max(0.018, this.noise * 3.2);
+    this.history10.push(level);
+    if (this.history10.length > Math.round(3000 / Math.max(10, ms))) this.history10.shift();
+    const sorted = [...this.history10].sort((a, b) => a - b);
+    const floor = sorted[Math.floor(sorted.length * 0.15)] ?? 0.003;
+    const botTalking = Date.now() < this.botTalkingUntil + 300;
+    const startAt = Math.max(0.015, floor * 3) * (botTalking ? 2.2 : 1);
+    const endAt = Math.max(0.01, floor * 1.8);
     if (!this.speaking) {
       this.preroll.push(chunk);
       let keep = 0; for (let i = this.preroll.length - 1; i >= 0; i--) { keep += this.preroll[i].length; if (keep > this.inRate * 0.35) { this.preroll.splice(0, i); break; } }
-      if (level > threshold) this.loud += ms; else { this.loud = 0; this.noise = this.noise * 0.97 + level * 0.03; }
-      if (this.loud >= 120) {
-        this.speaking = true; this.quietMs = 0; this.turn = [...this.preroll]; this.preroll = [];
+      this.loud = level > startAt ? this.loud + ms : 0;
+      if (this.loud >= (botTalking ? 320 : 160)) {
+        this.speaking = true; this.quietMs = 0; this.turnMs = 0; this.turn = [...this.preroll]; this.preroll = [];
         this.emit({ type: 'input_audio_buffer.speech_started' });
+        this.botTalkingUntil = 0; // the browser stops playing on speech_started
       }
       return;
     }
     this.turn.push(chunk);
-    this.quietMs = level > threshold * 0.7 ? 0 : this.quietMs + ms;
-    const total = this.turn.reduce((n, c) => n + c.length, 0) / this.inRate;
-    if (this.quietMs >= 750 || total > 45) this.endTurn();
+    this.turnMs += ms;
+    this.quietMs = level < endAt ? this.quietMs + ms : 0;
+    if (this.quietMs >= 700 || this.turnMs > 25_000) this.endTurn(floor);
   }
 
-  private endTurn() {
+  private endTurn(floor = 0) {
     this.speaking = false; this.loud = 0;
     const parts = this.turn; this.turn = [];
     this.emit({ type: 'input_audio_buffer.speech_stopped' });
     const n = parts.reduce((a, c) => a + c.length, 0);
     if (n < this.inRate * 0.4) return; // a cough or a click, not a turn
+    this.turns++;
+    console.log(`[voice:openai] turn ${this.turns}: ${(n / this.inRate).toFixed(1)}s (room ${floor.toFixed(4)})`);
     const pcm = new Int16Array(n); let o = 0; for (const c of parts) { pcm.set(c, o); o += c.length; }
     const audio = wav(pcm, this.inRate);
     const itemId = id('item');
@@ -208,7 +225,9 @@ class OpenAIVoiceCall {
     const calls: { id: string; name: string; args: string }[] = [];
     let usage: any = null;
     const started = Date.now();
+    let slow: ReturnType<typeof setTimeout> | undefined;
     try {
+      slow = setTimeout(() => ctrl.abort(new Error('timeout')), 30_000); // never leave a caller waiting in silence
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         signal: ctrl.signal,
@@ -232,7 +251,11 @@ class OpenAIVoiceCall {
           const d = j.choices?.[0]?.delta ?? {};
           if (d.audio?.data || d.audio?.transcript || d.content) {
             if (!added) { added = true; this.emit({ type: 'response.output_item.added', response_id: responseId, item: { id: itemId, type: 'message', role: 'assistant' } }); }
-            if (d.audio?.data) this.emit({ type: 'response.output_audio.delta', response_id: responseId, item_id: itemId, delta: d.audio.data });
+            if (d.audio?.data) {
+              this.emit({ type: 'response.output_audio.delta', response_id: responseId, item_id: itemId, delta: d.audio.data });
+              const secs = (d.audio.data.length * 0.75) / (OUT_RATE * 2);
+              this.botTalkingUntil = Math.max(this.botTalkingUntil, Date.now()) + secs * 1000;
+            }
             const words = d.audio?.transcript ?? (typeof d.content === 'string' ? d.content : '');
             if (words) { transcript += words; this.emit({ type: 'response.output_audio_transcript.delta', response_id: responseId, item_id: itemId, delta: words }); }
           }
@@ -246,7 +269,9 @@ class OpenAIVoiceCall {
         }
       }
     } catch (e: any) {
-      if (ctrl.signal.aborted) {
+      clearTimeout(slow);
+      const timedOut = (ctrl.signal.reason as any)?.message === 'timeout';
+      if (ctrl.signal.aborted && !timedOut) {
         // Interrupted: keep what was said so far, so the model knows where it stopped.
         if (transcript) this.history.push({ role: 'assistant', content: `${transcript} …(interrupted)` });
         this.emit({ type: 'response.done', response: { id: responseId, status: 'cancelled', output: [] } });
@@ -258,6 +283,7 @@ class OpenAIVoiceCall {
       if (this.abort === ctrl) this.abort = null;
       return;
     }
+    clearTimeout(slow);
     if (this.abort === ctrl) this.abort = null;
 
     const done = calls.filter((c) => c?.name).map((c) => ({ ...c, id: c.id || id('call') }));
