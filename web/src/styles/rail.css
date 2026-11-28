@@ -610,3 +610,28 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
 /* Numbers keep the page's side in Arabic instead of jumping left ("99%", "134k" have no Arabic letters). */
 :root:lang(ar) :is(.use-hero b, .use-left b, .use-tile b, .use-tile em, .use-hero span, .use-left small) { text-align: right; }
 @media (max-width: 640px) { .use-period .seg { overflow-x: auto; max-width: 100%; } }
+
+/* Routines: the schedule view (by time), the new-routine form, and the header actions. */
+.sched-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sched-add { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--p-text); color: var(--p-bg); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sched { display: flex; flex-direction: column; gap: 18px; }
+.sched-group__title { margin: 0 0 6px; padding-inline-start: 4px; font-size: 13px; font-weight: 700; color: var(--p-muted); letter-spacing: .01em; }
+.sched-list { padding: 6px 8px; border: 1px solid var(--p-line); border-radius: 18px; background: var(--p-surface); }
+.auto-row__time { flex: none; min-width: 52px; padding: 5px 8px; border-radius: 10px; background: color-mix(in srgb, var(--p-text) 6%, transparent); font-size: 13px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; color: var(--p-text); }
+.auto-row__bot { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sched-new { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; padding: 16px; border: 1px solid var(--p-line); border-radius: 18px; background: var(--p-surface); }
+.sched-new__row { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--p-muted); }
+.sched-new__row select { flex: 1; max-width: 260px; height: 36px; padding: 0 10px; border: 1px solid var(--p-line); border-radius: 10px; background: var(--p-bg); color: var(--p-text); font: inherit; font-size: 14px; }
+.sched-new textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-bg); color: var(--p-text); font: inherit; font-size: 14px; line-height: 1.5; resize: vertical; }
+.sched-new__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.sched-new__go, .sched-new__ghost { height: 36px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sched-new__go { border: 0; background: var(--p-text); color: var(--p-bg); }
+.sched-new__go:disabled { opacity: .45; cursor: default; }
+.sched-new__ghost { border: 1px solid var(--p-line); background: transparent; color: var(--p-text); }
+@media (max-width: 640px) { .sched-head { width: 100%; justify-content: space-between; } }
+@media (max-width: 640px) {
+  /* Schedule rows on a phone: the time beside the name, the controls on the line below. */
+  .sched-list .auto-row__text { flex: 1 1 0; flex-basis: calc(100% - 96px); min-width: 0; }
+  .sched-list .auto-row__time { min-width: 0; padding: 5px 7px; font-size: 12.5px; }
+  .sched-list .auto-row__run { margin-inline-start: 64px; }
+}

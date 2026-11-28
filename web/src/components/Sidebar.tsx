@@ -6,7 +6,7 @@ import { Collapse } from './Collapse';
 import { GroupAvatar } from './GroupAvatar';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { lastOpen, useConfigUI, type View } from '../configStore';
-import { BarChart3, CalendarDays, ChevronRight, FolderPlus, House, LayoutGrid, MessagesSquare, MoreHorizontal, PanelLeft, Search, Settings, Users, Workflow } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronRight, FolderPlus, House, LayoutGrid, MessagesSquare, MoreHorizontal, PanelLeft, Search, Settings, Users, CalendarClock } from 'lucide-react';
 import { foldersApi } from '../lib/folders';
 import { relativeShort } from '../lib/time';
 import type { Bot } from '@shared/types';
@@ -142,7 +142,7 @@ function NavRail({ collapsed }: { collapsed: boolean }) {
       <div className="rail__group">
         {item('home', t('Home'), <House size={20} strokeWidth={1.8} />)}
         {item('chat', t('Bots'), <Users size={20} strokeWidth={1.8} />)}
-        {item('workflow', t('Workflow'), <Workflow size={20} strokeWidth={1.8} />)}
+        {item('workflow', t('Routines'), <CalendarClock size={20} strokeWidth={1.8} />)}
         {item('calendar', t('Calendar'), <CalendarDays size={20} strokeWidth={1.8} />)}
         {item('usage', t('Usage'), <BarChart3 size={20} strokeWidth={1.8} />)}
         {item('groups', t('Groups'), <MessagesSquare size={20} strokeWidth={1.8} />, groupsUnread)}

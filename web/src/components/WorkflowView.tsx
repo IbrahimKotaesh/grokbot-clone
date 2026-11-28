@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Clock, List, Network, Play, Zap } from 'lucide-react';
+import { CalendarClock, ChevronRight, Clock, List, Network, Play, Plus, Zap } from 'lucide-react';
 import type { Bot, Routine } from '@shared/types';
 import { lang, t } from '../lib/i18n';
 import { BotAvatarFor } from '../avatar/BotAvatar';
@@ -12,6 +12,7 @@ import { scheduleText } from '../lib/schedule';
 import { BlurWords } from '../lib/motion';
 import { WorkflowDiagram } from './WorkflowDiagram';
 import { Collapse } from './Collapse';
+import { api } from '../lib/api';
 
 const LS_CLOSED = 'badr.workflowClosed';
 const loc = lang === 'nl' ? 'nl-NL' : lang === 'ar' ? 'ar' : 'en-GB';
@@ -27,7 +28,7 @@ function nextLabel(ts: number | null) {
   return `${when} ${clock(ts)}`;
 }
 
-function AutomationRow({ r, onChange }: { r: Routine; onChange: (r: Routine) => void }) {
+function AutomationRow({ r, onChange, bot }: { r: Routine; onChange: (r: Routine) => void; bot?: Bot }) {
   const [busy, setBusy] = useState(false);
   const [ran, setRan] = useState(false);
   const isEvent = r.schedule.startsWith('event:');
@@ -40,10 +41,14 @@ function AutomationRow({ r, onChange }: { r: Routine; onChange: (r: Routine) => 
   const next = r.enabled && !isEvent ? nextLabel(r.nextRunAt) : null;
   return (
     <li className={`auto-row${r.enabled ? '' : ' is-off'}`}>
-      <span className={`auto-row__icon${isEvent ? ' is-event' : ''}`} aria-hidden>{isEvent ? <Zap size={15} strokeWidth={2.2} /> : <Clock size={15} strokeWidth={2.2} />}</span>
+      {bot && !isEvent && r.enabled && r.nextRunAt
+        ? <span className="auto-row__time">{clock(r.nextRunAt)}</span>
+        : <span className={`auto-row__icon${isEvent ? ' is-event' : ''}`} aria-hidden>{isEvent ? <Zap size={15} strokeWidth={2.2} /> : <Clock size={15} strokeWidth={2.2} />}</span>}
       <span className="auto-row__text">
         <b dir="auto">{r.name}</b>
-        <small dir="auto">{scheduleText(r)}{next ? ` · ${t('Next')}: ${next}` : ''}{r.lastRunAt ? ` · ${t('Last ran {time}', { time: relativeShort(r.lastRunAt) })}` : ''}</small>
+        {bot
+          ? <small className="auto-row__bot" dir="auto"><BotAvatarFor bot={bot} size={16} /><span>{displayName(bot)}</span><span>· {scheduleText(r)}</span></small>
+          : <small dir="auto">{scheduleText(r)}{next ? ` · ${t('Next')}: ${next}` : ''}{r.lastRunAt ? ` · ${t('Last ran {time}', { time: relativeShort(r.lastRunAt) })}` : ''}</small>}
       </span>
       <button type="button" className="auto-row__run" onClick={() => void run()} disabled={busy} title={t('Run now')} aria-label={t('Run {name} now', { name: r.name })}>
         {ran ? t('Started') : <><Play size={13} strokeWidth={2.4} /> {t('Run now')}</>}
@@ -75,14 +80,89 @@ function BotBox({ bot, items, open, onToggle, onChange }: { bot: Bot; items: Rou
 }
 
 /** Workflow: everything your Bots do on their own (schedules and app triggers), grouped by Bot. */
+/** Day heading for the schedule: "Today", "Tomorrow", or the date. */
+function dayLabel(ts: number) {
+  const d = new Date(ts), now = new Date();
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(now)) / 86_400_000);
+  return diff <= 0 ? t('Today') : diff === 1 ? t('Tomorrow') : d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** Everything that runs, by time: what's coming up today and the next days, what runs when something happens, what's off. */
+function ScheduleView({ list, bots, onChange }: { list: Routine[]; bots: Bot[]; onChange: (r: Routine) => void }) {
+  const botOf = (id: string) => bots.find((b) => b.id === id);
+  const upcoming = list.filter((r) => r.enabled && r.nextRunAt && !r.schedule.startsWith('event:')).sort((a, b) => a.nextRunAt! - b.nextRunAt!);
+  const events = list.filter((r) => r.enabled && r.schedule.startsWith('event:'));
+  const off = list.filter((r) => !r.enabled);
+  const days: { label: string; items: Routine[] }[] = [];
+  for (const r of upcoming) {
+    const label = dayLabel(r.nextRunAt!);
+    const last = days[days.length - 1];
+    if (last?.label === label) last.items.push(r); else days.push({ label, items: [r] });
+  }
+  const group = (title: string, items: Routine[], key: string) => items.length > 0 && (
+    <section key={key} className="sched-group">
+      <h2 className="sched-group__title">{title}</h2>
+      <ul className="auto-list sched-list">{items.map((r) => { const b = botOf(r.botId); return b ? <AutomationRow key={r.id} r={r} bot={b} onChange={onChange} /> : null; })}</ul>
+    </section>
+  );
+  return (
+    <div className="sched">
+      {days.map((d) => group(d.label, d.items, `day:${d.label}`))}
+      {group(t('When something happens'), events, 'events')}
+      {group(t('Turned off'), off, 'off')}
+    </div>
+  );
+}
+
+/** A new routine in plain words, handed to the Bot that will run it (it sets the time and confirms in its chat). */
+function NewRoutine({ bots, onClose }: { bots: Bot[]; onClose: () => void }) {
+  const choices = bots.filter((b) => b.kind !== 'room');
+  const [botId, setBotId] = useState(choices.find((b) => b.isPrimary)?.id ?? choices[0]?.id ?? '');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const send = async () => {
+    const msg = text.trim();
+    if (!msg || !botId) return;
+    setBusy(true); setError('');
+    try {
+      await api.send(botId, `${t('Set up a routine for me')}: ${msg}`);
+      useStore.getState().selectBot(botId);
+      useConfigUI.getState().setView('chat');
+    } catch (e) { setError((e as Error).message || t('Message failed to send')); setBusy(false); }
+  };
+  return (
+    <div className="sched-new">
+      <label className="sched-new__row">
+        <span>{t('Who runs it')}</span>
+        <select value={botId} onChange={(e) => setBotId(e.target.value)} dir="auto">
+          {choices.map((b) => <option key={b.id} value={b.id}>{displayName(b)}</option>)}
+        </select>
+      </label>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} dir="auto" autoFocus
+        placeholder={t('What, and when? For example: every weekday at 8 am, send me the top news.')}
+        onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void send(); }} />
+      {error && <div className="notice is-error">{error}</div>}
+      <div className="sched-new__actions">
+        <button type="button" className="sched-new__ghost" onClick={onClose} disabled={busy}>{t('Cancel')}</button>
+        <button type="button" className="sched-new__go" onClick={() => void send()} disabled={busy || !text.trim()}>{busy ? t('Sending…') : t('Create routine')}</button>
+      </div>
+    </div>
+  );
+}
+
 export function WorkflowView() {
   const bots = useStore((s) => s.bots);
   const v = useVersion('routines');
   const [list, setList] = useState<Routine[] | null>(null);
   const [closed, setClosed] = useState<string[]>(readClosed);
   // Two ways to look at it: a diagram of the flow, or the list of boxes. The choice is remembered.
-  const [mode, setMode] = useState<'diagram' | 'list'>(() => { try { return localStorage.getItem('badr.workflowMode') === 'list' ? 'list' : 'diagram'; } catch { return 'diagram'; } });
-  const pick = (m: 'diagram' | 'list') => { setMode(m); try { localStorage.setItem('badr.workflowMode', m); } catch { /* private window */ } };
+  // Three ways to look at it: by time (the schedule, the default), the list of boxes per Bot, or a diagram.
+  type Mode = 'schedule' | 'diagram' | 'list';
+  const [mode, setMode] = useState<Mode>(() => { try { const m = localStorage.getItem('badr.routinesMode'); return m === 'list' || m === 'diagram' ? m : 'schedule'; } catch { return 'schedule'; } });
+  const pick = (m: Mode) => { setMode(m); try { localStorage.setItem('badr.routinesMode', m); } catch { /* private window */ } };
+  const [adding, setAdding] = useState(false);
   useEffect(() => {
     let live = true;
     fetch('/api/automations', { credentials: 'include' }).then((r) => (r.ok ? r.json() : { automations: [] })).then((d) => live && setList(d.automations ?? [])).catch(() => live && setList([]));
@@ -101,25 +181,32 @@ export function WorkflowView() {
     <main className="chat page-view">
       <header className="page-view__head page-view__head--row">
         <div>
-        <BlurWords as="h1" className="page-view__title" text={t('Workflow')} />
+        <BlurWords as="h1" className="page-view__title" text={t('Routines')} />
         <p className="page-view__sub">{list === null ? t('Loading…') : total ? t('{on} of {all} automations are on. Your Bots run them by themselves.', { on, all: total }) : t('Everything your Bots do on their own: on a schedule, or when something happens in your apps.')}</p>
         </div>
+        <div className="sched-head">
+        <button type="button" className="sched-add" onClick={() => setAdding((a) => !a)} aria-expanded={adding}><Plus size={15} strokeWidth={2.4} />{t('New routine')}</button>
         {total > 0 && (
           <div className="seg" role="tablist" aria-label={t('View')}>
+            <button type="button" role="tab" aria-selected={mode === 'schedule'} className={mode === 'schedule' ? 'is-on' : ''} onClick={() => pick('schedule')}><CalendarClock size={14} strokeWidth={2.2} />{t('Schedule')}</button>
             <button type="button" role="tab" aria-selected={mode === 'diagram'} className={mode === 'diagram' ? 'is-on' : ''} onClick={() => pick('diagram')}><Network size={14} strokeWidth={2.2} />{t('Diagram')}</button>
             <button type="button" role="tab" aria-selected={mode === 'list'} className={mode === 'list' ? 'is-on' : ''} onClick={() => pick('list')}><List size={14} strokeWidth={2.2} />{t('List')}</button>
           </div>
         )}
+        </div>
       </header>
       <div className="page-view__scroll">
         <div className="page-view__inner">
-          {list !== null && total === 0 && (
+          {adding && <NewRoutine bots={bots} onClose={() => setAdding(false)} />}
+          {list !== null && total === 0 && !adding && (
             <div className="cal-empty">
               <b>{t('No automations yet')}</b>
               <span>{t('Ask any Bot, like “every weekday at 8, send me the news” or “when an email from my bank arrives, summarize it”. It shows up here.')}</span>
             </div>
           )}
-          {mode === 'diagram' && total > 0
+          {mode === 'schedule' && total > 0
+            ? <ScheduleView list={list ?? []} bots={bots} onChange={change} />
+            : mode === 'diagram' && total > 0
             ? <WorkflowDiagram lanes={byBot} />
             : byBot.map(({ bot, items }) => <BotBox key={bot.id} bot={bot} items={items} open={!closed.includes(bot.id)} onToggle={() => toggleBox(bot.id)} onChange={change} />)}
         </div>
