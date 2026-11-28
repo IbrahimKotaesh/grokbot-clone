@@ -517,6 +517,8 @@ export const nlWeb: Record<string, string> = {
   "Morning brief": "Ochtendbriefing",
   "Most teams": "De meeste teams",
   "Moving files over": "Bestanden overzetten",
+  "Newest and smartest, for the hardest tasks": "Nieuwste en slimste, voor de zwaarste taken",
+  "Smart, for long and hard tasks": "Slim, voor lange en moeilijke taken",
   "Badr AI left today": "Badr-AI over vandaag",
   "Badr AI left this week": "Badr-AI over deze week",
   "Badr AI left this month": "Badr-AI over deze maand",

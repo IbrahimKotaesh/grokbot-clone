@@ -35,7 +35,10 @@ export const HOSTED_MODELS: { id: string; name: string; note: string; tier: Plan
   // 4.2, 4.5, 4.9 and 5.0 (added 2026-11-28) are cheap open models, tested for tool use and Arabic. Measured in
   // the app (about 14k prompt tokens a step): 4.5 and 4.9 ≈ $0.0015 a step, 4.2 ≈ $0.002, 5.0 ≈ $0.006 (like 4.8),
   // 5.1 ≈ $0.013. Full GLM 5.3 was left out: its private hosts charged ≈ $0.02 a step. The Usage page shows each one.
-  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free', base: "DeepSeek's open-source V4 Pro model" },
+  // 5.2 (2026-11-28): DeepSeek V4 Pro 0813, the newest DeepSeek (Artificial Analysis index 53 vs Opus 5.5's 58).
+  // On the private hosts it answers cleanly in Arabic and calls tools; short replies cost about twice 5.1's.
+  { id: 'deepseek/deepseek-v4-pro-0813', name: 'Badr 5.2', note: 'Newest and smartest, for the hardest tasks', tier: 'free', base: "DeepSeek's open-source V4 Pro (August 2026) model" },
+  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smart, for long and hard tasks', tier: 'free', base: "DeepSeek's open-source V4 Pro model" },
   { id: 'moonshotai/kimi-k2.7-code', name: 'Badr 5.0', note: 'Strong at code, files and data', tier: 'free', base: "Moonshot's open-source Kimi K2.7 model" },
   { id: 'z-ai/glm-5.3-flash', name: 'Badr 4.9', note: 'Strong at long, multi-step work', tier: 'free', base: "Zhipu's open-source GLM 5.3 Flash model" },
   { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Everyday default: free when it can be, stronger when needed', tier: 'free', base: "DeepSeek's open-source V4.1 Flash model (simple steps may first go to Baidu's free ERNIE preview, and long tasks step up to Badr 5.1)" },
@@ -82,6 +85,7 @@ const PRICES: Record<string, [number, number, number]> = {
   'qwen/qwen3.7-plus': [0.32, 0.064, 1.28],
   'qwen/qwen3.8-flash': [0.15, 0.015, 0.47],
   'deepseek/deepseek-v4-pro': [1.28, 0.108, 2.56],
+  'deepseek/deepseek-v4-pro-0813': [0.1, 0.1, 5],
   'minimax/minimax-m3.1-flash': [0.075, 0.0075, 0.3],
   'z-ai/glm-4.6v': [0.3, 0.03, 0.9],
   'openai/gpt-5.4-mini': [0.75, 0.075, 4.5],

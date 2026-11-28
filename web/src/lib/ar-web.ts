@@ -760,6 +760,8 @@ export const arWeb: Record<string, string> = {
   "Reading the file": "يقرأ الملف",
   "Jotting it down": "يدوّن",
   "Moving files over": "ينقل الملفات",
+  "Newest and smartest, for the hardest tasks": "الأحدث والأذكى، للمهام الأصعب",
+  "Smart, for long and hard tasks": "ذكي، للمهام الطويلة والصعبة",
   "Badr AI left today": "ذكاء بدر الباقي اليوم",
   "Badr AI left this week": "ذكاء بدر الباقي هالأسبوع",
   "Badr AI left this month": "ذكاء بدر الباقي هالشهر",
