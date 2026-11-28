@@ -16,8 +16,6 @@ import { sonioxEnabled, sonioxTranscribe } from './soniox.js';
 import { TurnMeter } from './usage-meter.js';
 
 export const OPENAI_VOICE_MODEL = process.env.OR_VOICE_MODEL ?? 'openai/gpt-audio';
-/** The saver: the same voices for about a twentieth of the price (tested 2026-11-28: greets, chats and hands work to send_task correctly). */
-export const OPENAI_VOICE_MINI = process.env.OR_VOICE_MINI_MODEL ?? 'openai/gpt-audio-mini';
 export const openaiVoiceReady = () => !!hostedKey();
 /** OpenAI's two most natural voices, matched to the Bot's voice gender. */
 export const openaiVoiceFor = (gender?: string) => (gender === 'male' ? 'cedar' : 'marin');

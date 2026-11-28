@@ -1,6 +1,6 @@
 import type { VoiceOption } from '@shared/types';
 
-export type CallEngine = 'grok' | 'openai' | 'openai-mini';
+export type CallEngine = 'grok' | 'openai';
 
 export interface VoiceSession {
   callId: string;
