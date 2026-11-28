@@ -899,16 +899,26 @@ export function functionSchemas() {
 export type Decision = 'allow' | 'ask' | 'block';
 
 export function appToolCall(a: any): {name:string;args:Record<string,unknown>} {
-  if(a?.operation !== 'execute' || typeof a.tool !== 'string' || !/^COMPOSIO_[A-Z0-9_]+$/.test(a.tool)) throw new Error('Invalid connected-app tool');
-  const args = JSON.parse(a.arguments || '{}');
+  const tool = typeof a?.tool === 'string' ? a.tool.trim() : '';
+  if(a?.operation !== 'execute' || !/^[A-Z][A-Z0-9]*_[A-Z0-9_]+$/.test(tool)) throw new Error('Invalid connected-app tool. Use list_tools, then execute COMPOSIO_SEARCH_TOOLS to find the app action, and run it with COMPOSIO_MULTI_EXECUTE_TOOL.');
+  let args: any;
+  try { args = JSON.parse(a.arguments || '{}'); } catch { throw new Error('Tool arguments must be valid JSON'); }
   if(!args || Array.isArray(args) || typeof args !== 'object') throw new Error('Tool arguments must be a JSON object');
-  return {name:a.tool,args};
+  if (tool.startsWith('COMPOSIO_')) return {name:tool,args};
+  // An app action called by its own name (FACEBOOK_LIST_MANAGED_PAGES): run it the way Composio expects, through
+  // the multi-execute meta tool, instead of failing. A search session id the model copied in goes alongside.
+  const { session_id, ...rest } = args;
+  return { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', args: { tools: [{ tool_slug: tool, arguments: rest }], sync_response_to_workbench: false, ...(typeof session_id === 'string' && session_id ? { session_id } : {}) } };
+}
+/** For approval checks only: a malformed call is judged as the bare tool, and fails when it runs (as a tool error). */
+export function appToolCallLoose(a: any): {name:string;args:Record<string,unknown>} {
+  try { return appToolCall(a); } catch { return { name: 'connected_apps', args: {} }; }
 }
 
 /** Every key covered by an approval, including all actions in a batch. */
 export function policyKeys(toolName: string, args: any): string[] {
   if (toolName === 'connected_apps' && args?.operation === 'execute') {
-    const call = appToolCall(args); return policyKeys(call.name, call.args);
+    const call = appToolCallLoose(args); if (call.name === 'connected_apps') return ['connected_apps']; return policyKeys(call.name, call.args);
   }
   return [...new Set(innerToolSlugs(toolName,args).length ? innerToolSlugs(toolName,args) : [toolName])];
 }
@@ -920,7 +930,9 @@ const SAFE_LOCAL = new Set([...OFFICE_READS,...EMAIL_SAFE,...IMAGE_SAFE,...BROWS
 const METADATA = new Set(['COMPOSIO_SEARCH_TOOLS','COMPOSIO_GET_TOOL_SCHEMAS','COMPOSIO_MANAGE_CONNECTIONS','COMPOSIO_WAIT_FOR_CONNECTIONS']);
 export function policyFor(userId: string, toolName: string, args: any, botId?: string): { decision: Decision; key: string; toolkit?: string; title: string; requiresFreshApproval?: boolean; safetyReason?: string; safe?: boolean } {
   if(toolName === 'connected_apps' && args?.operation === 'execute') {
-    const call = appToolCall(args); return policyFor(userId,call.name,call.args,botId);
+    const call = appToolCallLoose(args); if (call.name !== 'connected_apps') return policyFor(userId,call.name,call.args,botId);
+    // Malformed: nothing runs (it comes back as a tool error), so there is nothing to approve.
+    return { decision: 'allow', key: 'connected_apps', title: 'connected apps', safe: true };
   }
   const bot = botId ? db.prepare('SELECT user_id,permission_mode FROM bots WHERE id=?').get(botId) as any : null;
   if (botId && (!bot || bot.user_id !== userId)) return {decision:'block',key:toolName,title:toolName};

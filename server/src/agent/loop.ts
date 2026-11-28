@@ -32,7 +32,7 @@ import { toolkitInfo } from '../composio.js';
 import { systemPrompt } from './prompt.js';
 import { repairHistory } from './history.js';
 import { maybeCompact, noteUsage } from './memory.js';
-import { appToolCall, activityFor, functionSchemas, humanizeSlug, policyKeys, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
+import { appToolCall, appToolCallLoose, activityFor, functionSchemas, humanizeSlug, policyKeys, policyFor, runComposioTool, toolMap, type ToolCtx, type ToolResult } from './tools.js';
 
 
 export type Trigger = (
@@ -385,6 +385,10 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
     // "Connect your …" is a next step for the person, not a failure, so it is shown as is.
     const msg = ctrl.signal.aborted ? 'Stopped.' : /^Connect your /.test(String(e?.message)) ? e.message : `Something went wrong: ${e?.message ?? e}`;
     if (!handled) appendRow(botId, 'notice', { type: 'notice', text: msg, tone: ctrl.signal.aborted ? 'info' : 'error' });
+    // A step this turn left "running" failed with it: say so now, so it isn't later blamed on a restart.
+    for (const r of listRows(botId, { limit: 60 }))
+      if (r.seq >= firstSeq && r.body.type === 'tool-call' && r.body.status === 'running')
+        updateRow(botId, r.seq, { ...r.body, status: 'error', summary: ctrl.signal.aborted ? 'Stopped' : 'Failed' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {
     if (provider === 'codex' || provider === 'claude') {
@@ -443,7 +447,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
     // Employee rules come first and hold in every mode: money is never touched, final steps wait for the owner.
     let guard: Guard = {};
     if (!answered) {
-      const inner = c.name === 'connected_apps' && args?.operation === 'execute' ? appToolCall(args) : { name: c.name, args };
+      const inner = c.name === 'connected_apps' && args?.operation === 'execute' ? appToolCallLoose(args) : { name: c.name, args };
       try { guard = await employeeGuard(userId, botId, inner.name, inner.args, { pageCheck: !ctx.desktopTarget }); } catch { guard = {}; }
       // The owner pressed Take control: stay off the shared computer until they hand it back.
       if (!guard.block && !ctx.desktopTarget && userInControl(userId) && (c.name.startsWith('computer_') || ['open_browser', 'read_page'].includes(c.name)))
@@ -480,7 +484,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
     } else if (decision === 'ask' || guard.decide || ruleAsk !== undefined) {
       const base = policyFor(userId, c.name, args, botId);
       const pol = guard.decide ? { ...base, safetyReason: guard.decide, requiresFreshApproval: true } : ruleAsk !== undefined ? { ...base, requiresFreshApproval: true } : base;
-      const approvalArgs = c.name === 'connected_apps' ? appToolCall(args).args : args;
+      const approvalArgs = c.name === 'connected_apps' ? appToolCallLoose(args).args : args;
       const approvalId = newId('apr');
       const tk = pol.toolkit ? await toolkitInfo(pol.toolkit) : undefined;
       // A saved grant may have arrived while toolkit metadata was loading.
