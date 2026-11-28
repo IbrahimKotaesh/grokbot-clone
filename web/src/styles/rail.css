@@ -581,6 +581,7 @@ body.is-bot-dragging .bot-list.is-empty .bot-list__drop { display: grid; place-i
 .docv__table th, .docv__table td { padding: 8px 12px; border: 1px solid var(--p-line); text-align: start; vertical-align: top; }
 .docv__table th { background: color-mix(in srgb, var(--p-text) 5%, transparent); font-weight: 700; }
 @media (max-width: 700px) {
+  .docv__scroll { background: var(--p-surface, #fff); }
   .docv__page { width: 100%; margin: 0; padding: 22px 18px 40px; border-radius: 0; border: 0; box-shadow: none; }
   .docv__page h2 { font-size: 21px; }
 }

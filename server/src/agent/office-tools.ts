@@ -407,6 +407,10 @@ export const OFFICE_TOOLS = [
     label: 'Making a document',
     impl: async (a: any, ctx: OfficeCtx): Promise<OfficeResult> => {
       const pptx = /\.pptx$/i.test(String(a.filename ?? ''));
+      // A call with nothing in it would overwrite a good file with an empty one (seen: a model "re-sending" its
+      // document five times without the content). Refuse it and say the first one is fine.
+      const content = pptx ? (Array.isArray(a.slides) ? a.slides.length : 0) : (Array.isArray(a.blocks) ? a.blocks.length : 0);
+      if (!content) return { output: JSON.stringify({ ok: false, error: `No ${pptx ? 'slides' : 'blocks'} given, so nothing was made and any file you already made is unchanged. If you already made and sent it, you are done: just reply to the owner.` }), summary: 'Nothing to make' };
       const r = await runPy(ctx, DOC, { ...a, filename: fileName(a, pptx ? 'presentation.pptx' : 'document.docx') }, { libs: [pptx ? 'pptx' : 'docx'] });
       const sent = a.send === false ? null : sendFile(ctx, r.name, r.b64, a.caption);
       return { output: JSON.stringify({ ok: true, path: r.path, sent_to_chat: !!sent }), summary: `Made ${r.name}` };
