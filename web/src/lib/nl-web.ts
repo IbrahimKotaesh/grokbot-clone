@@ -1126,4 +1126,5 @@ export const nlWeb: Record<string, string> = {
   "Strong at long, multi-step work": "Sterk in lang werk met veel stappen",
   "Cheap, and reads images and screenshots": "Goedkoop, en leest afbeeldingen en screenshots",
   "Light and quick, for short replies": "Licht en snel, voor korte antwoorden",
+  "Everyday default: free when it can be, stronger when needed": "Standaard voor elke dag: gratis waar het kan, sterker als het moet",
 };

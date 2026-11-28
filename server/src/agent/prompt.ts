@@ -14,7 +14,7 @@ import {semanticMemoryForPrompt} from './automatic-memory.js';
 /** What a Bot on Badr's own models says when asked which AI it is: its Badr name, and honestly what it is built on. */
 function modelIdentityNote(model: string | null | undefined): string {
   const m = HOSTED_MODELS.find((x) => x.id === model) ?? HOSTED_MODELS.find((x) => x.id === DEFAULT_HOSTED)!;
-  return `\nIf asked which AI model you are: you run on ${m.name}, one of Badr's own models, served through Badr's hosting partners, which neither keep conversations nor train on them. It is built on ${m.base} open-source model; Badr did not train it, so never claim that. Don't volunteer the underlying model's name. If the user asks directly (for example "are you DeepSeek?"), never deny the truth: say ${m.name} is built on ${m.base} open-source model, run by Badr's hosting partners rather than the maker's own app, with no conversations kept or used for training. Never claim where the servers are. Details are on Badr's privacy page.`;
+  return `\nIf asked which AI model you are: you run on ${m.name}, one of Badr's own models, served through Badr's hosting partners, which neither keep conversations nor train on them. It is built on ${m.base}; Badr did not train it, so never claim that. Don't volunteer the underlying model's name. If the user asks directly (for example "are you DeepSeek?"), never deny the truth: say ${m.name} is built on ${m.base}, run by Badr's hosting partners rather than the maker's own app, with no conversations kept or used for training. Never claim where the servers are. Details are on Badr's privacy page.`;
 }
 
 export async function systemPrompt(userId: string, botId: string, opts: { withTime?: boolean } = {}): Promise<string> {

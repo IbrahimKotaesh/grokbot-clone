@@ -16,7 +16,7 @@ import { fileContext } from '../documents.js';
 import { imageInputs } from '../images.js';
 import { codexTurn } from './codex.js';
 import { TurnMeter } from '../usage-meter.js';
-import { COMPUTER_CHEAP, COMPUTER_STRONG, computerModel, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, type RouteState } from '../hosted-models.js';
+import { COMPUTER_CHEAP, COMPUTER_STRONG, DEFAULT_HOSTED, FREE_MODEL, computerModel, freeFailed, hostedChatModel, hostedProviderPrefs, newRoute, overComputerCap, sequenceModel, type RouteState } from '../hosted-models.js';
 import { claudeTurn } from './claude.js';
 import { db, now } from '../db.js';
 import { planRequired } from '../plans.js';
@@ -577,6 +577,15 @@ function replyLanguageNote(history: any[]): string {
 
 // ---------- model call with streaming into a message row ----------
 
+/** How many model calls this Bot's current message has made so far (0 on the first), for the default model's sequence. */
+const turnSteps = new Map<string, { turn: string; n: number }>();
+function stepOfTurn(botId: string): number {
+  const turn = currentTurn(botId)?.id ?? '';
+  const s = turnSteps.get(botId);
+  if (!s || s.turn !== turn) { turnSteps.set(botId, { turn, n: 1 }); return 0; }
+  return s.n++;
+}
+
 async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promise<{ output: any[] }> {
   const { botId, userId } = ctx;
   const bot = getBotRow(botId);
@@ -603,7 +612,11 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
   if (llm.hosted && route?.computer) {
     model = computerModel(userId, route);
     if (!route.escalated) route.cheapSteps++;
-  } else if (llm.hosted) model = hostedChatModel(userId, llm.model);
+  } else if (llm.hosted) {
+    model = hostedChatModel(userId, llm.model);
+    // The default model runs as a sequence: free first, then Badr 4.8, and Badr 5.1 once a message runs long.
+    if (model === DEFAULT_HOSTED) model = sequenceModel(userId, stepOfTurn(botId));
+  }
   const body: any = {
     model,
     input,
@@ -634,12 +647,19 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     try {
       stream = await llm.client.responses.create(body, { signal });
     } catch (e: any) {
+      // The free model is out for today, busy or down: the same step runs on Badr 4.8 straight away.
+      if (model === FREE_MODEL && !signal.aborted) {
+        freeFailed(e);
+        model = body.model = DEFAULT_HOSTED;
+        stream = await llm.client.responses.create(body, { signal });
+      } else {
       // The cheap model refused the request (unsupported input, overloaded…): retry once on the strong one.
       if (!(route && model === COMPUTER_CHEAP && !signal.aborted && !overComputerCap(userId))) throw e;
       console.warn('[route] cheap computer model failed, escalating:', e?.message);
       route.escalated = true;
       model = body.model = COMPUTER_STRONG;
       stream = await llm.client.responses.create(body, { signal });
+      }
     }
   } catch (e: any) {
     // If a Composio tool schema is rejected, retry with only our own tools.
@@ -661,6 +681,7 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
     lastFlush = Date.now();
   };
 
+  try {
   for await (const ev of stream as AsyncIterable<any>) {
     switch (ev.type) {
       case 'response.output_text.delta':
@@ -690,8 +711,13 @@ async function callModel(ctx: ToolCtx, tools: any[], signal: AbortSignal): Promi
         throw new Error(ev.response?.error?.message ?? ev.message ?? 'model error');
     }
   }
-  if (msgSeq !== null) flush(false);
   if (!final) throw new Error('model stream ended without a response');
+  } catch (e: any) {
+    // The free model gave up mid-answer before writing anything: rerun the step on Badr 4.8, unseen by the user.
+    if (model === FREE_MODEL && msgSeq === null && !text && !signal.aborted) { freeFailed(e); return callModel(ctx, tools, signal); }
+    throw e;
+  }
+  if (msgSeq !== null) flush(false);
   if (final.usage?.input_tokens) noteUsage(botId, final.usage.input_tokens, history.length);
   const meter = new TurnMeter(userId, botId, provider, model, { turnId: currentTurn(botId)?.id, startedAt: callStart });
   meter.hosted = llm.hosted;

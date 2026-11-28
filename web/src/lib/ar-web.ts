@@ -1209,4 +1209,5 @@ export const arWeb: Record<string, string> = {
   "Strong at long, multi-step work": "قوي بالشغل الطويل اللي إلو خطوات كتير",
   "Cheap, and reads images and screenshots": "رخيص، وبيقرا الصور ولقطات الشاشة",
   "Light and quick, for short replies": "خفيف وسريع، للردود القصيرة",
+  "Everyday default: free when it can be, stronger when needed": "الافتراضي اليومي: ببلاش لما بيقدر، وأقوى لما بيلزم",
 };

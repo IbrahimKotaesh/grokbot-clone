@@ -34,15 +34,40 @@ export const HOSTED_MODELS: { id: string; name: string; note: string; tier: Plan
   // 4.2, 4.5, 4.9 and 5.0 (added 2026-11-28) are cheap open models, tested for tool use and Arabic. Measured in
   // the app (about 14k prompt tokens a step): 4.5 and 4.9 ≈ $0.0015 a step, 4.2 ≈ $0.002, 5.0 ≈ $0.006 (like 4.8),
   // 5.1 ≈ $0.013. Full GLM 5.3 was left out: its private hosts charged ≈ $0.02 a step. The Usage page shows each one.
-  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free', base: "DeepSeek's V4 Pro" },
-  { id: 'moonshotai/kimi-k2.7-code', name: 'Badr 5.0', note: 'Strong at code, files and data', tier: 'free', base: "Moonshot's Kimi K2.7" },
-  { id: 'z-ai/glm-5.3-flash', name: 'Badr 4.9', note: 'Strong at long, multi-step work', tier: 'free', base: "Zhipu's GLM 5.3 Flash" },
-  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Fast everyday model', tier: 'free', base: "DeepSeek's V4.1 Flash" },
-  { id: 'qwen/qwen3.8-flash', name: 'Badr 4.5', note: 'Cheap, and reads images and screenshots', tier: 'free', base: "Alibaba's Qwen 3.8 Flash" },
-  { id: 'xiaomi/mimo-v2.6-flash', name: 'Badr 4.2', note: 'Light and quick, for short replies', tier: 'free', base: "Xiaomi's MiMo v2.6 Flash" },
+  { id: 'deepseek/deepseek-v4-pro', name: 'Badr 5.1', note: 'Smartest, for long and hard tasks', tier: 'free', base: "DeepSeek's open-source V4 Pro model" },
+  { id: 'moonshotai/kimi-k2.7-code', name: 'Badr 5.0', note: 'Strong at code, files and data', tier: 'free', base: "Moonshot's open-source Kimi K2.7 model" },
+  { id: 'z-ai/glm-5.3-flash', name: 'Badr 4.9', note: 'Strong at long, multi-step work', tier: 'free', base: "Zhipu's open-source GLM 5.3 Flash model" },
+  { id: 'deepseek/deepseek-v4.1-flash', name: 'Badr 4.8', note: 'Everyday default: free when it can be, stronger when needed', tier: 'free', base: "DeepSeek's open-source V4.1 Flash model (simple steps may first go to Baidu's free ERNIE preview, and long tasks step up to Badr 5.1)" },
+  { id: 'qwen/qwen3.8-flash', name: 'Badr 4.5', note: 'Cheap, and reads images and screenshots', tier: 'free', base: "Alibaba's open-source Qwen 3.8 Flash model" },
+  { id: 'xiaomi/mimo-v2.6-flash', name: 'Badr 4.2', note: 'Light and quick, for short replies', tier: 'free', base: "Xiaomi's open-source MiMo v2.6 Flash model" },
 ];
 /** Everyone's default, and what replies fall back to past the monthly budget. */
 export const DEFAULT_HOSTED = 'deepseek/deepseek-v4.1-flash';
+/** The strongest included model: long messages on the default path step up to it. */
+export const STRONG_HOSTED = 'deepseek/deepseek-v4-pro';
+
+/*
+ * The default path ("Badr 4.8"), tested 2026-11-28 on ten everyday Bot tasks and a real-size prompt:
+ *  1. Free first: Baidu's ERNIE preview on OpenRouter costs nothing, keeps no data (works with data_collection: deny)
+ *     and passed 9 of 10 tasks. OpenRouter allows about 1,000 free requests a day for the whole server.
+ *  2. When the free model is rate limited or fails, the same step reruns on DeepSeek V4.1 Flash (10 of 10, and the
+ *     cheapest paid model once its prompt cache is warm), and the free model rests a while.
+ *  3. A message that is still going after STEP_UP_AFTER steps is a hard task: the rest of it runs on Badr 5.1.
+ * A model the user picks on purpose (any other one) is always used as picked. OR_FREE_MODEL='' turns step 1 off.
+ */
+export const FREE_MODEL = process.env.OR_FREE_MODEL ?? 'baidu/ernie-5.5-flash-preview:free';
+export const STEP_UP_AFTER = Number(process.env.OR_STEP_UP_AFTER ?? 10);
+let freeRestUntil = 0;
+export const freeAvailable = () => !!FREE_MODEL && Date.now() >= freeRestUntil;
+/** The free model refused a step: rest it until tomorrow (daily allowance used), a minute (busy) or ten minutes (down). */
+export function freeFailed(err: any) {
+  const msg = String(err?.message ?? err ?? '');
+  const midnight = new Date(); midnight.setUTCHours(24, 0, 0, 0);
+  freeRestUntil = err?.status === 429 && /per.?day|daily|free-models/i.test(msg) ? midnight.getTime() : Date.now() + (err?.status === 429 ? 60_000 : 600_000);
+  console.warn('[models] free model resting until', new Date(freeRestUntil).toISOString(), msg.slice(0, 160));
+}
+export const resetFreeRest = () => { freeRestUntil = 0; };
+
 const RANK: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, max: 3, ultra: 4, enterprise: 5 };
 export const modelAllowed = (plan: PlanId, id: string) => {
   const m = HOSTED_MODELS.find((x) => x.id === id);
@@ -133,6 +158,14 @@ export function hostedChatModel(userId: string, wanted: string): string {
       : "This month's included AI is used up. Upgrade your plan, or add your own AI key in Settings → AI models."), { status: 402 });
   if (cap !== null && spent >= cap) return DEFAULT_HOSTED;
   return modelAllowed(plan, wanted) ? wanted : DEFAULT_HOSTED;
+}
+
+/** The model for one step on the default path (see FREE_MODEL above). `step` counts this message's model calls from 0. */
+export function sequenceModel(userId: string, step: number): string {
+  const cap = capFor(userId, 'chat');
+  const capped = cap !== null && hostedSpend(userId, 'chat') >= cap;
+  if (!capped && step >= STEP_UP_AFTER) return STRONG_HOSTED;
+  return freeAvailable() ? FREE_MODEL : DEFAULT_HOSTED;
 }
 
 /** What the app shows in the model picker: every included model, which ones this plan unlocks, and usage. */

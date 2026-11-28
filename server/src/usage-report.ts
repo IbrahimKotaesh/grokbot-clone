@@ -1,7 +1,7 @@
 // The Usage page: what the user's team used over a period, per Bot and per model, what that work costs at public
 // API prices, and what's left of the plan this month. Counts and prices only; never what was said.
 import { db } from './db.js';
-import { HOSTED_MODELS, hostedSummary, listPrice } from './hosted-models.js';
+import { FREE_MODEL, HOSTED_MODELS, hostedSummary, listPrice } from './hosted-models.js';
 import { computerMinutesThisMonth, monthStart, planOf } from './plans.js';
 
 export type UsageRange = 'today' | '7d' | '30d' | 'month';
@@ -17,6 +17,7 @@ function startOf(range: UsageRange): number {
 
 /** What Badr shows for a model: Badr's own names for its models, and plain words for the user's own AI. Never a vendor model id. */
 function modelLabel(provider: string, model: string | null, hosted: boolean): { label: string; kind: 'badr' | 'subscription' | 'key' } {
+  if (hosted && model && model === FREE_MODEL) return { label: 'Badr 4.8 (free)', kind: 'badr' };
   if (hosted) return { label: HOSTED_MODELS.find((m) => m.id === model)?.name ?? 'Badr (computer work)', kind: 'badr' };
   if (provider === 'codex') return { label: 'ChatGPT (your subscription)', kind: 'subscription' };
   if (provider === 'claude' || provider === 'claude-code') return { label: 'Claude (your subscription)', kind: 'subscription' };
