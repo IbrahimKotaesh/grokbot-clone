@@ -42,7 +42,17 @@ export type Trigger = (
   | { type: 'system'; text: string; imageIds?: string[]; fileIds?: string[] }
   | { type: 'resume' }) & {generation?:number; providerOverride?: string; tried?: string[];
   /** Runs once this trigger's turn has finished (group chats use it to deliver a reply that wasn't posted). */
-  afterTurn?: () => void};
+  afterTurn?: () => void;
+  /** Already read by the running turn (the owner wrote mid-task): its own queued turn is skipped. */
+  consumed?: boolean};
+
+/**
+ * The owner writes while a Bot is working ("???", "is it done?", "use Arabic"): instead of waiting for the whole
+ * job to finish, the message reaches the running turn at its next step, so the Bot answers at once and carries on.
+ * Only plain text on Badr's own step loop; anything with attachments waits its turn as before.
+ */
+const loopRunning = new Map<string, number>();
+const midTurn = new Map<string, Trigger[]>();
 
 /** The model provider the current turn of each bot actually runs on (after any fallback). */
 const turnProvider = new Map<string, string>();
@@ -92,6 +102,8 @@ export function enqueue(botId: string, trigger: Trigger) {
   }
   trigger={...trigger,generation:trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation};
   if(trigger.type==='user'&&trigger.desktopTarget===undefined)trigger={...trigger,desktopTarget:desktopForTrigger(getBotRow(botId)?.user_id,'user')};
+  if (trigger.type === 'user' && loopRunning.get(botId) === trigger.generation && !trigger.imageIds?.length && !trigger.fileIds?.length && trigger.text.trim())
+    midTurn.set(botId, [...(midTurn.get(botId) ?? []), trigger]);
   const prev = queues.get(botId) ?? Promise.resolve();
   const epoch = stopEpoch.get(botId) ?? 0;
   const next = prev.then(() => (trigger.type !== 'user' && (stopEpoch.get(botId) ?? 0) !== epoch ? undefined : runTurn(botId, trigger))).catch((e) => console.error('[agent] turn failed', botId, e)).finally(() => { try { trigger.afterTurn?.(); } catch { /* best effort */ } });
@@ -245,6 +257,7 @@ function triggerItem(t: Trigger, attachments=''): any | null {
 // ---------- the turn ----------
 
 async function runTurn(botId:string,trigger:Trigger){
+ if(trigger.consumed)return;
  const generation=trigger.generation??(db.prepare('SELECT generation FROM bots WHERE id=?').get(botId) as any)?.generation;
  if(!generation)return;const target=trigger.type==='user'?(trigger.desktopTarget??null):null;return withDesktopTarget(target,()=>inChat(botId,generation,()=>runScopedTurn(botId,trigger)));
 }
@@ -342,8 +355,20 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
       { type: 'x_search' },
     ];
 
+    loopRunning.set(botId, bot.generation);
     for (let step = 0; step < MAX_STEPS; step++) {
       if (ctrl.signal.aborted) throw new Error('interrupted');
+      // Messages the owner sent while this turn was working join it here.
+      const waiting = (midTurn.get(botId) ?? []).filter((t) => !t.consumed && t.generation === bot.generation);
+      midTurn.delete(botId);
+      if (waiting.length) {
+        for (const t of waiting) t.consumed = true;
+        appendHistory(botId, [
+          ...waiting.map((t) => ({ role: 'user', content: (t as { text: string }).text })),
+          { role: 'user', content: '[System notice] The owner sent the message above while you were working. If it is a question or a nudge ("??", "done?"), answer it now in one or two short lines: where you are and what is left. Then carry on with the work. If it changes the task, follow the new instruction.' },
+        ]);
+        for (const r of listRows(botId, { limit: 20 })) if (r.body.type === 'message' && r.body.role === 'user' && !r.body.from && !r.body.seenAt) updateRow(botId, r.seq, { ...r.body, seenAt: now() });
+      }
       const result = await callModel(ctx, tools, ctrl.signal);
       appendHistory(botId, result.output);
       const calls = result.output.filter((o: any) => o.type === 'function_call');
@@ -403,6 +428,9 @@ async function runScopedTurn(botId: string, trigger: Trigger) {
         updateRow(botId, r.seq, { ...r.body, status: 'error', summary: ctrl.signal.aborted ? 'Stopped' : 'Failed' });
     if (!ctrl.signal.aborted) console.error('[agent]', e);
   } finally {
+    // Messages that came too late for this turn run as their own turns, as before.
+    loopRunning.delete(botId);
+    midTurn.delete(botId);
     if (provider === 'codex' || provider === 'claude') {
       const pending = db.prepare('SELECT state FROM pending_turns WHERE bot_id=?').get(botId) as any;
       if (pending) await finishPending(ctx, JSON.parse(pending.state), 'turn-ended');
