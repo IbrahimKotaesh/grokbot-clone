@@ -66,7 +66,7 @@ const chatTools = (tools: any[]) => (Array.isArray(tools) ? tools : []).filter((
 type Msg = { role: 'user' | 'assistant' | 'tool'; content: any; tool_calls?: any[]; tool_call_id?: string };
 
 /** One call: listens for turns, asks gpt-audio, and speaks the answer back in realtime events. */
-class OpenAIVoiceCall {
+export class OpenAIVoiceCall {
   private instructions = '';
   private voice = 'marin';
   private tools: any[] = [];
@@ -203,13 +203,13 @@ class OpenAIVoiceCall {
     this.abort = null;
   }
 
-  private async respond(turn?: { audio: string; entry: Msg }) {
+  private async respond(turn?: { audio: string; entry: Msg }, retried = false): Promise<void> {
     this.cancel();
     const ctrl = new AbortController();
     this.abort = ctrl;
     const responseId = (this.responseId = id('resp'));
     const itemId = id('item');
-    this.emit({ type: 'response.created', response: { id: responseId } });
+    if (!retried) this.emit({ type: 'response.created', response: { id: responseId } });
 
     const past = this.history.filter((m) => m !== turn?.entry);
     // gpt-audio leans toward answering from guesswork; one firm rule at the end of its instructions fixes that (tested).
@@ -225,6 +225,25 @@ class OpenAIVoiceCall {
     const calls: { id: string; name: string; args: string }[] = [];
     let usage: any = null;
     const started = Date.now();
+
+    // The words follow the voice. gpt-audio sends a reply's whole text in about a second while its audio plays for
+    // many more, so captions are released at speaking pace (about 13 letters a second until the real length of the
+    // audio is known, then exactly in step with it) instead of all at once ahead of the voice.
+    let shown = 0, audioStart = 0, audioMs = 0, streamDone = false, captionDone = false;
+    const finishCaption = () => {
+      if (captionDone) return; captionDone = true; clearInterval(pace);
+      if (transcript) this.emit({ type: 'response.output_audio_transcript.done', response_id: responseId, item_id: itemId, transcript });
+    };
+    const pace = setInterval(() => {
+      if (!audioStart || ctrl.signal.aborted) return;
+      const elapsed = Date.now() - audioStart;
+      const perMs = streamDone && audioMs ? transcript.length / audioMs : 0.013;
+      let target = Math.min(transcript.length, Math.floor(elapsed * perMs));
+      while (target < transcript.length && target - shown < 8 && !/\s/.test(transcript[target])) target++; // whole words
+      if (target > shown) { this.emit({ type: 'response.output_audio_transcript.delta', response_id: responseId, item_id: itemId, delta: transcript.slice(shown, target) }); shown = target; }
+      if (streamDone && (shown >= transcript.length || elapsed >= audioMs + 400)) finishCaption();
+    }, 120);
+
     let slow: ReturnType<typeof setTimeout> | undefined;
     try {
       slow = setTimeout(() => ctrl.abort(new Error('timeout')), 30_000); // never leave a caller waiting in silence
@@ -238,7 +257,8 @@ class OpenAIVoiceCall {
           messages, ...(this.tools.length ? { tools: this.tools } : {}),
         }),
       });
-      if (!r.ok || !r.body) throw new Error(`voice model ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+      if (!r.ok || !r.body) throw Object.assign(new Error(`voice model ${r.status}: ${(await r.text().catch(() => '')).slice(0, 300)}`), { status: r.status });
+      clearTimeout(slow); // it answered: a long reply may take as long as it needs
       let buf = '';
       for await (const chunk of r.body as any) {
         buf += Buffer.from(chunk).toString();
@@ -253,17 +273,19 @@ class OpenAIVoiceCall {
             if (!added) { added = true; this.emit({ type: 'response.output_item.added', response_id: responseId, item: { id: itemId, type: 'message', role: 'assistant' } }); }
             if (d.audio?.data) {
               this.emit({ type: 'response.output_audio.delta', response_id: responseId, item_id: itemId, delta: d.audio.data });
-              const secs = (d.audio.data.length * 0.75) / (OUT_RATE * 2);
-              this.botTalkingUntil = Math.max(this.botTalkingUntil, Date.now()) + secs * 1000;
+              const ms = ((d.audio.data.length * 0.75) / (OUT_RATE * 2)) * 1000;
+              if (!audioStart) audioStart = Date.now();
+              audioMs += ms;
+              this.botTalkingUntil = Math.max(this.botTalkingUntil, Date.now()) + ms;
             }
-            const words = d.audio?.transcript ?? (typeof d.content === 'string' ? d.content : '');
-            if (words) { transcript += words; this.emit({ type: 'response.output_audio_transcript.delta', response_id: responseId, item_id: itemId, delta: words }); }
+            transcript += d.audio?.transcript ?? (typeof d.content === 'string' ? d.content : '');
           }
+          // A tool call's name arrives whole, and some hosts repeat it in later chunks: take it once.
           for (const tc of d.tool_calls ?? []) {
             const k = tc.index ?? 0;
             calls[k] ??= { id: '', name: '', args: '' };
-            if (tc.id) calls[k].id = tc.id;
-            if (tc.function?.name) calls[k].name += tc.function.name;
+            if (tc.id && !calls[k].id) calls[k].id = tc.id;
+            if (tc.function?.name && !calls[k].name) calls[k].name = String(tc.function.name);
             if (tc.function?.arguments) calls[k].args += tc.function.arguments;
           }
         }
@@ -272,24 +294,31 @@ class OpenAIVoiceCall {
       clearTimeout(slow);
       const timedOut = (ctrl.signal.reason as any)?.message === 'timeout';
       if (ctrl.signal.aborted && !timedOut) {
+        clearInterval(pace);
         // Interrupted: keep what was said so far, so the model knows where it stopped.
-        if (transcript) this.history.push({ role: 'assistant', content: `${transcript} …(interrupted)` });
+        if (transcript) this.history.push({ role: 'assistant', content: `${transcript.slice(0, Math.max(shown, 1))} …(interrupted)` });
         this.emit({ type: 'response.done', response: { id: responseId, status: 'cancelled', output: [] } });
         return;
       }
+      clearInterval(pace);
+      if (this.abort === ctrl) this.abort = null;
       console.warn('[voice:openai]', e?.message);
+      // A malformed step in the history poisons every later turn: drop it and try once more, so the call carries on.
+      if (!retried && e?.status === 400 && this.repairHistory()) return this.respond(turn, true);
       this.emit({ type: 'error', error: { message: 'The voice service didn’t answer. Try again.' } });
       this.emit({ type: 'response.done', response: { id: responseId, status: 'failed', output: [] } });
-      if (this.abort === ctrl) this.abort = null;
       return;
     }
     clearTimeout(slow);
+    streamDone = true;
+    if (!audioStart) finishCaption();
     if (this.abort === ctrl) this.abort = null;
 
-    const done = calls.filter((c) => c?.name).map((c) => ({ ...c, id: c.id || id('call') }));
-    if (transcript) this.emit({ type: 'response.output_audio_transcript.done', response_id: responseId, item_id: itemId, transcript });
-    this.history.push({ role: 'assistant', content: transcript || null, ...(done.length ? { tool_calls: done.map((c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: c.args || '{}' } })) } : {}) });
-    this.emit({ type: 'response.done', response: { id: responseId, status: 'completed', output: done.map((c) => ({ type: 'function_call', call_id: c.id, name: c.name, arguments: c.args || '{}' })) } });
+    // Only real tools with valid names go back into the history (OpenAI rejects anything else in later turns).
+    const known = new Set(this.tools.map((t) => t.function?.name));
+    const done = calls.filter((c) => c?.name && known.has(c.name) && /^[a-zA-Z0-9_-]{1,64}$/.test(c.name)).map((c) => ({ ...c, id: c.id || id('call'), args: validJson(c.args) }));
+    this.history.push({ role: 'assistant', content: transcript || null, ...(done.length ? { tool_calls: done.map((c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: c.args } })) } : {}) });
+    this.emit({ type: 'response.done', response: { id: responseId, status: 'completed', output: done.map((c) => ({ type: 'function_call', call_id: c.id, name: c.name, arguments: c.args })) } });
 
     // What the trial costs shows on the Usage page, next to everything else.
     if (usage) {
@@ -299,6 +328,33 @@ class OpenAIVoiceCall {
       m.save();
     }
   }
+
+  /**
+   * Makes the history acceptable to OpenAI again: drops tool calls with bad names or no output, drops orphan outputs,
+   * and puts each output right after its call (a caller speaking mid-task can land in between). True if it changed.
+   */
+  private repairHistory(): boolean {
+    const known = new Set(this.tools.map((t) => t.function?.name));
+    const outputs = new Map<string, Msg>();
+    for (const m of this.history) if (m.role === 'tool' && m.tool_call_id) outputs.set(m.tool_call_id, m);
+    const kept: Msg[] = [];
+    for (const m of this.history) {
+      if (m.role === 'tool') continue; // re-added right after its call below
+      if (m.role === 'assistant' && m.tool_calls?.length) {
+        const ok = m.tool_calls.filter((c: any) => known.has(c.function?.name) && /^[a-zA-Z0-9_-]{1,64}$/.test(c.function?.name ?? '') && outputs.has(c.id));
+        if (ok.length) { kept.push({ ...m, tool_calls: ok }); for (const c of ok) kept.push(outputs.get(c.id)!); }
+        else if (m.content) kept.push({ role: 'assistant', content: m.content });
+        continue;
+      }
+      kept.push(m);
+    }
+    const changed = JSON.stringify(kept) !== JSON.stringify(this.history);
+    this.history = kept;
+    return changed;
+  }
 }
+
+/** Tool arguments as valid JSON text (a cut-off stream would otherwise break every later turn). */
+function validJson(s: string) { try { JSON.parse(s || '{}'); return s || '{}'; } catch { return '{}'; } }
 
 export const OPENAI_OUT_RATE = OUT_RATE;
