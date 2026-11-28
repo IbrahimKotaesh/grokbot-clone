@@ -517,6 +517,8 @@ export const nlWeb: Record<string, string> = {
   "Morning brief": "Ochtendbriefing",
   "Most teams": "De meeste teams",
   "Moving files over": "Bestanden overzetten",
+  "Routine created": "Routine gemaakt",
+  "Monthly on day {day} at {time}": "Maandelijks op dag {day} om {time}",
   "{name} wants to": "{name} wil",
   "Run Python code on its computer": "Python-code draaien op zijn computer",
   "Run a script in a web page": "Een script in een webpagina draaien",

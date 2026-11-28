@@ -760,6 +760,8 @@ export const arWeb: Record<string, string> = {
   "Reading the file": "يقرأ الملف",
   "Jotting it down": "يدوّن",
   "Moving files over": "ينقل الملفات",
+  "Routine created": "انعمل روتين",
+  "Monthly on day {day} at {time}": "كل شهر يوم {day} الساعة {time}",
   "{name} wants to": "{name} بدّو",
   "Run Python code on its computer": "يشغّل كود Python على كمبيوتره",
   "Run a script in a web page": "يشغّل سكريبت جوّا صفحة ويب",

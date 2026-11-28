@@ -403,7 +403,22 @@ export function Transcript({ bot, rows, live, loaded, generation }: Props) {
 }
 
 /** Call notes are written by the server in English; show their fixed words in the reader's language (the summary keeps the call's own language). */
+/** Schedules the server describes in English ("Every day at 9:00 AM"), in the reader's language. */
+function scheduleLabel(s: string): string {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  let m: RegExpExecArray | null;
+  if ((m = /^Every day at (.+)$/.exec(s))) return t('Every day at {time}', { time: m[1] });
+  if ((m = /^Weekdays at (.+)$/.exec(s))) return t('Weekdays at {time}', { time: m[1] });
+  if ((m = /^Every (\w+day) at (.+)$/.exec(s)) && days.includes(m[1])) return t('Every {day} at {time}', { day: t(m[1]), time: m[2] });
+  if ((m = /^Monthly on day (\d+) at (.+)$/.exec(s))) return t('Monthly on day {day} at {time}', { day: m[1], time: m[2] });
+  if ((m = /^Every (\d+) hours$/.exec(s))) return t('Every {n} hours', { n: m[1] });
+  if ((m = /^Every (\d+) minutes$/.exec(s))) return t('Every {n} minutes', { n: m[1] });
+  return t(s);
+}
+
 export function eventLabel(text: string): string {
+  const routine = /^Routine created: (.+) · (.+)$/.exec(text);
+  if (routine) return `${t('Routine created')}: ${routine[1]} · ${scheduleLabel(routine[2])}`;
   const started = /^Voice call with (.+) started$/.exec(text);
   if (started) return t('Voice call with {name} started', { name: t(started[1]) });
   const ended = /^Voice call ended( · [^.·]+)?(?: · ([^.]+))?(\. [\s\S]*)?$/.exec(text);

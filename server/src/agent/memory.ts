@@ -227,11 +227,10 @@ export async function maybeCompact(botId: string, items: any[], opts: { force?: 
   let method = 'xai-compact';
   let replaced: any[];
   try {
-    if (memoryConfig.compactMethod === 'summary') throw new Error('xAI compaction disabled by GROKBOT_COMPACT_METHOD=summary');
-    if (!xaiReady) throw new Error('no xAI key on this server');
+    if (memoryConfig.compactMethod === 'summary' || !xaiReady) throw Object.assign(new Error('summary'), { quiet: true });
     replaced = await compactWithXai(old);
   } catch (e: any) {
-    console.warn(`[memory] compact via /responses/compact failed for ${botId}: ${e?.message ?? e}; falling back to a summary`);
+    if (!e?.quiet) console.warn(`[memory] compact via /responses/compact failed for ${botId}: ${e?.message ?? e}; falling back to a summary`);
     method = 'summary';
     try {
       replaced = await compactWithSummary(old);

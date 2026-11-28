@@ -24,7 +24,7 @@ export function ActivityLine({ bot, live, rows, writing = false }: { bot: Bot; l
       <span className="activity-line__mark"><BotAvatarFor bot={bot} size={20} /></span>
       <FadeSwap className="activity-line__text shimmer" value={phrase} />
       {!waiting && <span className="activity-line__time">· {clock(now - since)}</span>}
-      {waiting && live.awaiting?.reason && <span className="activity-line__time">· {live.awaiting.reason}</span>}
+      {waiting && live.awaiting?.reason && <span className="activity-line__time" dir="auto">· {t(live.awaiting.reason)}</span>}
     </div>
   );
 }

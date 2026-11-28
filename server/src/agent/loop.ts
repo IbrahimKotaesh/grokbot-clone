@@ -561,7 +561,7 @@ async function processCalls(ctx: ToolCtx, st: PendingState): Promise<boolean> {
       // A card a rule asked for waits for the owner too: a saved "Always allow" doesn't answer it.
       st.decisive = !!guard.decide || ruleAsk !== undefined;
       db.prepare('INSERT OR REPLACE INTO pending_turns(bot_id,state) VALUES (?,?)').run(botId, JSON.stringify(st));
-      setLive(botId, { isRunning: false, activity: { kind: 'waiting_for_you', since: now() }, awaiting: { reason: humanizeSlug(pol.key), since: now() } });
+      setLive(botId, { isRunning: false, activity: { kind: 'waiting_for_you', since: now() }, awaiting: { reason: summary, since: now() } });
       hub.emit(userId, { type: 'tasks', botId });
       return true;
     }
