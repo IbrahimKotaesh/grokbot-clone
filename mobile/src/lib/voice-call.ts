@@ -116,7 +116,8 @@ class Call implements VoiceCall {
       this.levelTimer = setInterval(() => this.pollLevels(), 70);
       this.connect(this.sess);
     } catch (e) {
-      this.fail((e as Error)?.message || t("Couldn't start the call"));
+      const msg = (e as Error)?.message || t("Couldn't start the call");
+      this.fail(/call minutes|minutes of calls/.test(msg) ? t("You’ve used this month’s call minutes.") : msg);
     }
   }
 
@@ -140,6 +141,8 @@ class Call implements VoiceCall {
     ws.onerror = () => {};
     ws.onclose = (e) => {
       if (this.ended) return;
+      // 4001: Badr's relay ended the call because the plan's call minutes for the month ran out.
+      if (e.code === 4001) return this.end(t("You’ve used this month’s call minutes."));
       if (this.ready) this.end(t("Call dropped"));
       else this.fail(`${t("Couldn't connect the call")}${e.reason ? ` (${e.reason})` : ""}`);
     };

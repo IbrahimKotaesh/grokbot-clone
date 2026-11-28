@@ -148,6 +148,7 @@ export const ar: Record<string, string> = {
   "Call ended": "انتهت المكالمة",
   "Call failed": "فشلت المكالمة",
   "Call dropped": "انقطعت المكالمة",
+  "You’ve used this month’s call minutes.": "خلصت دقايق المكالمات لهالشهر.",
   "Couldn't connect the call": "تعذّر الاتصال",
   "Couldn't start the call": "تعذّر بدء المكالمة",
   "Allow the microphone in Settings to call.": "اسمح بالميكروفون من الإعدادات لتتمكن من الاتصال.",

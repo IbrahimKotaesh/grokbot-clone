@@ -6,6 +6,7 @@ import type { Row } from '@shared/types';
 import { sortedRows, useStore,transcriptKey } from '../store';
 import { voiceApi, type CallEngine, type VoiceSession } from './api';
 import { MicCapture, PcmPlayer, base64ToPcm, createAudioContext, micErrorMessage, openMic, pcmToBase64 } from './audio';
+import { t } from '../lib/i18n';
 
 export interface Caption { id: string; role: 'user' | 'assistant'; text: string; final: boolean }
 
@@ -31,11 +32,13 @@ interface VoiceState {
   expanded: boolean;
   /** Which voice runs the call: Badr's OpenAI voice, or Grok where a server has only that. */
   engine: CallEngine;
+  /** When the plan's call minutes for the month run out during this call (null = no limit). */
+  endsAt: number | null;
 }
 
 export const useVoice = create<VoiceState>(() => ({
   status: 'idle', botId: null, callId: null, muted: false, speaking: false, listening: false, thinking: false,
-  working: [], captions: [], error: null, startedAt: null, expanded: false, engine: 'grok',
+  working: [], captions: [], error: null, startedAt: null, expanded: false, engine: 'grok', endsAt: null,
 }));
 
 const setV = (p: Partial<VoiceState>) => useVoice.setState(p);
@@ -86,6 +89,7 @@ class VoiceCall {
   private unsubStore: (() => void) | null = null;
   private checkTimer: ReturnType<typeof setTimeout> | null = null;
   private connectTimer: ReturnType<typeof setTimeout> | null = null;
+  private limitTimer: ReturnType<typeof setTimeout> | null = null;
   private onUnload = () => { if (this.sess && !this.ended) voiceApi.endBeacon(this.botId, this.sess.callId, this.transcript()); };
 
   constructor(readonly botId: string, readonly engine: CallEngine = 'openai') {
@@ -117,7 +121,9 @@ class VoiceCall {
       setV({ callId: this.sess.callId });
       this.connect(this.sess);
     } catch (e) {
-      this.end((e as Error).message || 'Could not start the call');
+      const msg = (e as Error).message || 'Could not start the call';
+      // The plan's call minutes are used up (402 from the server): say it in the page's language.
+      this.end(/call minutes|minutes of calls/.test(msg) ? t('You’ve used this month’s call minutes.') : msg);
     }
   }
 
@@ -132,6 +138,7 @@ class VoiceCall {
     };
     ws.onclose = (e) => {
       if (this.ended) return;
+      if (e.code === 4001) return this.end(t('You’ve used this month’s call minutes.'));
       this.end(this.ready ? 'Call dropped' : `Couldn’t connect the call${e.reason ? ` (${e.reason})` : ''}`);
     };
   }
@@ -159,7 +166,10 @@ class VoiceCall {
         if (!this.ready) {
           this.ready = true;
           if (this.connectTimer) clearTimeout(this.connectTimer);
-          setV({ status: 'live', startedAt: Date.now() });
+          const max = this.sess?.maxSeconds;
+          setV({ status: 'live', startedAt: Date.now(), endsAt: typeof max === 'number' ? Date.now() + max * 1000 : null });
+          // The plan's minutes run out: end the call here too (Badr's relay also closes it on the server).
+          if (typeof max === 'number') this.limitTimer = setTimeout(() => this.end(t('You’ve used this month’s call minutes.')), max * 1000);
           this.watchTranscript();
           this.send({ type: 'response.create' }); // the bot greets first
         }
@@ -416,6 +426,7 @@ class VoiceCall {
     window.removeEventListener('pagehide', this.onUnload);
     if (this.connectTimer) clearTimeout(this.connectTimer);
     if (this.checkTimer) clearTimeout(this.checkTimer);
+    if (this.limitTimer) clearTimeout(this.limitTimer);
     this.unsubStore?.();
     try { this.ws?.close(1000, 'call ended'); } catch { /* ignore */ }
     this.mic?.stop();

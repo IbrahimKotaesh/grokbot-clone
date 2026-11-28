@@ -15,6 +15,12 @@ function HangUp() {
 }
 
 /** A call with a Bot, laid out like a phone call: who, how long, the voice, and the big red button. */
+/** In the last five minutes of the month's call minutes, the timer says how many are left. */
+const minutesLeft = (endsAt: number | null, now: number) => {
+  if (endsAt === null || endsAt - now > 5 * 60_000) return '';
+  return ` · ${t('{n} min left', { n: Math.max(0, Math.ceil((endsAt - now) / 60_000)) })}`;
+};
+
 export function CallScreen() {
   const v = useVoice();
   const bot = useStore((s) => s.bots.find((b) => b.id === v.botId));
@@ -45,7 +51,7 @@ export function CallScreen() {
   const working = v.working.length > 0;
   const status = v.status === 'connecting' ? t('Calling…')
     : v.status === 'error' ? (v.error ?? t('Call ended'))
-    : v.startedAt ? fmt(now - v.startedAt) : '';
+    : v.startedAt ? fmt(now - v.startedAt) + minutesLeft(v.endsAt, now) : '';
   const sub = v.status !== 'live' ? '' : v.speaking ? t('Speaking') : working ? t('Working on it…') : v.muted ? t('You’re muted.') : v.listening ? t('Listening') : '';
   const lines = v.captions.filter((c) => c.text.trim());
   const last = lines.slice(-1)[0];

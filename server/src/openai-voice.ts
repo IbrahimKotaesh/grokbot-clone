@@ -14,6 +14,7 @@ import { userFromCookieHeader } from './lib/auth.js';
 import { hostedKey } from './hosted-models.js';
 import { sonioxEnabled, sonioxTranscribe } from './soniox.js';
 import { TurnMeter } from './usage-meter.js';
+import { recordCallEnd } from './plans.js';
 
 export const OPENAI_VOICE_MODEL = process.env.OR_VOICE_MODEL ?? 'openai/gpt-audio';
 export const openaiVoiceReady = () => !!hostedKey();
@@ -23,15 +24,18 @@ export const openaiVoiceFor = (gender?: string) => (gender === 'male' ? 'cedar' 
 const PATH = '/api/voice/openai';
 const PROTO = 'xai-client-secret.'; // the call screen offers its ticket this way for every engine
 const MAX_CALL_MS = 60 * 60_000;
+/** Close code that tells the call screen the plan's minutes ran out (the reason says so in words). */
+export const LIMIT_CODE = 4001;
 const OUT_RATE = 24000;
 
 // ---------- tickets ----------
-const tickets = new Map<string, { userId: string; botId: string; exp: number; model: string }>();
-export function mintOpenAIVoiceTicket(userId: string, botId: string, model = OPENAI_VOICE_MODEL) {
+type CallLimits = { callId?: string; maxMs?: number | null };
+const tickets = new Map<string, { userId: string; botId: string; exp: number; model: string; limits: CallLimits }>();
+export function mintOpenAIVoiceTicket(userId: string, botId: string, model = OPENAI_VOICE_MODEL, limits: CallLimits = {}) {
   const now = Date.now();
   for (const [k, v] of tickets) if (v.exp < now) tickets.delete(k);
   const value = randomBytes(24).toString('base64url');
-  tickets.set(value, { userId, botId, exp: now + 5 * 60_000, model });
+  tickets.set(value, { userId, botId, exp: now + 5 * 60_000, model, limits });
   return { value, expires_at: Math.floor((now + 5 * 60_000) / 1000) };
 }
 
@@ -46,7 +50,7 @@ export function attachOpenAIVoiceRelay(server: Server) {
     const ticket = offered ? tickets.get(offered.slice(PROTO.length)) : undefined;
     if (!user || !ticket || ticket.userId !== user.id || ticket.exp < Date.now() || !openaiVoiceReady()) return deny('401 Unauthorized');
     tickets.delete(offered!.slice(PROTO.length));
-    wss.handleUpgrade(req, socket, head, (client) => new OpenAIVoiceCall(client, ticket.userId, ticket.botId, ticket.model));
+    wss.handleUpgrade(req, socket, head, (client) => new OpenAIVoiceCall(client, ticket.userId, ticket.botId, ticket.model, ticket.limits));
   });
 }
 
@@ -87,8 +91,12 @@ export class OpenAIVoiceCall {
   private responseId: string | null = null;
   private cap: ReturnType<typeof setTimeout>;
 
-  constructor(private ws: WebSocket, private userId: string, private botId: string, private model = OPENAI_VOICE_MODEL) {
-    this.cap = setTimeout(() => this.close('Call time limit reached'), MAX_CALL_MS);
+  constructor(private ws: WebSocket, private userId: string, private botId: string, private model = OPENAI_VOICE_MODEL, private limits: CallLimits = {}) {
+    // The plan's call minutes left this month end the call too; the page shows why (close code 4001).
+    const planLeft = limits.maxMs ?? Infinity;
+    this.cap = planLeft < MAX_CALL_MS
+      ? setTimeout(() => this.close('You’ve used this month’s call minutes.', LIMIT_CODE), planLeft)
+      : setTimeout(() => this.close('Call time limit reached'), MAX_CALL_MS);
     console.log(`[voice:openai] call connected (${model})`);
     ws.on('message', (data, isBinary) => {
       if (isBinary) return;
@@ -96,12 +104,12 @@ export class OpenAIVoiceCall {
       try { ev = JSON.parse(data.toString()); } catch { return; }
       try { this.onEvent(ev); } catch (e: any) { console.warn('[voice:openai] event failed', e?.message); }
     });
-    ws.on('close', () => { console.log(`[voice:openai] call closed after ${this.turns} turn(s)`); this.stop(); });
+    ws.on('close', () => { console.log(`[voice:openai] call closed after ${this.turns} turn(s)`); this.stop(); if (limits.callId) recordCallEnd(limits.callId); });
     ws.on('error', () => this.stop());
   }
 
   private emit(ev: Record<string, unknown>) { if (this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(ev)); }
-  private close(why = '') { this.stop(); if (this.ws.readyState <= WebSocket.OPEN) this.ws.close(1000, why.slice(0, 120)); }
+  private close(why = '', code = 1000) { this.stop(); if (this.ws.readyState <= WebSocket.OPEN) this.ws.close(code, why.slice(0, 120)); }
   private stop() { clearTimeout(this.cap); this.abort?.abort(); this.abort = null; }
 
   private onEvent(ev: any) {

@@ -15,6 +15,8 @@ export interface VoiceSession {
   language: string;
   tools: unknown[];
   session: Record<string, unknown>;
+  /** How long this call may run on the plan's minutes left this month (null = no limit). */
+  maxSeconds?: number | null;
 }
 
 export interface VoiceOptions { voices: VoiceOption[]; languages: { code: string; name: string }[]; speeds: number[] }

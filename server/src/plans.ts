@@ -63,7 +63,7 @@ for (const col of ['plan_trial_until INTEGER', 'trial_used_at INTEGER'])
  * The free trial day (Stripe, card on file, charged after a day unless cancelled): the full plan, with a small
  * budget so a trial costs Fino cents. One trial per account.
  */
-export const TRIAL = { days: Number(process.env.STRIPE_TRIAL_DAYS ?? 1), chatUsd: 0.25, computerUsd: 0.25, computerMinutes: 30 };
+export const TRIAL = { days: Number(process.env.STRIPE_TRIAL_DAYS ?? 1), chatUsd: 0.25, computerUsd: 0.25, computerMinutes: 30, voiceMinutes: 5 };
 /** When the account's free trial ends, or null when it isn't in one. */
 export function trialUntil(userId: string): number | null {
   const row = db.prepare('SELECT plan_trial_until FROM users WHERE id=?').get(userId) as { plan_trial_until: number | null } | undefined;
@@ -108,6 +108,51 @@ export function computerMinutesThisMonth(userId: string) {
   }[];
   const ms = rows.reduce((sum, r) => sum + Math.max(0, (r.ended_at ?? now()) - Math.max(r.started_at, start)), 0);
   return Math.round(ms / 60000);
+}
+
+// ---------- voice minutes ----------
+// Every call is one row from the moment it starts; it closes when the call ends (the page says so, or Badr's
+// voice relay sees the line drop). A call left open counts up to now, at most two hours.
+db.exec('CREATE TABLE IF NOT EXISTS voice_usage (call_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER)');
+db.exec('CREATE INDEX IF NOT EXISTS voice_usage_user ON voice_usage(user_id, started_at)');
+const OPEN_CALL_MAX_MS = 2 * 3600_000;
+export function recordCallStart(userId: string, callId: string) {
+  db.prepare('INSERT OR IGNORE INTO voice_usage(call_id, user_id, started_at) VALUES (?,?,?)').run(callId, userId, now());
+}
+export function recordCallEnd(callId: string) {
+  db.prepare('UPDATE voice_usage SET ended_at=? WHERE call_id=? AND ended_at IS NULL').run(now(), callId);
+}
+/** Seconds of calls this month (or, in the free trial, since it began). */
+export function voiceSecondsThisMonth(userId: string, since = monthStart()) {
+  const rows = db.prepare('SELECT started_at, ended_at FROM voice_usage WHERE user_id=? AND (ended_at IS NULL OR ended_at>=?)').all(userId, since) as { started_at: number; ended_at: number | null }[];
+  const ms = rows.reduce((sum, r) => sum + Math.max(0, Math.min(r.ended_at ?? now(), r.started_at + OPEN_CALL_MAX_MS) - Math.max(r.started_at, since)), 0);
+  return Math.round(ms / 1000);
+}
+/** The plan's voice minutes for this account right now: the trial day has its own few, the server's owner none. */
+function voiceAllowance(userId: string): { minutes: number | null; trial: boolean } {
+  if (usesServerResources(userId)) return { minutes: null, trial: false };
+  if (trialUntil(userId)) return { minutes: TRIAL.voiceMinutes, trial: true };
+  return { minutes: planOf(userId).voiceMinutes, trial: false };
+}
+/** Minutes used and left this month, for the call button and Settings. null = no limit. */
+export function voiceMinutesLeft(userId: string): { used: number; limit: number | null; secondsLeft: number | null } {
+  const { minutes } = voiceAllowance(userId);
+  const used = voiceSecondsThisMonth(userId);
+  if (minutes === null) return { used: Math.floor(used / 60), limit: null, secondsLeft: null };
+  return { used: Math.floor(used / 60), limit: minutes, secondsLeft: Math.max(0, minutes * 60 - used) };
+}
+/** Before a call starts: how many seconds it may run (null = no limit); throws once the minutes are used up. */
+export function assertVoiceAllowed(userId: string): number | null {
+  const { minutes, trial } = voiceAllowance(userId);
+  if (minutes === null) return null;
+  const left = minutes * 60 - voiceSecondsThisMonth(userId);
+  if (left >= 20) return left;
+  const plan = planOf(userId);
+  throw new PlanLimitError(trial
+    ? `The free trial day includes ${TRIAL.voiceMinutes} minutes of calls. Your full ${plan.voiceMinutes} minutes start when the trial ends.`
+    : plan.id === 'free'
+      ? `You've used this month's ${minutes} free call minutes. Pick a plan for more.`
+      : `You've used this month's ${minutes} call minutes on ${plan.name}. Upgrade for more, or call again next month.`, 'voice');
 }
 
 export class PlanLimitError extends Error {
@@ -156,6 +201,6 @@ export function billingSummary(userId: string) {
     renewsAt: row?.plan_renews_at ?? null,
     trialUntil: trialUntil(userId),
     plans: Object.values(PLANS),
-    usage: { bots, computerMinutes: computerMinutesThisMonth(userId) },
+    usage: { bots, computerMinutes: computerMinutesThisMonth(userId), voiceMinutes: voiceMinutesLeft(userId).used },
   };
 }

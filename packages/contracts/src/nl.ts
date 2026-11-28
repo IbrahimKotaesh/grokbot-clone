@@ -85,6 +85,7 @@ export const nl: Record<string, string> = {
   "Call ended": "Gesprek beëindigd",
   "Call failed": "Gesprek mislukt",
   "Call dropped": "Gesprek verbroken",
+  "You’ve used this month’s call minutes.": "Je belminuten voor deze maand zijn op.",
   "Couldn't connect the call": "Kon het gesprek niet verbinden",
   "Couldn't start the call": "Kon het gesprek niet starten",
   "Allow the microphone in Settings to call.": "Sta de microfoon toe in Instellingen om te bellen.",

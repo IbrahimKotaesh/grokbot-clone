@@ -517,6 +517,8 @@ export const nlWeb: Record<string, string> = {
   "Morning brief": "Ochtendbriefing",
   "Most teams": "De meeste teams",
   "Moving files over": "Bestanden overzetten",
+  "You’ve used this month’s call minutes.": "Je belminuten voor deze maand zijn op.",
+  "{n} min left": "nog {n} min",
   "Reading {site}": "Leest {site}",
   "Searching “{query}”": "Zoekt “{query}”",
   "Mulling it over": "Er over nadenken",

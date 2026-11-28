@@ -16,6 +16,7 @@ import { CAST } from './voice-cast.js';
 import { humorNote } from './agent/prompt.js';
 import { OPENAI_VOICE_MODEL, mintOpenAIVoiceTicket, openaiVoiceFor, openaiVoiceReady } from './openai-voice.js';
 import { hostedKey } from './hosted-models.js';
+import { assertVoiceAllowed, PlanLimitError, recordCallEnd, recordCallStart, voiceMinutesLeft } from './plans.js';
 import type { ActivityKind, EventBody, MessageBody, RowBody, VoiceCallRecord, VoiceOption } from './types.js';
 
 export const voiceApi = new Hono<AuthVars>();
@@ -226,6 +227,9 @@ const fmtDuration = (ms: number) => {
 };
 
 // Settings offers the shortlist (four women's, four men's voices); older picks outside it still work.
+/** Call minutes used and left this month, for the call screen. */
+voiceApi.get('/minutes', (c) => c.json(voiceMinutesLeft(c.get('user').id)));
+
 voiceApi.get('/options', (c) => c.json({ voices: CAST, languages: LANGUAGES, speeds: SPEEDS }));
 
 voiceApi.post('/session', async (c) => {
@@ -234,6 +238,11 @@ voiceApi.post('/session', async (c) => {
   const bot = ownBot(user.id, botId);
   if (!bot) return c.json({ error: 'not found' }, 404);
   const s = settingsOf(bot);
+  // Each plan includes call minutes a month; the call may run only as long as what's left.
+  let maxSeconds: number | null;
+  try { maxSeconds = assertVoiceAllowed(user.id); }
+  catch (e) { if (e instanceof PlanLimitError) return c.json({ error: e.message, code: 'plan_limit', feature: e.feature }, 402); throw e; }
+  const callId = newId('call');
   // Badr's voice: OpenAI's gpt-audio through our own relay (openai-voice.ts), same protocol for every call screen
   // (web and iPhone). Grok stays only as the fallback when that relay is not set up on a server.
   const openai = engine !== 'grok' && openaiVoiceReady();
@@ -243,7 +252,7 @@ voiceApi.post('/session', async (c) => {
   let secret: { value: string; expires_at: number };
   let websocketUrl = `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(VOICE_MODEL)}`;
   if (openai) {
-    secret = mintOpenAIVoiceTicket(user.id, bot.id, openaiModel);
+    secret = mintOpenAIVoiceTicket(user.id, bot.id, openaiModel, { callId, maxMs: maxSeconds === null ? null : maxSeconds * 1000 });
     const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? 'localhost';
     const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host);
     websocketUrl = `${local ? 'ws' : 'wss'}://${host}/api/voice/openai`;
@@ -283,7 +292,7 @@ voiceApi.post('/session', async (c) => {
     },
   };
 
-  const callId = newId('call');
+  recordCallStart(user.id, callId);
   const startRow = appendRow(bot.id, 'event', callEvent(`Voice call with ${bot.name} started`, { id: callId, phase: 'started' }));
   calls.set(callId, { id: callId, botId: bot.id, userId: user.id, startedAt: now(), startSeq: startRow.seq, tasks: [] });
   emitBot(bot.id);
@@ -294,6 +303,7 @@ voiceApi.post('/session', async (c) => {
     expiresAt: secret.expires_at,
     model: openai ? openaiModel : VOICE_MODEL,
     engine: openai ? 'openai' : 'grok',
+    maxSeconds,
     websocketUrl,
     sampleRate: SAMPLE_RATE,
     instructions,
@@ -393,6 +403,7 @@ voiceApi.post('/end', async (c) => {
   if (!bot) return c.json({ error: 'not found' }, 404);
   const call = calls.get(callId);
   if (!call || call.botId !== bot.id) return c.json({ ok: true, duplicate: true });
+  recordCallEnd(callId);
   calls.delete(callId);
 
   const durationMs = now() - call.startedAt;
@@ -417,6 +428,7 @@ setInterval(() => {
   for (const call of calls.values()) {
     if (now() - call.startedAt < 2 * 3600_000) continue;
     calls.delete(call.id);
+    recordCallEnd(call.id);
     appendRow(call.botId, 'event', callEvent('Voice call ended', { id: call.id, phase: 'ended', tasks: call.tasks }));
   }
 }, 10 * 60_000).unref();
